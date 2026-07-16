@@ -1,0 +1,56 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: prognica-db
+    environment:
+      POSTGRES_USER: crm_user
+      POSTGRES_PASSWORD: crm_password
+      POSTGRES_DB: prognica_crm
+    ports:
+      - "5432:5432"
+    volumes:
+      - prognica_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U crm_user -d prognica_crm"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build: ./backend
+    container_name: prognica-backend
+    environment:
+      DATABASE_URL: postgresql+psycopg2://crm_user:crm_password@db:5432/prognica_crm
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-dev-access-secret-change-in-production-XXXXXXXXXXXXXXXX}
+      JWT_REFRESH_SECRET_KEY: ${JWT_REFRESH_SECRET_KEY:-dev-refresh-secret-change-in-production-YYYYYYYY}
+      ACCESS_TOKEN_EXPIRE_MINUTES: 60
+      REFRESH_TOKEN_EXPIRE_DAYS: 7
+      SMTP_ENABLED: ${SMTP_ENABLED:-false}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM_EMAIL: ${SMTP_FROM_EMAIL:-notifications@yourfirm.com}
+      SMTP_FROM_NAME: ${SMTP_FROM_NAME:-EZEETECH GROUP}
+      SMTP_USE_TLS: ${SMTP_USE_TLS:-true}
+      RENEWAL_CADENCE_MONTHS: ${RENEWAL_CADENCE_MONTHS:-12}
+      COMPLIANCE_FILING_CADENCE_MONTHS: ${COMPLIANCE_FILING_CADENCE_MONTHS:-12}
+      TAX_FILING_CADENCE_MONTHS: ${TAX_FILING_CADENCE_MONTHS:-12}
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build: ./frontend
+    container_name: prognica-frontend
+    environment:
+      API_URL: http://localhost:8000/api/v1
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+
+volumes:
+  prognica_db_data:
