@@ -35,7 +35,10 @@ export default function CDDPage() {
 
   const queue = cases.filter((c) => {
     const cdd = cddByCase[c.id];
-    return cdd && SCREENING_STATUSES.includes(cdd.cdd_form_status) || (cdd && SCREENING_STATUSES.includes(cdd.kyc_verification_status));
+    if (!cdd) return false;
+    const cddInProgress = SCREENING_STATUSES.includes(cdd.cdd_form_status) || SCREENING_STATUSES.includes(cdd.kyc_verification_status);
+    const stageInCDD = c.stage === "CDD/KYC In Review" || c.stage === "CDD Approved";
+    return cddInProgress || stageInCDD;
   });
 
   const updateStatus = async (caseId, field, value) => {
