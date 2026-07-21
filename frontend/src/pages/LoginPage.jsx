@@ -5,10 +5,11 @@ import { Input } from "../components/ui";
 
 const DEMO_ACCOUNTS = [
   { name: "Admin User", email: "admin@ezeetechgroup.com", password: "admin123", role: "Admin" },
-  { name: "Aisha Al Mansoori", email: "aisha@ezeetechgroup.com", password: "rm123", role: "RM" },
-  { name: "Imran Qureshi", email: "imran@ezeetechgroup.com", password: "rm123", role: "RM" },
-  { name: "Fatima Noor", email: "fatima@ezeetechgroup.com", password: "ops123", role: "Ops" },
-  { name: "David Kerr", email: "david@ezeetechgroup.com", password: "screen123", role: "Screening" },
+  { name: "Venkata Ram", email: "venkata@ezeetechgroup.com", password: "triam123", role: "RM" },
+  { name: "Abdul Salman", email: "abdul@ezeetechgroup.com", password: "triam123", role: "RM" },
+  { name: "Manohar Ganna", email: "manohar@ezeetechgroup.com", password: "triam123", role: "RM" },
+  { name: "Nishit Poddar", email: "nishit@ezeetechgroup.com", password: "triam123", role: "Screening" },
+  { name: "Priya Kumar", email: "priya@ezeetechgroup.com", password: "triam123", role: "Ops" },
 ];
 
 export default function LoginPage() {
