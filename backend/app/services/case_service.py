@@ -143,18 +143,20 @@ def change_stage(db: Session, case_id: int, new_stage: CaseStage, user: User) ->
     return case
 
 
-def raise_invoice(db: Session, case_id: int, user: User) -> Case:
+def raise_invoice(db: Session, case_id: int, user: User, amount: float = 0.0) -> Case:
     case = get_case(db, case_id, user)
     if case.stage != CaseStage.CDD_APPROVED:
         raise HTTPException(status_code=400, detail="Case must be at the CDD Approved stage to raise an invoice")
     _assert_cdd_approved(db, case)
     if case.invoice_status != InvoiceStatus.NOT_RAISED:
         raise HTTPException(status_code=400, detail="Invoice has already been raised")
+    case.invoice_amount = Decimal(str(amount))
     case.invoice_status = InvoiceStatus.RAISED
     case.invoice_raised_date = date.today()
     case.stage = CaseStage.INVOICE_RAISED
     db.commit()
     db.refresh(case)
+    _refresh_account_stats(db, case.account_id)
     return case
 
 

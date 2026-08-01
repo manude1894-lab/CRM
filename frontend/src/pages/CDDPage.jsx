@@ -20,11 +20,13 @@ export default function CDDPage() {
   const load = async () => {
     try {
       setLoading(true); setError(null);
-      const res = await casesApi.list({ limit: 500 });
+      const [res, cddList] = await Promise.all([
+        casesApi.list({ limit: 500 }),
+        cddApi.listAll(),
+      ]);
       const allCases = res.items || [];
-      const cddEntries = await Promise.all(allCases.map((c) => cddApi.get(c.id).catch(() => null)));
       const map = {};
-      allCases.forEach((c, i) => { if (cddEntries[i]) map[c.id] = cddEntries[i]; });
+      (cddList || []).forEach((cdd) => { map[cdd.case_id] = cdd; });
       setCases(allCases);
       setCddByCase(map);
     } catch (e) {

@@ -41,8 +41,8 @@ export default function ReportsPage() {
   if (error) return <ErrorBanner message={error} onRetry={load} />;
   if (!data) return null;
 
-  const kpis = data.kpis;
-  const rmOps = data.rm_ops_performance;
+  const kpis = data.kpis || {};
+  const rmOps = data.rm_ops_performance || [];
 
   return (
     <div className="space-y-6">
@@ -93,7 +93,7 @@ export default function ReportsPage() {
               </tr>
             </thead>
             <tbody>
-              {data.stage_breakdown.filter((s) => s.count > 0).map((s) => (
+              {(data.stage_breakdown || []).filter((s) => s.count > 0).map((s) => (
                 <tr key={s.stage} className="border-b border-gray-50 hover:bg-gray-50">
                   <td className="py-2 px-3"><Badge text={s.stage} /></td>
                   <td className="py-2 px-3 text-xs text-right text-gray-600">{s.count}</td>
@@ -150,7 +150,7 @@ export default function ReportsPage() {
               </tr>
             </thead>
             <tbody>
-              {data.upcoming_compliance.map((c, i) => (
+              {(data.upcoming_compliance || []).map((c, i) => (
                 <tr key={`${c.case_id}-${c.item}-${i}`} className="border-b border-gray-50 hover:bg-gray-50">
                   <td className="py-2 px-3 text-xs font-medium text-gray-800">{c.company_name}</td>
                   <td className="py-2 px-3 text-xs text-gray-600">{c.item.replace("_", " ")}</td>

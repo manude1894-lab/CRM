@@ -22,13 +22,14 @@ export const casesApi = {
   create: (data) => api.post("/cases", data).then((r) => r.data),
   update: (id, data) => api.patch(`/cases/${id}`, data).then((r) => r.data),
   changeStage: (id, stage) => api.post(`/cases/${id}/stage`, { stage }).then((r) => r.data),
-  raiseInvoice: (id) => api.post(`/cases/${id}/invoice/raise`).then((r) => r.data),
+  raiseInvoice: (id, amount = 0) => api.post(`/cases/${id}/invoice/raise`, { amount }).then((r) => r.data),
   markInvoicePaid: (id) => api.post(`/cases/${id}/invoice/mark-paid`).then((r) => r.data),
   delete: (id) => api.delete(`/cases/${id}`),
 };
 
 // ─── CDD / KYC ─────────────────────────────────────────────────────────
 export const cddApi = {
+  listAll: () => api.get("/cdd").then((r) => r.data),
   get: (caseId) => api.get(`/cdd/${caseId}`).then((r) => r.data),
   update: (caseId, data) => api.patch(`/cdd/${caseId}`, data).then((r) => r.data),
   review: (caseId, data) => api.post(`/cdd/${caseId}/review`, data).then((r) => r.data),

@@ -12,7 +12,7 @@ export default function AccountsPage() {
   const [error, setError] = useState(null);
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState(null);
-  const [modal, setModal] = useState(false);
+  const [modal, setModal] = useState(null); // "new" | "edit" | null
   const [form, setForm] = useState({});
   const [saving, setSaving] = useState(false);
 
@@ -28,20 +28,40 @@ export default function AccountsPage() {
   };
   useEffect(() => { load(); }, []);
 
-  const openNew = () => {
-    setForm({ company_name: "", industry: "", country: "", strategic_priority: "Medium", existing_relationship: "No", key_contacts: "", website: "" });
-    setModal(true);
+  const BLANK = { company_name: "", industry: "", country: "", strategic_priority: "Medium", existing_relationship: "No", key_contacts: "", website: "" };
+
+  const openNew = () => { setForm(BLANK); setModal("new"); };
+
+  const openEdit = (a) => {
+    setForm({ company_name: a.company_name, industry: a.industry || "", country: a.country || "", strategic_priority: a.strategic_priority, existing_relationship: a.existing_relationship, key_contacts: a.key_contacts || "", website: a.website || "", _id: a.id });
+    setModal("edit");
+  };
+
+  const deleteAccount = async (id) => {
+    if (!confirm("Delete this account? This cannot be undone.")) return;
+    try {
+      await accountsApi.delete(id);
+      setSelectedId(null);
+      load();
+    } catch (e) {
+      alert(e.response?.data?.detail || "Failed to delete account");
+    }
   };
 
   const save = async () => {
     if (!form.company_name?.trim()) return alert("Company name is required");
     try {
       setSaving(true);
-      await accountsApi.create(form);
-      setModal(false);
+      if (modal === "edit") {
+        const { _id, ...patch } = form;
+        await accountsApi.update(_id, patch);
+      } else {
+        await accountsApi.create(form);
+      }
+      setModal(null);
       load();
     } catch (e) {
-      alert(e.response?.data?.detail || "Failed to create account");
+      alert(e.response?.data?.detail || (modal === "edit" ? "Failed to update account" : "Failed to create account"));
     } finally { setSaving(false); }
   };
 
@@ -95,7 +115,15 @@ export default function AccountsPage() {
                     <p className="text-xs text-gray-500">{a.industry || "—"} · {a.country || "—"}</p>
                   </div>
                 </div>
-                <Badge text={a.strategic_priority} />
+                <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                  <Badge text={a.strategic_priority} />
+                  <button onClick={() => openEdit(a)} title="Edit" className="p-1.5 rounded hover:bg-blue-50 text-gray-400 hover:text-blue-600 ml-1">
+                    <Icon name="edit" size={14} />
+                  </button>
+                  <button onClick={() => deleteAccount(a.id)} title="Delete" className="p-1.5 rounded hover:bg-red-50 text-gray-400 hover:text-red-500">
+                    <Icon name="del" size={14} />
+                  </button>
+                </div>
               </div>
               <div className="grid grid-cols-3 gap-3 text-center">
                 <div className="bg-gray-50 rounded-lg p-2">
@@ -136,7 +164,7 @@ export default function AccountsPage() {
       </div>
 
       {modal && (
-        <Modal title="New Account" onClose={() => setModal(false)}>
+        <Modal title={modal === "edit" ? `Edit Account` : "New Account"} onClose={() => setModal(null)}>
           <div className="space-y-3">
             <Field label="Company Name *">
               <Input value={form.company_name} onChange={(e) => setForm({ ...form, company_name: e.target.value })} placeholder="e.g. Al Futtaim Group" />
@@ -170,11 +198,11 @@ export default function AccountsPage() {
             </div>
           </div>
           <div className="flex justify-end gap-3 mt-5">
-            <button onClick={() => setModal(false)} className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
+            <button onClick={() => setModal(null)} className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
             <button onClick={save} disabled={saving}
               className="px-4 py-2 text-sm text-white rounded-lg font-medium disabled:opacity-50"
               style={{ background: "#2B6D9A" }}>
-              {saving ? "Saving..." : "Create Account"}
+              {saving ? "Saving..." : modal === "edit" ? "Save Changes" : "Create Account"}
             </button>
           </div>
         </Modal>

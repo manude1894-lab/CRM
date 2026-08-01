@@ -44,6 +44,10 @@ class CaseStageChangeRequest(BaseModel):
     stage: CaseStage
 
 
+class InvoiceRaiseRequest(BaseModel):
+    amount: float = Field(0, ge=0)
+
+
 class CaseRead(CaseBase):
     id: int
     case_uid: str

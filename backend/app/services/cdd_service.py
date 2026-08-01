@@ -8,6 +8,10 @@ from app.models import CDDRecord, CaseDocument, Case, CaseStatus, DocumentStatus
 from app.schemas.cdd import CDDRecordUpdate, CDDReviewRequest, CaseDocumentCreate, CaseDocumentUpdate
 
 
+def list_cdd_records(db: Session) -> list[CDDRecord]:
+    return db.query(CDDRecord).all()
+
+
 def get_cdd_record(db: Session, case_id: int) -> CDDRecord:
     cdd = db.query(CDDRecord).filter(CDDRecord.case_id == case_id).first()
     if not cdd:

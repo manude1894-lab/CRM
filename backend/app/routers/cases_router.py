@@ -7,6 +7,7 @@ from app.database import get_db
 from app.auth.dependencies import get_current_user, require_admin
 from app.models import User
 from app.schemas import CaseCreate, CaseRead, CaseUpdate, CaseStageChangeRequest
+from app.schemas.case import InvoiceRaiseRequest
 from app.services import case_service
 
 router = APIRouter(prefix="/cases", tags=["Cases"])
@@ -58,8 +59,8 @@ def change_stage(
 
 
 @router.post("/{case_id}/invoice/raise", response_model=CaseRead, summary="Raise invoice (requires CDD approved)")
-def raise_invoice(case_id: int, db: Session = Depends(get_db), user: User = Depends(require_admin)):
-    return case_service.raise_invoice(db, case_id, user)
+def raise_invoice(case_id: int, body: InvoiceRaiseRequest, db: Session = Depends(get_db), user: User = Depends(require_admin)):
+    return case_service.raise_invoice(db, case_id, user, amount=body.amount)
 
 
 @router.post("/{case_id}/invoice/mark-paid", response_model=CaseRead, summary="Mark invoice paid")

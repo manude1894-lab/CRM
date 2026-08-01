@@ -19,6 +19,8 @@ export default function CasesPage() {
   const [stageFilter, setStageFilter] = useState("All");
   const [modal, setModal] = useState(null);
   const [form, setForm] = useState({});
+  const [invoiceCase, setInvoiceCase] = useState(null);
+  const [invoiceAmount, setInvoiceAmount] = useState("");
 
   const load = async () => {
     try {
@@ -63,13 +65,28 @@ export default function CasesPage() {
   };
 
   const advance = async (c) => {
+    if (c.stage === "CDD Approved") {
+      setInvoiceAmount("");
+      setInvoiceCase(c);
+      return;
+    }
     try {
-      if (c.stage === "CDD Approved") await casesApi.raiseInvoice(c.id);
-      else if (c.stage === "Invoice Raised") await casesApi.markInvoicePaid(c.id);
+      if (c.stage === "Invoice Raised") await casesApi.markInvoicePaid(c.id);
       else await casesApi.changeStage(c.id, NEXT_STAGE[c.stage]);
       load();
     } catch (e) {
       alert(e.response?.data?.detail || "Stage change failed");
+    }
+  };
+
+  const confirmRaiseInvoice = async () => {
+    const amount = parseFloat(invoiceAmount) || 0;
+    try {
+      await casesApi.raiseInvoice(invoiceCase.id, amount);
+      setInvoiceCase(null);
+      load();
+    } catch (e) {
+      alert(e.response?.data?.detail || "Failed to raise invoice");
     }
   };
 
@@ -228,6 +245,30 @@ export default function CasesPage() {
             </tbody>
           </table>
         </div>
+      )}
+
+      {invoiceCase && (
+        <Modal title={`Raise Invoice — ${invoiceCase.company_name}`} onClose={() => setInvoiceCase(null)}>
+          <p className="text-sm text-gray-600 mb-4">Enter the invoice amount before raising. This will move the case to <strong>Invoice Raised</strong>.</p>
+          <Field label="Invoice Amount (AED)">
+            <Input
+              type="number"
+              min="0"
+              step="0.01"
+              value={invoiceAmount}
+              onChange={(e) => setInvoiceAmount(e.target.value)}
+              placeholder="e.g. 15000"
+              autoFocus
+              onKeyDown={(e) => e.key === "Enter" && confirmRaiseInvoice()}
+            />
+          </Field>
+          <div className="flex justify-end gap-3 mt-5">
+            <button onClick={() => setInvoiceCase(null)} className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
+            <button onClick={confirmRaiseInvoice} className="px-4 py-2 text-sm text-white rounded-lg font-medium" style={{ background: "#2B6D9A" }}>
+              Raise Invoice
+            </button>
+          </div>
+        </Modal>
       )}
 
       {modal && (

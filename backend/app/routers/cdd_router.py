@@ -5,6 +5,8 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.auth.dependencies import get_current_user, require_screening
 from app.models import User
+from typing import List
+
 from app.schemas import (
     CDDRecordRead, CDDRecordUpdate, CDDReviewRequest,
     CaseDocumentCreate, CaseDocumentRead, CaseDocumentUpdate,
@@ -12,6 +14,11 @@ from app.schemas import (
 from app.services import cdd_service
 
 router = APIRouter(prefix="/cdd", tags=["CDD / KYC"])
+
+
+@router.get("", response_model=List[CDDRecordRead], summary="List all CDD records (one per case)")
+def list_cdd(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    return cdd_service.list_cdd_records(db)
 
 
 @router.get("/{case_id}", response_model=CDDRecordRead)
