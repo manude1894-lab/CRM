@@ -16,7 +16,7 @@ import { ROLE_LABEL } from "./utils/constants";
 const NAV = [
   { key: "dashboard", label: "Dashboard", icon: "dashboard", component: Dashboard },
   { key: "cases", label: "Cases", icon: "cases", component: CasesPage },
-  { key: "cdd", label: "CDD / Screening", icon: "cdd", component: CDDPage, roles: ["admin", "screening"] },
+  { key: "cdd", label: "CDD / Screening", icon: "cdd", component: CDDPage, roles: ["admin", "screening", "rm"] },
   { key: "compliance", label: "Compliance", icon: "compliance", component: CompliancePage },
   { key: "accounts", label: "Accounts", icon: "accounts", component: AccountsPage },
   { key: "activities", label: "Activities", icon: "activities", component: ActivitiesPage },
