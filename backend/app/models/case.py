@@ -94,8 +94,8 @@ class Case(Base):
     # Case definition
     company_name = Column(String(255), nullable=False)
     source = Column(SAEnum(CaseSource, name="case_source", values_callable=lambda obj: [e.value for e in obj]), default=CaseSource.OTHER, nullable=False)
-    jurisdiction = Column(SAEnum(Jurisdiction, native_enum=False, values_callable=lambda obj: [e.value for e in obj]), nullable=True)
-    service_type = Column(SAEnum(ServiceType, native_enum=False, values_callable=lambda obj: [e.value for e in obj]), nullable=True)
+    jurisdiction = Column(String(100), nullable=True)
+    service_type = Column(String(100), nullable=True)
 
     # Pipeline state
     stage = Column(SAEnum(CaseStage, name="case_stage", values_callable=lambda obj: [e.value for e in obj]), default=CaseStage.NEW_INQUIRY, nullable=False)

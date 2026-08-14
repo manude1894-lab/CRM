@@ -30,7 +30,7 @@ class CDDRecord(Base):
     cdd_form_status = Column(SAEnum(DocumentStatus, name="document_status", values_callable=lambda obj: [e.value for e in obj]), default=DocumentStatus.NOT_STARTED, nullable=False)
     kyc_verification_status = Column(SAEnum(DocumentStatus, name="document_status", values_callable=lambda obj: [e.value for e in obj]), default=DocumentStatus.NOT_STARTED, nullable=False)
 
-    aml_risk_rating = Column(SAEnum(AMLRiskRating, native_enum=False, values_callable=lambda obj: [e.value for e in obj]), nullable=True)
+    aml_risk_rating = Column(String(20), nullable=True)
     screening_reviewer_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     reviewed_at = Column(DateTime(timezone=True), nullable=True)
     rejection_reason = Column(Text, nullable=True)
