@@ -7,7 +7,7 @@ Create Date: 2026-08-01
 from alembic import op
 import sqlalchemy as sa
 
-revision = "0003_jurisdiction_servicetype_aml"
+revision = "0003_triam_fields"
 down_revision = "0002_difc_onboarding_workflow"
 branch_labels = None
 depends_on = None
