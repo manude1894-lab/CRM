@@ -3,7 +3,7 @@ from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional, List
 from datetime import date, datetime
 
-from app.models.cdd import DocumentStatus
+from app.models.cdd import DocumentStatus, AMLRiskRating
 
 
 class CaseDocumentBase(BaseModel):
@@ -34,6 +34,7 @@ class CaseDocumentRead(CaseDocumentBase):
 class CDDRecordUpdate(BaseModel):
     cdd_form_status: Optional[DocumentStatus] = None
     kyc_verification_status: Optional[DocumentStatus] = None
+    aml_risk_rating: Optional[AMLRiskRating] = None
 
 
 class CDDReviewRequest(BaseModel):
@@ -46,6 +47,7 @@ class CDDRecordRead(BaseModel):
     case_id: int
     cdd_form_status: DocumentStatus
     kyc_verification_status: DocumentStatus
+    aml_risk_rating: Optional[AMLRiskRating] = None
     screening_reviewer_id: Optional[int] = None
     reviewed_at: Optional[datetime] = None
     rejection_reason: Optional[str] = None

@@ -19,7 +19,7 @@ from typing import Optional
 from app.config import settings
 from app.models import (
     Case, CaseStage, CaseStatus, InvoiceStatus, CASE_STAGE_TRANSITIONS,
-    User, UserRole, Account, CDDRecord, DocumentStatus, ComplianceSchedule,
+    User, UserRole, Account, CDDRecord, CaseDocument, DocumentStatus, ComplianceSchedule,
 )
 from app.schemas.case import CaseCreate, CaseUpdate
 from app.utils.uid import next_uid
@@ -69,6 +69,14 @@ def get_case(db: Session, case_id: int, user: User) -> Case:
     return case
 
 
+STANDARD_CDD_DOCUMENTS = [
+    "Passport Copy (Shareholders & Directors)",
+    "Address Proof — Utility Bill / Bank Statement (max 3 months)",
+    "Source of Wealth (SoW)",
+    "Source of Funds (SoF)",
+]
+
+
 def create_case(db: Session, data: CaseCreate, user: User) -> Case:
     rm_id = data.rm_id or (user.id if user.role == UserRole.RM else None)
 
@@ -79,10 +87,15 @@ def create_case(db: Session, data: CaseCreate, user: User) -> Case:
         rm_id=rm_id,
     )
     db.add(case)
-    db.flush()  # get case.id without committing
+    db.flush()
 
     cdd = CDDRecord(case_id=case.id)
     db.add(cdd)
+    db.flush()
+
+    for doc_type in STANDARD_CDD_DOCUMENTS:
+        db.add(CaseDocument(cdd_record_id=cdd.id, doc_type=doc_type, received=False))
+
     db.commit()
     db.refresh(case)
 

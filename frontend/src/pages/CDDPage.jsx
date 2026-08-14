@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { casesApi, cddApi } from "../api/endpoints";
 import { useAuthStore } from "../store/auth";
 import { Icon, Badge, Modal, Field, Input, Select, Spinner, ErrorBanner } from "../components/ui";
-import { DOCUMENT_STATUS_OPTIONS } from "../utils/constants";
+import { DOCUMENT_STATUS_OPTIONS, AML_RISK_OPTIONS } from "../utils/constants";
 
 const SCREENING_STATUSES = ["Submitted", "Under Review"];
 
@@ -144,6 +144,14 @@ export default function CDDPage() {
                     disabled={!canReview}
                     onChange={(e) => updateStatus(selected.id, "kyc_verification_status", e.target.value)}>
                     {DOCUMENT_STATUS_OPTIONS.map((s) => <option key={s}>{s}</option>)}
+                  </Select>
+                </Field>
+                <Field label="AML Risk Rating">
+                  <Select value={selectedCdd?.aml_risk_rating || ""}
+                    disabled={!canReview}
+                    onChange={(e) => updateStatus(selected.id, "aml_risk_rating", e.target.value || null)}>
+                    <option value="">— Not Assessed —</option>
+                    {AML_RISK_OPTIONS.map((r) => <option key={r}>{r}</option>)}
                   </Select>
                 </Field>
               </div>

@@ -51,6 +51,29 @@ class CaseSource(str, enum.Enum):
     OTHER = "Other"
 
 
+class Jurisdiction(str, enum.Enum):
+    BVI = "BVI"
+    CAYMAN = "Cayman Islands"
+    SEYCHELLES = "Seychelles"
+    JERSEY = "Jersey"
+    GUERNSEY = "Guernsey"
+    ISLE_OF_MAN = "Isle of Man"
+    MAURITIUS = "Mauritius"
+    OTHER = "Other"
+
+
+class ServiceType(str, enum.Enum):
+    COMPANY_FORMATION = "Company Formation"
+    ESR_FILING = "ESR Filing"
+    ANNUAL_RETURN = "Annual Return"
+    OWNERSHIP_UPDATE = "Ownership Update"
+    DOCUMENT_PROVISION = "Document Provision"
+    CDD_SUBMISSION = "CDD Submission"
+    COMPANY_CLOSURE = "Company Closure"
+    RESTORATION = "Restoration"
+    OTHER = "Other"
+
+
 class InvoiceStatus(str, enum.Enum):
     NOT_RAISED = "Not Raised"
     RAISED = "Raised"
@@ -71,6 +94,8 @@ class Case(Base):
     # Case definition
     company_name = Column(String(255), nullable=False)
     source = Column(SAEnum(CaseSource, name="case_source", values_callable=lambda obj: [e.value for e in obj]), default=CaseSource.OTHER, nullable=False)
+    jurisdiction = Column(SAEnum(Jurisdiction, native_enum=False, values_callable=lambda obj: [e.value for e in obj]), nullable=True)
+    service_type = Column(SAEnum(ServiceType, native_enum=False, values_callable=lambda obj: [e.value for e in obj]), nullable=True)
 
     # Pipeline state
     stage = Column(SAEnum(CaseStage, name="case_stage", values_callable=lambda obj: [e.value for e in obj]), default=CaseStage.NEW_INQUIRY, nullable=False)

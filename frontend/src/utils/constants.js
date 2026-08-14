@@ -38,6 +38,31 @@ export const DOCUMENT_STATUS_OPTIONS = ["Not Started", "Submitted", "Under Revie
 
 export const CASE_SOURCE_OPTIONS = ["Senior Mgmt", "Social Media", "Referral", "Other"];
 
+export const JURISDICTION_OPTIONS = [
+  "BVI",
+  "Cayman Islands",
+  "Seychelles",
+  "Jersey",
+  "Guernsey",
+  "Isle of Man",
+  "Mauritius",
+  "Other",
+];
+
+export const SERVICE_TYPE_OPTIONS = [
+  "Company Formation",
+  "ESR Filing",
+  "Annual Return",
+  "Ownership Update",
+  "Document Provision",
+  "CDD Submission",
+  "Company Closure",
+  "Restoration",
+  "Other",
+];
+
+export const AML_RISK_OPTIONS = ["Low", "Medium", "High"];
+
 export const PIE_COLORS = [
   "#2B6D9A", "#34d399", "#fb923c", "#a78bfa",
   "#60a5fa", "#f59e0b", "#ef4444", "#ec4899",

@@ -4,7 +4,7 @@ from typing import Optional
 from datetime import date, datetime
 from decimal import Decimal
 
-from app.models.case import CaseStage, CaseStatus, CaseSource, InvoiceStatus
+from app.models.case import CaseStage, CaseStatus, CaseSource, InvoiceStatus, Jurisdiction, ServiceType
 
 
 class CaseBase(BaseModel):
@@ -12,6 +12,8 @@ class CaseBase(BaseModel):
     source: CaseSource = CaseSource.OTHER
     stage: CaseStage = CaseStage.NEW_INQUIRY
     status: CaseStatus = CaseStatus.ACTIVE
+    jurisdiction: Optional[Jurisdiction] = None
+    service_type: Optional[ServiceType] = None
     invoice_amount: float = Field(0, ge=0)
     license_received_date: Optional[date] = None
     license_expiry_date: Optional[date] = None
@@ -29,6 +31,8 @@ class CaseCreate(CaseBase):
 class CaseUpdate(BaseModel):
     company_name: Optional[str] = None
     source: Optional[CaseSource] = None
+    jurisdiction: Optional[Jurisdiction] = None
+    service_type: Optional[ServiceType] = None
     status: Optional[CaseStatus] = None
     invoice_amount: Optional[float] = Field(None, ge=0)
     license_received_date: Optional[date] = None

@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { casesApi, usersApi, accountsApi } from "../api/endpoints";
 import { Icon, Badge, Modal, Field, Input, Select, Textarea, Spinner, ErrorBanner } from "../components/ui";
-import { STAGES, STAGE_COLORS, CASE_SOURCE_OPTIONS, fmt } from "../utils/constants";
+import { STAGES, STAGE_COLORS, CASE_SOURCE_OPTIONS, JURISDICTION_OPTIONS, SERVICE_TYPE_OPTIONS, fmt } from "../utils/constants";
 
 const NEXT_STAGE = STAGES.reduce((acc, s, i) => {
   if (i < STAGES.length - 1) acc[s] = STAGES[i + 1];
@@ -46,7 +46,7 @@ export default function CasesPage() {
   }), [cases, search, stageFilter]);
 
   const openNew = () => {
-    setForm({ company_name: "", source: "Other", account_id: null, rm_id: null, tags: "", notes: "" });
+    setForm({ company_name: "", source: "Other", jurisdiction: "BVI", service_type: "Company Formation", account_id: null, rm_id: null, tags: "", notes: "" });
     setModal("new");
   };
 
@@ -174,7 +174,10 @@ export default function CasesPage() {
                       className="bg-white border border-gray-100 rounded-xl p-3 shadow-sm cursor-pointer hover:shadow-md transition-shadow"
                       onClick={() => { setForm(c); setModal("edit"); }}>
                       <div className="font-semibold text-xs text-gray-800 mb-1">{c.company_name}</div>
-                      <div className="text-xs text-gray-400 mb-2">{c.case_uid}</div>
+                      <div className="text-xs text-gray-400 mb-1">{c.case_uid}</div>
+                      {(c.jurisdiction || c.service_type) && (
+                        <div className="text-xs text-gray-400 mb-2">{[c.jurisdiction, c.service_type].filter(Boolean).join(" · ")}</div>
+                      )}
                       <div className="flex items-center justify-between gap-1 flex-wrap">
                         <Badge text={c.status} />
                         <Badge text={c.invoice_status} />
@@ -278,6 +281,18 @@ export default function CasesPage() {
             <Field label="Source">
               <Select value={form.source || "Other"} onChange={(e) => setForm((p) => ({ ...p, source: e.target.value }))}>
                 {CASE_SOURCE_OPTIONS.map((s) => <option key={s}>{s}</option>)}
+              </Select>
+            </Field>
+            <Field label="Jurisdiction">
+              <Select value={form.jurisdiction || ""} onChange={(e) => setForm((p) => ({ ...p, jurisdiction: e.target.value }))}>
+                <option value="">— Select —</option>
+                {JURISDICTION_OPTIONS.map((j) => <option key={j}>{j}</option>)}
+              </Select>
+            </Field>
+            <Field label="Service Type">
+              <Select value={form.service_type || ""} onChange={(e) => setForm((p) => ({ ...p, service_type: e.target.value }))}>
+                <option value="">— Select —</option>
+                {SERVICE_TYPE_OPTIONS.map((s) => <option key={s}>{s}</option>)}
               </Select>
             </Field>
             <Field label="Account">
