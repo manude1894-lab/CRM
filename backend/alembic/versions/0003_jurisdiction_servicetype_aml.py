@@ -14,9 +14,11 @@ depends_on = None
 
 
 def upgrade():
-    op.add_column("cases", sa.Column("jurisdiction", sa.String(100), nullable=True))
-    op.add_column("cases", sa.Column("service_type", sa.String(100), nullable=True))
-    op.add_column("cdd_records", sa.Column("aml_risk_rating", sa.String(20), nullable=True))
+    # Use IF NOT EXISTS so the migration is safe to re-run if a previous attempt
+    # left the DB in a partial state.
+    op.execute("ALTER TABLE cases ADD COLUMN IF NOT EXISTS jurisdiction VARCHAR(100)")
+    op.execute("ALTER TABLE cases ADD COLUMN IF NOT EXISTS service_type VARCHAR(100)")
+    op.execute("ALTER TABLE cdd_records ADD COLUMN IF NOT EXISTS aml_risk_rating VARCHAR(20)")
 
 
 def downgrade():
