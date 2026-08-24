@@ -31,7 +31,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title=settings.APP_NAME,
     version=settings.APP_VERSION,
-    description="EZEETECH GROUP — DIFC client onboarding & compliance tracker API.",
+    description="TRIAM — BVI/offshore entity servicing & compliance tracker API.",
     docs_url="/docs",
     redoc_url="/redoc",
     openapi_url="/openapi.json",

@@ -48,7 +48,7 @@ export default function ReportsPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-xl font-bold text-gray-900">Reports & Analytics</h1>
-        <p className="text-sm text-gray-500">DIFC client onboarding · Download PDFs or view inline analytics</p>
+        <p className="text-sm text-gray-500">BVI entity servicing · Download PDFs or view inline analytics</p>
       </div>
 
       {/* PDF Downloads */}

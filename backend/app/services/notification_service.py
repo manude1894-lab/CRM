@@ -38,7 +38,7 @@ def notify_user(
 
     user = db.query(User).filter(User.id == user_id).first()
     if user:
-        _send_email_best_effort(user.email, f"EZEETECH GROUP: {notification_type.replace('_', ' ').title()}", message)
+        _send_email_best_effort(user.email, f"TRIAM: {notification_type.replace('_', ' ').title()}", message)
     return notification
 
 

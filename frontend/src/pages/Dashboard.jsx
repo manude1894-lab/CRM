@@ -44,7 +44,7 @@ export default function Dashboard() {
     <div className="space-y-6">
       <div>
         <h1 className="text-xl font-bold text-gray-900">Onboarding Dashboard</h1>
-        <p className="text-sm text-gray-500">DIFC client onboarding & compliance · real-time pipeline overview</p>
+        <p className="text-sm text-gray-500">BVI / offshore entity servicing & compliance · real-time pipeline overview</p>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">

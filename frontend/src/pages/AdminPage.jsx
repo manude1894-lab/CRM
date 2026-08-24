@@ -126,7 +126,7 @@ export default function AdminPage() {
         <div className="bg-white rounded-xl border border-gray-100 p-5 shadow-sm">
           <h3 className="text-sm font-semibold text-gray-700 mb-3">System Information</h3>
           <div className="space-y-2 text-xs text-gray-600">
-            <div className="flex justify-between py-2 border-b border-gray-50"><span>Version</span><span className="font-medium">EZEETECH GROUP CRM v1.0.0</span></div>
+            <div className="flex justify-between py-2 border-b border-gray-50"><span>Version</span><span className="font-medium">TRIAM CRM v1.0.0</span></div>
             <div className="flex justify-between py-2 border-b border-gray-50"><span>Backend</span><span className="font-medium">FastAPI + PostgreSQL</span></div>
             <div className="flex justify-between py-2 border-b border-gray-50"><span>Auth</span><span className="font-medium">JWT with refresh tokens</span></div>
             <div className="flex justify-between py-2 border-b border-gray-50"><span>Active Users</span><span className="font-medium">{users.filter((u) => u.is_active).length}</span></div>

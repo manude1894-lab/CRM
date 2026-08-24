@@ -5,7 +5,7 @@ from functools import lru_cache
 
 class Settings(BaseSettings):
     # App
-    APP_NAME: str = "EZEETECH GROUP CRM"
+    APP_NAME: str = "TRIAM CRM"
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = False
     API_V1_PREFIX: str = "/api/v1"
@@ -38,7 +38,7 @@ class Settings(BaseSettings):
     SMTP_USERNAME: str = ""
     SMTP_PASSWORD: str = ""
     SMTP_FROM_EMAIL: str = "no-reply@ezeetechgroup.com"
-    SMTP_FROM_NAME: str = "EZEETECH GROUP"
+    SMTP_FROM_NAME: str = "TRIAM"
     SMTP_USE_TLS: bool = True
 
     # Compliance cadence (configurable per the DIFC filing calendar)

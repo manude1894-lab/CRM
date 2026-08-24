@@ -4,17 +4,15 @@ import { useAuthStore } from "../store/auth";
 import { Input } from "../components/ui";
 
 const DEMO_ACCOUNTS = [
-  { name: "Admin User", email: "admin@ezeetechgroup.com", password: "admin123", role: "Admin" },
-  { name: "Venkata Ram", email: "venkata@ezeetechgroup.com", password: "triam123", role: "RM" },
-  { name: "Abdul Salman", email: "abdul@ezeetechgroup.com", password: "triam123", role: "RM" },
-  { name: "Manohar Ganna", email: "manohar@ezeetechgroup.com", password: "triam123", role: "RM" },
-  { name: "Nishit Poddar", email: "nishit@ezeetechgroup.com", password: "triam123", role: "Screening" },
-  { name: "Priya Kumar", email: "priya@ezeetechgroup.com", password: "triam123", role: "Ops" },
+  { name: "Shirsendu Mukherjee", email: "shirsendu@triam.ae", password: "admin123", role: "Admin" },
+  { name: "Kalyan", email: "kalyan@triam.ae", password: "rm123", role: "RM" },
+  { name: "Ritu Sharma", email: "ritu@triam.ae", password: "ops123", role: "Ops" },
+  { name: "Swathi", email: "swathi@triam.ae", password: "screen123", role: "Screening" },
 ];
 
 export default function LoginPage() {
   const setTokens = useAuthStore((s) => s.setTokens);
-  const [email, setEmail] = useState("admin@ezeetechgroup.com");
+  const [email, setEmail] = useState("shirsendu@triam.ae");
   const [password, setPassword] = useState("admin123");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -43,10 +41,10 @@ export default function LoginPage() {
             className="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-4"
             style={{ background: "#2B6D9A" }}
           >
-            <span className="text-white text-2xl font-bold">E</span>
+            <span className="text-white text-2xl font-bold">T</span>
           </div>
-          <h1 className="text-3xl font-bold text-white">EZEETECH GROUP</h1>
-          <p className="text-blue-300 mt-1 text-sm">DIFC Client Onboarding & Compliance Tracker</p>
+          <h1 className="text-3xl font-bold text-white">TRIAM</h1>
+          <p className="text-blue-300 mt-1 text-sm">BVI / Offshore Entity Servicing Platform</p>
         </div>
         <div className="bg-white rounded-2xl shadow-2xl p-8">
           <h2 className="text-xl font-semibold text-gray-800 mb-6">Sign in to your account</h2>
