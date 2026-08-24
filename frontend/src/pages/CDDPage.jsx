@@ -1,8 +1,12 @@
 import React, { useEffect, useState } from "react";
-import { casesApi, cddApi } from "../api/endpoints";
+import { casesApi, cddApi, directorsApi, shareholdersApi } from "../api/endpoints";
 import { useAuthStore } from "../store/auth";
 import { Icon, Badge, Modal, Field, Input, Select, Spinner, ErrorBanner } from "../components/ui";
 import { DOCUMENT_STATUS_OPTIONS, AML_RISK_OPTIONS } from "../utils/constants";
+
+const directorName = (d) => d.director_type === "Corporate"
+  ? (d.corporate_name || "Corporate Director")
+  : [d.first_name, d.middle_name, d.last_name].filter(Boolean).join(" ") || "Individual Director";
 
 const SCREENING_STATUSES = ["Submitted", "Under Review"];
 
@@ -16,6 +20,8 @@ export default function CDDPage() {
   const [reviewModal, setReviewModal] = useState(false);
   const [rejectionReason, setRejectionReason] = useState("");
   const [newDocType, setNewDocType] = useState("");
+  const [directors, setDirectors] = useState([]);
+  const [shareholders, setShareholders] = useState([]);
 
   const load = async () => {
     try {
@@ -34,6 +40,13 @@ export default function CDDPage() {
     } finally { setLoading(false); }
   };
   useEffect(() => { load(); }, []);
+
+  useEffect(() => {
+    if (!selected) { setDirectors([]); setShareholders([]); return; }
+    Promise.all([directorsApi.list(selected.id), shareholdersApi.list(selected.id)])
+      .then(([ds, ss]) => { setDirectors(ds || []); setShareholders(ss || []); })
+      .catch(() => { setDirectors([]); setShareholders([]); });
+  }, [selected?.id]);
 
   const queue = cases.filter((c) => {
     const cdd = cddByCase[c.id];
@@ -164,22 +177,56 @@ export default function CDDPage() {
 
               <div>
                 <p className="text-xs font-semibold text-gray-600 mb-2">Document Checklist</p>
-                <div className="space-y-1.5">
-                  {(selectedCdd?.documents || []).map((doc) => (
-                    <div key={doc.id} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
-                      <div className="flex items-center gap-2">
-                        <button onClick={() => toggleReceived(doc)}
-                          className={`w-5 h-5 rounded border flex items-center justify-center ${doc.received ? "bg-emerald-500 border-emerald-500 text-white" : "border-gray-300"}`}>
-                          {doc.received && <Icon name="check" size={12} />}
-                        </button>
-                        <span className="text-xs text-gray-700">{doc.doc_type}</span>
-                      </div>
-                      <span className="text-xs text-gray-400">{doc.received_date || "Pending"}</span>
+                {(() => {
+                  const allDocs = selectedCdd?.documents || [];
+                  const companyDocs = allDocs.filter((d) => !d.director_id && !d.shareholder_id);
+                  const groups = [
+                    { key: "company", label: "Company", docs: companyDocs, note: null },
+                    ...directors.map((d) => ({
+                      key: `d${d.id}`,
+                      label: `Director — ${directorName(d)}`,
+                      docs: allDocs.filter((doc) => doc.director_id === d.id),
+                      note: null,
+                    })),
+                    ...shareholders.map((s) => ({
+                      key: `s${s.id}`,
+                      label: `Shareholder — ${s.name}${s.shareholding_percent != null ? ` (${s.shareholding_percent}%)` : ""}`,
+                      docs: allDocs.filter((doc) => doc.shareholder_id === s.id),
+                      note: s.shareholding_percent != null && s.shareholding_percent < 10
+                        ? "CDD optional — below 10% interest threshold"
+                        : null,
+                    })),
+                  ];
+                  return (
+                    <div className="space-y-4">
+                      {groups.map((g) => (
+                        <div key={g.key}>
+                          <p className="text-xs font-medium text-gray-500 mb-1.5">{g.label}</p>
+                          {g.docs.length === 0 ? (
+                            <p className="text-xs text-gray-400 italic pl-1">{g.note || "No documents required."}</p>
+                          ) : (
+                            <div className="space-y-1.5">
+                              {g.docs.map((doc) => (
+                                <div key={doc.id} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
+                                  <div className="flex items-center gap-2">
+                                    <button onClick={() => toggleReceived(doc)}
+                                      className={`w-5 h-5 rounded border flex items-center justify-center flex-shrink-0 ${doc.received ? "bg-emerald-500 border-emerald-500 text-white" : "border-gray-300"}`}>
+                                      {doc.received && <Icon name="check" size={12} />}
+                                    </button>
+                                    <span className="text-xs text-gray-700">{doc.doc_type}</span>
+                                  </div>
+                                  <span className="text-xs text-gray-400 whitespace-nowrap ml-2">{doc.received_date || "Pending"}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-                <div className="flex gap-2 mt-2">
-                  <Input placeholder="Add document type..." value={newDocType} onChange={(e) => setNewDocType(e.target.value)} />
+                  );
+                })()}
+                <div className="flex gap-2 mt-3">
+                  <Input placeholder="Add company-level document..." value={newDocType} onChange={(e) => setNewDocType(e.target.value)} />
                   <button onClick={() => addDocument(selected.id)} className="px-3 py-2 text-xs border border-gray-200 rounded-lg hover:bg-gray-50">Add</button>
                 </div>
               </div>

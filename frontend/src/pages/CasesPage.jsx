@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { casesApi, usersApi, accountsApi } from "../api/endpoints";
 import { Icon, Badge, Modal, Field, Input, Select, Textarea, Spinner, ErrorBanner } from "../components/ui";
+import PartyRegisterModal from "../components/PartyRegisterModal";
 import { STAGES, STAGE_COLORS, CASE_SOURCE_OPTIONS, JURISDICTION_OPTIONS, SERVICE_TYPE_OPTIONS, fmt } from "../utils/constants";
 
 const NEXT_STAGE = STAGES.reduce((acc, s, i) => {
@@ -21,6 +22,7 @@ export default function CasesPage() {
   const [form, setForm] = useState({});
   const [invoiceCase, setInvoiceCase] = useState(null);
   const [invoiceAmount, setInvoiceAmount] = useState("");
+  const [registerCase, setRegisterCase] = useState(null);
 
   const load = async () => {
     try {
@@ -183,6 +185,10 @@ export default function CasesPage() {
                         <Badge text={c.invoice_status} />
                       </div>
                       <div className="mt-2 flex flex-wrap gap-1" onClick={(e) => e.stopPropagation()}>
+                        <button onClick={() => setRegisterCase(c)}
+                          className="text-xs px-2 py-0.5 rounded border border-gray-200 hover:border-blue-300 hover:text-blue-600 text-gray-500">
+                          Register
+                        </button>
                         {actionLabel(stage) && (
                           <button onClick={() => advance(c)}
                             className="text-xs px-2 py-0.5 rounded border border-gray-200 hover:border-blue-300 hover:text-blue-600 text-gray-500">
@@ -233,6 +239,10 @@ export default function CasesPage() {
                   <td className="py-3 px-4 text-xs text-right text-gray-600">{fmt(c.invoice_amount)}</td>
                   <td className="py-3 px-4">
                     <div className="flex gap-1">
+                      <button onClick={() => setRegisterCase(c)}
+                        className="p-1.5 rounded hover:bg-blue-50 text-gray-400 hover:text-blue-600" title="Directors & Shareholders">
+                        <Icon name="accounts" size={14} />
+                      </button>
                       <button onClick={() => { setForm(c); setModal("edit"); }}
                         className="p-1.5 rounded hover:bg-blue-50 text-gray-400 hover:text-blue-600">
                         <Icon name="edit" size={14} />
@@ -272,6 +282,10 @@ export default function CasesPage() {
             </button>
           </div>
         </Modal>
+      )}
+
+      {registerCase && (
+        <PartyRegisterModal caseItem={registerCase} onClose={() => setRegisterCase(null)} />
       )}
 
       {modal && (

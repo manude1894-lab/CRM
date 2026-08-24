@@ -10,6 +10,9 @@ from app.services import (
     activity_service,
     dashboard_service,
     user_service,
+    party_service,
+    instruction_service,
+    invoice_service,
 )
 
 __all__ = [
@@ -23,4 +26,7 @@ __all__ = [
     "activity_service",
     "dashboard_service",
     "user_service",
+    "party_service",
+    "instruction_service",
+    "invoice_service",
 ]

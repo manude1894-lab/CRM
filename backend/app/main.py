@@ -10,6 +10,7 @@ from app.config import settings
 from app.routers import (
     auth_router, users_router, cases_router, cdd_router, compliance_router,
     accounts_router, activities_router, notifications_router, dashboard_router, reports_router,
+    party_router, instructions_router, invoices_router,
 )
 from app.services.scheduler_jobs import run_daily_sweep
 
@@ -69,5 +70,6 @@ for r in (
     auth_router.router, users_router.router, cases_router.router, cdd_router.router,
     compliance_router.router, accounts_router.router, activities_router.router,
     notifications_router.router, dashboard_router.router, reports_router.router,
+    party_router.router, instructions_router.router, invoices_router.router,
 ):
     app.include_router(r, prefix=settings.API_V1_PREFIX)

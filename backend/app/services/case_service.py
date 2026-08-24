@@ -69,9 +69,12 @@ def get_case(db: Session, case_id: int, user: User) -> Case:
     return case
 
 
+# Company-level checklist items, seeded once at case creation. Per-party items
+# (passport/address proof for individuals, statutory docs for corporates) are
+# generated automatically per Director/Shareholder instead — see
+# cdd_service.generate_director_documents / generate_shareholder_documents.
 STANDARD_CDD_DOCUMENTS = [
-    "Passport Copy (Shareholders & Directors)",
-    "Address Proof — Utility Bill / Bank Statement (max 3 months)",
+    "Structure Chart (to Ultimate Beneficial Owners, 10%+ interest)",
     "Source of Wealth (SoW)",
     "Source of Funds (SoF)",
 ]

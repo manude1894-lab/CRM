@@ -9,6 +9,8 @@ import CDDPage from "./pages/CDDPage";
 import CompliancePage from "./pages/CompliancePage";
 import AccountsPage from "./pages/AccountsPage";
 import ActivitiesPage from "./pages/ActivitiesPage";
+import InstructionsPage from "./pages/InstructionsPage";
+import InvoicesPage from "./pages/InvoicesPage";
 import ReportsPage from "./pages/ReportsPage";
 import AdminPage from "./pages/AdminPage";
 import { ROLE_LABEL } from "./utils/constants";
@@ -20,6 +22,8 @@ const NAV = [
   { key: "compliance", label: "Compliance", icon: "compliance", component: CompliancePage },
   { key: "accounts", label: "Accounts", icon: "accounts", component: AccountsPage },
   { key: "activities", label: "Activities", icon: "activities", component: ActivitiesPage },
+  { key: "instructions", label: "Instruction Tracker", icon: "instructions", component: InstructionsPage },
+  { key: "invoices", label: "Invoices", icon: "invoices", component: InvoicesPage },
   { key: "reports", label: "Reports", icon: "reports", component: ReportsPage },
   { key: "admin", label: "Admin", icon: "admin", component: AdminPage, roles: ["admin"] },
 ];

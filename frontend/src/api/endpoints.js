@@ -38,6 +38,39 @@ export const cddApi = {
   deleteDocument: (documentId) => api.delete(`/cdd/documents/${documentId}`),
 };
 
+// ─── Directors & Shareholders ──────────────────────────────────────────
+export const directorsApi = {
+  list: (caseId) => api.get(`/cases/${caseId}/directors`).then((r) => r.data),
+  create: (caseId, data) => api.post(`/cases/${caseId}/directors`, data).then((r) => r.data),
+  update: (id, data) => api.patch(`/directors/${id}`, data).then((r) => r.data),
+  delete: (id) => api.delete(`/directors/${id}`),
+};
+
+export const shareholdersApi = {
+  list: (caseId) => api.get(`/cases/${caseId}/shareholders`).then((r) => r.data),
+  create: (caseId, data) => api.post(`/cases/${caseId}/shareholders`, data).then((r) => r.data),
+  update: (id, data) => api.patch(`/shareholders/${id}`, data).then((r) => r.data),
+  delete: (id) => api.delete(`/shareholders/${id}`),
+};
+
+// ─── Instructions (service-request tracker) ───────────────────────────
+export const instructionsApi = {
+  list: (params = {}) => api.get("/instructions", { params }).then((r) => r.data),
+  get: (id) => api.get(`/instructions/${id}`).then((r) => r.data),
+  create: (data) => api.post("/instructions", data).then((r) => r.data),
+  update: (id, data) => api.patch(`/instructions/${id}`, data).then((r) => r.data),
+  delete: (id) => api.delete(`/instructions/${id}`),
+};
+
+// ─── Invoices (running ledger of charges) ─────────────────────────────
+export const invoicesApi = {
+  list: (params = {}) => api.get("/invoices", { params }).then((r) => r.data),
+  get: (id) => api.get(`/invoices/${id}`).then((r) => r.data),
+  create: (data) => api.post("/invoices", data).then((r) => r.data),
+  update: (id, data) => api.patch(`/invoices/${id}`, data).then((r) => r.data),
+  delete: (id) => api.delete(`/invoices/${id}`),
+};
+
 // ─── Compliance ────────────────────────────────────────────────────────
 export const complianceApi = {
   listUpcoming: (days = 60) => api.get("/compliance", { params: { days } }).then((r) => r.data),

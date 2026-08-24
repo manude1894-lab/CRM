@@ -25,6 +25,8 @@ class CaseDocumentUpdate(BaseModel):
 class CaseDocumentRead(CaseDocumentBase):
     id: int
     cdd_record_id: int
+    director_id: Optional[int] = None
+    shareholder_id: Optional[int] = None
     created_at: datetime
     updated_at: datetime
 

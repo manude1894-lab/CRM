@@ -4,8 +4,23 @@ from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
 
-from app.models import CDDRecord, CaseDocument, Case, CaseStatus, DocumentStatus, User
+from app.models import CDDRecord, CaseDocument, Case, CaseStatus, DocumentStatus, User, Director, Shareholder
 from app.schemas.cdd import CDDRecordUpdate, CDDReviewRequest, CaseDocumentCreate, CaseDocumentUpdate
+
+# Per-party CDD requirements — Vistra KYC Appendix C.
+INDIVIDUAL_PARTY_DOCUMENTS = [
+    "Passport / ID Copy (certified true copy)",
+    "Proof of Residential Address (utility bill / bank statement, max 6 months)",
+]
+CORPORATE_PARTY_DOCUMENTS = [
+    "Certificate of Incorporation (certified true copy)",
+    "Register of Directors (certified true copy)",
+    "Register of Members (certified true copy)",
+    "Memorandum & Articles of Association, if available (certified true copy)",
+]
+# Shareholders below 10% interest are optional CDD per Appendix C — documents are
+# only auto-generated when the interest is unknown or at/above the threshold.
+SHAREHOLDER_CDD_THRESHOLD_PERCENT = 10
 
 
 def list_cdd_records(db: Session) -> list[CDDRecord]:
@@ -81,3 +96,40 @@ def delete_document(db: Session, document_id: int) -> None:
         raise HTTPException(status_code=404, detail="Document not found")
     db.delete(doc)
     db.commit()
+
+
+def generate_director_documents(db: Session, director: Director) -> list[CaseDocument]:
+    """Seed the CDD checklist items required for a newly-added director.
+
+    Directors always require full CDD (Vistra KYC Appendix A2/C — no ownership
+    threshold applies to directors, unlike shareholders).
+    """
+    cdd = db.query(CDDRecord).filter(CDDRecord.case_id == director.case_id).first()
+    if not cdd:
+        return []
+    doc_types = INDIVIDUAL_PARTY_DOCUMENTS if director.director_type == "Individual" else CORPORATE_PARTY_DOCUMENTS
+    docs = [CaseDocument(cdd_record_id=cdd.id, director_id=director.id, doc_type=t) for t in doc_types]
+    db.add_all(docs)
+    db.commit()
+    return docs
+
+
+def generate_shareholder_documents(db: Session, shareholder: Shareholder) -> list[CaseDocument]:
+    """Seed the CDD checklist items required for a newly-added shareholder.
+
+    Full CDD is only mandatory for 10%+ holders (Vistra KYC Appendix C /
+    BVI beneficial-ownership rules) — skip auto-generation below that threshold
+    unless the holding is unspecified, since under-10% CDD is optional per the
+    form's own "C3. Optional" language.
+    """
+    pct = shareholder.shareholding_percent
+    if pct is not None and pct < SHAREHOLDER_CDD_THRESHOLD_PERCENT:
+        return []
+    cdd = db.query(CDDRecord).filter(CDDRecord.case_id == shareholder.case_id).first()
+    if not cdd:
+        return []
+    doc_types = INDIVIDUAL_PARTY_DOCUMENTS if shareholder.identification_type == "Individual" else CORPORATE_PARTY_DOCUMENTS
+    docs = [CaseDocument(cdd_record_id=cdd.id, shareholder_id=shareholder.id, doc_type=t) for t in doc_types]
+    db.add_all(docs)
+    db.commit()
+    return docs

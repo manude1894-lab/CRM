@@ -44,10 +44,20 @@ class CDDRecord(Base):
 
 
 class CaseDocument(Base):
+    """A CDD checklist item.
+
+    Company-level items (director_id and shareholder_id both null — e.g. Structure
+    Chart, SoW/SoF) are seeded once at case creation. Per-party items (director_id
+    or shareholder_id set) are auto-generated when that Director/Shareholder is
+    added — see party_service.create_director/create_shareholder — and are
+    DB-cascade-deleted if that party record is removed.
+    """
     __tablename__ = "case_documents"
 
     id = Column(Integer, primary_key=True, index=True)
     cdd_record_id = Column(Integer, ForeignKey("cdd_records.id", ondelete="CASCADE"), nullable=False)
+    director_id = Column(Integer, ForeignKey("directors.id", ondelete="CASCADE"), nullable=True)
+    shareholder_id = Column(Integer, ForeignKey("shareholders.id", ondelete="CASCADE"), nullable=True)
 
     doc_type = Column(String(150), nullable=False)
     received = Column(Boolean, default=False, nullable=False)
@@ -57,3 +67,5 @@ class CaseDocument(Base):
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     cdd_record = relationship("CDDRecord", back_populates="documents")
+    director = relationship("Director")
+    shareholder = relationship("Shareholder")

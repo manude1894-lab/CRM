@@ -16,6 +16,12 @@ from app.schemas.compliance import (
 from app.schemas.notification import NotificationRead
 from app.schemas.activity import ActivityCreate, ActivityRead, ActivityUpdate
 from app.schemas.dashboard import DashboardResponse, KPISummary, StageBreakdown
+from app.schemas.party import (
+    DirectorCreate, DirectorRead, DirectorUpdate,
+    ShareholderCreate, ShareholderRead, ShareholderUpdate,
+)
+from app.schemas.instruction import InstructionCreate, InstructionRead, InstructionUpdate
+from app.schemas.invoice import InvoiceCreate, InvoiceRead, InvoiceUpdate
 
 __all__ = [
     "UserCreate", "UserRead", "UserUpdate", "LoginRequest", "Token", "RefreshTokenRequest", "TokenPayload",
@@ -27,4 +33,8 @@ __all__ = [
     "NotificationRead",
     "ActivityCreate", "ActivityRead", "ActivityUpdate",
     "DashboardResponse", "KPISummary", "StageBreakdown",
+    "DirectorCreate", "DirectorRead", "DirectorUpdate",
+    "ShareholderCreate", "ShareholderRead", "ShareholderUpdate",
+    "InstructionCreate", "InstructionRead", "InstructionUpdate",
+    "InvoiceCreate", "InvoiceRead", "InvoiceUpdate",
 ]

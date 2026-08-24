@@ -63,6 +63,31 @@ export const SERVICE_TYPE_OPTIONS = [
 
 export const AML_RISK_OPTIONS = ["Low", "Medium", "High"];
 
+export const PARTY_TYPE_OPTIONS = ["Individual", "Corporate"];
+
+export const SHAREHOLDER_TYPE_OPTIONS = ["Individual", "BC Company", "Non-BVI Entity", "Limited Partnership"];
+
+export const INSTRUCTION_STATUS_OPTIONS = ["Pending", "In Progress", "Completed", "On Hold"];
+
+export const INVOICE_LEDGER_STATUS_OPTIONS = ["Draft", "Raised", "Paid", "Overdue"];
+
+export const INSTRUCTION_TYPE_OPTIONS = [
+  "COI Issuance",
+  "COGS Issuance",
+  "COI & COGS Issuance",
+  "New BVI Formation",
+  "Change in Directors",
+  "Change in Shareholding",
+  "LEI Renewal",
+  "AR Filing",
+  "ESR Filing",
+  "ROM/RBO Filing",
+  "Notarization / Apostille",
+  "Transfer & Restoration to Vistra",
+  "Company Closure / Strike Off",
+  "Other",
+];
+
 export const PIE_COLORS = [
   "#2B6D9A", "#34d399", "#fb923c", "#a78bfa",
   "#60a5fa", "#f59e0b", "#ef4444", "#ec4899",
