@@ -4,15 +4,12 @@ import { useAuthStore } from "../store/auth";
 import { Input } from "../components/ui";
 
 const DEMO_ACCOUNTS = [
-  { name: "Shirsendu Mukherjee", email: "shirsendu@triam.ae", password: "admin123", role: "Admin" },
-  { name: "Kalyan", email: "kalyan@triam.ae", password: "rm123", role: "RM" },
-  { name: "Ritu Sharma", email: "ritu@triam.ae", password: "ops123", role: "Ops" },
-  { name: "Swathi", email: "swathi@triam.ae", password: "screen123", role: "Screening" },
+  { name: "Admin User", email: "admin@ezeetechgroup.com", password: "admin123", role: "Admin" },
 ];
 
 export default function LoginPage() {
   const setTokens = useAuthStore((s) => s.setTokens);
-  const [email, setEmail] = useState("shirsendu@triam.ae");
+  const [email, setEmail] = useState("admin@ezeetechgroup.com");
   const [password, setPassword] = useState("admin123");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
