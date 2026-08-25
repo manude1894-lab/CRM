@@ -74,7 +74,7 @@ def _header_footer(canvas, doc):
     canvas.rect(0, A4[1] - 10, A4[0], 10, fill=1, stroke=0)
     canvas.setFont("Helvetica", 7.5)
     canvas.setFillColor(MUTED)
-    canvas.drawString(2 * cm, 1.2 * cm, "TRIAM — BVI/Offshore Entity Servicing & Compliance Tracker")
+    canvas.drawString(2 * cm, 1.2 * cm, "TRIAM — Entity Servicing & Compliance Tracker")
     canvas.drawRightString(A4[0] - 2 * cm, 1.2 * cm, f"Page {doc.page}")
     canvas.drawCentredString(A4[0] / 2, 1.2 * cm, f"Generated {date.today().isoformat()}")
     canvas.restoreState()

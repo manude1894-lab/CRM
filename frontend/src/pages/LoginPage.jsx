@@ -41,7 +41,7 @@ export default function LoginPage() {
             <span className="text-white text-2xl font-bold">T</span>
           </div>
           <h1 className="text-3xl font-bold text-white">TRIAM</h1>
-          <p className="text-blue-300 mt-1 text-sm">BVI / Offshore Entity Servicing Platform</p>
+          <p className="text-blue-300 mt-1 text-sm">Entity Servicing & Compliance Platform</p>
         </div>
         <div className="bg-white rounded-2xl shadow-2xl p-8">
           <h2 className="text-xl font-semibold text-gray-800 mb-6">Sign in to your account</h2>

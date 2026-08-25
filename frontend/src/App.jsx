@@ -54,7 +54,7 @@ export default function App() {
           {sidebarOpen && (
             <div>
               <div className="text-sm font-bold text-gray-800">TRIAM</div>
-              <div className="text-xs text-gray-400">BVI Entity Servicing Platform</div>
+              <div className="text-xs text-gray-400">Entity Servicing Platform</div>
             </div>
           )}
         </div>
