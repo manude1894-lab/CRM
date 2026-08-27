@@ -53,12 +53,22 @@ class UpcomingComplianceRow(BaseModel):
     days_remaining: int
 
 
+class RmCaseSummary(BaseModel):
+    case_id: int
+    case_uid: str
+    company_name: str
+    stage: str
+    status: str
+    invoice_status: str
+
+
 class RmOpsPerformance(BaseModel):
     user_id: int
     name: str
     role: str
     total_cases: int
     active_cases: int
+    cases: List[RmCaseSummary] = []
 
 
 class DashboardResponse(BaseModel):

@@ -84,6 +84,10 @@ def build_dashboard(db: Session, user: User) -> dict:
             "role": u.role.value,
             "total_cases": len(my_cases),
             "active_cases": len([c for c in my_cases if c.stage != CaseStage.ACTIVE]),
+            "cases": [{
+                "case_id": c.id, "case_uid": c.case_uid, "company_name": c.company_name,
+                "stage": c.stage.value, "status": c.status.value, "invoice_status": c.invoice_status.value,
+            } for c in sorted(my_cases, key=lambda c: c.company_name)],
         })
 
     return {
