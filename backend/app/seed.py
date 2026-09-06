@@ -264,6 +264,11 @@ def main():
 
     db = SessionLocal()
     try:
+        from app.services.aml_service import seed_country_risk
+        n = seed_country_risk(db)
+        if n:
+            print(f"-> Seeded AML country-risk table ({n} countries)")
+
         if minimal:
             seed_minimal(db)
         else:

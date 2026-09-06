@@ -22,6 +22,10 @@ from app.schemas.party import (
 )
 from app.schemas.instruction import InstructionCreate, InstructionRead, InstructionUpdate
 from app.schemas.invoice import InvoiceCreate, InvoiceRead, InvoiceUpdate
+from app.schemas.aml import (
+    AMLAssessmentCreate, AMLAssessmentUpdate, AMLAssessmentRead, AMLCatalogRead,
+    CountryRiskCreate, CountryRiskUpdate, CountryRiskRead,
+)
 
 __all__ = [
     "UserCreate", "UserRead", "UserUpdate", "LoginRequest", "Token", "RefreshTokenRequest", "TokenPayload",
@@ -37,4 +41,6 @@ __all__ = [
     "ShareholderCreate", "ShareholderRead", "ShareholderUpdate",
     "InstructionCreate", "InstructionRead", "InstructionUpdate",
     "InvoiceCreate", "InvoiceRead", "InvoiceUpdate",
+    "AMLAssessmentCreate", "AMLAssessmentUpdate", "AMLAssessmentRead", "AMLCatalogRead",
+    "CountryRiskCreate", "CountryRiskUpdate", "CountryRiskRead",
 ]

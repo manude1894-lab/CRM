@@ -71,6 +71,16 @@ export const invoicesApi = {
   delete: (id) => api.delete(`/invoices/${id}`),
 };
 
+// ─── AML Risk ──────────────────────────────────────────────────────────
+export const amlApi = {
+  catalog: () => api.get("/aml/catalog").then((r) => r.data),
+  countryRisk: () => api.get("/aml/country-risk").then((r) => r.data),
+  listAssessments: (caseId) => api.get("/aml/assessments", { params: caseId ? { case_id: caseId } : {} }).then((r) => r.data),
+  createAssessment: (data) => api.post("/aml/assessments", data).then((r) => r.data),
+  updateAssessment: (id, data) => api.patch(`/aml/assessments/${id}`, data).then((r) => r.data),
+  deleteAssessment: (id) => api.delete(`/aml/assessments/${id}`),
+};
+
 // ─── Compliance ────────────────────────────────────────────────────────
 export const complianceApi = {
   listUpcoming: (days = 60) => api.get("/compliance", { params: { days } }).then((r) => r.data),

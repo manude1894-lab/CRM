@@ -16,6 +16,8 @@ from app.models.activity import Activity, ActivityType, ActivityStatus
 from app.models.party import Director, Shareholder, PartyType, ShareholderType
 from app.models.instruction import Instruction, InstructionStatus
 from app.models.invoice import Invoice, InvoiceLedgerStatus
+from app.models.country_risk import CountryRisk
+from app.models.aml import AMLRiskAssessment, AMLSubjectType
 
 __all__ = [
     "User", "UserRole",
@@ -28,4 +30,6 @@ __all__ = [
     "Director", "Shareholder", "PartyType", "ShareholderType",
     "Instruction", "InstructionStatus",
     "Invoice", "InvoiceLedgerStatus",
+    "CountryRisk",
+    "AMLRiskAssessment", "AMLSubjectType",
 ]

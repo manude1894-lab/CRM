@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { casesApi, cddApi, directorsApi, shareholdersApi } from "../api/endpoints";
 import { useAuthStore } from "../store/auth";
 import { Icon, Badge, Modal, Field, Input, Select, Spinner, ErrorBanner } from "../components/ui";
+import AMLAssessmentPanel from "../components/AMLAssessmentPanel";
 import { DOCUMENT_STATUS_OPTIONS, AML_RISK_OPTIONS } from "../utils/constants";
 
 const directorName = (d) => d.director_type === "Corporate"
@@ -230,6 +231,15 @@ export default function CDDPage() {
                   <button onClick={() => addDocument(selected.id)} className="px-3 py-2 text-xs border border-gray-200 rounded-lg hover:bg-gray-50">Add</button>
                 </div>
               </div>
+
+              <AMLAssessmentPanel
+                caseId={selected.id}
+                entityName={selected.company_name}
+                parties={[
+                  ...directors.map((d) => ({ id: d.id, _kind: "Director", _label: directorName(d) })),
+                  ...shareholders.map((s) => ({ id: s.id, _kind: "Shareholder", _label: s.name })),
+                ]}
+              />
             </div>
           )}
         </div>

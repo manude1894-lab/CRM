@@ -21,11 +21,13 @@ from app.models import (
     Director, Shareholder,
     Instruction, InstructionStatus,
     Invoice, InvoiceLedgerStatus,
+    AMLRiskAssessment, AMLSubjectType,
 )
 from app.auth.security import hash_password
 from app.utils.uid import next_uid
 from app.services.case_service import STANDARD_CDD_DOCUMENTS
 from app.services.cdd_service import generate_director_documents, generate_shareholder_documents
+from app.services import aml_matrix, aml_service
 
 DEMO_USERS = [
     {"name": "Shirsendu Mukherjee", "email": "shirsendu@triam.ae", "password": "admin123", "role": UserRole.ADMIN},
@@ -253,6 +255,62 @@ def seed(db: Session, force: bool = False):
             generate_shareholder_documents(db, shareholder)
     db.commit()
 
+    print("-> Adding sample AML risk assessments...")
+    _country_lu = aml_service._country_lookup(db)
+    screening_user = users_by_name["Swathi"]
+
+    def _add_assessment(case, subject_type, subject_name, selections, when, director=None):
+        result = aml_matrix.calculate(subject_type, selections, _country_lu)
+        db.add(AMLRiskAssessment(
+            case_id=case.id, subject_type=subject_type, subject_name=subject_name,
+            director_id=director.id if director else None,
+            assessment_date=when, completed_by_id=screening_user.id,
+            matrix_version=aml_matrix.AML_MATRIX_VERSION,
+            factors=result.factors, total_weighted_score=result.total_weighted_score,
+            calculated_rating=result.calculated_rating, override_reason=result.override_reason,
+            onboarding_blocked=result.onboarding_blocked,
+        ))
+        return result
+
+    cnh = cases_by_name["Castle Noble Holdings Limited"]
+    entity_sel = {
+        "country_incorporation": "British Virgin Islands",
+        "country_operations": "United Arab Emirates (the)",
+        "ubo_nationality": "Russian Federation (the)",
+        "ubo_residence": "United Arab Emirates (the)",
+        "customer_type": "Private limited company",
+        "business_activity": "Non-cash intensive business",
+        "customer_interface": "Face-to-Face KYC (Physical meeting)",
+        "products_services": "Trust & Secretarial Services",
+        "pep_risk": "Client/UBO is not a PEP",
+        "proliferation_risk": "Client confirmed that he does not deal in any dual-use products as per UAE control list",
+        "customer_introduction": "Known to the Firm or one of its employees for more than 3 yrs",
+        "tax_crime_risk": "Customer does not fall into one of the medium or high risk factors",
+        "reputational_risk": "No adverse information found",
+        "business_risk": "Most recent AML Business Risk Assessment concluded overall risk as low",
+    }
+    r1 = _add_assessment(cnh, AMLSubjectType.ENTITY.value, cnh.company_name, entity_sel, date(2024, 1, 15))
+
+    cnh_director = db.query(Director).filter(Director.case_id == cnh.id).first()
+    if cnh_director:
+        indiv_sel = {
+            "country_nationality": "Russian Federation (the)",
+            "country_residence": "United Arab Emirates (the)",
+            "business_sector": "Business",
+            "customer_interface": "Face-to-Face KYC (Physical meeting)",
+            "products_services": "Management Consulting",
+            "pep_risk": "Client/UBO is not a PEP",
+            "proliferation_risk": "Client confirmed that he does not deal in any dual-use products as per UAE control list",
+            "customer_introduction": "Known to the Firm or one of its employees for more than 3 yrs",
+            "tax_crime_risk": "Customer does not fall into one of the medium or high risk factors",
+            "reputational_risk": "No adverse information found",
+            "business_risk": "Most recent AML Business Risk Assessment concluded overall risk as low",
+        }
+        _add_assessment(cnh, AMLSubjectType.INDIVIDUAL.value,
+                        "Elena Volkova", indiv_sel, date(2024, 1, 15), director=cnh_director)
+    db.commit()
+    aml_service._sync_cdd_rating(db, cnh.id)
+
     print("-> Raising invoices...")
     invoices_by_key: dict[str, Invoice] = {}
     for entity, inv_num, desc, amount, status, raised in INVOICES:
@@ -293,6 +351,9 @@ def main():
     Base.metadata.create_all(bind=engine)
     db = SessionLocal()
     try:
+        n = aml_service.seed_country_risk(db)
+        if n:
+            print(f"-> Seeded AML country-risk table ({n} countries)")
         seed(db, force=force)
     finally:
         db.close()
