@@ -53,6 +53,13 @@ export const shareholdersApi = {
   delete: (id) => api.delete(`/shareholders/${id}`),
 };
 
+export const ubosApi = {
+  list: (caseId) => api.get(`/cases/${caseId}/ubos`).then((r) => r.data),
+  create: (caseId, data) => api.post(`/cases/${caseId}/ubos`, data).then((r) => r.data),
+  update: (id, data) => api.patch(`/ubos/${id}`, data).then((r) => r.data),
+  delete: (id) => api.delete(`/ubos/${id}`),
+};
+
 // ─── Instructions (service-request tracker) ───────────────────────────
 export const instructionsApi = {
   list: (params = {}) => api.get("/instructions", { params }).then((r) => r.data),
@@ -74,6 +81,7 @@ export const invoicesApi = {
 // ─── AML Risk ──────────────────────────────────────────────────────────
 export const amlApi = {
   catalog: () => api.get("/aml/catalog").then((r) => r.data),
+  prefill: (caseId) => api.get("/aml/prefill", { params: { case_id: caseId } }).then((r) => r.data),
   countryRisk: () => api.get("/aml/country-risk").then((r) => r.data),
   listAssessments: (caseId) => api.get("/aml/assessments", { params: caseId ? { case_id: caseId } : {} }).then((r) => r.data),
   createAssessment: (data) => api.post("/aml/assessments", data).then((r) => r.data),

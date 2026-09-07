@@ -39,6 +39,7 @@ class AMLAssessmentCreate(BaseModel):
     subject_name: str = Field(..., min_length=1, max_length=255)
     director_id: Optional[int] = None
     shareholder_id: Optional[int] = None
+    ubo_id: Optional[int] = None
     assessment_date: Optional[date] = None
     completed_by_id: Optional[int] = None
     # {factor_key: chosen option string}
@@ -50,6 +51,7 @@ class AMLAssessmentUpdate(BaseModel):
     subject_name: Optional[str] = Field(None, min_length=1, max_length=255)
     director_id: Optional[int] = None
     shareholder_id: Optional[int] = None
+    ubo_id: Optional[int] = None
     assessment_date: Optional[date] = None
     completed_by_id: Optional[int] = None
     selections: Optional[dict[str, str]] = None
@@ -66,6 +68,7 @@ class AMLAssessmentRead(BaseModel):
     subject_name: str
     director_id: Optional[int] = None
     shareholder_id: Optional[int] = None
+    ubo_id: Optional[int] = None
     assessment_date: Optional[date] = None
     completed_by_id: Optional[int] = None
     matrix_version: Optional[str] = None
@@ -100,6 +103,12 @@ class AMLFactorDef(BaseModel):
     weight: float
     kind: str  # "country" | "options"
     options: Optional[list[AMLFactorOption]] = None
+
+
+class AMLPrefillRead(BaseModel):
+    subject_name: Optional[str] = None
+    ubo_nationality: Optional[str] = None
+    ubo_residence: Optional[str] = None
 
 
 class AMLCatalogRead(BaseModel):

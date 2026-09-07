@@ -10,10 +10,11 @@ from decimal import Decimal
 from pathlib import Path
 
 from fastapi import HTTPException
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.models import (
-    AMLRiskAssessment, AMLSubjectType, CountryRisk, Case, CDDRecord, User, UserRole,
+    AMLRiskAssessment, AMLSubjectType, CountryRisk, Case, CDDRecord, UBO, User, UserRole,
 )
 from app.schemas.aml import (
     AMLAssessmentCreate, AMLAssessmentUpdate, CountryRiskCreate, CountryRiskUpdate,
@@ -145,6 +146,7 @@ def create_assessment(db: Session, data: AMLAssessmentCreate, user: User) -> AML
         subject_name=data.subject_name,
         director_id=data.director_id,
         shareholder_id=data.shareholder_id,
+        ubo_id=data.ubo_id,
         assessment_date=data.assessment_date,
         completed_by_id=data.completed_by_id or user.id,
         remarks=data.remarks,
@@ -201,3 +203,20 @@ def selections_of(assessment: AMLRiskAssessment) -> dict[str, str]:
     """Reconstruct the {key: input} map from the stored factor rows — used to
     prefill the edit form."""
     return {row["key"]: row.get("input") for row in (assessment.factors or []) if row.get("input")}
+
+
+def prefill_for_case(db: Session, case_id: int) -> dict:
+    """Defaults for a new Entity assessment: the entity name plus the UBO country
+    factors, taken from the active UBO with the largest percentage interest."""
+    case = db.query(Case).filter(Case.id == case_id).first()
+    ubo = (
+        db.query(UBO)
+        .filter(UBO.case_id == case_id, UBO.cessation_date.is_(None))
+        .order_by(func.coalesce(UBO.percentage_interest, 0).desc())
+        .first()
+    )
+    return {
+        "subject_name": case.company_name if case else None,
+        "ubo_nationality": ubo.nationality if ubo else None,
+        "ubo_residence": ubo.country_of_residence if ubo else None,
+    }

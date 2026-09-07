@@ -4,7 +4,7 @@ from typing import Optional
 from datetime import date, datetime
 from decimal import Decimal
 
-from app.models.party import PartyType, ShareholderType
+from app.models.party import PartyType, ShareholderType, OwnershipNature, SourceOfWealthCategory
 
 
 class DirectorBase(BaseModel):
@@ -124,6 +124,95 @@ class ShareholderUpdate(BaseModel):
 
 
 class ShareholderRead(ShareholderBase):
+    id: int
+    case_id: int
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# ─── UBO ─────────────────────────────────────────────────────────────────
+class UBOBase(BaseModel):
+    first_name: Optional[str] = None
+    middle_name: Optional[str] = None
+    last_name: Optional[str] = None
+    former_name: Optional[str] = None
+
+    date_of_birth: Optional[date] = None
+    place_of_birth: Optional[str] = None
+    nationality: Optional[str] = None
+    country_of_residence: Optional[str] = None
+    passport_number: Optional[str] = None
+    passport_expiry: Optional[date] = None
+    national_id: Optional[str] = None
+
+    residential_address: Optional[str] = None
+    residential_city: Optional[str] = None
+    residential_country: Optional[str] = None
+    email: Optional[str] = None
+    mobile: Optional[str] = None
+
+    percentage_interest: Optional[Decimal] = Field(None, ge=0, le=100)
+    ownership_nature: OwnershipNature = OwnershipNature.DIRECT
+    nature_of_control: Optional[str] = None
+    held_via_shareholder_id: Optional[int] = None
+
+    is_pep: bool = False
+    pep_notes: Optional[str] = None
+
+    employer_name: Optional[str] = None
+    job_title: Optional[str] = None
+    sector: Optional[str] = None
+    years_employed: Optional[str] = None
+
+    source_of_wealth_category: Optional[SourceOfWealthCategory] = None
+    source_of_wealth_details: Optional[str] = None
+
+    appointment_date: Optional[date] = None
+    cessation_date: Optional[date] = None
+    notes: Optional[str] = None
+
+
+class UBOCreate(UBOBase):
+    pass
+
+
+class UBOUpdate(BaseModel):
+    first_name: Optional[str] = None
+    middle_name: Optional[str] = None
+    last_name: Optional[str] = None
+    former_name: Optional[str] = None
+    date_of_birth: Optional[date] = None
+    place_of_birth: Optional[str] = None
+    nationality: Optional[str] = None
+    country_of_residence: Optional[str] = None
+    passport_number: Optional[str] = None
+    passport_expiry: Optional[date] = None
+    national_id: Optional[str] = None
+    residential_address: Optional[str] = None
+    residential_city: Optional[str] = None
+    residential_country: Optional[str] = None
+    email: Optional[str] = None
+    mobile: Optional[str] = None
+    percentage_interest: Optional[Decimal] = Field(None, ge=0, le=100)
+    ownership_nature: Optional[OwnershipNature] = None
+    nature_of_control: Optional[str] = None
+    held_via_shareholder_id: Optional[int] = None
+    is_pep: Optional[bool] = None
+    pep_notes: Optional[str] = None
+    employer_name: Optional[str] = None
+    job_title: Optional[str] = None
+    sector: Optional[str] = None
+    years_employed: Optional[str] = None
+    source_of_wealth_category: Optional[SourceOfWealthCategory] = None
+    source_of_wealth_details: Optional[str] = None
+    appointment_date: Optional[date] = None
+    cessation_date: Optional[date] = None
+    notes: Optional[str] = None
+
+
+class UBORead(UBOBase):
     id: int
     case_id: int
     created_at: datetime

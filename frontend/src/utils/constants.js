@@ -67,6 +67,16 @@ export const PARTY_TYPE_OPTIONS = ["Individual", "Corporate"];
 
 export const SHAREHOLDER_TYPE_OPTIONS = ["Individual", "BC Company", "Non-BVI Entity", "Limited Partnership"];
 
+export const OWNERSHIP_NATURE_OPTIONS = ["Direct", "Indirect"];
+
+export const SOURCE_OF_WEALTH_OPTIONS = [
+  "Employment income / bonus",
+  "Business owner / entrepreneur",
+  "Inheritance / gift",
+  "Personal investments",
+  "Other",
+];
+
 export const INSTRUCTION_STATUS_OPTIONS = ["Pending", "In Progress", "Completed", "On Hold"];
 
 export const INVOICE_LEDGER_STATUS_OPTIONS = ["Draft", "Raised", "Paid", "Overdue"];

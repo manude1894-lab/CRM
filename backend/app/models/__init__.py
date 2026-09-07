@@ -13,7 +13,10 @@ from app.models.cdd import CDDRecord, CaseDocument, DocumentStatus
 from app.models.compliance import ComplianceSchedule
 from app.models.notification import Notification
 from app.models.activity import Activity, ActivityType, ActivityStatus
-from app.models.party import Director, Shareholder, PartyType, ShareholderType
+from app.models.party import (
+    Director, Shareholder, UBO, PartyType, ShareholderType,
+    OwnershipNature, SourceOfWealthCategory,
+)
 from app.models.instruction import Instruction, InstructionStatus
 from app.models.invoice import Invoice, InvoiceLedgerStatus
 from app.models.country_risk import CountryRisk
@@ -27,7 +30,8 @@ __all__ = [
     "ComplianceSchedule",
     "Notification",
     "Activity", "ActivityType", "ActivityStatus",
-    "Director", "Shareholder", "PartyType", "ShareholderType",
+    "Director", "Shareholder", "UBO", "PartyType", "ShareholderType",
+    "OwnershipNature", "SourceOfWealthCategory",
     "Instruction", "InstructionStatus",
     "Invoice", "InvoiceLedgerStatus",
     "CountryRisk",

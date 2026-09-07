@@ -126,6 +126,7 @@ class Case(Base):
     compliance_schedule = relationship("ComplianceSchedule", back_populates="case", uselist=False, cascade="all, delete-orphan")
     directors = relationship("Director", back_populates="case", cascade="all, delete-orphan", order_by="Director.id")
     shareholders = relationship("Shareholder", back_populates="case", cascade="all, delete-orphan", order_by="Shareholder.id")
+    ubos = relationship("UBO", back_populates="case", cascade="all, delete-orphan", order_by="UBO.id")
     instructions = relationship("Instruction", back_populates="case", cascade="all, delete-orphan", order_by="Instruction.id.desc()")
     invoices = relationship("Invoice", back_populates="case", cascade="all, delete-orphan", order_by="Invoice.id.desc()")
     aml_assessments = relationship("AMLRiskAssessment", back_populates="case", cascade="all, delete-orphan", order_by="AMLRiskAssessment.id.desc()")

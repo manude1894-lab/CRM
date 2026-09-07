@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { casesApi, cddApi, directorsApi, shareholdersApi } from "../api/endpoints";
+import { casesApi, cddApi, directorsApi, shareholdersApi, ubosApi } from "../api/endpoints";
 import { useAuthStore } from "../store/auth";
 import { Icon, Badge, Modal, Field, Input, Select, Spinner, ErrorBanner } from "../components/ui";
 import AMLAssessmentPanel from "../components/AMLAssessmentPanel";
@@ -23,6 +23,7 @@ export default function CDDPage() {
   const [newDocType, setNewDocType] = useState("");
   const [directors, setDirectors] = useState([]);
   const [shareholders, setShareholders] = useState([]);
+  const [ubos, setUbos] = useState([]);
 
   const load = async () => {
     try {
@@ -43,10 +44,10 @@ export default function CDDPage() {
   useEffect(() => { load(); }, []);
 
   useEffect(() => {
-    if (!selected) { setDirectors([]); setShareholders([]); return; }
-    Promise.all([directorsApi.list(selected.id), shareholdersApi.list(selected.id)])
-      .then(([ds, ss]) => { setDirectors(ds || []); setShareholders(ss || []); })
-      .catch(() => { setDirectors([]); setShareholders([]); });
+    if (!selected) { setDirectors([]); setShareholders([]); setUbos([]); return; }
+    Promise.all([directorsApi.list(selected.id), shareholdersApi.list(selected.id), ubosApi.list(selected.id)])
+      .then(([ds, ss, us]) => { setDirectors(ds || []); setShareholders(ss || []); setUbos(us || []); })
+      .catch(() => { setDirectors([]); setShareholders([]); setUbos([]); });
   }, [selected?.id]);
 
   const queue = cases.filter((c) => {
@@ -180,7 +181,8 @@ export default function CDDPage() {
                 <p className="text-xs font-semibold text-gray-600 mb-2">Document Checklist</p>
                 {(() => {
                   const allDocs = selectedCdd?.documents || [];
-                  const companyDocs = allDocs.filter((d) => !d.director_id && !d.shareholder_id);
+                  const companyDocs = allDocs.filter((d) => !d.director_id && !d.shareholder_id && !d.ubo_id);
+                  const uboName = (u) => [u.first_name, u.middle_name, u.last_name].filter(Boolean).join(" ") || "UBO";
                   const groups = [
                     { key: "company", label: "Company", docs: companyDocs, note: null },
                     ...directors.map((d) => ({
@@ -194,6 +196,14 @@ export default function CDDPage() {
                       label: `Shareholder — ${s.name}${s.shareholding_percent != null ? ` (${s.shareholding_percent}%)` : ""}`,
                       docs: allDocs.filter((doc) => doc.shareholder_id === s.id),
                       note: s.shareholding_percent != null && s.shareholding_percent < 10
+                        ? "CDD optional — below 10% interest threshold"
+                        : null,
+                    })),
+                    ...ubos.map((u) => ({
+                      key: `u${u.id}`,
+                      label: `UBO — ${uboName(u)}${u.percentage_interest != null ? ` (${u.percentage_interest}%)` : ""}`,
+                      docs: allDocs.filter((doc) => doc.ubo_id === u.id),
+                      note: u.percentage_interest != null && u.percentage_interest < 10
                         ? "CDD optional — below 10% interest threshold"
                         : null,
                     })),
@@ -238,6 +248,7 @@ export default function CDDPage() {
                 parties={[
                   ...directors.map((d) => ({ id: d.id, _kind: "Director", _label: directorName(d) })),
                   ...shareholders.map((s) => ({ id: s.id, _kind: "Shareholder", _label: s.name })),
+                  ...ubos.map((u) => ({ id: u.id, _kind: "UBO", _label: [u.first_name, u.middle_name, u.last_name].filter(Boolean).join(" ") || "UBO" })),
                 ]}
               />
             </div>

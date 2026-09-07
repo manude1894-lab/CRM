@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
-import { directorsApi, shareholdersApi } from "../api/endpoints";
-import { Icon, Modal, Field, Input, Select, Spinner, ErrorBanner } from "./ui";
-import { PARTY_TYPE_OPTIONS, SHAREHOLDER_TYPE_OPTIONS } from "../utils/constants";
+import { directorsApi, shareholdersApi, ubosApi, amlApi } from "../api/endpoints";
+import { Icon, Modal, Field, Input, Select, Textarea, Spinner, ErrorBanner } from "./ui";
+import { PARTY_TYPE_OPTIONS, SHAREHOLDER_TYPE_OPTIONS, OWNERSHIP_NATURE_OPTIONS, SOURCE_OF_WEALTH_OPTIONS } from "../utils/constants";
 
 const emptyDirector = {
   director_type: "Individual",
@@ -22,9 +22,23 @@ const emptyShareholder = {
   date_entered: "", date_ceased: "", notes: "",
 };
 
+const emptyUBO = {
+  first_name: "", middle_name: "", last_name: "", former_name: "",
+  date_of_birth: "", place_of_birth: "", nationality: "", country_of_residence: "",
+  passport_number: "", passport_expiry: "", national_id: "",
+  residential_address: "", residential_city: "", residential_country: "", email: "", mobile: "",
+  percentage_interest: "", ownership_nature: "Direct", nature_of_control: "", held_via_shareholder_id: "",
+  is_pep: false, pep_notes: "",
+  employer_name: "", job_title: "", sector: "", years_employed: "",
+  source_of_wealth_category: "", source_of_wealth_details: "",
+  appointment_date: "", cessation_date: "", notes: "",
+};
+
 const directorName = (d) => d.director_type === "Corporate"
   ? (d.corporate_name || "—")
   : [d.first_name, d.middle_name, d.last_name].filter(Boolean).join(" ") || "—";
+
+const uboName = (u) => [u.first_name, u.middle_name, u.last_name].filter(Boolean).join(" ") || "—";
 
 // Strip blank-string fields to null so optional date/number columns don't fail validation.
 const cleanPayload = (obj) => Object.fromEntries(
@@ -35,6 +49,8 @@ export default function PartyRegisterModal({ caseItem, onClose }) {
   const [tab, setTab] = useState("directors");
   const [directors, setDirectors] = useState([]);
   const [shareholders, setShareholders] = useState([]);
+  const [ubos, setUbos] = useState([]);
+  const [countries, setCountries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [editing, setEditing] = useState(null); // null | "new" | row id
@@ -43,38 +59,34 @@ export default function PartyRegisterModal({ caseItem, onClose }) {
   const load = async () => {
     try {
       setLoading(true); setError(null);
-      const [ds, ss] = await Promise.all([
+      const [ds, ss, us, cs] = await Promise.all([
         directorsApi.list(caseItem.id),
         shareholdersApi.list(caseItem.id),
+        ubosApi.list(caseItem.id),
+        amlApi.countryRisk().catch(() => []),
       ]);
       setDirectors(ds || []);
       setShareholders(ss || []);
+      setUbos(us || []);
+      setCountries(cs || []);
     } catch (e) {
       setError(e.response?.data?.detail || "Failed to load register");
     } finally { setLoading(false); }
   };
   useEffect(() => { load(); }, [caseItem.id]);
 
-  const startNew = () => {
-    setForm(tab === "directors" ? { ...emptyDirector } : { ...emptyShareholder });
-    setEditing("new");
-  };
-  const startEdit = (row) => {
-    setForm({ ...row });
-    setEditing(row.id);
-  };
+  const emptyFor = (t) => t === "directors" ? { ...emptyDirector } : t === "shareholders" ? { ...emptyShareholder } : { ...emptyUBO };
+  const startNew = () => { setForm(emptyFor(tab)); setEditing("new"); };
+  const startEdit = (row) => { setForm({ ...row }); setEditing(row.id); };
   const cancelForm = () => { setEditing(null); setForm(null); };
+
+  const api = { directors: directorsApi, shareholders: shareholdersApi, ubos: ubosApi }[tab];
 
   const save = async () => {
     try {
       const payload = cleanPayload(form);
-      if (tab === "directors") {
-        if (editing === "new") await directorsApi.create(caseItem.id, payload);
-        else await directorsApi.update(editing, payload);
-      } else {
-        if (editing === "new") await shareholdersApi.create(caseItem.id, payload);
-        else await shareholdersApi.update(editing, payload);
-      }
+      if (editing === "new") await api.create(caseItem.id, payload);
+      else await api.update(editing, payload);
       cancelForm();
       load();
     } catch (e) {
@@ -83,25 +95,27 @@ export default function PartyRegisterModal({ caseItem, onClose }) {
   };
 
   const remove = async (row) => {
-    if (!confirm(`Remove ${tab === "directors" ? directorName(row) : row.name}?`)) return;
-    try {
-      if (tab === "directors") await directorsApi.delete(row.id);
-      else await shareholdersApi.delete(row.id);
-      load();
-    } catch (e) {
-      alert(e.response?.data?.detail || "Delete failed");
-    }
+    const label = tab === "directors" ? directorName(row) : tab === "ubos" ? uboName(row) : row.name;
+    if (!confirm(`Remove ${label}?`)) return;
+    try { await api.delete(row.id); load(); }
+    catch (e) { alert(e.response?.data?.detail || "Delete failed"); }
   };
 
   const switchTab = (t) => { setTab(t); cancelForm(); };
 
+  const TABS = [
+    ["directors", `Directors (${directors.length})`],
+    ["shareholders", `Shareholders (${shareholders.length})`],
+    ["ubos", `UBOs (${ubos.length})`],
+  ];
+
   return (
-    <Modal title={`Directors & Shareholders — ${caseItem.company_name}`} onClose={onClose}>
+    <Modal title={`Registers — ${caseItem.company_name}`} onClose={onClose}>
       <div className="flex border-b border-gray-100 mb-4 -mt-2">
-        {["directors", "shareholders"].map((t) => (
+        {TABS.map(([t, label]) => (
           <button key={t} onClick={() => switchTab(t)}
             className={`px-3 py-2 text-sm font-medium border-b-2 -mb-px ${tab === t ? "border-blue-500 text-blue-600" : "border-transparent text-gray-400 hover:text-gray-600"}`}>
-            {t === "directors" ? `Directors (${directors.length})` : `Shareholders (${shareholders.length})`}
+            {label}
           </button>
         ))}
       </div>
@@ -111,147 +125,254 @@ export default function PartyRegisterModal({ caseItem, onClose }) {
           {!editing && (
             <>
               <div className="space-y-2 mb-3">
-                {tab === "directors" ? (
-                  directors.length === 0
-                    ? <p className="text-sm text-gray-400 text-center py-6">No directors on record.</p>
-                    : directors.map((d) => (
-                      <div key={d.id} className="flex items-center justify-between p-2.5 bg-gray-50 rounded-lg">
-                        <div>
-                          <div className="text-sm font-medium text-gray-800">{directorName(d)}</div>
-                          <div className="text-xs text-gray-400">
-                            {d.director_type}
-                            {d.director_type === "Individual" && d.nationality && ` · ${d.nationality}`}
-                            {d.director_type === "Corporate" && d.country_of_incorporation && ` · ${d.country_of_incorporation}`}
-                            {d.appointment_date && ` · Appointed ${d.appointment_date}`}
-                            {d.cessation_date && ` · Ceased ${d.cessation_date}`}
-                          </div>
-                        </div>
-                        <div className="flex gap-1">
-                          <button onClick={() => startEdit(d)} className="p-1.5 rounded hover:bg-blue-50 text-gray-400 hover:text-blue-600"><Icon name="edit" size={14} /></button>
-                          <button onClick={() => remove(d)} className="p-1.5 rounded hover:bg-red-50 text-gray-400 hover:text-red-500"><Icon name="del" size={14} /></button>
+                {tab === "directors" && (directors.length === 0
+                  ? <p className="text-sm text-gray-400 text-center py-6">No directors on record.</p>
+                  : directors.map((d) => (
+                    <div key={d.id} className="flex items-center justify-between p-2.5 bg-gray-50 rounded-lg">
+                      <div>
+                        <div className="text-sm font-medium text-gray-800">{directorName(d)}</div>
+                        <div className="text-xs text-gray-400">
+                          {d.director_type}
+                          {d.director_type === "Individual" && d.nationality && ` · ${d.nationality}`}
+                          {d.director_type === "Corporate" && d.country_of_incorporation && ` · ${d.country_of_incorporation}`}
+                          {d.appointment_date && ` · Appointed ${d.appointment_date}`}
+                          {d.cessation_date && ` · Ceased ${d.cessation_date}`}
                         </div>
                       </div>
-                    ))
-                ) : (
-                  shareholders.length === 0
-                    ? <p className="text-sm text-gray-400 text-center py-6">No shareholders on record.</p>
-                    : shareholders.map((s) => (
-                      <div key={s.id} className="flex items-center justify-between p-2.5 bg-gray-50 rounded-lg">
-                        <div>
-                          <div className="text-sm font-medium text-gray-800">
-                            {s.name}
-                            {s.is_nominee && <span className="ml-1.5 text-xs px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">Nominee</span>}
-                            {Number(s.shareholding_percent) >= 10 && <span className="ml-1.5 text-xs px-1.5 py-0.5 rounded bg-purple-100 text-purple-700">10%+ CDD</span>}
-                          </div>
-                          <div className="text-xs text-gray-400">
-                            {s.identification_type}
-                            {s.number_of_shares != null && ` · ${s.number_of_shares} shares`}
-                            {s.shareholding_percent != null && ` · ${s.shareholding_percent}%`}
-                            {s.share_class && ` · ${s.share_class}`}
-                          </div>
+                      <RowActions onEdit={() => startEdit(d)} onDelete={() => remove(d)} />
+                    </div>
+                  )))}
+
+                {tab === "shareholders" && (shareholders.length === 0
+                  ? <p className="text-sm text-gray-400 text-center py-6">No shareholders on record.</p>
+                  : shareholders.map((s) => (
+                    <div key={s.id} className="flex items-center justify-between p-2.5 bg-gray-50 rounded-lg">
+                      <div>
+                        <div className="text-sm font-medium text-gray-800">
+                          {s.name}
+                          {s.is_nominee && <span className="ml-1.5 text-xs px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">Nominee</span>}
+                          {Number(s.shareholding_percent) >= 10 && <span className="ml-1.5 text-xs px-1.5 py-0.5 rounded bg-purple-100 text-purple-700">10%+ CDD</span>}
                         </div>
-                        <div className="flex gap-1">
-                          <button onClick={() => startEdit(s)} className="p-1.5 rounded hover:bg-blue-50 text-gray-400 hover:text-blue-600"><Icon name="edit" size={14} /></button>
-                          <button onClick={() => remove(s)} className="p-1.5 rounded hover:bg-red-50 text-gray-400 hover:text-red-500"><Icon name="del" size={14} /></button>
+                        <div className="text-xs text-gray-400">
+                          {s.identification_type}
+                          {s.number_of_shares != null && ` · ${s.number_of_shares} shares`}
+                          {s.shareholding_percent != null && ` · ${s.shareholding_percent}%`}
+                          {s.share_class && ` · ${s.share_class}`}
                         </div>
                       </div>
-                    ))
-                )}
+                      <RowActions onEdit={() => startEdit(s)} onDelete={() => remove(s)} />
+                    </div>
+                  )))}
+
+                {tab === "ubos" && (ubos.length === 0
+                  ? <p className="text-sm text-gray-400 text-center py-6">No ultimate beneficial owners on record.</p>
+                  : ubos.map((u) => (
+                    <div key={u.id} className="flex items-center justify-between p-2.5 bg-gray-50 rounded-lg">
+                      <div>
+                        <div className="text-sm font-medium text-gray-800">
+                          {uboName(u)}
+                          {u.is_pep && <span className="ml-1.5 text-xs px-1.5 py-0.5 rounded bg-red-100 text-red-700">PEP</span>}
+                          {Number(u.percentage_interest) >= 10 && <span className="ml-1.5 text-xs px-1.5 py-0.5 rounded bg-purple-100 text-purple-700">10%+ CDD</span>}
+                        </div>
+                        <div className="text-xs text-gray-400">
+                          {u.percentage_interest != null && `${u.percentage_interest}% · `}{u.ownership_nature}
+                          {u.nationality && ` · ${u.nationality}`}
+                          {u.source_of_wealth_category && ` · SoW: ${u.source_of_wealth_category}`}
+                          {u.cessation_date && ` · Ceased ${u.cessation_date}`}
+                        </div>
+                      </div>
+                      <RowActions onEdit={() => startEdit(u)} onDelete={() => remove(u)} />
+                    </div>
+                  )))}
               </div>
               <button onClick={startNew} className="w-full px-3 py-2 text-xs border border-dashed border-gray-300 rounded-lg hover:border-blue-300 hover:text-blue-600 text-gray-500 flex items-center justify-center gap-1">
-                <Icon name="plus" size={13} /> Add {tab === "directors" ? "Director" : "Shareholder"}
+                <Icon name="plus" size={13} /> Add {tab === "directors" ? "Director" : tab === "shareholders" ? "Shareholder" : "UBO"}
               </button>
             </>
           )}
 
           {editing && tab === "directors" && (
-            <div className="space-y-1">
-              <Field label="Director Type">
-                <Select value={form.director_type} onChange={(e) => setForm((p) => ({ ...p, director_type: e.target.value }))}>
-                  {PARTY_TYPE_OPTIONS.map((o) => <option key={o}>{o}</option>)}
-                </Select>
-              </Field>
-              {form.director_type === "Individual" ? (
-                <div className="grid grid-cols-3 gap-x-3">
-                  <Field label="First Name"><Input value={form.first_name || ""} onChange={(e) => setForm((p) => ({ ...p, first_name: e.target.value }))} /></Field>
-                  <Field label="Middle Name"><Input value={form.middle_name || ""} onChange={(e) => setForm((p) => ({ ...p, middle_name: e.target.value }))} /></Field>
-                  <Field label="Last Name"><Input value={form.last_name || ""} onChange={(e) => setForm((p) => ({ ...p, last_name: e.target.value }))} /></Field>
-                  <Field label="Date of Birth"><Input type="date" value={form.date_of_birth || ""} onChange={(e) => setForm((p) => ({ ...p, date_of_birth: e.target.value }))} /></Field>
-                  <Field label="Place of Birth"><Input value={form.place_of_birth || ""} onChange={(e) => setForm((p) => ({ ...p, place_of_birth: e.target.value }))} /></Field>
-                  <Field label="Nationality"><Input value={form.nationality || ""} onChange={(e) => setForm((p) => ({ ...p, nationality: e.target.value }))} /></Field>
-                  <Field label="Passport Number"><Input value={form.passport_number || ""} onChange={(e) => setForm((p) => ({ ...p, passport_number: e.target.value }))} /></Field>
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 gap-x-3">
-                  <Field label="Corporate Name"><Input value={form.corporate_name || ""} onChange={(e) => setForm((p) => ({ ...p, corporate_name: e.target.value }))} /></Field>
-                  <Field label="Corporate Number"><Input value={form.corporate_number || ""} onChange={(e) => setForm((p) => ({ ...p, corporate_number: e.target.value }))} /></Field>
-                  <Field label="Country of Incorporation"><Input value={form.country_of_incorporation || ""} onChange={(e) => setForm((p) => ({ ...p, country_of_incorporation: e.target.value }))} /></Field>
-                  <Field label="Date of Incorporation"><Input type="date" value={form.corporate_date_of_incorporation || ""} onChange={(e) => setForm((p) => ({ ...p, corporate_date_of_incorporation: e.target.value }))} /></Field>
-                </div>
-              )}
-              <div className="grid grid-cols-3 gap-x-3">
-                <Field label="Service Address"><Input value={form.service_address || ""} onChange={(e) => setForm((p) => ({ ...p, service_address: e.target.value }))} /></Field>
-                <Field label="Service City"><Input value={form.service_city || ""} onChange={(e) => setForm((p) => ({ ...p, service_city: e.target.value }))} /></Field>
-                <Field label="Service Country"><Input value={form.service_country || ""} onChange={(e) => setForm((p) => ({ ...p, service_country: e.target.value }))} /></Field>
-                <Field label="Residential/Registered Address"><Input value={form.residential_address || ""} onChange={(e) => setForm((p) => ({ ...p, residential_address: e.target.value }))} /></Field>
-                <Field label="Residential/Registered City"><Input value={form.residential_city || ""} onChange={(e) => setForm((p) => ({ ...p, residential_city: e.target.value }))} /></Field>
-                <Field label="Residential/Registered Country"><Input value={form.residential_country || ""} onChange={(e) => setForm((p) => ({ ...p, residential_country: e.target.value }))} /></Field>
-                <Field label="Appointment Date"><Input type="date" value={form.appointment_date || ""} onChange={(e) => setForm((p) => ({ ...p, appointment_date: e.target.value }))} /></Field>
-                <Field label="Cessation Date"><Input type="date" value={form.cessation_date || ""} onChange={(e) => setForm((p) => ({ ...p, cessation_date: e.target.value }))} /></Field>
-              </div>
-              <div className="flex justify-end gap-3 mt-2">
-                <button onClick={cancelForm} className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
-                <button onClick={save} className="px-4 py-2 text-sm text-white rounded-lg" style={{ background: "#2B6D9A" }}>Save</button>
-              </div>
-            </div>
+            <DirectorForm form={form} setForm={setForm} onCancel={cancelForm} onSave={save} />
           )}
-
           {editing && tab === "shareholders" && (
-            <div className="space-y-1">
-              <div className="grid grid-cols-2 gap-x-3">
-                <Field label="Identification Type">
-                  <Select value={form.identification_type} onChange={(e) => setForm((p) => ({ ...p, identification_type: e.target.value }))}>
-                    {SHAREHOLDER_TYPE_OPTIONS.map((o) => <option key={o}>{o}</option>)}
-                  </Select>
-                </Field>
-                <Field label="Name" required><Input value={form.name || ""} onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))} /></Field>
-                {form.identification_type !== "Individual" && (
-                  <>
-                    <Field label="Corporate Number"><Input value={form.corporate_number || ""} onChange={(e) => setForm((p) => ({ ...p, corporate_number: e.target.value }))} /></Field>
-                    <Field label="Country of Incorporation"><Input value={form.country_of_incorporation || ""} onChange={(e) => setForm((p) => ({ ...p, country_of_incorporation: e.target.value }))} /></Field>
-                  </>
-                )}
-                <Field label="Registered Address"><Input value={form.registered_address || ""} onChange={(e) => setForm((p) => ({ ...p, registered_address: e.target.value }))} /></Field>
-                <Field label="City"><Input value={form.city || ""} onChange={(e) => setForm((p) => ({ ...p, city: e.target.value }))} /></Field>
-                <Field label="Country"><Input value={form.country || ""} onChange={(e) => setForm((p) => ({ ...p, country: e.target.value }))} /></Field>
-                <Field label="Certificate No."><Input value={form.certificate_no || ""} onChange={(e) => setForm((p) => ({ ...p, certificate_no: e.target.value }))} /></Field>
-                <Field label="Number of Shares"><Input type="number" min="0" value={form.number_of_shares ?? ""} onChange={(e) => setForm((p) => ({ ...p, number_of_shares: e.target.value }))} /></Field>
-                <Field label="Share Class"><Input value={form.share_class || ""} onChange={(e) => setForm((p) => ({ ...p, share_class: e.target.value }))} /></Field>
-                <Field label="Shareholding %"><Input type="number" min="0" max="100" step="0.01" value={form.shareholding_percent ?? ""} onChange={(e) => setForm((p) => ({ ...p, shareholding_percent: e.target.value }))} /></Field>
-                <Field label="Date Entered"><Input type="date" value={form.date_entered || ""} onChange={(e) => setForm((p) => ({ ...p, date_entered: e.target.value }))} /></Field>
-                <Field label="Date Ceased"><Input type="date" value={form.date_ceased || ""} onChange={(e) => setForm((p) => ({ ...p, date_ceased: e.target.value }))} /></Field>
-              </div>
-              <div className="flex items-center gap-4 py-1">
-                <label className="flex items-center gap-1.5 text-xs text-gray-600">
-                  <input type="checkbox" checked={!!form.is_joint_shareholder} onChange={(e) => setForm((p) => ({ ...p, is_joint_shareholder: e.target.checked }))} />
-                  Joint shareholder
-                </label>
-                <label className="flex items-center gap-1.5 text-xs text-gray-600">
-                  <input type="checkbox" checked={!!form.is_nominee} onChange={(e) => setForm((p) => ({ ...p, is_nominee: e.target.checked }))} />
-                  Nominee shareholder
-                </label>
-              </div>
-              {form.is_nominee && (
-                <Field label="Nominee Holds For (beneficial owner)"><Input value={form.nominee_holds_for || ""} onChange={(e) => setForm((p) => ({ ...p, nominee_holds_for: e.target.value }))} /></Field>
-              )}
-              <div className="flex justify-end gap-3 mt-2">
-                <button onClick={cancelForm} className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
-                <button onClick={save} className="px-4 py-2 text-sm text-white rounded-lg" style={{ background: "#2B6D9A" }}>Save</button>
-              </div>
-            </div>
+            <ShareholderForm form={form} setForm={setForm} onCancel={cancelForm} onSave={save} />
+          )}
+          {editing && tab === "ubos" && (
+            <UBOForm form={form} setForm={setForm} onCancel={cancelForm} onSave={save}
+              countries={countries} shareholders={shareholders} />
           )}
         </>
       )}
     </Modal>
+  );
+}
+
+const RowActions = ({ onEdit, onDelete }) => (
+  <div className="flex gap-1">
+    <button onClick={onEdit} className="p-1.5 rounded hover:bg-blue-50 text-gray-400 hover:text-blue-600"><Icon name="edit" size={14} /></button>
+    <button onClick={onDelete} className="p-1.5 rounded hover:bg-red-50 text-gray-400 hover:text-red-500"><Icon name="del" size={14} /></button>
+  </div>
+);
+
+const FormButtons = ({ onCancel, onSave }) => (
+  <div className="flex justify-end gap-3 mt-2">
+    <button onClick={onCancel} className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
+    <button onClick={onSave} className="px-4 py-2 text-sm text-white rounded-lg" style={{ background: "#2B6D9A" }}>Save</button>
+  </div>
+);
+
+const set = (setForm, k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
+const setBool = (setForm, k) => (e) => setForm((p) => ({ ...p, [k]: e.target.checked }));
+
+function DirectorForm({ form, setForm, onCancel, onSave }) {
+  return (
+    <div className="space-y-1">
+      <Field label="Director Type">
+        <Select value={form.director_type} onChange={set(setForm, "director_type")}>
+          {PARTY_TYPE_OPTIONS.map((o) => <option key={o}>{o}</option>)}
+        </Select>
+      </Field>
+      {form.director_type === "Individual" ? (
+        <div className="grid grid-cols-3 gap-x-3">
+          <Field label="First Name"><Input value={form.first_name || ""} onChange={set(setForm, "first_name")} /></Field>
+          <Field label="Middle Name"><Input value={form.middle_name || ""} onChange={set(setForm, "middle_name")} /></Field>
+          <Field label="Last Name"><Input value={form.last_name || ""} onChange={set(setForm, "last_name")} /></Field>
+          <Field label="Date of Birth"><Input type="date" value={form.date_of_birth || ""} onChange={set(setForm, "date_of_birth")} /></Field>
+          <Field label="Place of Birth"><Input value={form.place_of_birth || ""} onChange={set(setForm, "place_of_birth")} /></Field>
+          <Field label="Nationality"><Input value={form.nationality || ""} onChange={set(setForm, "nationality")} /></Field>
+          <Field label="Passport Number"><Input value={form.passport_number || ""} onChange={set(setForm, "passport_number")} /></Field>
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 gap-x-3">
+          <Field label="Corporate Name"><Input value={form.corporate_name || ""} onChange={set(setForm, "corporate_name")} /></Field>
+          <Field label="Corporate Number"><Input value={form.corporate_number || ""} onChange={set(setForm, "corporate_number")} /></Field>
+          <Field label="Country of Incorporation"><Input value={form.country_of_incorporation || ""} onChange={set(setForm, "country_of_incorporation")} /></Field>
+          <Field label="Date of Incorporation"><Input type="date" value={form.corporate_date_of_incorporation || ""} onChange={set(setForm, "corporate_date_of_incorporation")} /></Field>
+        </div>
+      )}
+      <div className="grid grid-cols-3 gap-x-3">
+        <Field label="Service Address"><Input value={form.service_address || ""} onChange={set(setForm, "service_address")} /></Field>
+        <Field label="Service City"><Input value={form.service_city || ""} onChange={set(setForm, "service_city")} /></Field>
+        <Field label="Service Country"><Input value={form.service_country || ""} onChange={set(setForm, "service_country")} /></Field>
+        <Field label="Residential/Registered Address"><Input value={form.residential_address || ""} onChange={set(setForm, "residential_address")} /></Field>
+        <Field label="Residential/Registered City"><Input value={form.residential_city || ""} onChange={set(setForm, "residential_city")} /></Field>
+        <Field label="Residential/Registered Country"><Input value={form.residential_country || ""} onChange={set(setForm, "residential_country")} /></Field>
+        <Field label="Appointment Date"><Input type="date" value={form.appointment_date || ""} onChange={set(setForm, "appointment_date")} /></Field>
+        <Field label="Cessation Date"><Input type="date" value={form.cessation_date || ""} onChange={set(setForm, "cessation_date")} /></Field>
+      </div>
+      <FormButtons onCancel={onCancel} onSave={onSave} />
+    </div>
+  );
+}
+
+function ShareholderForm({ form, setForm, onCancel, onSave }) {
+  return (
+    <div className="space-y-1">
+      <div className="grid grid-cols-2 gap-x-3">
+        <Field label="Identification Type">
+          <Select value={form.identification_type} onChange={set(setForm, "identification_type")}>
+            {SHAREHOLDER_TYPE_OPTIONS.map((o) => <option key={o}>{o}</option>)}
+          </Select>
+        </Field>
+        <Field label="Name" required><Input value={form.name || ""} onChange={set(setForm, "name")} /></Field>
+        {form.identification_type !== "Individual" && (
+          <>
+            <Field label="Corporate Number"><Input value={form.corporate_number || ""} onChange={set(setForm, "corporate_number")} /></Field>
+            <Field label="Country of Incorporation"><Input value={form.country_of_incorporation || ""} onChange={set(setForm, "country_of_incorporation")} /></Field>
+          </>
+        )}
+        <Field label="Registered Address"><Input value={form.registered_address || ""} onChange={set(setForm, "registered_address")} /></Field>
+        <Field label="City"><Input value={form.city || ""} onChange={set(setForm, "city")} /></Field>
+        <Field label="Country"><Input value={form.country || ""} onChange={set(setForm, "country")} /></Field>
+        <Field label="Certificate No."><Input value={form.certificate_no || ""} onChange={set(setForm, "certificate_no")} /></Field>
+        <Field label="Number of Shares"><Input type="number" min="0" value={form.number_of_shares ?? ""} onChange={set(setForm, "number_of_shares")} /></Field>
+        <Field label="Share Class"><Input value={form.share_class || ""} onChange={set(setForm, "share_class")} /></Field>
+        <Field label="Shareholding %"><Input type="number" min="0" max="100" step="0.01" value={form.shareholding_percent ?? ""} onChange={set(setForm, "shareholding_percent")} /></Field>
+        <Field label="Date Entered"><Input type="date" value={form.date_entered || ""} onChange={set(setForm, "date_entered")} /></Field>
+        <Field label="Date Ceased"><Input type="date" value={form.date_ceased || ""} onChange={set(setForm, "date_ceased")} /></Field>
+      </div>
+      <div className="flex items-center gap-4 py-1">
+        <label className="flex items-center gap-1.5 text-xs text-gray-600">
+          <input type="checkbox" checked={!!form.is_joint_shareholder} onChange={setBool(setForm, "is_joint_shareholder")} />
+          Joint shareholder
+        </label>
+        <label className="flex items-center gap-1.5 text-xs text-gray-600">
+          <input type="checkbox" checked={!!form.is_nominee} onChange={setBool(setForm, "is_nominee")} />
+          Nominee shareholder
+        </label>
+      </div>
+      {form.is_nominee && (
+        <Field label="Nominee Holds For (beneficial owner)"><Input value={form.nominee_holds_for || ""} onChange={set(setForm, "nominee_holds_for")} /></Field>
+      )}
+      <FormButtons onCancel={onCancel} onSave={onSave} />
+    </div>
+  );
+}
+
+function UBOForm({ form, setForm, onCancel, onSave, countries, shareholders }) {
+  const CountrySelect = ({ k }) => (
+    <Select value={form[k] || ""} onChange={set(setForm, k)}>
+      <option value="">— select —</option>
+      {countries.map((c) => <option key={c.name} value={c.name}>{c.name}</option>)}
+    </Select>
+  );
+  return (
+    <div className="space-y-1">
+      <div className="grid grid-cols-3 gap-x-3">
+        <Field label="First Name"><Input value={form.first_name || ""} onChange={set(setForm, "first_name")} /></Field>
+        <Field label="Middle Name"><Input value={form.middle_name || ""} onChange={set(setForm, "middle_name")} /></Field>
+        <Field label="Last Name"><Input value={form.last_name || ""} onChange={set(setForm, "last_name")} /></Field>
+        <Field label="Date of Birth"><Input type="date" value={form.date_of_birth || ""} onChange={set(setForm, "date_of_birth")} /></Field>
+        <Field label="Place of Birth"><Input value={form.place_of_birth || ""} onChange={set(setForm, "place_of_birth")} /></Field>
+        <Field label="Nationality"><CountrySelect k="nationality" /></Field>
+        <Field label="Country of Residence"><CountrySelect k="country_of_residence" /></Field>
+        <Field label="Passport Number"><Input value={form.passport_number || ""} onChange={set(setForm, "passport_number")} /></Field>
+        <Field label="Passport Expiry"><Input type="date" value={form.passport_expiry || ""} onChange={set(setForm, "passport_expiry")} /></Field>
+      </div>
+      <div className="grid grid-cols-3 gap-x-3">
+        <Field label="Residential Address"><Input value={form.residential_address || ""} onChange={set(setForm, "residential_address")} /></Field>
+        <Field label="City"><Input value={form.residential_city || ""} onChange={set(setForm, "residential_city")} /></Field>
+        <Field label="Country"><Input value={form.residential_country || ""} onChange={set(setForm, "residential_country")} /></Field>
+        <Field label="Email"><Input value={form.email || ""} onChange={set(setForm, "email")} /></Field>
+        <Field label="Mobile"><Input value={form.mobile || ""} onChange={set(setForm, "mobile")} /></Field>
+      </div>
+      <div className="grid grid-cols-3 gap-x-3">
+        <Field label="Interest %"><Input type="number" min="0" max="100" step="0.01" value={form.percentage_interest ?? ""} onChange={set(setForm, "percentage_interest")} /></Field>
+        <Field label="Ownership Nature">
+          <Select value={form.ownership_nature} onChange={set(setForm, "ownership_nature")}>
+            {OWNERSHIP_NATURE_OPTIONS.map((o) => <option key={o}>{o}</option>)}
+          </Select>
+        </Field>
+        <Field label="Nature of Control"><Input value={form.nature_of_control || ""} onChange={set(setForm, "nature_of_control")} placeholder="e.g. voting rights" /></Field>
+        <Field label="Held Via (shareholder)">
+          <Select value={form.held_via_shareholder_id || ""} onChange={set(setForm, "held_via_shareholder_id")}>
+            <option value="">— Direct / none —</option>
+            {shareholders.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </Select>
+        </Field>
+        <Field label="Appointment Date"><Input type="date" value={form.appointment_date || ""} onChange={set(setForm, "appointment_date")} /></Field>
+        <Field label="Cessation Date"><Input type="date" value={form.cessation_date || ""} onChange={set(setForm, "cessation_date")} /></Field>
+      </div>
+      <label className="flex items-center gap-1.5 text-xs text-gray-600 py-1">
+        <input type="checkbox" checked={!!form.is_pep} onChange={setBool(setForm, "is_pep")} />
+        Politically Exposed Person (PEP)
+      </label>
+      {form.is_pep && <Field label="PEP Notes"><Textarea value={form.pep_notes || ""} onChange={set(setForm, "pep_notes")} /></Field>}
+      <div className="grid grid-cols-4 gap-x-3">
+        <Field label="Employer"><Input value={form.employer_name || ""} onChange={set(setForm, "employer_name")} /></Field>
+        <Field label="Job Title"><Input value={form.job_title || ""} onChange={set(setForm, "job_title")} /></Field>
+        <Field label="Sector"><Input value={form.sector || ""} onChange={set(setForm, "sector")} /></Field>
+        <Field label="Years Employed"><Input value={form.years_employed || ""} onChange={set(setForm, "years_employed")} placeholder="e.g. 3+ years" /></Field>
+      </div>
+      <Field label="Source of Wealth — Category">
+        <Select value={form.source_of_wealth_category || ""} onChange={set(setForm, "source_of_wealth_category")}>
+          <option value="">— select —</option>
+          {SOURCE_OF_WEALTH_OPTIONS.map((o) => <option key={o}>{o}</option>)}
+        </Select>
+      </Field>
+      <Field label="Source of Wealth — Details"><Textarea value={form.source_of_wealth_details || ""} onChange={set(setForm, "source_of_wealth_details")} /></Field>
+      <Field label="Notes"><Textarea value={form.notes || ""} onChange={set(setForm, "notes")} /></Field>
+      <FormButtons onCancel={onCancel} onSave={onSave} />
+    </div>
   );
 }

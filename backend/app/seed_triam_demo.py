@@ -255,15 +255,39 @@ def seed(db: Session, force: bool = False):
             generate_shareholder_documents(db, shareholder)
     db.commit()
 
+    print("-> Adding a sample UBO register...")
+    from app.services.cdd_service import generate_ubo_documents
+    from app.models import UBO
+    cnh_ubo = None
+    cnh_case = cases_by_name["Castle Noble Holdings Limited"]
+    cnh_ubo = UBO(
+        case_id=cnh_case.id, first_name="Elena", last_name="Volkova",
+        nationality="Russian Federation (the)", country_of_residence="United Arab Emirates (the)",
+        residential_city="Dubai", residential_country="UAE",
+        percentage_interest=Decimal("100"), ownership_nature="Direct",
+        nature_of_control="Sole shareholder and director",
+        is_pep=False, employer_name="Volkova Trading FZE", job_title="Owner", sector="Trading",
+        years_employed="8+ years",
+        source_of_wealth_category="Business owner / entrepreneur",
+        source_of_wealth_details="Founder and 100% owner of Volkova Trading FZE (Dubai) since 2016; "
+                                 "dividends and accumulated profits from the trading business.",
+        appointment_date=date(2019, 5, 6),
+    )
+    db.add(cnh_ubo)
+    db.flush()
+    generate_ubo_documents(db, cnh_ubo)
+    db.commit()
+
     print("-> Adding sample AML risk assessments...")
     _country_lu = aml_service._country_lookup(db)
     screening_user = users_by_name["Swathi"]
 
-    def _add_assessment(case, subject_type, subject_name, selections, when, director=None):
+    def _add_assessment(case, subject_type, subject_name, selections, when, director=None, ubo=None):
         result = aml_matrix.calculate(subject_type, selections, _country_lu)
         db.add(AMLRiskAssessment(
             case_id=case.id, subject_type=subject_type, subject_name=subject_name,
             director_id=director.id if director else None,
+            ubo_id=ubo.id if ubo else None,
             assessment_date=when, completed_by_id=screening_user.id,
             matrix_version=aml_matrix.AML_MATRIX_VERSION,
             factors=result.factors, total_weighted_score=result.total_weighted_score,
@@ -307,7 +331,8 @@ def seed(db: Session, force: bool = False):
             "business_risk": "Most recent AML Business Risk Assessment concluded overall risk as low",
         }
         _add_assessment(cnh, AMLSubjectType.INDIVIDUAL.value,
-                        "Elena Volkova", indiv_sel, date(2024, 1, 15), director=cnh_director)
+                        "Elena Volkova", indiv_sel, date(2024, 1, 15),
+                        director=cnh_director, ubo=cnh_ubo)
     db.commit()
     aml_service._sync_cdd_rating(db, cnh.id)
 

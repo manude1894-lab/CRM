@@ -7,7 +7,7 @@ from app.database import get_db
 from app.auth.dependencies import get_current_user, require_admin, require_roles
 from app.models import User, UserRole
 from app.schemas import (
-    AMLAssessmentCreate, AMLAssessmentUpdate, AMLAssessmentRead, AMLCatalogRead,
+    AMLAssessmentCreate, AMLAssessmentUpdate, AMLAssessmentRead, AMLCatalogRead, AMLPrefillRead,
     CountryRiskCreate, CountryRiskUpdate, CountryRiskRead,
 )
 from app.services import aml_service, aml_matrix
@@ -21,6 +21,11 @@ require_assessor = require_roles(UserRole.ADMIN, UserRole.SCREENING, UserRole.RM
 @router.get("/catalog", response_model=AMLCatalogRead, summary="Factor definitions + option lists")
 def get_catalog(user: User = Depends(get_current_user)):
     return aml_matrix.catalog()
+
+
+@router.get("/prefill", response_model=AMLPrefillRead, summary="Defaults for a new Entity assessment (from the primary UBO)")
+def get_prefill(case_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    return aml_service.prefill_for_case(db, case_id)
 
 
 # ─── Country risk table ─────────────────────────────────────────────────

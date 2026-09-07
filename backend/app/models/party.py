@@ -24,6 +24,19 @@ class ShareholderType(str, enum.Enum):
     LIMITED_PARTNERSHIP = "Limited Partnership"
 
 
+class OwnershipNature(str, enum.Enum):
+    DIRECT = "Direct"
+    INDIRECT = "Indirect"
+
+
+class SourceOfWealthCategory(str, enum.Enum):
+    EMPLOYMENT = "Employment income / bonus"
+    BUSINESS_OWNER = "Business owner / entrepreneur"
+    INHERITANCE = "Inheritance / gift"
+    INVESTMENTS = "Personal investments"
+    OTHER = "Other"
+
+
 class Director(Base):
     """One row per director on a Case's Register of Directors.
 
@@ -115,3 +128,69 @@ class Shareholder(Base):
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     case = relationship("Case", back_populates="shareholders")
+
+
+class UBO(Base):
+    """One row per ultimate beneficial owner on a Case (Vistra KYC Part II, section C).
+
+    Individuals only — the BVI process manual defines the register as running "up to
+    the (individual) ultimate beneficial owners". Interest held through an
+    intermediate holder is captured with held_via_shareholder_id + ownership_nature.
+
+    nationality / country_of_residence are picked from the CountryRisk name list
+    (controlled vocabulary) so they feed the AML entity matrix's UBO country factors
+    directly — unlike Director/Shareholder, which keep free-text nationality.
+    """
+    __tablename__ = "ubos"
+
+    id = Column(Integer, primary_key=True, index=True)
+    case_id = Column(Integer, ForeignKey("cases.id", ondelete="CASCADE"), nullable=False, index=True)
+
+    first_name = Column(String(150), nullable=True)
+    middle_name = Column(String(150), nullable=True)
+    last_name = Column(String(150), nullable=True)
+    former_name = Column(String(255), nullable=True)
+
+    date_of_birth = Column(Date, nullable=True)
+    place_of_birth = Column(String(150), nullable=True)
+    nationality = Column(String(120), nullable=True)          # CountryRisk.name
+    country_of_residence = Column(String(120), nullable=True)  # CountryRisk.name
+    passport_number = Column(String(50), nullable=True)
+    passport_expiry = Column(Date, nullable=True)
+    national_id = Column(String(50), nullable=True)
+
+    residential_address = Column(String(255), nullable=True)
+    residential_city = Column(String(100), nullable=True)
+    residential_country = Column(String(100), nullable=True)
+    email = Column(String(255), nullable=True)
+    mobile = Column(String(50), nullable=True)
+
+    percentage_interest = Column(Numeric(5, 2), nullable=True)
+    ownership_nature = Column(String(20), default=OwnershipNature.DIRECT.value, nullable=False)
+    nature_of_control = Column(String(255), nullable=True)  # e.g. "voting rights", "board control"
+    held_via_shareholder_id = Column(Integer, ForeignKey("shareholders.id", ondelete="SET NULL"), nullable=True)
+
+    is_pep = Column(Boolean, default=False, nullable=False)
+    pep_notes = Column(Text, nullable=True)
+
+    employer_name = Column(String(255), nullable=True)
+    job_title = Column(String(150), nullable=True)
+    sector = Column(String(150), nullable=True)
+    years_employed = Column(String(50), nullable=True)
+
+    source_of_wealth_category = Column(String(50), nullable=True)
+    source_of_wealth_details = Column(Text, nullable=True)
+
+    appointment_date = Column(Date, nullable=True)
+    cessation_date = Column(Date, nullable=True)
+    notes = Column(Text, nullable=True)
+
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    case = relationship("Case", back_populates="ubos")
+    held_via_shareholder = relationship("Shareholder", foreign_keys=[held_via_shareholder_id])
+
+    @property
+    def full_name(self) -> str:
+        return " ".join(p for p in (self.first_name, self.middle_name, self.last_name) if p) or "UBO"

@@ -19,11 +19,12 @@ from app.schemas.dashboard import DashboardResponse, KPISummary, StageBreakdown
 from app.schemas.party import (
     DirectorCreate, DirectorRead, DirectorUpdate,
     ShareholderCreate, ShareholderRead, ShareholderUpdate,
+    UBOCreate, UBORead, UBOUpdate,
 )
 from app.schemas.instruction import InstructionCreate, InstructionRead, InstructionUpdate
 from app.schemas.invoice import InvoiceCreate, InvoiceRead, InvoiceUpdate
 from app.schemas.aml import (
-    AMLAssessmentCreate, AMLAssessmentUpdate, AMLAssessmentRead, AMLCatalogRead,
+    AMLAssessmentCreate, AMLAssessmentUpdate, AMLAssessmentRead, AMLCatalogRead, AMLPrefillRead,
     CountryRiskCreate, CountryRiskUpdate, CountryRiskRead,
 )
 
@@ -39,8 +40,9 @@ __all__ = [
     "DashboardResponse", "KPISummary", "StageBreakdown",
     "DirectorCreate", "DirectorRead", "DirectorUpdate",
     "ShareholderCreate", "ShareholderRead", "ShareholderUpdate",
+    "UBOCreate", "UBORead", "UBOUpdate",
     "InstructionCreate", "InstructionRead", "InstructionUpdate",
     "InvoiceCreate", "InvoiceRead", "InvoiceUpdate",
-    "AMLAssessmentCreate", "AMLAssessmentUpdate", "AMLAssessmentRead", "AMLCatalogRead",
+    "AMLAssessmentCreate", "AMLAssessmentUpdate", "AMLAssessmentRead", "AMLCatalogRead", "AMLPrefillRead",
     "CountryRiskCreate", "CountryRiskUpdate", "CountryRiskRead",
 ]

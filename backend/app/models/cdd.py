@@ -58,6 +58,7 @@ class CaseDocument(Base):
     cdd_record_id = Column(Integer, ForeignKey("cdd_records.id", ondelete="CASCADE"), nullable=False)
     director_id = Column(Integer, ForeignKey("directors.id", ondelete="CASCADE"), nullable=True)
     shareholder_id = Column(Integer, ForeignKey("shareholders.id", ondelete="CASCADE"), nullable=True)
+    ubo_id = Column(Integer, ForeignKey("ubos.id", ondelete="CASCADE"), nullable=True)
 
     doc_type = Column(String(150), nullable=False)
     received = Column(Boolean, default=False, nullable=False)
@@ -69,3 +70,4 @@ class CaseDocument(Base):
     cdd_record = relationship("CDDRecord", back_populates="documents")
     director = relationship("Director")
     shareholder = relationship("Shareholder")
+    ubo = relationship("UBO")

@@ -92,14 +92,23 @@ export default function AMLAssessmentPanel({ caseId, entityName, parties = [] })
   };
   useEffect(() => { if (caseId) load(); }, [caseId]);
 
-  const openNew = () => {
+  const openNew = async () => {
+    let selections = {};
+    let subject_name = entityName || "";
+    try {
+      const pf = await amlApi.prefill(caseId);
+      if (pf.ubo_nationality) selections.ubo_nationality = pf.ubo_nationality;
+      if (pf.ubo_residence) selections.ubo_residence = pf.ubo_residence;
+      if (pf.subject_name) subject_name = pf.subject_name;
+    } catch (e) { /* prefill is best-effort */ }
     setForm({
       subject_type: "Entity",
-      subject_name: entityName || "",
+      subject_name,
       director_id: "",
       shareholder_id: "",
+      ubo_id: "",
       assessment_date: new Date().toISOString().split("T")[0],
-      selections: {},
+      selections,
       remarks: "",
       amended_rating: "",
       mlro_notes: "",
@@ -115,6 +124,7 @@ export default function AMLAssessmentPanel({ caseId, entityName, parties = [] })
       subject_name: a.subject_name,
       director_id: a.director_id || "",
       shareholder_id: a.shareholder_id || "",
+      ubo_id: a.ubo_id || "",
       assessment_date: a.assessment_date || "",
       selections,
       remarks: a.remarks || "",
@@ -140,6 +150,7 @@ export default function AMLAssessmentPanel({ caseId, entityName, parties = [] })
           subject_name: form.subject_name,
           director_id: form.director_id ? Number(form.director_id) : null,
           shareholder_id: form.shareholder_id ? Number(form.shareholder_id) : null,
+          ubo_id: form.ubo_id ? Number(form.ubo_id) : null,
           assessment_date: form.assessment_date || null,
           selections: form.selections,
           remarks: form.remarks || null,
@@ -220,7 +231,7 @@ export default function AMLAssessmentPanel({ caseId, entityName, parties = [] })
           <div className="grid grid-cols-2 gap-x-4">
             <Field label="Subject Type" required>
               <Select value={form.subject_type} disabled={modal === "edit"}
-                onChange={(e) => setForm((p) => ({ ...p, subject_type: e.target.value, selections: {} }))}>
+                onChange={(e) => setForm((p) => ({ ...p, subject_type: e.target.value, selections: {}, director_id: "", shareholder_id: "", ubo_id: "" }))}>
                 <option>Entity</option>
                 <option>Individual</option>
               </Select>
@@ -230,7 +241,7 @@ export default function AMLAssessmentPanel({ caseId, entityName, parties = [] })
             </Field>
             {form.subject_type === "Individual" && (
               <Field label="Link to Director / Shareholder">
-                <Select value={form.director_id ? `d${form.director_id}` : form.shareholder_id ? `s${form.shareholder_id}` : ""}
+                <Select value={form.ubo_id ? `u${form.ubo_id}` : form.director_id ? `d${form.director_id}` : form.shareholder_id ? `s${form.shareholder_id}` : ""}
                   onChange={(e) => {
                     const v = e.target.value;
                     const p = parties.find((x) => `${x._kind[0].toLowerCase()}${x.id}` === v);
@@ -238,6 +249,7 @@ export default function AMLAssessmentPanel({ caseId, entityName, parties = [] })
                       ...f,
                       director_id: v.startsWith("d") ? Number(v.slice(1)) : "",
                       shareholder_id: v.startsWith("s") ? Number(v.slice(1)) : "",
+                      ubo_id: v.startsWith("u") ? Number(v.slice(1)) : "",
                       subject_name: p ? p._label : f.subject_name,
                     }));
                   }}>

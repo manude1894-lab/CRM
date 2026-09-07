@@ -36,6 +36,7 @@ class AMLRiskAssessment(Base):
     # Optional link when subject_type == "Individual".
     director_id = Column(Integer, ForeignKey("directors.id", ondelete="SET NULL"), nullable=True)
     shareholder_id = Column(Integer, ForeignKey("shareholders.id", ondelete="SET NULL"), nullable=True)
+    ubo_id = Column(Integer, ForeignKey("ubos.id", ondelete="SET NULL"), nullable=True)
 
     assessment_date = Column(Date, nullable=True)
     completed_by_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
@@ -66,6 +67,7 @@ class AMLRiskAssessment(Base):
     mlro = relationship("User", foreign_keys=[mlro_id])
     director = relationship("Director")
     shareholder = relationship("Shareholder")
+    ubo = relationship("UBO")
 
     @property
     def effective_rating(self) -> str | None:

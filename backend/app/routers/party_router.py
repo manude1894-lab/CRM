@@ -9,6 +9,7 @@ from app.models import User
 from app.schemas import (
     DirectorCreate, DirectorRead, DirectorUpdate,
     ShareholderCreate, ShareholderRead, ShareholderUpdate,
+    UBOCreate, UBORead, UBOUpdate,
 )
 from app.services import party_service
 
@@ -56,4 +57,26 @@ def update_shareholder(shareholder_id: int, data: ShareholderUpdate, db: Session
 @router.delete("/shareholders/{shareholder_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_shareholder(shareholder_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     party_service.delete_shareholder(db, shareholder_id, user)
+    return None
+
+
+# ─── UBOs ────────────────────────────────────────────────────────────────
+@router.get("/cases/{case_id}/ubos", response_model=List[UBORead])
+def list_ubos(case_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    return party_service.list_ubos(db, case_id)
+
+
+@router.post("/cases/{case_id}/ubos", response_model=UBORead, status_code=status.HTTP_201_CREATED)
+def create_ubo(case_id: int, data: UBOCreate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    return party_service.create_ubo(db, case_id, data, user)
+
+
+@router.patch("/ubos/{ubo_id}", response_model=UBORead)
+def update_ubo(ubo_id: int, data: UBOUpdate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    return party_service.update_ubo(db, ubo_id, data, user)
+
+
+@router.delete("/ubos/{ubo_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_ubo(ubo_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    party_service.delete_ubo(db, ubo_id, user)
     return None

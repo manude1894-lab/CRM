@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
 
-from app.models import CDDRecord, CaseDocument, Case, CaseStatus, DocumentStatus, User, Director, Shareholder
+from app.models import CDDRecord, CaseDocument, Case, CaseStatus, DocumentStatus, User, Director, Shareholder, UBO
 from app.schemas.cdd import CDDRecordUpdate, CDDReviewRequest, CaseDocumentCreate, CaseDocumentUpdate
 
 # Per-party CDD requirements — Vistra KYC Appendix C.
@@ -18,6 +18,8 @@ CORPORATE_PARTY_DOCUMENTS = [
     "Register of Members (certified true copy)",
     "Memorandum & Articles of Association, if available (certified true copy)",
 ]
+# UBOs additionally need the KYC Appendix A individual information form.
+UBO_DOCUMENTS = INDIVIDUAL_PARTY_DOCUMENTS + ["Appendix A - Individual Information Form (KYC)"]
 # Shareholders below 10% interest are optional CDD per Appendix C — documents are
 # only auto-generated when the interest is unknown or at/above the threshold.
 SHAREHOLDER_CDD_THRESHOLD_PERCENT = 10
@@ -130,6 +132,25 @@ def generate_shareholder_documents(db: Session, shareholder: Shareholder) -> lis
         return []
     doc_types = INDIVIDUAL_PARTY_DOCUMENTS if shareholder.identification_type == "Individual" else CORPORATE_PARTY_DOCUMENTS
     docs = [CaseDocument(cdd_record_id=cdd.id, shareholder_id=shareholder.id, doc_type=t) for t in doc_types]
+    db.add_all(docs)
+    db.commit()
+    return docs
+
+
+def generate_ubo_documents(db: Session, ubo: UBO) -> list[CaseDocument]:
+    """Seed CDD checklist items for a newly-added UBO.
+
+    Full individual CDD (passport, address proof, Appendix A) is mandatory for
+    10%+ beneficial owners — below that, CDD is optional per Vistra KYC Appendix
+    C3, so only auto-generate when the interest is unknown or at/above threshold.
+    """
+    pct = ubo.percentage_interest
+    if pct is not None and pct < SHAREHOLDER_CDD_THRESHOLD_PERCENT:
+        return []
+    cdd = db.query(CDDRecord).filter(CDDRecord.case_id == ubo.case_id).first()
+    if not cdd:
+        return []
+    docs = [CaseDocument(cdd_record_id=cdd.id, ubo_id=ubo.id, doc_type=t) for t in UBO_DOCUMENTS]
     db.add_all(docs)
     db.commit()
     return docs
