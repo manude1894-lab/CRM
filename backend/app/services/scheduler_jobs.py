@@ -18,8 +18,9 @@ DOCS_PENDING_BUSINESS_DAYS = 3
 CDD_REVIEW_SLA_DAYS = 2
 INVOICE_UNPAID_SLA_DAYS = 7
 RENEWAL_REMINDER_DAYS = (60, 30, 7)
-COMPLIANCE_REMINDER_DAYS = (30, 7)
-TAX_REMINDER_DAYS = (30, 7)
+ESR_REMINDER_DAYS = (30, 7)
+AR_REMINDER_DAYS = (30, 7)
+BO_REMINDER_DAYS = (14, 7, 3)
 
 
 def _notify_once(db, case_id: int, notification_type: str, role: UserRole, message: str, link: str):
@@ -110,23 +111,31 @@ def _check_compliance_reminders(db, due_field: str, notification_type: str, remi
 def check_renewals_due():
     db = SessionLocal()
     try:
-        _check_compliance_reminders(db, "renewal_due_date", "renewal_due", RENEWAL_REMINDER_DAYS, UserRole.RM, "Renewal")
+        _check_compliance_reminders(db, "renewal_due_date", "renewal_due", RENEWAL_REMINDER_DAYS, UserRole.RM, "Annual Licence Fee renewal")
     finally:
         db.close()
 
 
-def check_compliance_filings_due():
+def check_esr_filings_due():
     db = SessionLocal()
     try:
-        _check_compliance_reminders(db, "compliance_filing_due_date", "compliance_filing_due", COMPLIANCE_REMINDER_DAYS, UserRole.OPS, "Compliance filing")
+        _check_compliance_reminders(db, "esr_filing_due_date", "esr_filing_due", ESR_REMINDER_DAYS, UserRole.OPS, "Economic Substance (ESR) filing")
     finally:
         db.close()
 
 
-def check_tax_filings_due():
+def check_ar_filings_due():
     db = SessionLocal()
     try:
-        _check_compliance_reminders(db, "tax_filing_due_date", "tax_filing_due", TAX_REMINDER_DAYS, UserRole.OPS, "Tax filing")
+        _check_compliance_reminders(db, "ar_filing_due_date", "ar_filing_due", AR_REMINDER_DAYS, UserRole.OPS, "Annual Return filing")
+    finally:
+        db.close()
+
+
+def check_bo_filings_due():
+    db = SessionLocal()
+    try:
+        _check_compliance_reminders(db, "bo_filing_due_date", "bo_filing_due", BO_REMINDER_DAYS, UserRole.OPS, "BO / ROM-RBO filing")
     finally:
         db.close()
 
@@ -138,8 +147,9 @@ def run_daily_sweep():
         check_cdd_awaiting_screening,
         check_invoice_unpaid,
         check_renewals_due,
-        check_compliance_filings_due,
-        check_tax_filings_due,
+        check_esr_filings_due,
+        check_ar_filings_due,
+        check_bo_filings_due,
     ):
         try:
             job()

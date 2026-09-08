@@ -1,4 +1,13 @@
-"""SQLAlchemy model: ComplianceSchedule (1:1 with Case, created on License Received)."""
+"""SQLAlchemy model: ComplianceSchedule (1:1 with Case, created on License Received).
+
+Slots, anchored to the BVI calendar (see case_service._create_compliance_schedule):
+  - renewal      : Annual Licence Fee — the incorporation anniversary
+  - esr_filing   : Economic Substance Regulation filing — annual (per Vistra portal)
+  - ar_filing    : Annual Return — fixed 30 September each year
+  - bo_filing    : ROM/RBO beneficial-ownership filing — event-driven, 30 days after
+                   any ownership change (set by compliance_service.flag_bo_filing_due,
+                   cleared rather than rolled)
+"""
 from sqlalchemy import Column, Integer, Date, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -16,13 +25,16 @@ class ComplianceSchedule(Base):
     renewal_last_completed_date = Column(Date, nullable=True)
     renewal_cadence_months = Column(Integer, default=12, nullable=False)
 
-    compliance_filing_due_date = Column(Date, nullable=True)
-    compliance_filing_last_completed_date = Column(Date, nullable=True)
-    compliance_filing_cadence_months = Column(Integer, default=12, nullable=False)
+    esr_filing_due_date = Column(Date, nullable=True)
+    esr_filing_last_completed_date = Column(Date, nullable=True)
+    esr_filing_cadence_months = Column(Integer, default=12, nullable=False)
 
-    tax_filing_due_date = Column(Date, nullable=True)
-    tax_filing_last_completed_date = Column(Date, nullable=True)
-    tax_filing_cadence_months = Column(Integer, default=12, nullable=False)
+    ar_filing_due_date = Column(Date, nullable=True)
+    ar_filing_last_completed_date = Column(Date, nullable=True)
+    ar_filing_cadence_months = Column(Integer, default=12, nullable=False)
+
+    bo_filing_due_date = Column(Date, nullable=True)
+    bo_filing_last_completed_date = Column(Date, nullable=True)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

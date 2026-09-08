@@ -11,6 +11,10 @@ from app.models.case import (
 )
 from app.models.cdd import CDDRecord, CaseDocument, DocumentStatus
 from app.models.compliance import ComplianceSchedule
+from app.models.company_profile import (
+    CompanyProfile, RegisteredAgent, NameCheckStatus, SourceOfFunds,
+    NatureOfBusiness, CompanySecretary,
+)
 from app.models.notification import Notification
 from app.models.activity import Activity, ActivityType, ActivityStatus
 from app.models.party import (
@@ -28,6 +32,8 @@ __all__ = [
     "Case", "CaseStage", "CaseStatus", "CaseSource", "InvoiceStatus", "CASE_STAGE_TRANSITIONS",
     "CDDRecord", "CaseDocument", "DocumentStatus",
     "ComplianceSchedule",
+    "CompanyProfile", "RegisteredAgent", "NameCheckStatus", "SourceOfFunds",
+    "NatureOfBusiness", "CompanySecretary",
     "Notification",
     "Activity", "ActivityType", "ActivityStatus",
     "Director", "Shareholder", "UBO", "PartyType", "ShareholderType",

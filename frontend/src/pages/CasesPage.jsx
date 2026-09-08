@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { casesApi, usersApi, accountsApi } from "../api/endpoints";
 import { Icon, Badge, Modal, Field, Input, Select, Textarea, Spinner, ErrorBanner } from "../components/ui";
 import PartyRegisterModal from "../components/PartyRegisterModal";
+import CompanyDetailsModal from "../components/CompanyDetailsModal";
 import { STAGES, STAGE_COLORS, CASE_SOURCE_OPTIONS, JURISDICTION_OPTIONS, SERVICE_TYPE_OPTIONS, fmt } from "../utils/constants";
 
 const NEXT_STAGE = STAGES.reduce((acc, s, i) => {
@@ -23,6 +24,7 @@ export default function CasesPage() {
   const [invoiceCase, setInvoiceCase] = useState(null);
   const [invoiceAmount, setInvoiceAmount] = useState("");
   const [registerCase, setRegisterCase] = useState(null);
+  const [detailsCase, setDetailsCase] = useState(null);
 
   const load = async () => {
     try {
@@ -189,6 +191,10 @@ export default function CasesPage() {
                           className="text-xs px-2 py-0.5 rounded border border-gray-200 hover:border-blue-300 hover:text-blue-600 text-gray-500">
                           Register
                         </button>
+                        <button onClick={() => setDetailsCase(c)}
+                          className="text-xs px-2 py-0.5 rounded border border-gray-200 hover:border-blue-300 hover:text-blue-600 text-gray-500">
+                          Details
+                        </button>
                         {actionLabel(stage) && (
                           <button onClick={() => advance(c)}
                             className="text-xs px-2 py-0.5 rounded border border-gray-200 hover:border-blue-300 hover:text-blue-600 text-gray-500">
@@ -240,8 +246,12 @@ export default function CasesPage() {
                   <td className="py-3 px-4">
                     <div className="flex gap-1">
                       <button onClick={() => setRegisterCase(c)}
-                        className="p-1.5 rounded hover:bg-blue-50 text-gray-400 hover:text-blue-600" title="Directors & Shareholders">
+                        className="p-1.5 rounded hover:bg-blue-50 text-gray-400 hover:text-blue-600" title="Directors, Shareholders & UBOs">
                         <Icon name="accounts" size={14} />
+                      </button>
+                      <button onClick={() => setDetailsCase(c)}
+                        className="p-1.5 rounded hover:bg-blue-50 text-gray-400 hover:text-blue-600" title="Company Details">
+                        <Icon name="compliance" size={14} />
                       </button>
                       <button onClick={() => { setForm(c); setModal("edit"); }}
                         className="p-1.5 rounded hover:bg-blue-50 text-gray-400 hover:text-blue-600">
@@ -286,6 +296,10 @@ export default function CasesPage() {
 
       {registerCase && (
         <PartyRegisterModal caseItem={registerCase} onClose={() => setRegisterCase(null)} />
+      )}
+
+      {detailsCase && (
+        <CompanyDetailsModal caseItem={detailsCase} onClose={() => setDetailsCase(null)} />
       )}
 
       {modal && (

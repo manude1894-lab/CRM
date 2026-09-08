@@ -41,10 +41,11 @@ class Settings(BaseSettings):
     SMTP_FROM_NAME: str = "TRIAM"
     SMTP_USE_TLS: bool = True
 
-    # Compliance cadence (configurable per the DIFC filing calendar)
-    RENEWAL_CADENCE_MONTHS: int = 12
-    COMPLIANCE_FILING_CADENCE_MONTHS: int = 12
-    TAX_FILING_CADENCE_MONTHS: int = 12
+    # Compliance cadence (anchored to the BVI calendar — see case_service)
+    RENEWAL_CADENCE_MONTHS: int = 12          # Annual Licence Fee (incorporation anniversary)
+    ESR_FILING_CADENCE_MONTHS: int = 12       # Economic Substance filing (annual)
+    AR_FILING_CADENCE_MONTHS: int = 12        # Annual Return (fixed 30 September)
+    BO_FILING_DEADLINE_DAYS: int = 30         # ROM/RBO filing after any ownership change
 
     class Config:
         env_file = ".env"

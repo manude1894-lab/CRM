@@ -2,7 +2,12 @@ import React, { useEffect, useState } from "react";
 import { complianceApi } from "../api/endpoints";
 import { Icon, Spinner, ErrorBanner } from "../components/ui";
 
-const ITEM_LABEL = { renewal: "Renewal", compliance_filing: "Compliance Filing", tax_filing: "Tax Filing" };
+const ITEM_LABEL = {
+  renewal: "Annual Licence Fee",
+  esr_filing: "Economic Substance (ESR)",
+  ar_filing: "Annual Return",
+  bo_filing: "BO / ROM-RBO Filing",
+};
 const WINDOWS = [30, 60, 90];
 
 export default function CompliancePage() {
@@ -22,7 +27,10 @@ export default function CompliancePage() {
   useEffect(() => { load(); }, [days]);
 
   const markDone = async (row) => {
-    if (!confirm(`Mark ${ITEM_LABEL[row.item]} for ${row.company_name} as done? This rolls the due date forward.`)) return;
+    const msg = row.item === "bo_filing"
+      ? `Mark the BO / ROM-RBO filing for ${row.company_name} as filed? This clears the deadline.`
+      : `Mark ${ITEM_LABEL[row.item]} for ${row.company_name} as done? This rolls the due date forward.`;
+    if (!confirm(msg)) return;
     try {
       await complianceApi.markDone(row.case_id, row.item);
       load();
@@ -71,9 +79,12 @@ export default function CompliancePage() {
               <tr key={`${r.case_id}-${r.item}-${i}`} className="border-b border-gray-50 hover:bg-gray-50">
                 <td className="py-3 px-4 text-xs font-medium text-gray-800">{r.case_uid}</td>
                 <td className="py-3 px-4 text-xs text-gray-600">{r.company_name}</td>
-                <td className="py-3 px-4 text-xs text-gray-600">{ITEM_LABEL[r.item]}</td>
+                <td className="py-3 px-4 text-xs text-gray-600">
+                  {ITEM_LABEL[r.item] || r.item}
+                  {r.item === "bo_filing" && <span className="ml-1.5 text-xs px-1.5 py-0.5 rounded bg-red-100 text-red-700">30-day</span>}
+                </td>
                 <td className="py-3 px-4 text-xs text-gray-600">{r.due_date}</td>
-                <td className={`py-3 px-4 text-xs text-right font-medium ${r.days_remaining <= 7 ? "text-red-600" : r.days_remaining <= 30 ? "text-amber-600" : "text-gray-600"}`}>
+                <td className={`py-3 px-4 text-xs text-right font-medium ${r.days_remaining <= (r.item === "bo_filing" ? 14 : 7) ? "text-red-600" : r.days_remaining <= 30 ? "text-amber-600" : "text-gray-600"}`}>
                   {r.days_remaining}
                 </td>
                 <td className="py-3 px-4">

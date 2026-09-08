@@ -77,6 +77,29 @@ export const SOURCE_OF_WEALTH_OPTIONS = [
   "Other",
 ];
 
+export const REGISTERED_AGENT_OPTIONS = ["Vistra", "ILS Fiduciary", "Patton, Moreno & Asvat", "Rosemont", "Other"];
+
+export const NAME_CHECK_STATUS_OPTIONS = ["Not Submitted", "Submitted to Vistra", "Name Confirmed", "Rejected"];
+
+export const SOURCE_OF_FUNDS_OPTIONS = ["Shareholder", "Ultimate Beneficial Owner", "Capital injection", "Loan", "Third party"];
+
+export const NATURE_OF_BUSINESS_OPTIONS = [
+  "Investment holding - real estate",
+  "Investment holding - financial assets",
+  "Investment holding - other assets",
+  "Services or product trading",
+  "Other",
+];
+
+export const COMPANY_SECRETARY_OPTIONS = [
+  "None",
+  "Vistra entity",
+  "Same as a director",
+  "Same as the UBO",
+  "Individual (third party)",
+  "Corporate (third party)",
+];
+
 export const INSTRUCTION_STATUS_OPTIONS = ["Pending", "In Progress", "Completed", "On Hold"];
 
 export const INVOICE_LEDGER_STATUS_OPTIONS = ["Draft", "Raised", "Paid", "Overdue"];

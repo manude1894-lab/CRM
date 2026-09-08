@@ -6,7 +6,7 @@ from app.models import Director, Shareholder, UBO, Case, User, UserRole
 from app.schemas.party import (
     DirectorCreate, DirectorUpdate, ShareholderCreate, ShareholderUpdate, UBOCreate, UBOUpdate,
 )
-from app.services import cdd_service
+from app.services import cdd_service, compliance_service
 
 
 def _get_case_for_write(db: Session, case_id: int, user: User) -> Case:
@@ -76,6 +76,7 @@ def create_shareholder(db: Session, case_id: int, data: ShareholderCreate, user:
     db.commit()
     db.refresh(s)
     cdd_service.generate_shareholder_documents(db, s)
+    compliance_service.flag_bo_filing_due(db, case_id)
     return s
 
 
@@ -86,6 +87,7 @@ def update_shareholder(db: Session, shareholder_id: int, data: ShareholderUpdate
         setattr(s, field, value)
     db.commit()
     db.refresh(s)
+    compliance_service.flag_bo_filing_due(db, s.case_id)
     return s
 
 
@@ -115,6 +117,7 @@ def create_ubo(db: Session, case_id: int, data: UBOCreate, user: User) -> UBO:
     db.commit()
     db.refresh(u)
     cdd_service.generate_ubo_documents(db, u)
+    compliance_service.flag_bo_filing_due(db, case_id)
     return u
 
 
@@ -125,6 +128,7 @@ def update_ubo(db: Session, ubo_id: int, data: UBOUpdate, user: User) -> UBO:
         setattr(u, field, value)
     db.commit()
     db.refresh(u)
+    compliance_service.flag_bo_filing_due(db, u.case_id)
     return u
 
 

@@ -96,6 +96,12 @@ export const complianceApi = {
   markDone: (caseId, item) => api.post(`/compliance/${caseId}/mark-done`, { item }).then((r) => r.data),
 };
 
+// ─── Company profile (formation / statutory detail) ────────────────────
+export const companyProfileApi = {
+  get: (caseId) => api.get(`/cases/${caseId}/company-profile`).then((r) => r.data),
+  update: (caseId, data) => api.patch(`/cases/${caseId}/company-profile`, data).then((r) => r.data),
+};
+
 // ─── Notifications ─────────────────────────────────────────────────────
 export const notificationsApi = {
   list: (params = {}) => api.get("/notifications", { params }).then((r) => r.data),

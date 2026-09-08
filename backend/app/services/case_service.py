@@ -23,7 +23,7 @@ from app.models import (
 )
 from app.schemas.case import CaseCreate, CaseUpdate
 from app.utils.uid import next_uid
-from app.services import notification_service
+from app.services import notification_service, company_service, compliance_service
 
 
 def _apply_rbac_filter(query, user: User):
@@ -208,15 +208,19 @@ def _create_compliance_schedule(db: Session, case: Case) -> ComplianceSchedule:
     existing = db.query(ComplianceSchedule).filter(ComplianceSchedule.case_id == case.id).first()
     if existing:
         return existing
-    base = case.license_received_date or date.today()
+    profile = company_service.get_or_create(db, case.id)
+    base = profile.incorporation_date or case.license_received_date or date.today()
     schedule = ComplianceSchedule(
         case_id=case.id,
-        renewal_due_date=base + relativedelta(months=settings.RENEWAL_CADENCE_MONTHS),
+        # Annual Licence Fee — the incorporation anniversary.
+        renewal_due_date=compliance_service.next_anniversary(profile.incorporation_date or base),
         renewal_cadence_months=settings.RENEWAL_CADENCE_MONTHS,
-        compliance_filing_due_date=base + relativedelta(months=settings.COMPLIANCE_FILING_CADENCE_MONTHS),
-        compliance_filing_cadence_months=settings.COMPLIANCE_FILING_CADENCE_MONTHS,
-        tax_filing_due_date=base + relativedelta(months=settings.TAX_FILING_CADENCE_MONTHS),
-        tax_filing_cadence_months=settings.TAX_FILING_CADENCE_MONTHS,
+        # Economic Substance filing — annual (per Vistra portal reminder).
+        esr_filing_due_date=base + relativedelta(months=settings.ESR_FILING_CADENCE_MONTHS),
+        esr_filing_cadence_months=settings.ESR_FILING_CADENCE_MONTHS,
+        # Annual Return — fixed 30 September, effective 2024.
+        ar_filing_due_date=compliance_service.next_30_september(),
+        ar_filing_cadence_months=settings.AR_FILING_CADENCE_MONTHS,
     )
     db.add(schedule)
     db.commit()

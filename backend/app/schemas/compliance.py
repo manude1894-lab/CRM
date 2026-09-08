@@ -1,17 +1,20 @@
 """Pydantic schemas: ComplianceSchedule."""
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from typing import Optional, Literal
 from datetime import date, datetime
+
+ComplianceItem = Literal["renewal", "esr_filing", "ar_filing", "bo_filing"]
 
 
 class ComplianceScheduleUpdate(BaseModel):
     renewal_due_date: Optional[date] = None
-    compliance_filing_due_date: Optional[date] = None
-    tax_filing_due_date: Optional[date] = None
+    esr_filing_due_date: Optional[date] = None
+    ar_filing_due_date: Optional[date] = None
+    bo_filing_due_date: Optional[date] = None
 
 
 class ComplianceMarkDoneRequest(BaseModel):
-    item: Literal["renewal", "compliance_filing", "tax_filing"]
+    item: ComplianceItem
 
 
 class ComplianceScheduleRead(BaseModel):
@@ -20,12 +23,14 @@ class ComplianceScheduleRead(BaseModel):
     renewal_due_date: Optional[date] = None
     renewal_last_completed_date: Optional[date] = None
     renewal_cadence_months: int
-    compliance_filing_due_date: Optional[date] = None
-    compliance_filing_last_completed_date: Optional[date] = None
-    compliance_filing_cadence_months: int
-    tax_filing_due_date: Optional[date] = None
-    tax_filing_last_completed_date: Optional[date] = None
-    tax_filing_cadence_months: int
+    esr_filing_due_date: Optional[date] = None
+    esr_filing_last_completed_date: Optional[date] = None
+    esr_filing_cadence_months: int
+    ar_filing_due_date: Optional[date] = None
+    ar_filing_last_completed_date: Optional[date] = None
+    ar_filing_cadence_months: int
+    bo_filing_due_date: Optional[date] = None
+    bo_filing_last_completed_date: Optional[date] = None
     created_at: datetime
     updated_at: datetime
 
@@ -37,6 +42,6 @@ class UpcomingComplianceItem(BaseModel):
     case_id: int
     case_uid: str
     company_name: str
-    item: Literal["renewal", "compliance_filing", "tax_filing"]
+    item: ComplianceItem
     due_date: date
     days_remaining: int

@@ -22,12 +22,13 @@ from app.models import (
     Instruction, InstructionStatus,
     Invoice, InvoiceLedgerStatus,
     AMLRiskAssessment, AMLSubjectType,
+    CompanyProfile, ComplianceSchedule,
 )
 from app.auth.security import hash_password
 from app.utils.uid import next_uid
 from app.services.case_service import STANDARD_CDD_DOCUMENTS
 from app.services.cdd_service import generate_director_documents, generate_shareholder_documents
-from app.services import aml_matrix, aml_service
+from app.services import aml_matrix, aml_service, compliance_service
 
 DEMO_USERS = [
     {"name": "Shirsendu Mukherjee", "email": "shirsendu@triam.ae", "password": "admin123", "role": UserRole.ADMIN},
@@ -36,7 +37,8 @@ DEMO_USERS = [
     {"name": "Swathi", "email": "swathi@triam.ae", "password": "screen123", "role": UserRole.SCREENING},
 ]
 
-# Real BVI entities from Triam's Instruction Tracker (Annexure 7).
+# Real BVI entities from Triam's Instruction Tracker (Annexure 7), with the actual
+# incorporation dates from the "Active RELs" sheet.
 ENTITIES = [
     "NAV Holdings Limited",
     "Kelca Investments",
@@ -54,6 +56,28 @@ ENTITIES = [
     "Vogacloset Shareholders Limited",
     "Melton Park Ltd",
 ]
+
+INCORP_DATES = {
+    "NAV Holdings Limited": date(2020, 10, 6),
+    "Kelca Investments": date(2021, 5, 31),
+    "Axiom Investments": date(2021, 4, 29),
+    "Castle Noble Holdings Limited": date(2017, 4, 28),
+    "Bluegold Holdings Limited": date(2019, 9, 9),
+    "Horizon Investments DXB": date(2024, 5, 21),
+    "Shreenath Ji Holdings LTD": date(2019, 6, 20),
+    "Oxford Bridge Holdings Limited": date(2019, 7, 23),
+    "Al Tayseer Group": date(2022, 5, 17),
+    "Le Couche Soleil Holdings Limited": date(2021, 11, 16),
+    "DRS Investment Limited": date(2024, 10, 3),
+    "Century Capital Advisors Ltd": date(2023, 2, 16),
+    "Bisley Capital Ltd": date(2019, 5, 6),
+    "Vogacloset Shareholders Limited": date(2021, 3, 23),
+    "Melton Park Ltd": date(2013, 9, 24),
+}
+
+REGISTERED_AGENTS = {
+    "Melton Park Ltd": "ILS Fiduciary",  # Mr Soltan's entities — transferring to Vistra
+}
 
 # Entities still mid-pipeline (from the tracker's "On hold" / new-formation rows),
 # shown at earlier CRM stages so the Cases Kanban isn't flat "all Active".
@@ -208,6 +232,34 @@ def seed(db: Session, force: bool = False):
         db.flush()
         for doc_type in STANDARD_CDD_DOCUMENTS:
             db.add(CaseDocument(cdd_record_id=cdd.id, doc_type=doc_type, received=True, received_date=date(2023, 1, 1)))
+
+        incorp = INCORP_DATES.get(name)
+        db.add(CompanyProfile(
+            case_id=case.id,
+            registered_agent=REGISTERED_AGENTS.get(name, "Vistra"),
+            incorporation_date=incorp,
+            company_number=None,
+            name_check_status="Name Confirmed",
+            authorised_shares=50000, par_value=Decimal("1.0000"), share_currency="USD",
+            source_of_funds="Ultimate Beneficial Owner",
+            nature_of_business="Investment holding - financial assets",
+            company_secretary="None",
+            es_financial_year_end="12-31", accounting_financial_year_end="12-31",
+            act_certificate_of_incorporation=True, act_memorandum_articles=True,
+            act_register_of_members=True, act_register_of_directors_stamped=True,
+            act_company_stamp=True,
+            activation_docs_received_date=incorp,
+        ))
+        db.flush()
+
+        # Anchored compliance schedule (these entities are already Active).
+        base = incorp or case.license_received_date
+        db.add(ComplianceSchedule(
+            case_id=case.id,
+            renewal_due_date=compliance_service.next_anniversary(incorp) if incorp else None,
+            esr_filing_due_date=compliance_service.next_30_september(),
+            ar_filing_due_date=compliance_service.next_30_september(),
+        ))
     db.commit()
 
     print("-> Adding mid-pipeline entities (Kanban variety)...")

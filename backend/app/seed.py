@@ -182,8 +182,8 @@ def seed(db: Session, force: bool = False):
             db.add(ComplianceSchedule(
                 case_id=case.id,
                 renewal_due_date=days_from_now(c["renewal_in"]),
-                compliance_filing_due_date=days_from_now(c["compliance_in"]),
-                tax_filing_due_date=days_from_now(c["tax_in"]),
+                esr_filing_due_date=days_from_now(c["compliance_in"]),
+                ar_filing_due_date=days_from_now(c["tax_in"]),
             ))
 
     db.commit()
