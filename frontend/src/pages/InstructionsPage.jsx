@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { instructionsApi, casesApi, invoicesApi } from "../api/endpoints";
 import { Icon, Badge, Modal, Field, Input, Select, Textarea, Spinner, ErrorBanner } from "../components/ui";
+import DocumentsPanel from "../components/DocumentsPanel";
 import { INSTRUCTION_STATUS_OPTIONS, INSTRUCTION_TYPE_OPTIONS, fmtFull } from "../utils/constants";
 
 const emptyForm = (cases) => ({
@@ -228,6 +229,14 @@ export default function InstructionsPage() {
             </Field>
           </div>
           <Field label="Comments"><Textarea value={form.comments || ""} onChange={(e) => setForm((p) => ({ ...p, comments: e.target.value }))} /></Field>
+
+          {modal === "edit" && form.id && (
+            <div className="border-t border-gray-100 pt-3 mb-1">
+              <p className="text-xs font-semibold text-gray-600 mb-2">Attachments <span className="text-gray-400 font-normal">· issued docs, filed-return confirmations</span></p>
+              <DocumentsPanel caseId={Number(form.case_id)} scope={{ instruction_id: form.id }} defaultCategory="Filed Return / Confirmation" />
+            </div>
+          )}
+
           <div className="flex justify-end gap-3 mt-4">
             <button onClick={() => setModal(null)} className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
             <button onClick={save} className="px-4 py-2 text-sm text-white rounded-lg" style={{ background: "#2B6D9A" }}>Save</button>

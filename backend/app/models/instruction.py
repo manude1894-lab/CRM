@@ -52,3 +52,4 @@ class Instruction(Base):
 
     case = relationship("Case", back_populates="instructions")
     invoice = relationship("Invoice", back_populates="instructions")
+    attachments = relationship("Document", back_populates="instruction")

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { companyProfileApi } from "../api/endpoints";
 import { Modal, Field, Input, Select, Textarea, Spinner, ErrorBanner } from "./ui";
+import DocumentsPanel from "./DocumentsPanel";
 import {
   REGISTERED_AGENT_OPTIONS, NAME_CHECK_STATUS_OPTIONS, SOURCE_OF_FUNDS_OPTIONS,
   NATURE_OF_BUSINESS_OPTIONS, COMPANY_SECRETARY_OPTIONS,
@@ -127,6 +128,11 @@ export default function CompanyDetailsModal({ caseItem, onClose }) {
               ))}
             </div>
             <Field label="Activation Docs Received Date"><Input type="date" value={form.activation_docs_received_date || ""} onChange={set("activation_docs_received_date")} /></Field>
+          </Section>
+
+          <Section title="Attachments">
+            <DocumentsPanel caseId={caseItem.id} scope={null} defaultCategory="Activation Document" />
+            <p className="text-[11px] text-gray-400 mt-1">Activation docs (CI, MOA, stamped ROD, ROM), the reference letter, the KYC form and other corporate documents — pick the category on upload.</p>
           </Section>
 
           <div className="flex justify-end gap-3 pt-1">

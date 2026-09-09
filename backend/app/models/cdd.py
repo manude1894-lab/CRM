@@ -71,3 +71,4 @@ class CaseDocument(Base):
     director = relationship("Director")
     shareholder = relationship("Shareholder")
     ubo = relationship("UBO")
+    attachments = relationship("Document", back_populates="case_document")

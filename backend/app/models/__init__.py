@@ -25,6 +25,7 @@ from app.models.instruction import Instruction, InstructionStatus
 from app.models.invoice import Invoice, InvoiceLedgerStatus
 from app.models.country_risk import CountryRisk
 from app.models.aml import AMLRiskAssessment, AMLSubjectType
+from app.models.document import Document, DocumentCategory
 
 __all__ = [
     "User", "UserRole",
@@ -42,4 +43,5 @@ __all__ = [
     "Invoice", "InvoiceLedgerStatus",
     "CountryRisk",
     "AMLRiskAssessment", "AMLSubjectType",
+    "Document", "DocumentCategory",
 ]

@@ -131,3 +131,4 @@ class Case(Base):
     instructions = relationship("Instruction", back_populates="case", cascade="all, delete-orphan", order_by="Instruction.id.desc()")
     invoices = relationship("Invoice", back_populates="case", cascade="all, delete-orphan", order_by="Invoice.id.desc()")
     aml_assessments = relationship("AMLRiskAssessment", back_populates="case", cascade="all, delete-orphan", order_by="AMLRiskAssessment.id.desc()")
+    documents = relationship("Document", back_populates="case", cascade="all, delete-orphan", order_by="Document.id.desc()")

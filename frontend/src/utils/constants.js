@@ -100,6 +100,17 @@ export const COMPANY_SECRETARY_OPTIONS = [
   "Corporate (third party)",
 ];
 
+export const DOCUMENT_CATEGORY_OPTIONS = [
+  "CDD",
+  "Activation Document",
+  "Reference Letter",
+  "Structure Chart",
+  "Corporate Document",
+  "KYC Form",
+  "Filed Return / Confirmation",
+  "Other",
+];
+
 export const INSTRUCTION_STATUS_OPTIONS = ["Pending", "In Progress", "Completed", "On Hold"];
 
 export const INVOICE_LEDGER_STATUS_OPTIONS = ["Draft", "Raised", "Paid", "Overdue"];

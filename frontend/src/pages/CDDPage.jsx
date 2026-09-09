@@ -3,6 +3,7 @@ import { casesApi, cddApi, directorsApi, shareholdersApi, ubosApi } from "../api
 import { useAuthStore } from "../store/auth";
 import { Icon, Badge, Modal, Field, Input, Select, Spinner, ErrorBanner } from "../components/ui";
 import AMLAssessmentPanel from "../components/AMLAssessmentPanel";
+import DocumentsPanel from "../components/DocumentsPanel";
 import { DOCUMENT_STATUS_OPTIONS, AML_RISK_OPTIONS } from "../utils/constants";
 
 const directorName = (d) => d.director_type === "Corporate"
@@ -24,6 +25,7 @@ export default function CDDPage() {
   const [directors, setDirectors] = useState([]);
   const [shareholders, setShareholders] = useState([]);
   const [ubos, setUbos] = useState([]);
+  const [openAttach, setOpenAttach] = useState(null);
 
   const load = async () => {
     try {
@@ -218,15 +220,28 @@ export default function CDDPage() {
                           ) : (
                             <div className="space-y-1.5">
                               {g.docs.map((doc) => (
-                                <div key={doc.id} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
-                                  <div className="flex items-center gap-2">
-                                    <button onClick={() => toggleReceived(doc)}
-                                      className={`w-5 h-5 rounded border flex items-center justify-center flex-shrink-0 ${doc.received ? "bg-emerald-500 border-emerald-500 text-white" : "border-gray-300"}`}>
-                                      {doc.received && <Icon name="check" size={12} />}
-                                    </button>
-                                    <span className="text-xs text-gray-700">{doc.doc_type}</span>
+                                <div key={doc.id} className="bg-gray-50 rounded-lg">
+                                  <div className="flex items-center justify-between p-2">
+                                    <div className="flex items-center gap-2">
+                                      <button onClick={() => toggleReceived(doc)}
+                                        className={`w-5 h-5 rounded border flex items-center justify-center flex-shrink-0 ${doc.received ? "bg-emerald-500 border-emerald-500 text-white" : "border-gray-300"}`}>
+                                        {doc.received && <Icon name="check" size={12} />}
+                                      </button>
+                                      <span className="text-xs text-gray-700">{doc.doc_type}</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 ml-2">
+                                      <button onClick={() => setOpenAttach(openAttach === doc.id ? null : doc.id)}
+                                        className={`flex items-center gap-1 text-xs ${(doc.attachments?.length || 0) > 0 ? "text-blue-600" : "text-gray-400"} hover:text-blue-600`}>
+                                        <Icon name="download" size={12} /> {doc.attachments?.length || 0}
+                                      </button>
+                                      <span className="text-xs text-gray-400 whitespace-nowrap">{doc.received_date || "Pending"}</span>
+                                    </div>
                                   </div>
-                                  <span className="text-xs text-gray-400 whitespace-nowrap ml-2">{doc.received_date || "Pending"}</span>
+                                  {openAttach === doc.id && (
+                                    <div className="px-2 pb-2">
+                                      <DocumentsPanel caseId={selected.id} scope={{ case_document_id: doc.id }} compact onChange={load} />
+                                    </div>
+                                  )}
                                 </div>
                               ))}
                             </div>
@@ -251,6 +266,11 @@ export default function CDDPage() {
                   ...ubos.map((u) => ({ id: u.id, _kind: "UBO", _label: [u.first_name, u.middle_name, u.last_name].filter(Boolean).join(" ") || "UBO" })),
                 ]}
               />
+
+              <div className="border-t border-gray-100 pt-4">
+                <p className="text-xs font-semibold text-gray-600 mb-2">Case Documents <span className="text-gray-400 font-normal">· not tied to a checklist item</span></p>
+                <DocumentsPanel caseId={selected.id} scope={null} onChange={load} />
+              </div>
             </div>
           )}
         </div>

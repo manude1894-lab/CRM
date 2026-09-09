@@ -330,6 +330,30 @@ def seed(db: Session, force: bool = False):
     generate_ubo_documents(db, cnh_ubo)
     db.commit()
 
+    print("-> Attaching a sample document...")
+    from app.models import Document, CaseDocument as _CD
+    _sample = (
+        b"%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n"
+        b"2 0 obj<</Type/Pages/Kids[]/Count 0>>endobj\n"
+        b"trailer<</Root 1 0 R>>\n%%EOF\n"
+    )
+    _ubo_passport_item = (
+        db.query(_CD)
+        .filter(_CD.ubo_id == cnh_ubo.id, _CD.doc_type.like("Passport%"))
+        .first()
+    )
+    if _ubo_passport_item:
+        db.add(Document(
+            case_id=cnh_case.id, case_document_id=_ubo_passport_item.id,
+            category="CDD", filename="Elena_Volkova_passport.pdf",
+            content_type="application/pdf", size_bytes=len(_sample), content=_sample,
+            uploaded_by_id=users_by_name["Swathi"].id,
+            notes="Certified true copy — certified by Kalyan S., 2024-01-10",
+        ))
+        _ubo_passport_item.received = True
+        _ubo_passport_item.received_date = date(2024, 1, 10)
+        db.commit()
+
     print("-> Adding sample AML risk assessments...")
     _country_lu = aml_service._country_lookup(db)
     screening_user = users_by_name["Swathi"]

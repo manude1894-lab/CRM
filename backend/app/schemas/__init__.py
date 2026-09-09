@@ -14,6 +14,7 @@ from app.schemas.compliance import (
     ComplianceScheduleRead, ComplianceScheduleUpdate, ComplianceMarkDoneRequest, UpcomingComplianceItem,
 )
 from app.schemas.company_profile import CompanyProfileRead, CompanyProfileUpdate
+from app.schemas.document import DocumentRead
 from app.schemas.notification import NotificationRead
 from app.schemas.activity import ActivityCreate, ActivityRead, ActivityUpdate
 from app.schemas.dashboard import DashboardResponse, KPISummary, StageBreakdown
@@ -37,6 +38,7 @@ __all__ = [
     "CDDRecordRead", "CDDRecordUpdate", "CDDReviewRequest",
     "ComplianceScheduleRead", "ComplianceScheduleUpdate", "ComplianceMarkDoneRequest", "UpcomingComplianceItem",
     "CompanyProfileRead", "CompanyProfileUpdate",
+    "DocumentRead",
     "NotificationRead",
     "ActivityCreate", "ActivityRead", "ActivityUpdate",
     "DashboardResponse", "KPISummary", "StageBreakdown",

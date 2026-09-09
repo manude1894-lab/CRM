@@ -41,6 +41,9 @@ class Settings(BaseSettings):
     SMTP_FROM_NAME: str = "TRIAM"
     SMTP_USE_TLS: bool = True
 
+    # Uploads
+    MAX_UPLOAD_MB: int = 10
+
     # Compliance cadence (anchored to the BVI calendar — see case_service)
     RENEWAL_CADENCE_MONTHS: int = 12          # Annual Licence Fee (incorporation anniversary)
     ESR_FILING_CADENCE_MONTHS: int = 12       # Economic Substance filing (annual)

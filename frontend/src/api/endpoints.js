@@ -102,6 +102,25 @@ export const companyProfileApi = {
   update: (caseId, data) => api.patch(`/cases/${caseId}/company-profile`, data).then((r) => r.data),
 };
 
+// ─── Documents (uploaded files) ───────────────────────────────────────
+export const documentsApi = {
+  list: (caseId) => api.get(`/cases/${caseId}/documents`).then((r) => r.data),
+  upload: (caseId, formData) =>
+    api.post(`/cases/${caseId}/documents`, formData, { headers: { "Content-Type": undefined } }).then((r) => r.data),
+  remove: (id) => api.delete(`/documents/${id}`),
+  download: async (id, filename) => {
+    const res = await api.get(`/documents/${id}/download`, { responseType: "blob" });
+    const url = window.URL.createObjectURL(new Blob([res.data]));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename || `document-${id}`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
+  },
+};
+
 // ─── Notifications ─────────────────────────────────────────────────────
 export const notificationsApi = {
   list: (params = {}) => api.get("/notifications", { params }).then((r) => r.data),

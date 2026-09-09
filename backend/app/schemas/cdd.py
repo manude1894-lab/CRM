@@ -4,6 +4,7 @@ from typing import Optional, List
 from datetime import date, datetime
 
 from app.models.cdd import DocumentStatus, AMLRiskRating
+from app.schemas.document import DocumentRead
 
 
 class CaseDocumentBase(BaseModel):
@@ -27,6 +28,8 @@ class CaseDocumentRead(CaseDocumentBase):
     cdd_record_id: int
     director_id: Optional[int] = None
     shareholder_id: Optional[int] = None
+    ubo_id: Optional[int] = None
+    attachments: List[DocumentRead] = []
     created_at: datetime
     updated_at: datetime
 
