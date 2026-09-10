@@ -3,7 +3,7 @@ import { directorsApi, shareholdersApi, ubosApi, amlApi } from "../api/endpoints
 import { Icon, Modal, Field, Input, Select, Textarea, Spinner, ErrorBanner } from "./ui";
 import {
   PARTY_TYPE_OPTIONS, SHAREHOLDER_TYPE_OPTIONS, OWNERSHIP_NATURE_OPTIONS, SOURCE_OF_WEALTH_OPTIONS,
-  ENTITY_DETAIL_TYPE_OPTIONS, CHARGE_STATUS_OPTIONS,
+  ENTITY_DETAIL_TYPE_OPTIONS, CHARGE_STATUS_OPTIONS, DIRECTOR_ROLE_OPTIONS,
 } from "../utils/constants";
 
 const emptyAppendixA = {
@@ -14,6 +14,7 @@ const emptyAppendixA = {
 
 const emptyDirector = {
   director_type: "Individual",
+  director_role: "Director",
   first_name: "", middle_name: "", last_name: "", former_name: "",
   date_of_birth: "", place_of_birth: "", nationality: "", passport_number: "",
   corporate_name: "", corporate_number: "", country_of_incorporation: "", corporate_date_of_incorporation: "",
@@ -29,7 +30,7 @@ const emptyShareholder = {
   name: "", corporate_number: "", country_of_incorporation: "",
   entity_details: {},
   registered_address: "", city: "", country: "",
-  certificate_no: "", number_of_shares: "", share_class: "", shareholding_percent: "",
+  certificate_no: "", number_of_shares: "", share_class: "", shareholding_percent: "", consideration_paid: "",
   is_joint_shareholder: false, is_nominee: false, nominee_holds_for: "",
   nominator_name: "", nominator_address: "", nominator_relationship: "", nominee_agreement_date: "",
   charges: [],
@@ -368,11 +369,18 @@ function ChargesEditor({ value = [], onChange }) {
 function DirectorForm({ form, setForm, onCancel, onSave }) {
   return (
     <div className="space-y-1">
-      <Field label="Director Type">
-        <Select value={form.director_type} onChange={set(setForm, "director_type")}>
-          {PARTY_TYPE_OPTIONS.map((o) => <option key={o}>{o}</option>)}
-        </Select>
-      </Field>
+      <div className="grid grid-cols-2 gap-x-3">
+        <Field label="Director Type">
+          <Select value={form.director_type} onChange={set(setForm, "director_type")}>
+            {PARTY_TYPE_OPTIONS.map((o) => <option key={o}>{o}</option>)}
+          </Select>
+        </Field>
+        <Field label="Role">
+          <Select value={form.director_role || "Director"} onChange={set(setForm, "director_role")}>
+            {DIRECTOR_ROLE_OPTIONS.map((o) => <option key={o}>{o}</option>)}
+          </Select>
+        </Field>
+      </div>
       {form.director_type === "Individual" ? (
         <div className="grid grid-cols-3 gap-x-3">
           <Field label="First Name"><Input value={form.first_name || ""} onChange={set(setForm, "first_name")} /></Field>
@@ -433,6 +441,7 @@ function ShareholderForm({ form, setForm, onCancel, onSave }) {
         <Field label="Number of Shares"><Input type="number" min="0" value={form.number_of_shares ?? ""} onChange={set(setForm, "number_of_shares")} /></Field>
         <Field label="Share Class"><Input value={form.share_class || ""} onChange={set(setForm, "share_class")} /></Field>
         <Field label="Shareholding %"><Input type="number" min="0" max="100" step="0.01" value={form.shareholding_percent ?? ""} onChange={set(setForm, "shareholding_percent")} /></Field>
+        <Field label="Consideration Paid"><Input type="number" min="0" step="0.01" value={form.consideration_paid ?? ""} onChange={set(setForm, "consideration_paid")} placeholder="amount paid for the shares" /></Field>
         <Field label="Date Entered"><Input type="date" value={form.date_entered || ""} onChange={set(setForm, "date_entered")} /></Field>
         <Field label="Date Ceased"><Input type="date" value={form.date_ceased || ""} onChange={set(setForm, "date_ceased")} /></Field>
       </div>

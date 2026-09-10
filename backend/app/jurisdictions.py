@@ -28,6 +28,7 @@ class JurisdictionSpec:
     law_short: str
     strike_off_years: int
     rod_filing_days: int
+    bo_filing_days: int
     compliance_items: tuple
     restoration_checklist: tuple   # ((key, label), ...)
     closure_methods: tuple
@@ -76,6 +77,7 @@ _BVI = JurisdictionSpec(
     law_short="British Virgin Islands law",
     strike_off_years=7,
     rod_filing_days=21,
+    bo_filing_days=14,  # to the registered agent (Registry filing follows within 30 days)
     compliance_items=(
         ComplianceItemSpec("renewal", "Annual Licence Fee renewal", "anniversary", 12, (60, 30, 7)),
         ComplianceItemSpec("esr_filing", "Economic Substance (ESR) filing", "annual", 12, (30, 7)),
@@ -94,6 +96,7 @@ _GENERIC = JurisdictionSpec(
     law_short="the laws of the jurisdiction of incorporation",
     strike_off_years=7,
     rod_filing_days=21,
+    bo_filing_days=30,
     compliance_items=(
         ComplianceItemSpec("renewal", "Annual renewal / licence fee", "anniversary", 12, (60, 30, 7)),
         ComplianceItemSpec("esr_filing", "Economic substance filing", "annual", 12, (30, 7)),

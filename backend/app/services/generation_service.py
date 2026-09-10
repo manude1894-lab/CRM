@@ -210,6 +210,28 @@ def _pf_change_director(ctx: dict) -> dict:
     return {"director_name": "", "action": "Appointed", "effective_date": date.today().isoformat()}
 
 
+def _b_first_board(p: dict, ctx: dict):
+    s = ctx["spec"]
+    ra = p.get("registered_agent") or _ra(ctx)
+    directors = ", ".join(_director_names(ctx)) or "the first director(s) named in the incorporation application"
+    return _resolution(
+        ctx, "Written Resolutions of the First Director(s) — Incorporation Matters",
+        ["The following resolutions are adopted by the first director(s) of the Company on incorporation."],
+        [f"The Memorandum and Articles of Association of the Company be and are hereby adopted.",
+         f"{directors} be and is/are confirmed as the first director(s) of the Company.",
+         "The initial shares of the Company be allotted and issued as set out in the Register of Members, "
+         "and the corresponding share certificate(s) be issued.",
+         f"{ra} be and is hereby appointed as the registered agent of the Company and its offices as the "
+         "registered office of the Company.",
+         f"The registered agent be authorised to file the Register of Directors with the {s.registry_name} "
+         f"within {s.rod_filing_days} days of the appointment of the first director(s)."],
+        "Resolution_First_Board", p.get("meeting_date"))
+
+
+def _pf_first_board(ctx: dict) -> dict:
+    return {"registered_agent": _ra(ctx), "meeting_date": date.today().isoformat()}
+
+
 def _b_change_shareholding(p: dict, ctx: dict):
     transferor = p.get("transferor") or ""
     transferee = p.get("transferee") or ""
@@ -299,6 +321,14 @@ TEMPLATE_CATALOG = [
             {"key": "records_location", "label": "Records location", "type": _TXT},
             {"key": "record_keeper", "label": "Record keeper", "type": _TXT},
             {"key": "effective_date", "label": "Resolution date", "type": _DT},
+        ],
+    },
+    {
+        "code": "resolution_first_board", "label": "Resolution — First Board / Incorporation",
+        "category": "Corporate Document", "builder": _b_first_board, "prefill": _pf_first_board,
+        "fields": [
+            {"key": "registered_agent", "label": "Registered agent", "type": _TXT},
+            {"key": "meeting_date", "label": "Meeting date", "type": _DT},
         ],
     },
     {

@@ -12,6 +12,8 @@ class CaseDocumentBase(BaseModel):
     received: bool = False
     received_date: Optional[date] = None
     expiry_date: Optional[date] = None
+    waived: bool = False
+    waived_reason: Optional[str] = None
 
 
 class CaseDocumentCreate(CaseDocumentBase):
@@ -23,6 +25,8 @@ class CaseDocumentUpdate(BaseModel):
     received: Optional[bool] = None
     received_date: Optional[date] = None
     expiry_date: Optional[date] = None
+    waived: Optional[bool] = None
+    waived_reason: Optional[str] = None
 
 
 class CaseDocumentRead(CaseDocumentBase):

@@ -64,6 +64,10 @@ class CaseDocument(Base):
     received = Column(Boolean, default=False, nullable=False)
     received_date = Column(Date, nullable=True)
     expiry_date = Column(Date, nullable=True)  # e.g. passport / ID expiry — RM-entered
+    # KYC Appendix C: a professional introducer (Triam) need not provide supporting
+    # evidence unless the registered agent asks — such items can be waived.
+    waived = Column(Boolean, default=False, nullable=False)
+    waived_reason = Column(String(255), nullable=True)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

@@ -79,6 +79,7 @@ class FormationRecord(Base):
     # ─── §V formation milestones ──────────────────────────────────────
     kyc_pack_sent_date = Column(Date, nullable=True)
     data_input_sheet_sent_date = Column(Date, nullable=True)
+    first_board_meeting_date = Column(Date, nullable=True)  # first directors' meeting / incorporation resolutions
     incorporation_submitted_date = Column(Date, nullable=True)
     rod_filed_date = Column(Date, nullable=True)  # Register of Directors — filed within 21 days
     registers_completed_date = Column(Date, nullable=True)  # VIRRGIN upload done

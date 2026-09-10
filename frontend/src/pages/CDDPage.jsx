@@ -107,6 +107,29 @@ export default function CDDPage() {
     }
   };
 
+  const toggleWaived = async (doc) => {
+    try {
+      await cddApi.updateDocument(doc.id, {
+        waived: !doc.waived,
+        waived_reason: !doc.waived ? "Professional introducer — evidence not required unless requested by the registered agent" : null,
+      });
+      load();
+    } catch (e) {
+      alert(e.response?.data?.detail || "Update failed");
+    }
+  };
+
+  const applyIntroducerExemption = async () => {
+    if (!selected) return;
+    if (!confirm("Waive the per-party CDD evidence (passport / address proof) under the professional-introducer exemption? Appendix A forms and company documents stay required.")) return;
+    try {
+      await cddApi.applyIntroducerExemption(selected.id);
+      load();
+    } catch (e) {
+      alert(e.response?.data?.detail || "Failed to apply exemption");
+    }
+  };
+
   const submitReview = async (approve) => {
     try {
       await cddApi.review(selected.id, { approve, rejection_reason: approve ? null : rejectionReason });
@@ -159,10 +182,17 @@ export default function CDDPage() {
                   <p className="text-xs text-gray-400">{selected.case_uid}</p>
                 </div>
                 {canReview && (
-                  <button onClick={() => setReviewModal(true)}
-                    className="px-3 py-1.5 text-xs text-white rounded-lg" style={{ background: "#2B6D9A" }}>
-                    Review CDD/KYC
-                  </button>
+                  <div className="flex gap-2">
+                    <button onClick={applyIntroducerExemption}
+                      className="px-3 py-1.5 text-xs border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600"
+                      title="Vistra KYC Appendix C — a professional introducer need not provide supporting evidence unless the RA asks">
+                      Apply introducer exemption
+                    </button>
+                    <button onClick={() => setReviewModal(true)}
+                      className="px-3 py-1.5 text-xs text-white rounded-lg" style={{ background: "#2B6D9A" }}>
+                      Review CDD/KYC
+                    </button>
+                  </div>
                 )}
               </div>
 
@@ -238,14 +268,21 @@ export default function CDDPage() {
                           ) : (
                             <div className="space-y-1.5">
                               {g.docs.map((doc) => (
-                                <div key={doc.id} className="bg-gray-50 rounded-lg">
+                                <div key={doc.id} className={`rounded-lg ${doc.waived ? "bg-gray-100" : "bg-gray-50"}`}>
                                   <div className="flex items-center justify-between p-2">
                                     <div className="flex items-center gap-2">
-                                      <button onClick={() => toggleReceived(doc)}
-                                        className={`w-5 h-5 rounded border flex items-center justify-center flex-shrink-0 ${doc.received ? "bg-emerald-500 border-emerald-500 text-white" : "border-gray-300"}`}>
+                                      <button onClick={() => toggleReceived(doc)} disabled={doc.waived}
+                                        className={`w-5 h-5 rounded border flex items-center justify-center flex-shrink-0 ${doc.received ? "bg-emerald-500 border-emerald-500 text-white" : doc.waived ? "border-gray-200 bg-gray-100" : "border-gray-300"}`}>
                                         {doc.received && <Icon name="check" size={12} />}
                                       </button>
-                                      <span className="text-xs text-gray-700">{doc.doc_type}</span>
+                                      <span className={`text-xs ${doc.waived ? "text-gray-400 line-through" : "text-gray-700"}`}>{doc.doc_type}</span>
+                                      {doc.waived && <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-200 text-gray-500" title={doc.waived_reason || ""}>waived</span>}
+                                      {canReview && !doc.received && (doc.director_id || doc.shareholder_id || doc.ubo_id) && (
+                                        <button onClick={() => toggleWaived(doc)}
+                                          className="text-[10px] text-gray-400 hover:text-blue-600 underline">
+                                          {doc.waived ? "un-waive" : "waive"}
+                                        </button>
+                                      )}
                                     </div>
                                     <div className="flex items-center gap-2 ml-2">
                                       {(() => {

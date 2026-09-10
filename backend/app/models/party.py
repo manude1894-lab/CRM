@@ -50,6 +50,8 @@ class Director(Base):
     case_id = Column(Integer, ForeignKey("cases.id", ondelete="CASCADE"), nullable=False, index=True)
 
     director_type = Column(String(20), default=PartyType.INDIVIDUAL.value, nullable=False)
+    # VIRRGIN director role — a separate axis from director_type.
+    director_role = Column(String(20), default="Director", nullable=False)  # Director / Alternate Director / Reserve Director
 
     # Individual director
     first_name = Column(String(150), nullable=True)
@@ -129,6 +131,7 @@ class Shareholder(Base):
     number_of_shares = Column(Integer, nullable=True)
     share_class = Column(String(50), nullable=True)
     shareholding_percent = Column(Numeric(5, 2), nullable=True)
+    consideration_paid = Column(Numeric(14, 2), nullable=True)  # amount paid for the shares (Data Input Sheet)
 
     is_joint_shareholder = Column(Boolean, default=False, nullable=False)
     is_nominee = Column(Boolean, default=False, nullable=False)

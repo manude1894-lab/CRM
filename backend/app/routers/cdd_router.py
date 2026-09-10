@@ -36,6 +36,12 @@ def review_cdd(case_id: int, data: CDDReviewRequest, db: Session = Depends(get_d
     return cdd_service.review_cdd(db, case_id, data, user)
 
 
+@router.post("/{case_id}/apply-introducer-exemption", response_model=CDDRecordRead,
+             summary="Waive per-party CDD evidence under the professional-introducer exemption")
+def apply_introducer_exemption(case_id: int, db: Session = Depends(get_db), user: User = Depends(require_screening)):
+    return cdd_service.apply_introducer_exemption(db, case_id)
+
+
 @router.post("/{case_id}/documents", response_model=CaseDocumentRead, status_code=status.HTTP_201_CREATED)
 def add_document(case_id: int, data: CaseDocumentCreate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     return cdd_service.add_document(db, case_id, data)

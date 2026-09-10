@@ -33,6 +33,7 @@ class FormationRecordUpdate(BaseModel):
     # §V formation milestones
     kyc_pack_sent_date: Optional[date] = None
     data_input_sheet_sent_date: Optional[date] = None
+    first_board_meeting_date: Optional[date] = None
     incorporation_submitted_date: Optional[date] = None
     rod_filed_date: Optional[date] = None
     registers_completed_date: Optional[date] = None

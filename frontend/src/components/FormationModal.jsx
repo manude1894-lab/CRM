@@ -14,6 +14,7 @@ const cleanPayload = (obj) => Object.fromEntries(
 const MILESTONES = [
   ["kyc_pack_sent_date", "KYC pack sent to Vistra"],
   ["data_input_sheet_sent_date", "Data Input Sheet sent"],
+  ["first_board_meeting_date", "First board meeting / resolutions"],
   ["incorporation_submitted_date", "Incorporation submitted"],
   ["rod_filed_date", "Register of Directors filed (21-day rule)"],
   ["registers_completed_date", "Registers completed (VIRRGIN)"],

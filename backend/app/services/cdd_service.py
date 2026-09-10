@@ -72,6 +72,28 @@ def review_cdd(db: Session, case_id: int, data: CDDReviewRequest, user: User) ->
     return cdd
 
 
+_INTRODUCER_WAIVE_REASON = (
+    "Professional introducer — supporting evidence not required unless requested "
+    "by the registered agent (Vistra KYC Appendix C)."
+)
+
+
+def apply_introducer_exemption(db: Session, case_id: int) -> CDDRecord:
+    """Vistra KYC Appendix C: a professional introducer (Triam) need not provide the
+    per-party supporting evidence (passport, address proof) unless the RA asks. Waive
+    those checklist items; keep the Appendix A forms and company-level items required."""
+    cdd = get_cdd_record(db, case_id)
+    for doc in cdd.documents:
+        party_linked = doc.director_id or doc.shareholder_id or doc.ubo_id
+        is_appendix_a = "appendix a" in doc.doc_type.lower()
+        if party_linked and not is_appendix_a and not doc.received and not doc.waived:
+            doc.waived = True
+            doc.waived_reason = _INTRODUCER_WAIVE_REASON
+    db.commit()
+    db.refresh(cdd)
+    return cdd
+
+
 def add_document(db: Session, case_id: int, data: CaseDocumentCreate) -> CaseDocument:
     cdd = get_cdd_record(db, case_id)
     doc = CaseDocument(cdd_record_id=cdd.id, **data.model_dump())

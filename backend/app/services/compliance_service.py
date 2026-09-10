@@ -235,17 +235,18 @@ def flag_bo_filing_due(db: Session, case_id: int) -> None:
     schedule = db.query(ComplianceSchedule).filter(ComplianceSchedule.case_id == case_id).first()
     if not schedule:
         return
-    new_due = date.today() + timedelta(days=settings.BO_FILING_DEADLINE_DAYS)
+    case = db.query(Case).filter(Case.id == case_id).first()
+    days = jurisdictions.get(case.jurisdiction if case else None).bo_filing_days
+    new_due = date.today() + timedelta(days=days)
     # Don't push an already-closer deadline further out.
     if schedule.bo_filing_due_date and schedule.bo_filing_due_date <= new_due:
         return
     schedule.bo_filing_due_date = new_due
     db.commit()
 
-    case = db.query(Case).filter(Case.id == case_id).first()
     if case:
         msg = (f"Ownership change on {case.case_uid} ({case.company_name}) — "
-               f"ROM/RBO filing due by {new_due}.")
+               f"ROM/RBO filing due by {new_due} (to the registered agent).")
         notification_service.notify_role(db, UserRole.OPS, msg, "bo_filing_flagged",
                                          link=f"/compliance/{case_id}", case_id=case_id)
         notification_service.notify_role(db, UserRole.ADMIN, msg, "bo_filing_flagged",

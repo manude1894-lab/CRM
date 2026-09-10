@@ -108,6 +108,8 @@ export const AML_RISK_OPTIONS = ["Low", "Medium", "High"];
 
 export const PARTY_TYPE_OPTIONS = ["Individual", "Corporate"];
 
+export const DIRECTOR_ROLE_OPTIONS = ["Director", "Alternate Director", "Reserve Director"];
+
 export const SHAREHOLDER_TYPE_OPTIONS = ["Individual", "BC Company", "Non-BVI Entity", "Limited Partnership"];
 
 export const OWNERSHIP_NATURE_OPTIONS = ["Direct", "Indirect"];

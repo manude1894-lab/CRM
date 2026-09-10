@@ -23,6 +23,7 @@ class _AppendixAMixin(BaseModel):
 
 class DirectorBase(_AppendixAMixin):
     director_type: PartyType = PartyType.INDIVIDUAL
+    director_role: Optional[str] = "Director"
 
     first_name: Optional[str] = None
     middle_name: Optional[str] = None
@@ -58,6 +59,7 @@ class DirectorCreate(DirectorBase):
 
 class DirectorUpdate(_AppendixAMixin):
     director_type: Optional[PartyType] = None
+    director_role: Optional[str] = None
     first_name: Optional[str] = None
     middle_name: Optional[str] = None
     last_name: Optional[str] = None
@@ -106,6 +108,7 @@ class ShareholderBase(_AppendixAMixin):
     number_of_shares: Optional[int] = Field(None, ge=0)
     share_class: Optional[str] = None
     shareholding_percent: Optional[Decimal] = Field(None, ge=0, le=100)
+    consideration_paid: Optional[Decimal] = Field(None, ge=0)
 
     is_joint_shareholder: bool = False
     is_nominee: bool = False
@@ -139,6 +142,7 @@ class ShareholderUpdate(_AppendixAMixin):
     number_of_shares: Optional[int] = Field(None, ge=0)
     share_class: Optional[str] = None
     shareholding_percent: Optional[Decimal] = Field(None, ge=0, le=100)
+    consideration_paid: Optional[Decimal] = Field(None, ge=0)
     is_joint_shareholder: Optional[bool] = None
     is_nominee: Optional[bool] = None
     nominee_holds_for: Optional[str] = None

@@ -33,6 +33,7 @@ export const cddApi = {
   get: (caseId) => api.get(`/cdd/${caseId}`).then((r) => r.data),
   update: (caseId, data) => api.patch(`/cdd/${caseId}`, data).then((r) => r.data),
   review: (caseId, data) => api.post(`/cdd/${caseId}/review`, data).then((r) => r.data),
+  applyIntroducerExemption: (caseId) => api.post(`/cdd/${caseId}/apply-introducer-exemption`).then((r) => r.data),
   addDocument: (caseId, data) => api.post(`/cdd/${caseId}/documents`, data).then((r) => r.data),
   updateDocument: (documentId, data) => api.patch(`/cdd/documents/${documentId}`, data).then((r) => r.data),
   deleteDocument: (documentId) => api.delete(`/cdd/documents/${documentId}`),
