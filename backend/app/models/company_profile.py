@@ -84,6 +84,12 @@ class CompanyProfile(Base):
     source_of_funds_description = Column(Text, nullable=True)
     nature_of_business = Column(String(60), nullable=True)
     business_description = Column(Text, nullable=True)
+    # Nature-of-business detail (Vistra KYC Part I)
+    business_countries = Column(Text, nullable=True)
+    key_counterparties = Column(Text, nullable=True)
+    asset_types = Column(Text, nullable=True)
+    expected_annual_turnover = Column(String(60), nullable=True)
+    expected_active_transactions = Column(String(60), nullable=True)
     company_secretary = Column(String(40), nullable=True)
 
     # "MM-DD" — e.g. "12-31". Anchors the compliance calendar.

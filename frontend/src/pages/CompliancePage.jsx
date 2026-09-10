@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { complianceApi } from "../api/endpoints";
-import { Icon, Spinner, ErrorBanner } from "../components/ui";
+import { Icon, Badge, Spinner, ErrorBanner } from "../components/ui";
+import { AR_FILING_STATUS_OPTIONS } from "../utils/constants";
 
 const ITEM_LABEL = {
   renewal: "Annual Licence Fee",
@@ -36,6 +37,15 @@ export default function CompliancePage() {
       load();
     } catch (e) {
       alert(e.response?.data?.detail || "Failed to mark done");
+    }
+  };
+
+  const setArStatus = async (row, status) => {
+    try {
+      await complianceApi.setArStatus(row.case_id, status);
+      load();
+    } catch (e) {
+      alert(e.response?.data?.detail || "Failed to update AR status");
     }
   };
 
@@ -82,6 +92,15 @@ export default function CompliancePage() {
                 <td className="py-3 px-4 text-xs text-gray-600">
                   {ITEM_LABEL[r.item] || r.item}
                   {r.item === "bo_filing" && <span className="ml-1.5 text-xs px-1.5 py-0.5 rounded bg-red-100 text-red-700">30-day</span>}
+                  {r.item === "ar_filing" && r.ar_filing_status && (
+                    <div className="mt-1 flex items-center gap-1.5">
+                      <Badge text={r.ar_filing_status} />
+                      <select value={r.ar_filing_status} onChange={(e) => setArStatus(r, e.target.value)}
+                        className="text-[11px] border border-gray-200 rounded px-1 py-0.5 focus:outline-none">
+                        {AR_FILING_STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
+                      </select>
+                    </div>
+                  )}
                 </td>
                 <td className="py-3 px-4 text-xs text-gray-600">{r.due_date}</td>
                 <td className={`py-3 px-4 text-xs text-right font-medium ${r.days_remaining <= (r.item === "bo_filing" ? 14 : 7) ? "text-red-600" : r.days_remaining <= 30 ? "text-amber-600" : "text-gray-600"}`}>

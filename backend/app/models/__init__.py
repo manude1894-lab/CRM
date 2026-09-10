@@ -19,6 +19,11 @@ from app.models.entity_lifecycle import (
     EntityLifecycle, ClosureMethod, RestorationStatus, StrikeOffCause,
     ChecklistItemStatus, RESTORATION_CHECKLIST_TEMPLATE, new_restoration_checklist,
 )
+from app.models.formation import (
+    FormationRecord, ScreeningStatus, MLROSignoffStatus, VistraStatus,
+)
+from app.models.action_point import ActionPoint, ActionPointStatus
+from app.models.pep_assessment import PEPAssessment, PEPType, PEPRiskConclusion
 from app.models.notification import Notification
 from app.models.activity import Activity, ActivityType, ActivityStatus
 from app.models.party import (
@@ -41,6 +46,9 @@ __all__ = [
     "NatureOfBusiness", "CompanySecretary",
     "EntityLifecycle", "ClosureMethod", "RestorationStatus", "StrikeOffCause",
     "ChecklistItemStatus", "RESTORATION_CHECKLIST_TEMPLATE", "new_restoration_checklist",
+    "FormationRecord", "ScreeningStatus", "MLROSignoffStatus", "VistraStatus",
+    "ActionPoint", "ActionPointStatus",
+    "PEPAssessment", "PEPType", "PEPRiskConclusion",
     "Notification",
     "Activity", "ActivityType", "ActivityStatus",
     "Director", "Shareholder", "UBO", "PartyType", "ShareholderType",

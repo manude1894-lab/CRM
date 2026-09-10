@@ -13,6 +13,7 @@ const emptyForm = (cases) => ({
   date_sent_to_vistra: "",
   date_received_from_vistra: "",
   date_completed: "",
+  cost_amount: "",
   charge_amount: "",
   invoice_reference: "",
   invoice_id: "",
@@ -67,7 +68,7 @@ export default function InstructionsPage() {
   });
 
   const openNew = () => { setForm(emptyForm(cases)); setModal("new"); };
-  const openEdit = (i) => { setForm({ ...i, charge_amount: i.charge_amount ?? "" }); setModal("edit"); };
+  const openEdit = (i) => { setForm({ ...i, charge_amount: i.charge_amount ?? "", cost_amount: i.cost_amount ?? "" }); setModal("edit"); };
 
   const save = async () => {
     try {
@@ -104,6 +105,13 @@ export default function InstructionsPage() {
     return acc;
   }, {});
 
+  const totals = filtered.reduce((acc, i) => {
+    acc.cost += Number(i.cost_amount || 0);
+    acc.charge += Number(i.charge_amount || 0);
+    return acc;
+  }, { cost: 0, charge: 0 });
+  totals.margin = totals.charge - totals.cost;
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-2">
@@ -131,6 +139,21 @@ export default function InstructionsPage() {
         ))}
       </div>
 
+      <div className="flex flex-wrap gap-3">
+        <div className="bg-white border border-gray-100 rounded-xl px-4 py-2 shadow-sm">
+          <div className="text-[11px] text-gray-400 uppercase tracking-wide">Cost (to RA)</div>
+          <div className="text-sm font-semibold text-gray-700">{fmtFull(totals.cost)}</div>
+        </div>
+        <div className="bg-white border border-gray-100 rounded-xl px-4 py-2 shadow-sm">
+          <div className="text-[11px] text-gray-400 uppercase tracking-wide">Charged (to client)</div>
+          <div className="text-sm font-semibold text-gray-700">{fmtFull(totals.charge)}</div>
+        </div>
+        <div className="bg-white border border-gray-100 rounded-xl px-4 py-2 shadow-sm">
+          <div className="text-[11px] text-gray-400 uppercase tracking-wide">Margin</div>
+          <div className={`text-sm font-semibold ${totals.margin < 0 ? "text-red-600" : "text-emerald-600"}`}>{fmtFull(totals.margin)}</div>
+        </div>
+      </div>
+
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
@@ -140,14 +163,16 @@ export default function InstructionsPage() {
               <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500">Status</th>
               <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500">Received</th>
               <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500">Completed</th>
+              <th className="text-right py-3 px-4 text-xs font-semibold text-gray-500">Cost</th>
               <th className="text-right py-3 px-4 text-xs font-semibold text-gray-500">Charge</th>
+              <th className="text-right py-3 px-4 text-xs font-semibold text-gray-500">Margin</th>
               <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500">Invoice Ref</th>
               <th className="py-3 px-4 text-xs font-semibold text-gray-500">Actions</th>
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 && (
-              <tr><td colSpan={8} className="py-8 text-center text-sm text-gray-400">No instructions match this filter.</td></tr>
+              <tr><td colSpan={10} className="py-8 text-center text-sm text-gray-400">No instructions match this filter.</td></tr>
             )}
             {filtered.map((i) => (
               <tr key={i.id} className="border-b border-gray-50 hover:bg-gray-50">
@@ -164,7 +189,13 @@ export default function InstructionsPage() {
                 </td>
                 <td className="py-3 px-4 text-xs text-gray-500">{i.date_received || "—"}</td>
                 <td className="py-3 px-4 text-xs text-gray-500">{i.date_completed || "—"}</td>
+                <td className="py-3 px-4 text-xs text-right text-gray-500">{i.cost_amount != null ? fmtFull(i.cost_amount) : "—"}</td>
                 <td className="py-3 px-4 text-xs text-right text-gray-600">{i.charge_amount != null ? fmtFull(i.charge_amount) : "—"}</td>
+                <td className="py-3 px-4 text-xs text-right text-gray-500">
+                  {i.charge_amount != null || i.cost_amount != null
+                    ? fmtFull(Number(i.charge_amount || 0) - Number(i.cost_amount || 0))
+                    : "—"}
+                </td>
                 <td className="py-3 px-4 text-xs text-gray-500">{i.invoice_reference || "—"}</td>
                 <td className="py-3 px-4">
                   <div className="flex gap-1">
@@ -200,7 +231,10 @@ export default function InstructionsPage() {
                 {INSTRUCTION_STATUS_OPTIONS.map((s) => <option key={s}>{s}</option>)}
               </Select>
             </Field>
-            <Field label="Charge Amount">
+            <Field label="Cost (to registered agent)">
+              <Input type="number" min="0" step="0.01" value={form.cost_amount ?? ""} onChange={(e) => setForm((p) => ({ ...p, cost_amount: e.target.value }))} />
+            </Field>
+            <Field label="Charge (to client)">
               <Input type="number" min="0" step="0.01" value={form.charge_amount ?? ""} onChange={(e) => setForm((p) => ({ ...p, charge_amount: e.target.value }))} />
             </Field>
             <Field label="Date Received">

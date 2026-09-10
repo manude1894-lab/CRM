@@ -66,6 +66,22 @@ export const Badge = ({ text }) => {
     Submitted: "bg-blue-100 text-blue-700",
     "Under Review": "bg-indigo-100 text-indigo-700",
     Approved: "bg-emerald-100 text-emerald-700",
+    // Formation / screening / Vistra loop
+    "Not Submitted": "bg-gray-100 text-gray-600",
+    Cleared: "bg-emerald-100 text-emerald-700",
+    "Signed Off": "bg-emerald-100 text-emerald-700",
+    "Query Raised": "bg-amber-100 text-amber-700",
+    "Adverse Findings": "bg-red-100 text-red-700",
+    // Action Points / PEP / AR sub-workflow
+    Open: "bg-gray-100 text-gray-600",
+    Done: "bg-emerald-100 text-emerald-700",
+    Decline: "bg-red-100 text-red-700",
+    Proceed: "bg-emerald-100 text-emerald-700",
+    "Proceed with EDD": "bg-amber-100 text-amber-700",
+    "Data Prepared": "bg-blue-100 text-blue-700",
+    "Submitted to Vistra": "bg-blue-100 text-blue-700",
+    Filed: "bg-indigo-100 text-indigo-700",
+    Confirmed: "bg-emerald-100 text-emerald-700",
     // Invoice statuses
     "Not Raised": "bg-gray-100 text-gray-600",
     Raised: "bg-orange-100 text-orange-700",

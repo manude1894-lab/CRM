@@ -4,6 +4,7 @@ import { Icon, Badge, Modal, Field, Input, Select, Textarea, Spinner, ErrorBanne
 import PartyRegisterModal from "../components/PartyRegisterModal";
 import CompanyDetailsModal from "../components/CompanyDetailsModal";
 import LifecycleModal from "../components/LifecycleModal";
+import FormationModal from "../components/FormationModal";
 import { STAGES, STAGE_COLORS, CASE_SOURCE_OPTIONS, JURISDICTION_OPTIONS, SERVICE_TYPE_OPTIONS, CASE_STATUS_OPTIONS, CLOSED_REL_STATUSES, fmt } from "../utils/constants";
 
 const NEXT_STAGE = STAGES.reduce((acc, s, i) => {
@@ -28,6 +29,7 @@ export default function CasesPage() {
   const [registerCase, setRegisterCase] = useState(null);
   const [detailsCase, setDetailsCase] = useState(null);
   const [lifecycleCase, setLifecycleCase] = useState(null);
+  const [formationCase, setFormationCase] = useState(null);
 
   const load = async () => {
     try {
@@ -58,17 +60,18 @@ export default function CasesPage() {
   }), [cases, search, stageFilter, statusFilter]);
 
   const openNew = () => {
-    setForm({ company_name: "", source: "Other", jurisdiction: "BVI", service_type: "Company Formation", account_id: null, rm_id: null, tags: "", notes: "" });
+    setForm({ company_name: "", source: "Other", introducer: "", onboarding_date: "", jurisdiction: "BVI", service_type: "Company Formation", account_id: null, rm_id: null, tags: "", notes: "" });
     setModal("new");
   };
 
   const save = async () => {
     try {
+      const clean = (o) => ({ ...o, onboarding_date: o.onboarding_date || null, introducer: o.introducer || null });
       if (modal === "new") {
-        await casesApi.create(form);
+        await casesApi.create(clean(form));
       } else {
         const { id, case_uid, stage, status, invoice_status, invoice_raised_date, invoice_paid_date, created_at, updated_at, ...patch } = form;
-        await casesApi.update(form.id, patch);
+        await casesApi.update(form.id, clean(patch));
       }
       setModal(null); load();
     } catch (e) {
@@ -114,8 +117,8 @@ export default function CasesPage() {
   };
 
   const exportCSV = () => {
-    const headers = ["UID", "Company", "Stage", "Status", "Invoice", "Source"];
-    const rows = filtered.map((c) => [c.case_uid, c.company_name, c.stage, c.status, c.invoice_status, c.source]);
+    const headers = ["UID", "Company", "Introduced By", "Onboarding Date", "Stage", "Status", "Invoice", "Source"];
+    const rows = filtered.map((c) => [c.case_uid, c.company_name, c.introducer, c.onboarding_date, c.stage, c.status, c.invoice_status, c.source]);
     const csv = [headers, ...rows].map((r) => r.map((v) => `"${v ?? ""}"`).join(",")).join("\n");
     const a = document.createElement("a");
     a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
@@ -207,6 +210,10 @@ export default function CasesPage() {
                           className="text-xs px-2 py-0.5 rounded border border-gray-200 hover:border-blue-300 hover:text-blue-600 text-gray-500">
                           Details
                         </button>
+                        <button onClick={() => setFormationCase(c)}
+                          className="text-xs px-2 py-0.5 rounded border border-gray-200 hover:border-blue-300 hover:text-blue-600 text-gray-500">
+                          Formation
+                        </button>
                         <button onClick={() => setLifecycleCase(c)}
                           className="text-xs px-2 py-0.5 rounded border border-gray-200 hover:border-blue-300 hover:text-blue-600 text-gray-500">
                           Lifecycle
@@ -243,6 +250,7 @@ export default function CasesPage() {
               <tr className="border-b border-gray-100 bg-gray-50">
                 <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500">Case</th>
                 <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500">Company</th>
+                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500">Introduced By</th>
                 <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500">Stage</th>
                 <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500">Status</th>
                 <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500">Invoice</th>
@@ -255,6 +263,7 @@ export default function CasesPage() {
                 <tr key={c.id} className="border-b border-gray-50 hover:bg-gray-50">
                   <td className="py-3 px-4 text-xs font-medium text-gray-800">{c.case_uid}</td>
                   <td className="py-3 px-4 text-xs text-gray-600">{c.company_name}</td>
+                  <td className="py-3 px-4 text-xs text-gray-500">{c.introducer || "—"}</td>
                   <td className="py-3 px-4"><Badge text={c.stage} /></td>
                   <td className="py-3 px-4"><Badge text={c.status} /></td>
                   <td className="py-3 px-4"><Badge text={c.invoice_status} /></td>
@@ -268,6 +277,10 @@ export default function CasesPage() {
                       <button onClick={() => setDetailsCase(c)}
                         className="p-1.5 rounded hover:bg-blue-50 text-gray-400 hover:text-blue-600" title="Company Details">
                         <Icon name="compliance" size={14} />
+                      </button>
+                      <button onClick={() => setFormationCase(c)}
+                        className="p-1.5 rounded hover:bg-blue-50 text-gray-400 hover:text-blue-600" title="Formation — screening / MLRO / Vistra loop">
+                        <Icon name="cdd" size={14} />
                       </button>
                       <button onClick={() => setLifecycleCase(c)}
                         className="p-1.5 rounded hover:bg-blue-50 text-gray-400 hover:text-blue-600" title="Entity Lifecycle — closure / restoration / transfer">
@@ -326,6 +339,10 @@ export default function CasesPage() {
         <LifecycleModal caseItem={lifecycleCase} onClose={(changed) => { setLifecycleCase(null); if (changed) load(); }} />
       )}
 
+      {formationCase && (
+        <FormationModal caseItem={formationCase} users={users} onClose={(changed) => { setFormationCase(null); if (changed) load(); }} />
+      )}
+
       {modal && (
         <Modal title={modal === "new" ? "New Case" : `Edit ${form.case_uid}`} onClose={() => setModal(null)}>
           <div className="grid grid-cols-2 gap-x-4">
@@ -335,6 +352,8 @@ export default function CasesPage() {
                 {CASE_SOURCE_OPTIONS.map((s) => <option key={s}>{s}</option>)}
               </Select>
             </Field>
+            <Field label="Introduced By"><Input value={form.introducer || ""} onChange={(e) => setForm((p) => ({ ...p, introducer: e.target.value }))} placeholder="e.g. Vistra, Rosemont, a referrer" /></Field>
+            <Field label="Onboarding Date"><Input type="date" value={form.onboarding_date || ""} onChange={(e) => setForm((p) => ({ ...p, onboarding_date: e.target.value }))} /></Field>
             <Field label="Jurisdiction">
               <Select value={form.jurisdiction || ""} onChange={(e) => setForm((p) => ({ ...p, jurisdiction: e.target.value }))}>
                 <option value="">— Select —</option>

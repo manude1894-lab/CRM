@@ -1,13 +1,27 @@
 """Pydantic schemas: Director and Shareholder registers."""
 from pydantic import BaseModel, Field, ConfigDict
-from typing import Optional
+from typing import Optional, Any
 from datetime import date, datetime
 from decimal import Decimal
 
 from app.models.party import PartyType, ShareholderType, OwnershipNature, SourceOfWealthCategory
 
 
-class DirectorBase(BaseModel):
+class _AppendixAMixin(BaseModel):
+    """Vistra KYC Appendix A — individual KYC detail. Shared by Director + Shareholder."""
+    email: Optional[str] = None
+    mobile: Optional[str] = None
+    occupation: Optional[str] = None
+    employer_name: Optional[str] = None
+    tax_residency_country: Optional[str] = None
+    tax_id_number: Optional[str] = None
+    source_of_funds: Optional[str] = None
+    source_of_wealth: Optional[str] = None
+    is_pep: Optional[bool] = None
+    pep_notes: Optional[str] = None
+
+
+class DirectorBase(_AppendixAMixin):
     director_type: PartyType = PartyType.INDIVIDUAL
 
     first_name: Optional[str] = None
@@ -23,6 +37,7 @@ class DirectorBase(BaseModel):
     corporate_number: Optional[str] = None
     country_of_incorporation: Optional[str] = None
     corporate_date_of_incorporation: Optional[date] = None
+    entity_details: Optional[dict[str, Any]] = None
 
     service_address: Optional[str] = None
     service_city: Optional[str] = None
@@ -41,7 +56,7 @@ class DirectorCreate(DirectorBase):
     pass
 
 
-class DirectorUpdate(BaseModel):
+class DirectorUpdate(_AppendixAMixin):
     director_type: Optional[PartyType] = None
     first_name: Optional[str] = None
     middle_name: Optional[str] = None
@@ -55,6 +70,7 @@ class DirectorUpdate(BaseModel):
     corporate_number: Optional[str] = None
     country_of_incorporation: Optional[str] = None
     corporate_date_of_incorporation: Optional[date] = None
+    entity_details: Optional[dict[str, Any]] = None
     service_address: Optional[str] = None
     service_city: Optional[str] = None
     service_country: Optional[str] = None
@@ -75,11 +91,12 @@ class DirectorRead(DirectorBase):
     model_config = ConfigDict(from_attributes=True)
 
 
-class ShareholderBase(BaseModel):
+class ShareholderBase(_AppendixAMixin):
     identification_type: ShareholderType = ShareholderType.INDIVIDUAL
     name: str = Field(..., min_length=1, max_length=255)
     corporate_number: Optional[str] = None
     country_of_incorporation: Optional[str] = None
+    entity_details: Optional[dict[str, Any]] = None
 
     registered_address: Optional[str] = None
     city: Optional[str] = None
@@ -93,6 +110,12 @@ class ShareholderBase(BaseModel):
     is_joint_shareholder: bool = False
     is_nominee: bool = False
     nominee_holds_for: Optional[str] = None
+    nominator_name: Optional[str] = None
+    nominator_address: Optional[str] = None
+    nominator_relationship: Optional[str] = None
+    nominee_agreement_date: Optional[date] = None
+
+    charges: Optional[list[dict[str, Any]]] = None
 
     date_entered: Optional[date] = None
     date_ceased: Optional[date] = None
@@ -103,11 +126,12 @@ class ShareholderCreate(ShareholderBase):
     pass
 
 
-class ShareholderUpdate(BaseModel):
+class ShareholderUpdate(_AppendixAMixin):
     identification_type: Optional[ShareholderType] = None
     name: Optional[str] = Field(None, min_length=1, max_length=255)
     corporate_number: Optional[str] = None
     country_of_incorporation: Optional[str] = None
+    entity_details: Optional[dict[str, Any]] = None
     registered_address: Optional[str] = None
     city: Optional[str] = None
     country: Optional[str] = None
@@ -118,6 +142,11 @@ class ShareholderUpdate(BaseModel):
     is_joint_shareholder: Optional[bool] = None
     is_nominee: Optional[bool] = None
     nominee_holds_for: Optional[str] = None
+    nominator_name: Optional[str] = None
+    nominator_address: Optional[str] = None
+    nominator_relationship: Optional[str] = None
+    nominee_agreement_date: Optional[date] = None
+    charges: Optional[list[dict[str, Any]]] = None
     date_entered: Optional[date] = None
     date_ceased: Optional[date] = None
     notes: Optional[str] = None

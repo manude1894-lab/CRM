@@ -8,7 +8,7 @@ Slots, anchored to the BVI calendar (see case_service._create_compliance_schedul
                    any ownership change (set by compliance_service.flag_bo_filing_due,
                    cleared rather than rolled)
 """
-from sqlalchemy import Column, Integer, Date, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, Date, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -32,6 +32,9 @@ class ComplianceSchedule(Base):
     ar_filing_due_date = Column(Date, nullable=True)
     ar_filing_last_completed_date = Column(Date, nullable=True)
     ar_filing_cadence_months = Column(Integer, default=12, nullable=False)
+    # Light AR sub-workflow: Not Started / Data Prepared / Submitted to Vistra / Filed / Confirmed
+    ar_filing_status = Column(String(30), default="Not Started", nullable=False)
+    ar_reference_year = Column(Integer, nullable=True)
 
     bo_filing_due_date = Column(Date, nullable=True)
     bo_filing_last_completed_date = Column(Date, nullable=True)

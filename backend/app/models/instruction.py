@@ -39,6 +39,9 @@ class Instruction(Base):
     date_received_from_vistra = Column(Date, nullable=True)
     date_completed = Column(Date, nullable=True)
 
+    # cost_amount = what Triam pays the registered agent; charge_amount = what the
+    # client is billed. Margin = charge_amount - cost_amount.
+    cost_amount = Column(Numeric(12, 2), nullable=True)
     charge_amount = Column(Numeric(12, 2), nullable=True)
     # Free-text invoice reference for quick entry before a formal ledger entry exists.
     # invoice_id (below) is the structured link once the charge is actually invoiced.

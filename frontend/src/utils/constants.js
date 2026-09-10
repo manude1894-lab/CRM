@@ -143,6 +143,53 @@ export const COMPANY_SECRETARY_OPTIONS = [
   "Corporate (third party)",
 ];
 
+export const ENTITY_DETAIL_TYPE_OPTIONS = [
+  "Company",
+  "Trust",
+  "Foundation",
+  "Fund",
+  "Limited Partnership",
+  "State-Owned Enterprise",
+];
+
+export const CHARGE_STATUS_OPTIONS = ["Outstanding", "Satisfied", "Released"];
+
+export const ACTION_POINT_STATUS_OPTIONS = ["Open", "In Progress", "Done"];
+
+export const ACTION_POINT_PRIORITY_OPTIONS = ["High", "Medium", "Low"];
+
+export const PEP_TYPE_OPTIONS = [
+  "Domestic PEP",
+  "Foreign PEP",
+  "International Org PEP",
+  "Family Member",
+  "Close Associate",
+];
+
+export const PEP_RISK_CONCLUSION_OPTIONS = ["Proceed", "Proceed with EDD", "Decline"];
+
+export const AR_FILING_STATUS_OPTIONS = [
+  "Not Started",
+  "Data Prepared",
+  "Submitted to Vistra",
+  "Filed",
+  "Confirmed",
+];
+
+export const SCREENING_STATUS_OPTIONS = ["Not Started", "In Progress", "Cleared", "Adverse Findings"];
+
+export const MLRO_SIGNOFF_STATUS_OPTIONS = ["Pending", "Signed Off", "Rejected"];
+
+export const VISTRA_STATUS_OPTIONS = ["Not Submitted", "Submitted", "Query Raised", "Approved", "Rejected"];
+
+export const SCREENING_TOOL_OPTIONS = [
+  "World-Check One",
+  "Dow Jones Risk & Compliance",
+  "LexisNexis Bridger",
+  "Manual / open-source",
+  "Other",
+];
+
 export const DOCUMENT_CATEGORY_OPTIONS = [
   "CDD",
   "Activation Document",

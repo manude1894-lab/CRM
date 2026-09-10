@@ -15,6 +15,7 @@ class InstructionBase(BaseModel):
     date_sent_to_vistra: Optional[date] = None
     date_received_from_vistra: Optional[date] = None
     date_completed: Optional[date] = None
+    cost_amount: Optional[Decimal] = Field(None, ge=0)
     charge_amount: Optional[Decimal] = Field(None, ge=0)
     invoice_reference: Optional[str] = None
     invoice_id: Optional[int] = None
@@ -33,6 +34,7 @@ class InstructionUpdate(BaseModel):
     date_sent_to_vistra: Optional[date] = None
     date_received_from_vistra: Optional[date] = None
     date_completed: Optional[date] = None
+    cost_amount: Optional[Decimal] = Field(None, ge=0)
     charge_amount: Optional[Decimal] = Field(None, ge=0)
     invoice_reference: Optional[str] = None
     invoice_id: Optional[int] = None

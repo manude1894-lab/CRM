@@ -17,6 +17,12 @@ class ComplianceMarkDoneRequest(BaseModel):
     item: ComplianceItem
 
 
+class ARStatusRequest(BaseModel):
+    status: Literal[
+        "Not Started", "Data Prepared", "Submitted to Vistra", "Filed", "Confirmed",
+    ]
+
+
 class ComplianceScheduleRead(BaseModel):
     id: int
     case_id: int
@@ -29,6 +35,8 @@ class ComplianceScheduleRead(BaseModel):
     ar_filing_due_date: Optional[date] = None
     ar_filing_last_completed_date: Optional[date] = None
     ar_filing_cadence_months: int
+    ar_filing_status: str = "Not Started"
+    ar_reference_year: Optional[int] = None
     bo_filing_due_date: Optional[date] = None
     bo_filing_last_completed_date: Optional[date] = None
     created_at: datetime
@@ -45,3 +53,4 @@ class UpcomingComplianceItem(BaseModel):
     item: ComplianceItem
     due_date: date
     days_remaining: int
+    ar_filing_status: Optional[str] = None

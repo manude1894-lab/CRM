@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.auth.dependencies import get_current_user
 from app.models import User
-from app.schemas import ComplianceScheduleRead, ComplianceMarkDoneRequest, UpcomingComplianceItem
+from app.schemas import ComplianceScheduleRead, ComplianceMarkDoneRequest, UpcomingComplianceItem, ARStatusRequest
 from app.services import compliance_service
 
 router = APIRouter(prefix="/compliance", tags=["Compliance"])
@@ -24,3 +24,8 @@ def get_schedule(case_id: int, db: Session = Depends(get_db), user: User = Depen
 @router.post("/{case_id}/mark-done", response_model=ComplianceScheduleRead, summary="Mark a renewal/filing item done and roll the due date forward")
 def mark_done(case_id: int, data: ComplianceMarkDoneRequest, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     return compliance_service.mark_done(db, case_id, data)
+
+
+@router.post("/{case_id}/ar-status", response_model=ComplianceScheduleRead, summary="Advance the Annual Return sub-workflow")
+def set_ar_status(case_id: int, data: ARStatusRequest, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    return compliance_service.set_ar_status(db, case_id, data.status)

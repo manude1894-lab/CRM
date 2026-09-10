@@ -104,6 +104,13 @@ export default function CompanyDetailsModal({ caseItem, onClose }) {
             </div>
             <Field label="Source of Funds — Description"><Textarea value={form.source_of_funds_description || ""} onChange={set("source_of_funds_description")} /></Field>
             <Field label="Business Description"><Textarea value={form.business_description || ""} onChange={set("business_description")} /></Field>
+            <Field label="Countries of Operation"><Textarea value={form.business_countries || ""} onChange={set("business_countries")} /></Field>
+            <Field label="Key Counterparties"><Textarea value={form.key_counterparties || ""} onChange={set("key_counterparties")} /></Field>
+            <Field label="Asset Types Held"><Textarea value={form.asset_types || ""} onChange={set("asset_types")} /></Field>
+            <div className="grid grid-cols-2 gap-x-3">
+              <Field label="Expected Annual Turnover"><Input value={form.expected_annual_turnover || ""} onChange={set("expected_annual_turnover")} /></Field>
+              <Field label="Expected Active Transactions / yr"><Input value={form.expected_active_transactions || ""} onChange={set("expected_active_transactions")} /></Field>
+            </div>
             <Field label="Company Secretary">
               <Select value={form.company_secretary || ""} onChange={set("company_secretary")}>
                 <option value="">— select —</option>

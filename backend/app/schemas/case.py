@@ -12,6 +12,8 @@ class CaseBase(BaseModel):
     source: CaseSource = CaseSource.OTHER
     stage: CaseStage = CaseStage.NEW_INQUIRY
     status: CaseStatus = CaseStatus.ACTIVE
+    introducer: Optional[str] = Field(None, max_length=150)
+    onboarding_date: Optional[date] = None
     jurisdiction: Optional[Jurisdiction] = None
     service_type: Optional[ServiceType] = None
     invoice_amount: float = Field(0, ge=0)
@@ -31,6 +33,8 @@ class CaseCreate(CaseBase):
 class CaseUpdate(BaseModel):
     company_name: Optional[str] = None
     source: Optional[CaseSource] = None
+    introducer: Optional[str] = Field(None, max_length=150)
+    onboarding_date: Optional[date] = None
     jurisdiction: Optional[Jurisdiction] = None
     service_type: Optional[ServiceType] = None
     status: Optional[CaseStatus] = None

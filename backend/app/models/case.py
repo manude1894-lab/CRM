@@ -99,6 +99,11 @@ class Case(Base):
     # Case definition
     company_name = Column(String(255), nullable=False)
     source = Column(SAEnum(CaseSource, name="case_source", values_callable=lambda obj: [e.value for e in obj]), default=CaseSource.OTHER, nullable=False)
+    # Who referred the entity to Triam (a registered agent or a person) — distinct
+    # from the internal RM (rm_id). Free text; matches the tracker's "introduced-by".
+    introducer = Column(String(150), nullable=True)
+    # When Triam took the entity on — distinct from CompanyProfile.incorporation_date.
+    onboarding_date = Column(Date, nullable=True)
     jurisdiction = Column(String(100), nullable=True)
     service_type = Column(String(100), nullable=True)
 
@@ -133,6 +138,7 @@ class Case(Base):
     compliance_schedule = relationship("ComplianceSchedule", back_populates="case", uselist=False, cascade="all, delete-orphan")
     company_profile = relationship("CompanyProfile", back_populates="case", uselist=False, cascade="all, delete-orphan")
     lifecycle = relationship("EntityLifecycle", back_populates="case", uselist=False, cascade="all, delete-orphan")
+    formation = relationship("FormationRecord", back_populates="case", uselist=False, cascade="all, delete-orphan")
     directors = relationship("Director", back_populates="case", cascade="all, delete-orphan", order_by="Director.id")
     shareholders = relationship("Shareholder", back_populates="case", cascade="all, delete-orphan", order_by="Shareholder.id")
     ubos = relationship("UBO", back_populates="case", cascade="all, delete-orphan", order_by="UBO.id")

@@ -30,10 +30,13 @@ TRIAM_USERS = [
 _TABLES_TO_CLEAR = [
     "documents",
     "aml_risk_assessments",
+    "pep_assessments",
+    "action_points",
     "case_documents",
     "cdd_records",
     "company_profiles",
     "entity_lifecycle",
+    "formation_records",
     "compliance_schedules",
     "instructions",
     "invoices",

@@ -9,7 +9,7 @@ did not share actual UBO names, only the entity-level tracker and templates.
 Usage:
     python -m app.seed_triam_demo [--force]
 """
-from datetime import date
+from datetime import date, datetime, timezone
 from decimal import Decimal
 from sqlalchemy.orm import Session
 
@@ -24,6 +24,8 @@ from app.models import (
     AMLRiskAssessment, AMLSubjectType,
     CompanyProfile, ComplianceSchedule,
     EntityLifecycle, RestorationStatus, new_restoration_checklist,
+    FormationRecord,
+    ActionPoint, PEPAssessment,
 )
 from app.auth.security import hash_password
 from app.utils.uid import next_uid
@@ -78,6 +80,14 @@ INCORP_DATES = {
 
 REGISTERED_AGENTS = {
     "Melton Park Ltd": "ILS Fiduciary",  # Mr Soltan's entities — transferring to Vistra
+}
+
+# Who introduced each entity to Triam (tracker's "introduced-by" column).
+INTRODUCERS = {
+    "Melton Park Ltd": "Mr Soltan (direct)",
+    "Horizon Investments DXB": "Patton, Moreno & Asvat",
+    "DRS Investment Limited": "Rosemont",
+    "Vogacloset Shareholders Limited": "Client referral",
 }
 
 # Entities still mid-pipeline (from the tracker's "On hold" / new-formation rows),
@@ -136,37 +146,66 @@ INVOICES = [
 ]
 
 # Illustrative placeholder register data (Triam did not share real UBO names).
+_APPX_A = lambda occ, emp, tax: {  # noqa: E731 — compact seed helper
+    "occupation": occ, "employer_name": emp, "tax_residency_country": tax,
+    "source_of_funds": "Salary and dividends", "source_of_wealth": "Accumulated employment income and business dividends.",
+    "is_pep": False,
+}
+
 DIRECTORS = {
     "Kelca Investments": [
         {"director_type": "Individual", "first_name": "Rajesh", "last_name": "Kumar", "nationality": "Indian",
-         "appointment_date": date(2023, 6, 1), "residential_country": "India", "residential_city": "Mumbai"},
+         "appointment_date": date(2023, 6, 1), "residential_country": "India", "residential_city": "Mumbai",
+         "email": "rajesh.kumar@example.com", "mobile": "+91 98200 11223",
+         **_APPX_A("Company director", "Kumar Textiles Pvt Ltd", "India")},
         {"director_type": "Corporate", "corporate_name": "Kelca Nominee Services Ltd", "country_of_incorporation": "BVI",
-         "appointment_date": date(2023, 6, 1)},
+         "appointment_date": date(2023, 6, 1),
+         "entity_details": {"entity_type": "Company", "regulated": False, "listed": False,
+                            "ownership_summary": "Wholly owned by the Kelca group holding company.",
+                            "directors_summary": "2 individual directors (group officers)."}},
     ],
     "Castle Noble Holdings Limited": [
         {"director_type": "Individual", "first_name": "Elena", "last_name": "Volkova", "nationality": "Russian",
-         "appointment_date": date(2019, 5, 6), "residential_country": "UAE", "residential_city": "Dubai"},
+         "appointment_date": date(2019, 5, 6), "residential_country": "UAE", "residential_city": "Dubai",
+         "email": "elena.volkova@example.com", "mobile": "+971 50 111 2233",
+         **_APPX_A("Business owner", "Volkova Trading FZE", "United Arab Emirates")},
     ],
     "NAV Holdings Limited": [
         {"director_type": "Individual", "first_name": "Vikram", "last_name": "Nair", "nationality": "Indian",
-         "appointment_date": date(2022, 3, 15), "residential_country": "UAE", "residential_city": "Dubai"},
+         "appointment_date": date(2022, 3, 15), "residential_country": "UAE", "residential_city": "Dubai",
+         "email": "vikram.nair@example.com", "mobile": "+971 50 444 5566",
+         **_APPX_A("Investment manager", "NAV Family Office", "United Arab Emirates")},
     ],
 }
 
 SHAREHOLDERS = {
     "Kelca Investments": [
         {"identification_type": "Individual", "name": "Rajesh Kumar", "number_of_shares": 100,
-         "share_class": "Ordinary", "shareholding_percent": 100, "date_entered": date(2023, 6, 1)},
+         "share_class": "Ordinary", "shareholding_percent": 100, "date_entered": date(2023, 6, 1),
+         "email": "rajesh.kumar@example.com", **_APPX_A("Company director", "Kumar Textiles Pvt Ltd", "India")},
     ],
     "Castle Noble Holdings Limited": [
         {"identification_type": "Individual", "name": "Elena Volkova", "number_of_shares": 8500,
-         "share_class": "Ordinary", "shareholding_percent": 85, "date_entered": date(2019, 5, 6)},
+         "share_class": "Ordinary", "shareholding_percent": 85, "date_entered": date(2019, 5, 6),
+         **_APPX_A("Business owner", "Volkova Trading FZE", "United Arab Emirates"),
+         "charges": [{"chargee": "Emirates NBD Bank PJSC", "amount": "1500000", "currency": "USD",
+                      "date_created": "2021-03-10", "date_satisfied": None, "status": "Outstanding"}]},
         {"identification_type": "Individual", "name": "Minor Holder — under review", "number_of_shares": 1500,
          "share_class": "Ordinary", "shareholding_percent": 15, "date_entered": date(2019, 5, 6)},
     ],
     "NAV Holdings Limited": [
         {"identification_type": "BC Company", "name": "NAV Family Trust Holdings Ltd", "country_of_incorporation": "BVI",
-         "number_of_shares": 5000, "share_class": "Ordinary", "shareholding_percent": 100, "date_entered": date(2022, 3, 15)},
+         "number_of_shares": 5000, "share_class": "Ordinary", "shareholding_percent": 100, "date_entered": date(2022, 3, 15),
+         "is_nominee": True, "nominee_holds_for": "The Nair Family Trust",
+         "nominator_name": "The Nair Family Trust (Vikram Nair, settlor)",
+         "nominator_address": "DIFC, Dubai, United Arab Emirates",
+         "nominator_relationship": "Trustee holding on behalf of the trust",
+         "nominee_agreement_date": date(2022, 3, 15),
+         "entity_details": {"entity_type": "Trust", "trust_name": "The Nair Family Trust", "trust_type": "Discretionary",
+                            "trustee": "NAV Fiduciary Services Ltd", "settlor": "Vikram Nair",
+                            "protector": "R. Menon", "governing_law": "DIFC",
+                            "date_established": "2018-11-02",
+                            "beneficiaries": ["Vikram Nair", "Anjali Nair", "Children of Vikram Nair"]}},
     ],
 }
 
@@ -207,6 +246,8 @@ def seed(db: Session, force: bool = False):
             case_uid=next_uid(db, Case, "case_uid", "CASE"),
             account_id=acc.id, rm_id=rm.id, ops_owner_id=users_by_name["Ritu Sharma"].id,
             company_name=name, source=CaseSource.REFERRAL,
+            introducer=INTRODUCERS.get(name, "Vistra"),
+            onboarding_date=INCORP_DATES.get(name),
             jurisdiction="BVI", service_type="Company Formation",
             stage=CaseStage.ACTIVE, status=CaseStatus.ACTIVE,
             # These are already-formed, active entities — their one-time formation
@@ -244,6 +285,11 @@ def seed(db: Session, force: bool = False):
             authorised_shares=50000, par_value=Decimal("1.0000"), share_currency="USD",
             source_of_funds="Ultimate Beneficial Owner",
             nature_of_business="Investment holding - financial assets",
+            business_countries="United Arab Emirates; United Kingdom; Singapore",
+            key_counterparties="Private banks and licensed brokers; no cash-intensive counterparties.",
+            asset_types="Listed equities, bonds, managed funds; one UAE residential property.",
+            expected_annual_turnover="USD 250k - 1m (investment income)",
+            expected_active_transactions="< 20 per year",
             company_secretary="None",
             es_financial_year_end="12-31", accounting_financial_year_end="12-31",
             act_certificate_of_incorporation=True, act_memorandum_articles=True,
@@ -435,6 +481,8 @@ def seed(db: Session, force: bool = False):
             case_id=case.id, instruction_type=itype, status=status,
             date_received=received, date_completed=completed,
             charge_amount=Decimal(str(charge)) if charge is not None else None,
+            # Illustrative: Triam's cost to the registered agent ~65% of the client charge.
+            cost_amount=(Decimal(str(charge)) * Decimal("0.65")).quantize(Decimal("1.00")) if charge is not None else None,
             invoice_reference=inv_ref, invoice_id=linked_invoice.id if linked_invoice else None,
         ))
     db.commit()
@@ -480,6 +528,107 @@ def seed(db: Session, force: bool = False):
         transfer_notes="Client appointed an in-house administrator; Triam engagement closed.",
     ))
     ob_case.status = CaseStatus.TRANSFERRED_OUT.value
+    db.commit()
+
+    print("-> Setting up formation / Vistra-loop demo records...")
+    screener = users_by_name["Swathi"]
+    admin_user = users_by_name["Shirsendu Mukherjee"]
+
+    # Skyblue — internal screening + MLRO done, file just went to Vistra.
+    db.add(FormationRecord(
+        case_id=cases_by_name["Skyblue Caerulean Holdings"].id,
+        screening_status="Cleared", screening_date=date(2026, 8, 20),
+        screened_by_id=screener.id, screening_tool="World-Check One",
+        world_check_reference="WC1-2026-08-0417",
+        screening_findings="No sanctions or adverse media. One low-relevance name match discounted (different DOB).",
+        mlro_signoff_status="Signed Off", mlro_signoff_by_id=admin_user.id,
+        mlro_signoff_at=datetime(2026, 8, 22, 9, 30, tzinfo=timezone.utc),
+        mlro_signoff_notes="Standard-risk holding company. Cleared for submission to Vistra.",
+        vistra_status="Submitted", vistra_submitted_date=date(2026, 8, 23),
+        vistra_officer="Vistra BVI Compliance",
+        kyc_pack_sent_date=date(2026, 8, 23),
+    ))
+
+    # Vaidant — screening under way, Vistra has come back with a query.
+    db.add(FormationRecord(
+        case_id=cases_by_name["Vaidant"].id,
+        screening_status="In Progress", screening_date=date(2026, 8, 28),
+        screened_by_id=screener.id, screening_tool="World-Check One",
+        mlro_signoff_status="Pending",
+        vistra_status="Query Raised",
+        vistra_submitted_date=date(2026, 8, 25),
+        vistra_query_text="Vistra requires a certified copy of the UBO passport and an updated structure chart showing the intermediate holding entity.",
+        vistra_query_raised_date=date(2026, 8, 29),
+        vistra_officer="Vistra BVI Compliance",
+        kyc_pack_sent_date=date(2026, 8, 25),
+    ))
+
+    # Horizon Investments DXB — a completed formation (incorporated 2024-05-21).
+    db.add(FormationRecord(
+        case_id=cases_by_name["Horizon Investments DXB"].id,
+        screening_status="Cleared", screening_date=date(2024, 4, 5),
+        screened_by_id=screener.id, screening_tool="World-Check One",
+        world_check_reference="WC1-2024-04-0088",
+        screening_findings="No hits.",
+        mlro_signoff_status="Signed Off", mlro_signoff_by_id=admin_user.id,
+        mlro_signoff_at=datetime(2024, 4, 8, 10, 0, tzinfo=timezone.utc),
+        vistra_status="Approved",
+        vistra_submitted_date=date(2024, 4, 9), vistra_approved_date=date(2024, 4, 22),
+        vistra_officer="Vistra BVI Compliance",
+        kyc_pack_sent_date=date(2024, 4, 1),
+        data_input_sheet_sent_date=date(2024, 4, 23),
+        incorporation_submitted_date=date(2024, 5, 10),
+        rod_filed_date=date(2024, 5, 28),
+        registers_completed_date=date(2024, 6, 1),
+        formation_completed_date=date(2024, 6, 3),
+    ))
+    db.commit()
+
+    print("-> Adding Action Points (WIP board) + a PEP assessment + AR sub-workflow states...")
+    ops_user = users_by_name["Ritu Sharma"]
+    _ap = [
+        ("Chase Vistra on Melton Park restoration filing", "In Progress", "High",
+         "Melton Park Ltd", ops_user.id, date(2026, 9, 15)),
+        ("Collect 2024 AR data for Century Capital", "Open", "Medium",
+         "Century Capital Advisors Ltd", ops_user.id, date(2026, 9, 20)),
+        ("Renew office lease — internal", "Open", "Low", None, admin_user.id, date(2026, 10, 1)),
+        ("Draft revised fee schedule for 2027", "Open", "Medium", None, admin_user.id, None),
+        ("File ROM/RBO for Vogacloset", "Done", "High", "Vogacloset Shareholders Limited",
+         ops_user.id, date(2026, 8, 30)),
+    ]
+    for title, status, priority, entity, owner_id, due in _ap:
+        db.add(ActionPoint(
+            title=title, status=status, priority=priority,
+            case_id=cases_by_name[entity].id if entity else None,
+            owner_id=owner_id, created_by_id=admin_user.id, due_date=due,
+            completed_date=date(2026, 8, 30) if status == "Done" else None,
+        ))
+
+    # Illustrative PEP assessment on the Castle Noble UBO.
+    db.add(PEPAssessment(
+        case_id=cnh_case.id, ubo_id=cnh_ubo.id, subject_name="Elena Volkova",
+        pep_type="Family Member",
+        position="Immediate family member of a former regional minister (illustrative)",
+        pep_jurisdiction="Russian Federation (the)", still_in_office=False,
+        family_and_associates="Spouse: business owner (Dubai). No other PEP connections identified.",
+        source_of_wealth_scrutiny="SoW corroborated: 100% ownership of Volkova Trading FZE since 2016; "
+                                  "audited accounts and dividend history reviewed.",
+        edd_measures="Enhanced screening (World-Check + adverse-media), senior-management approval, "
+                     "annual review cadence, source-of-funds evidence on each material transfer.",
+        adverse_media_findings="None.",
+        risk_conclusion="Proceed with EDD", senior_management_approved=True,
+        approved_by_id=admin_user.id, approved_at=datetime(2024, 1, 16, 11, 0, tzinfo=timezone.utc),
+        assessed_by_id=screener.id, assessment_date=date(2024, 1, 15),
+    ))
+
+    # AR sub-workflow: put two entities mid-cycle.
+    for entity, ar_status in (("Century Capital Advisors Ltd", "Data Prepared"),
+                              ("Bisley Capital Ltd", "Submitted to Vistra")):
+        sched = db.query(ComplianceSchedule).filter(
+            ComplianceSchedule.case_id == cases_by_name[entity].id).first()
+        if sched:
+            sched.ar_filing_status = ar_status
+            sched.ar_reference_year = 2025
     db.commit()
 
     print(f"\nSeeded: {len(DEMO_USERS)} Triam users, {len(ENTITIES)} BVI entities, "

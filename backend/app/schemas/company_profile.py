@@ -32,6 +32,11 @@ class CompanyProfileBase(BaseModel):
     source_of_funds_description: Optional[str] = None
     nature_of_business: Optional[NatureOfBusiness] = None
     business_description: Optional[str] = None
+    business_countries: Optional[str] = None
+    key_counterparties: Optional[str] = None
+    asset_types: Optional[str] = None
+    expected_annual_turnover: Optional[str] = None
+    expected_active_transactions: Optional[str] = None
     company_secretary: Optional[CompanySecretary] = None
 
     es_financial_year_end: Optional[str] = Field(None, pattern=_MMDD)

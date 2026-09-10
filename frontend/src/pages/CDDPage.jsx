@@ -3,6 +3,7 @@ import { casesApi, cddApi, directorsApi, shareholdersApi, ubosApi } from "../api
 import { useAuthStore } from "../store/auth";
 import { Icon, Badge, Modal, Field, Input, Select, Spinner, ErrorBanner } from "../components/ui";
 import AMLAssessmentPanel from "../components/AMLAssessmentPanel";
+import PEPAssessmentPanel from "../components/PEPAssessmentPanel";
 import DocumentsPanel from "../components/DocumentsPanel";
 import { DOCUMENT_STATUS_OPTIONS, AML_RISK_OPTIONS } from "../utils/constants";
 
@@ -257,15 +258,19 @@ export default function CDDPage() {
                 </div>
               </div>
 
-              <AMLAssessmentPanel
-                caseId={selected.id}
-                entityName={selected.company_name}
-                parties={[
+              {(() => {
+                const parties = [
                   ...directors.map((d) => ({ id: d.id, _kind: "Director", _label: directorName(d) })),
                   ...shareholders.map((s) => ({ id: s.id, _kind: "Shareholder", _label: s.name })),
                   ...ubos.map((u) => ({ id: u.id, _kind: "UBO", _label: [u.first_name, u.middle_name, u.last_name].filter(Boolean).join(" ") || "UBO" })),
-                ]}
-              />
+                ];
+                return (
+                  <>
+                    <AMLAssessmentPanel caseId={selected.id} entityName={selected.company_name} parties={parties} />
+                    <PEPAssessmentPanel caseId={selected.id} parties={parties} />
+                  </>
+                );
+              })()}
 
               <div className="border-t border-gray-100 pt-4">
                 <p className="text-xs font-semibold text-gray-600 mb-2">Case Documents <span className="text-gray-400 font-normal">· not tied to a checklist item</span></p>

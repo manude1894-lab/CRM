@@ -4,7 +4,7 @@ Field sets mirror Triam's actual Vistra register templates (Director Register,
 Shareholder Register) rather than the full bilingual Data Input Sheet — this is
 a CRM register, not a data-entry clone of the Vistra form.
 """
-from sqlalchemy import Column, Integer, String, Text, Date, DateTime, Boolean, Numeric, ForeignKey
+from sqlalchemy import Column, Integer, String, Text, Date, DateTime, Boolean, Numeric, ForeignKey, JSON
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 import enum
@@ -66,6 +66,21 @@ class Director(Base):
     corporate_number = Column(String(100), nullable=True)
     country_of_incorporation = Column(String(100), nullable=True)
     corporate_date_of_incorporation = Column(Date, nullable=True)
+    # Appendix B — entity-variant detail (company / trust / foundation / fund / LP / SOE),
+    # shape keyed by entity_details["entity_type"] and driven by the frontend.
+    entity_details = Column(JSON, nullable=True)
+
+    # Appendix A — individual KYC detail
+    email = Column(String(255), nullable=True)
+    mobile = Column(String(50), nullable=True)
+    occupation = Column(String(150), nullable=True)
+    employer_name = Column(String(255), nullable=True)
+    tax_residency_country = Column(String(100), nullable=True)
+    tax_id_number = Column(String(60), nullable=True)
+    source_of_funds = Column(String(255), nullable=True)
+    source_of_wealth = Column(Text, nullable=True)
+    is_pep = Column(Boolean, default=False, nullable=False)
+    pep_notes = Column(Text, nullable=True)
 
     # Service address
     service_address = Column(String(255), nullable=True)
@@ -118,6 +133,29 @@ class Shareholder(Base):
     is_joint_shareholder = Column(Boolean, default=False, nullable=False)
     is_nominee = Column(Boolean, default=False, nullable=False)
     nominee_holds_for = Column(String(255), nullable=True)  # beneficial owner the nominee holds shares for
+    # Nominator block (Vistra shareholder form) — who the nominee holds for, in full.
+    nominator_name = Column(String(255), nullable=True)
+    nominator_address = Column(String(255), nullable=True)
+    nominator_relationship = Column(String(150), nullable=True)
+    nominee_agreement_date = Column(Date, nullable=True)
+
+    # Appendix B — entity-variant detail (see Director.entity_details).
+    entity_details = Column(JSON, nullable=True)
+    # Mortgages & charges over the share position:
+    # [{chargee, amount, currency, date_created, date_satisfied, status}]
+    charges = Column(JSON, nullable=True)
+
+    # Appendix A — individual KYC detail (for identification_type == "Individual")
+    email = Column(String(255), nullable=True)
+    mobile = Column(String(50), nullable=True)
+    occupation = Column(String(150), nullable=True)
+    employer_name = Column(String(255), nullable=True)
+    tax_residency_country = Column(String(100), nullable=True)
+    tax_id_number = Column(String(60), nullable=True)
+    source_of_funds = Column(String(255), nullable=True)
+    source_of_wealth = Column(Text, nullable=True)
+    is_pep = Column(Boolean, default=False, nullable=False)
+    pep_notes = Column(Text, nullable=True)
 
     date_entered = Column(Date, nullable=True)
     date_ceased = Column(Date, nullable=True)

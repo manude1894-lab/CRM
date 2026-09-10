@@ -94,6 +94,23 @@ export const complianceApi = {
   listUpcoming: (days = 60) => api.get("/compliance", { params: { days } }).then((r) => r.data),
   get: (caseId) => api.get(`/compliance/${caseId}`).then((r) => r.data),
   markDone: (caseId, item) => api.post(`/compliance/${caseId}/mark-done`, { item }).then((r) => r.data),
+  setArStatus: (caseId, status) => api.post(`/compliance/${caseId}/ar-status`, { status }).then((r) => r.data),
+};
+
+// ─── Action Points (WIP board) ───────────────────────────────────────
+export const actionPointsApi = {
+  list: (params = {}) => api.get("/action-points", { params }).then((r) => r.data),
+  create: (data) => api.post("/action-points", data).then((r) => r.data),
+  update: (id, data) => api.patch(`/action-points/${id}`, data).then((r) => r.data),
+  remove: (id) => api.delete(`/action-points/${id}`),
+};
+
+// ─── PEP assessments ─────────────────────────────────────────────────
+export const pepApi = {
+  list: (caseId) => api.get(`/cases/${caseId}/pep-assessments`).then((r) => r.data),
+  create: (caseId, data) => api.post(`/cases/${caseId}/pep-assessments`, data).then((r) => r.data),
+  update: (id, data) => api.patch(`/pep-assessments/${id}`, data).then((r) => r.data),
+  remove: (id) => api.delete(`/pep-assessments/${id}`),
 };
 
 // ─── Company profile (formation / statutory detail) ────────────────────
@@ -106,6 +123,12 @@ export const companyProfileApi = {
 export const lifecycleApi = {
   get: (caseId) => api.get(`/cases/${caseId}/lifecycle`).then((r) => r.data),
   update: (caseId, data) => api.patch(`/cases/${caseId}/lifecycle`, data).then((r) => r.data),
+};
+
+// ─── Formation (screening / MLRO sign-off / Vistra loop / milestones) ──
+export const formationApi = {
+  get: (caseId) => api.get(`/cases/${caseId}/formation`).then((r) => r.data),
+  update: (caseId, data) => api.patch(`/cases/${caseId}/formation`, data).then((r) => r.data),
 };
 
 // ─── Documents (uploaded files) ───────────────────────────────────────

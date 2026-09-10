@@ -1,25 +1,40 @@
 import React, { useEffect, useState } from "react";
 import { directorsApi, shareholdersApi, ubosApi, amlApi } from "../api/endpoints";
 import { Icon, Modal, Field, Input, Select, Textarea, Spinner, ErrorBanner } from "./ui";
-import { PARTY_TYPE_OPTIONS, SHAREHOLDER_TYPE_OPTIONS, OWNERSHIP_NATURE_OPTIONS, SOURCE_OF_WEALTH_OPTIONS } from "../utils/constants";
+import {
+  PARTY_TYPE_OPTIONS, SHAREHOLDER_TYPE_OPTIONS, OWNERSHIP_NATURE_OPTIONS, SOURCE_OF_WEALTH_OPTIONS,
+  ENTITY_DETAIL_TYPE_OPTIONS, CHARGE_STATUS_OPTIONS,
+} from "../utils/constants";
+
+const emptyAppendixA = {
+  email: "", mobile: "", occupation: "", employer_name: "",
+  tax_residency_country: "", tax_id_number: "", source_of_funds: "", source_of_wealth: "",
+  is_pep: false, pep_notes: "",
+};
 
 const emptyDirector = {
   director_type: "Individual",
   first_name: "", middle_name: "", last_name: "", former_name: "",
   date_of_birth: "", place_of_birth: "", nationality: "", passport_number: "",
   corporate_name: "", corporate_number: "", country_of_incorporation: "", corporate_date_of_incorporation: "",
+  entity_details: {},
   service_address: "", service_city: "", service_country: "",
   residential_address: "", residential_city: "", residential_country: "",
   appointment_date: "", cessation_date: "", notes: "",
+  ...emptyAppendixA,
 };
 
 const emptyShareholder = {
   identification_type: "Individual",
   name: "", corporate_number: "", country_of_incorporation: "",
+  entity_details: {},
   registered_address: "", city: "", country: "",
   certificate_no: "", number_of_shares: "", share_class: "", shareholding_percent: "",
   is_joint_shareholder: false, is_nominee: false, nominee_holds_for: "",
+  nominator_name: "", nominator_address: "", nominator_relationship: "", nominee_agreement_date: "",
+  charges: [],
   date_entered: "", date_ceased: "", notes: "",
+  ...emptyAppendixA,
 };
 
 const emptyUBO = {
@@ -224,6 +239,132 @@ const FormButtons = ({ onCancel, onSave }) => (
 const set = (setForm, k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
 const setBool = (setForm, k) => (e) => setForm((p) => ({ ...p, [k]: e.target.checked }));
 
+const SectionTitle = ({ children }) => (
+  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mt-3 mb-1">{children}</p>
+);
+
+// ─── Vistra KYC Appendix A — individual detail (Director + individual Shareholder) ──
+function AppendixAFields({ form, setForm }) {
+  return (
+    <>
+      <SectionTitle>Appendix A — Individual Detail</SectionTitle>
+      <div className="grid grid-cols-3 gap-x-3">
+        <Field label="Email"><Input value={form.email || ""} onChange={set(setForm, "email")} /></Field>
+        <Field label="Mobile"><Input value={form.mobile || ""} onChange={set(setForm, "mobile")} /></Field>
+        <Field label="Occupation"><Input value={form.occupation || ""} onChange={set(setForm, "occupation")} /></Field>
+        <Field label="Employer"><Input value={form.employer_name || ""} onChange={set(setForm, "employer_name")} /></Field>
+        <Field label="Tax Residency (country)"><Input value={form.tax_residency_country || ""} onChange={set(setForm, "tax_residency_country")} /></Field>
+        <Field label="Tax ID Number"><Input value={form.tax_id_number || ""} onChange={set(setForm, "tax_id_number")} /></Field>
+      </div>
+      <Field label="Source of Funds"><Input value={form.source_of_funds || ""} onChange={set(setForm, "source_of_funds")} /></Field>
+      <Field label="Source of Wealth"><Textarea value={form.source_of_wealth || ""} onChange={set(setForm, "source_of_wealth")} /></Field>
+      <label className="flex items-center gap-1.5 text-xs text-gray-600 py-1">
+        <input type="checkbox" checked={!!form.is_pep} onChange={setBool(setForm, "is_pep")} />
+        Politically Exposed Person (PEP)
+      </label>
+      {form.is_pep && <Field label="PEP Notes"><Textarea value={form.pep_notes || ""} onChange={set(setForm, "pep_notes")} /></Field>}
+    </>
+  );
+}
+
+// ─── Small editor for a list of strings (beneficiaries, council members, LPs) ──
+function StringListEditor({ label, value = [], onChange }) {
+  const list = Array.isArray(value) ? value : [];
+  const upd = (i, v) => onChange(list.map((x, idx) => (idx === i ? v : x)));
+  return (
+    <Field label={label}>
+      <div className="space-y-1">
+        {list.map((v, i) => (
+          <div key={i} className="flex gap-1">
+            <Input value={v} onChange={(e) => upd(i, e.target.value)} />
+            <button type="button" onClick={() => onChange(list.filter((_, idx) => idx !== i))}
+              className="px-2 text-xs text-gray-400 hover:text-red-500">✕</button>
+          </div>
+        ))}
+        <button type="button" onClick={() => onChange([...list, ""])}
+          className="text-xs px-2 py-0.5 border border-gray-200 rounded hover:bg-gray-50">＋ Add</button>
+      </div>
+    </Field>
+  );
+}
+
+// ─── Vistra KYC Appendix B — entity-variant detail (stored in entity_details JSON) ──
+const ENTITY_FIELDS = {
+  Company: [["regulated", "Regulated? (yes/no)"], ["regulator", "Regulator"], ["listed", "Listed? (yes/no)"], ["exchange", "Exchange"], ["directors_summary", "Directors — summary"], ["ownership_summary", "Ownership — summary"]],
+  Trust: [["trust_name", "Trust name"], ["trust_type", "Trust type"], ["trustee", "Trustee"], ["settlor", "Settlor"], ["protector", "Protector"], ["governing_law", "Governing law"], ["date_established", "Date established"]],
+  Foundation: [["foundation_name", "Foundation name"], ["founder", "Founder"], ["guardian", "Guardian"], ["governing_law", "Governing law"], ["date_established", "Date established"]],
+  Fund: [["fund_name", "Fund name"], ["fund_manager", "Fund manager"], ["investment_advisor", "Investment advisor"], ["administrator", "Administrator"], ["regulated", "Regulated? (yes/no)"], ["regulator", "Regulator"], ["domicile", "Domicile"]],
+  "Limited Partnership": [["general_partner", "General partner"], ["partnership_agreement_date", "Partnership agreement date"]],
+  "State-Owned Enterprise": [["government_body", "Government body"], ["country", "Country"], ["government_ownership_percent", "Government ownership %"], ["legal_form", "Legal form"]],
+};
+
+function EntityDetailsFields({ value = {}, onChange }) {
+  const d = value || {};
+  const type = d.entity_type || "";
+  const upd = (k, v) => onChange({ ...d, [k]: v });
+  const lists = { Trust: "beneficiaries", Foundation: "council_members", "Limited Partnership": "limited_partners" };
+  return (
+    <>
+      <SectionTitle>Appendix B — Entity Detail</SectionTitle>
+      <Field label="Entity Type">
+        <Select value={type} onChange={(e) => onChange({ ...d, entity_type: e.target.value })}>
+          <option value="">— select —</option>
+          {ENTITY_DETAIL_TYPE_OPTIONS.map((o) => <option key={o}>{o}</option>)}
+        </Select>
+      </Field>
+      {type && (
+        <>
+          <div className="grid grid-cols-2 gap-x-3">
+            {(ENTITY_FIELDS[type] || []).map(([k, label]) => (
+              <Field key={k} label={label}><Input value={d[k] ?? ""} onChange={(e) => upd(k, e.target.value)} /></Field>
+            ))}
+          </div>
+          {lists[type] && (
+            <StringListEditor label={lists[type].replace("_", " ")} value={d[lists[type]]} onChange={(v) => upd(lists[type], v)} />
+          )}
+          {(type === "Trust" || type === "Foundation") && (
+            <StringListEditor label="Beneficiaries" value={d.beneficiaries} onChange={(v) => upd("beneficiaries", v)} />
+          )}
+        </>
+      )}
+    </>
+  );
+}
+
+// ─── Mortgages & charges over a share position ──
+const emptyCharge = { chargee: "", amount: "", currency: "USD", date_created: "", date_satisfied: "", status: "Outstanding" };
+
+function ChargesEditor({ value = [], onChange }) {
+  const list = Array.isArray(value) ? value : [];
+  const upd = (i, k, v) => onChange(list.map((c, idx) => (idx === i ? { ...c, [k]: v } : c)));
+  return (
+    <>
+      <SectionTitle>Mortgages & Charges</SectionTitle>
+      {list.length === 0 && <p className="text-xs text-gray-400 italic">No charges recorded.</p>}
+      <div className="space-y-2">
+        {list.map((c, i) => (
+          <div key={i} className="border border-gray-100 rounded-lg p-2 grid grid-cols-3 gap-x-2 gap-y-1 relative">
+            <Field label="Chargee"><Input value={c.chargee || ""} onChange={(e) => upd(i, "chargee", e.target.value)} /></Field>
+            <Field label="Amount"><Input type="number" min="0" value={c.amount ?? ""} onChange={(e) => upd(i, "amount", e.target.value)} /></Field>
+            <Field label="Currency"><Input value={c.currency || ""} onChange={(e) => upd(i, "currency", e.target.value)} /></Field>
+            <Field label="Date Created"><Input type="date" value={c.date_created || ""} onChange={(e) => upd(i, "date_created", e.target.value)} /></Field>
+            <Field label="Date Satisfied"><Input type="date" value={c.date_satisfied || ""} onChange={(e) => upd(i, "date_satisfied", e.target.value)} /></Field>
+            <Field label="Status">
+              <Select value={c.status || "Outstanding"} onChange={(e) => upd(i, "status", e.target.value)}>
+                {CHARGE_STATUS_OPTIONS.map((s) => <option key={s}>{s}</option>)}
+              </Select>
+            </Field>
+            <button type="button" onClick={() => onChange(list.filter((_, idx) => idx !== i))}
+              className="absolute top-1 right-1 text-xs text-gray-300 hover:text-red-500">✕</button>
+          </div>
+        ))}
+      </div>
+      <button type="button" onClick={() => onChange([...list, { ...emptyCharge }])}
+        className="text-xs px-2 py-0.5 mt-1 border border-gray-200 rounded hover:bg-gray-50">＋ Add charge</button>
+    </>
+  );
+}
+
 function DirectorForm({ form, setForm, onCancel, onSave }) {
   return (
     <div className="space-y-1">
@@ -250,6 +391,10 @@ function DirectorForm({ form, setForm, onCancel, onSave }) {
           <Field label="Date of Incorporation"><Input type="date" value={form.corporate_date_of_incorporation || ""} onChange={set(setForm, "corporate_date_of_incorporation")} /></Field>
         </div>
       )}
+      {form.director_type === "Individual"
+        ? <AppendixAFields form={form} setForm={setForm} />
+        : <EntityDetailsFields value={form.entity_details} onChange={(v) => setForm((p) => ({ ...p, entity_details: v }))} />}
+      <SectionTitle>Address & Appointment</SectionTitle>
       <div className="grid grid-cols-3 gap-x-3">
         <Field label="Service Address"><Input value={form.service_address || ""} onChange={set(setForm, "service_address")} /></Field>
         <Field label="Service City"><Input value={form.service_city || ""} onChange={set(setForm, "service_city")} /></Field>
@@ -302,8 +447,24 @@ function ShareholderForm({ form, setForm, onCancel, onSave }) {
         </label>
       </div>
       {form.is_nominee && (
-        <Field label="Nominee Holds For (beneficial owner)"><Input value={form.nominee_holds_for || ""} onChange={set(setForm, "nominee_holds_for")} /></Field>
+        <>
+          <Field label="Nominee Holds For (beneficial owner)"><Input value={form.nominee_holds_for || ""} onChange={set(setForm, "nominee_holds_for")} /></Field>
+          <div className="grid grid-cols-2 gap-x-3">
+            <Field label="Nominator Name"><Input value={form.nominator_name || ""} onChange={set(setForm, "nominator_name")} /></Field>
+            <Field label="Nominator Address"><Input value={form.nominator_address || ""} onChange={set(setForm, "nominator_address")} /></Field>
+            <Field label="Relationship"><Input value={form.nominator_relationship || ""} onChange={set(setForm, "nominator_relationship")} /></Field>
+            <Field label="Nominee Agreement Date"><Input type="date" value={form.nominee_agreement_date || ""} onChange={set(setForm, "nominee_agreement_date")} /></Field>
+          </div>
+        </>
       )}
+
+      {form.identification_type === "Individual"
+        ? <AppendixAFields form={form} setForm={setForm} />
+        : <EntityDetailsFields value={form.entity_details} onChange={(v) => setForm((p) => ({ ...p, entity_details: v }))} />}
+
+      <ChargesEditor value={form.charges} onChange={(v) => setForm((p) => ({ ...p, charges: v }))} />
+
+      <Field label="Notes"><Textarea value={form.notes || ""} onChange={set(setForm, "notes")} /></Field>
       <FormButtons onCancel={onCancel} onSave={onSave} />
     </div>
   );

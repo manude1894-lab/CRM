@@ -96,6 +96,7 @@ def list_upcoming(db: Session, days: int = 60) -> list[dict]:
                     "item": item,
                     "due_date": due_date,
                     "days_remaining": (due_date - today).days,
+                    "ar_filing_status": schedule.ar_filing_status if item == "ar_filing" else None,
                 })
     rows.sort(key=lambda r: r["due_date"])
     return rows
@@ -114,6 +115,54 @@ def mark_done(db: Session, case_id: int, data: ComplianceMarkDoneRequest) -> Com
         setattr(schedule, due_field, next_30_september(after=today))
     elif roll == "clear":
         setattr(schedule, due_field, None)
+
+    if data.item == "ar_filing":
+        _reset_ar_subworkflow(schedule)
+
+    db.commit()
+    db.refresh(schedule)
+    return schedule
+
+
+# ─── Annual Return sub-workflow (light) ──────────────────────────────────
+_AR_STATUSES = ("Not Started", "Data Prepared", "Submitted to Vistra", "Filed", "Confirmed")
+
+
+def _reset_ar_subworkflow(schedule: ComplianceSchedule) -> None:
+    """Roll the AR sub-workflow after a filing is confirmed: bump the reference year,
+    reset the status. The due-date roll itself is handled by the caller."""
+    schedule.ar_reference_year = (schedule.ar_reference_year or date.today().year) + 1
+    schedule.ar_filing_status = "Not Started"
+
+
+def set_ar_status(db: Session, case_id: int, status: str) -> ComplianceSchedule:
+    from app.models import Instruction  # local import — avoids a services import cycle
+
+    schedule = get_schedule(db, case_id)
+    schedule.ar_filing_status = status
+    year = schedule.ar_reference_year or date.today().year
+
+    if status == "Data Prepared":
+        has_open = (
+            db.query(Instruction)
+            .filter(
+                Instruction.case_id == case_id,
+                Instruction.instruction_type == "AR Filing",
+                Instruction.status != "Completed",
+            )
+            .first()
+        )
+        if not has_open:
+            db.add(Instruction(
+                case_id=case_id,
+                instruction_type="AR Filing",
+                status="Pending",
+                comments=f"Annual Return {year} — auto-created from the compliance calendar.",
+            ))
+    elif status == "Confirmed":
+        schedule.ar_filing_last_completed_date = date.today()
+        schedule.ar_filing_due_date = next_30_september(after=date.today())
+        _reset_ar_subworkflow(schedule)
 
     db.commit()
     db.refresh(schedule)
