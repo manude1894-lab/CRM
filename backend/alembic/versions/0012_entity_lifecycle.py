@@ -24,14 +24,11 @@ _case_status_enum = PGEnum(*_ORIGINAL_STATUS_VALUES, name="case_status", create_
 
 def upgrade():
     # ─── cases.status: PG ENUM -> VARCHAR(30) ───────────────────────────
-    op.alter_column(
-        "cases", "status",
-        existing_type=_case_status_enum,
-        type_=sa.String(length=30),
-        existing_nullable=False,
-        existing_server_default="Active",
-        postgresql_using="status::text",
-    )
+    # The column default ('Active'::case_status) depends on the enum type, so drop
+    # it first, change the column type, re-add a plain default, then drop the type.
+    op.execute("ALTER TABLE cases ALTER COLUMN status DROP DEFAULT")
+    op.execute("ALTER TABLE cases ALTER COLUMN status TYPE VARCHAR(30) USING status::text")
+    op.execute("ALTER TABLE cases ALTER COLUMN status SET DEFAULT 'Active'")
     op.execute("DROP TYPE IF EXISTS case_status")
 
     # ─── entity_lifecycle ──────────────────────────────────────────────
@@ -79,11 +76,6 @@ def downgrade():
     PGEnum(*_ORIGINAL_STATUS_VALUES, name="case_status", create_type=True).create(
         op.get_bind(), checkfirst=True,
     )
-    op.alter_column(
-        "cases", "status",
-        existing_type=sa.String(length=30),
-        type_=_case_status_enum,
-        existing_nullable=False,
-        existing_server_default="Active",
-        postgresql_using="status::case_status",
-    )
+    op.execute("ALTER TABLE cases ALTER COLUMN status DROP DEFAULT")
+    op.execute("ALTER TABLE cases ALTER COLUMN status TYPE case_status USING status::case_status")
+    op.execute("ALTER TABLE cases ALTER COLUMN status SET DEFAULT 'Active'")
