@@ -13,6 +13,14 @@ const directorName = (d) => d.director_type === "Corporate"
 
 const SCREENING_STATUSES = ["Submitted", "Under Review"];
 
+const expiryInfo = (dateStr) => {
+  if (!dateStr) return null;
+  const days = Math.floor((new Date(dateStr).getTime() - Date.now()) / 86400000);
+  if (days < 0) return { cls: "text-red-600 border-red-300", label: "expired" };
+  if (days <= 60) return { cls: "text-amber-600 border-amber-300", label: `${days}d` };
+  return { cls: "text-gray-500 border-gray-200", label: null };
+};
+
 export default function CDDPage() {
   const canReview = useAuthStore((s) => ["admin", "screening"].includes(s.user?.role));
   const [cases, setCases] = useState([]);
@@ -84,6 +92,15 @@ export default function CDDPage() {
   const toggleReceived = async (doc) => {
     try {
       await cddApi.updateDocument(doc.id, { received: !doc.received, received_date: !doc.received ? new Date().toISOString().split("T")[0] : null });
+      load();
+    } catch (e) {
+      alert(e.response?.data?.detail || "Update failed");
+    }
+  };
+
+  const setExpiry = async (doc, value) => {
+    try {
+      await cddApi.updateDocument(doc.id, { expiry_date: value || null });
       load();
     } catch (e) {
       alert(e.response?.data?.detail || "Update failed");
@@ -231,6 +248,18 @@ export default function CDDPage() {
                                       <span className="text-xs text-gray-700">{doc.doc_type}</span>
                                     </div>
                                     <div className="flex items-center gap-2 ml-2">
+                                      {(() => {
+                                        const ei = expiryInfo(doc.expiry_date);
+                                        return (
+                                          <label className="flex items-center gap-1 text-[11px] text-gray-400" title="Document expiry (e.g. passport)">
+                                            <span>exp</span>
+                                            <input type="date" value={doc.expiry_date || ""}
+                                              onChange={(e) => setExpiry(doc, e.target.value)}
+                                              className={`border rounded px-1 py-0.5 text-[11px] focus:outline-none ${ei ? ei.cls : "text-gray-500 border-gray-200"}`} />
+                                            {ei?.label && <span className={`font-medium ${ei.cls.split(" ")[0]}`}>{ei.label}</span>}
+                                          </label>
+                                        );
+                                      })()}
                                       <button onClick={() => setOpenAttach(openAttach === doc.id ? null : doc.id)}
                                         className={`flex items-center gap-1 text-xs ${(doc.attachments?.length || 0) > 0 ? "text-blue-600" : "text-gray-400"} hover:text-blue-600`}>
                                         <Icon name="download" size={12} /> {doc.attachments?.length || 0}

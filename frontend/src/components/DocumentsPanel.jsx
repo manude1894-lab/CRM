@@ -8,6 +8,11 @@ import GenerateDocModal from "./GenerateDocModal";
 const fmtBytes = (b) =>
   b == null ? "" : b < 1024 ? `${b} B` : b < 1048576 ? `${(b / 1024).toFixed(0)} KB` : `${(b / 1048576).toFixed(1)} MB`;
 
+const isViewable = (ct) => {
+  const t = (ct || "").toLowerCase();
+  return t.startsWith("application/pdf") || t.startsWith("image/");
+};
+
 /**
  * Reusable attachments list + uploader.
  *
@@ -90,6 +95,12 @@ export default function DocumentsPanel({ caseId, scope = null, compact = false, 
                 <span className="truncate">{d.filename}</span>
               </button>
               <div className="flex items-center gap-2 flex-shrink-0 text-[11px] text-gray-400">
+                {isViewable(d.content_type) && (
+                  <button onClick={() => documentsApi.view(d.id)} title="View"
+                    className="p-0.5 rounded hover:bg-blue-50 text-gray-400 hover:text-blue-600">
+                    <Icon name="view" size={12} />
+                  </button>
+                )}
                 {d.generated_from && <span className="px-1.5 py-0.5 rounded bg-blue-50 text-blue-600">generated</span>}
                 {!compact && !scope?.category && <span className="px-1.5 py-0.5 rounded bg-gray-100">{d.category}</span>}
                 <span>{fmtBytes(d.size_bytes)}</span>

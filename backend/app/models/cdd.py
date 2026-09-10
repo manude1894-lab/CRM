@@ -63,6 +63,7 @@ class CaseDocument(Base):
     doc_type = Column(String(150), nullable=False)
     received = Column(Boolean, default=False, nullable=False)
     received_date = Column(Date, nullable=True)
+    expiry_date = Column(Date, nullable=True)  # e.g. passport / ID expiry — RM-entered
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

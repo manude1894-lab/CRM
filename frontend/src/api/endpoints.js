@@ -160,6 +160,14 @@ export const documentsApi = {
     a.remove();
     window.URL.revokeObjectURL(url);
   },
+  view: async (id) => {
+    // Same bytes as download; window.open renders them by MIME type (blob URL has
+    // no Content-Disposition). Works for PDFs and images.
+    const res = await api.get(`/documents/${id}/download`, { responseType: "blob" });
+    const url = window.URL.createObjectURL(res.data);
+    window.open(url, "_blank", "noopener");
+    setTimeout(() => window.URL.revokeObjectURL(url), 60000);
+  },
 };
 
 // ─── Notifications ─────────────────────────────────────────────────────

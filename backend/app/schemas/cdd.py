@@ -11,6 +11,7 @@ class CaseDocumentBase(BaseModel):
     doc_type: str = Field(..., min_length=1, max_length=150)
     received: bool = False
     received_date: Optional[date] = None
+    expiry_date: Optional[date] = None
 
 
 class CaseDocumentCreate(CaseDocumentBase):
@@ -21,6 +22,7 @@ class CaseDocumentUpdate(BaseModel):
     doc_type: Optional[str] = None
     received: Optional[bool] = None
     received_date: Optional[date] = None
+    expiry_date: Optional[date] = None
 
 
 class CaseDocumentRead(CaseDocumentBase):

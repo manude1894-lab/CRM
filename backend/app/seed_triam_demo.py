@@ -446,6 +446,7 @@ def seed(db: Session, force: bool = False):
         ))
         _ubo_passport_item.received = True
         _ubo_passport_item.received_date = date(2024, 1, 10)
+        _ubo_passport_item.expiry_date = date(2026, 11, 30)  # expiring soon — shows the amber flag
         db.commit()
 
     print("-> Adding sample AML risk assessments...")
