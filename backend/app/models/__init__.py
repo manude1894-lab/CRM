@@ -15,6 +15,10 @@ from app.models.company_profile import (
     CompanyProfile, RegisteredAgent, NameCheckStatus, SourceOfFunds,
     NatureOfBusiness, CompanySecretary,
 )
+from app.models.entity_lifecycle import (
+    EntityLifecycle, ClosureMethod, RestorationStatus, StrikeOffCause,
+    ChecklistItemStatus, RESTORATION_CHECKLIST_TEMPLATE, new_restoration_checklist,
+)
 from app.models.notification import Notification
 from app.models.activity import Activity, ActivityType, ActivityStatus
 from app.models.party import (
@@ -35,6 +39,8 @@ __all__ = [
     "ComplianceSchedule",
     "CompanyProfile", "RegisteredAgent", "NameCheckStatus", "SourceOfFunds",
     "NatureOfBusiness", "CompanySecretary",
+    "EntityLifecycle", "ClosureMethod", "RestorationStatus", "StrikeOffCause",
+    "ChecklistItemStatus", "RESTORATION_CHECKLIST_TEMPLATE", "new_restoration_checklist",
     "Notification",
     "Activity", "ActivityType", "ActivityStatus",
     "Director", "Shareholder", "UBO", "PartyType", "ShareholderType",

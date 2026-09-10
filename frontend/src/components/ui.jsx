@@ -56,6 +56,11 @@ export const Badge = ({ text }) => {
     "Docs Pending": "bg-amber-100 text-amber-700",
     Rejected: "bg-red-100 text-red-700",
     "On Hold": "bg-gray-100 text-gray-600",
+    // Entity-lifecycle statuses
+    "In Closure": "bg-amber-100 text-amber-700",
+    "Struck Off": "bg-red-100 text-red-700",
+    Dissolved: "bg-gray-200 text-gray-700",
+    "Transferred Out": "bg-gray-200 text-gray-700",
     // Document / CDD statuses
     "Not Started": "bg-gray-100 text-gray-600",
     Submitted: "bg-blue-100 text-blue-700",

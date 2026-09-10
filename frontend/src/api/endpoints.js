@@ -102,6 +102,12 @@ export const companyProfileApi = {
   update: (caseId, data) => api.patch(`/cases/${caseId}/company-profile`, data).then((r) => r.data),
 };
 
+// ─── Entity lifecycle (closure / restoration / RA transfer) ───────────
+export const lifecycleApi = {
+  get: (caseId) => api.get(`/cases/${caseId}/lifecycle`).then((r) => r.data),
+  update: (caseId, data) => api.patch(`/cases/${caseId}/lifecycle`, data).then((r) => r.data),
+};
+
 // ─── Documents (uploaded files) ───────────────────────────────────────
 export const documentsApi = {
   list: (caseId) => api.get(`/cases/${caseId}/documents`).then((r) => r.data),

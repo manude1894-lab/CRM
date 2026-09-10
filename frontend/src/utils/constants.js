@@ -32,7 +32,50 @@ export const CASE_STATUS_COLORS = {
   "Docs Pending": "bg-amber-100 text-amber-700",
   "Rejected": "bg-red-100 text-red-700",
   "On Hold": "bg-gray-100 text-gray-600",
+  "In Closure": "bg-amber-100 text-amber-700",
+  "Struck Off": "bg-red-100 text-red-700",
+  "Dissolved": "bg-gray-200 text-gray-700",
+  "Transferred Out": "bg-gray-200 text-gray-700",
 };
+
+export const CASE_STATUS_OPTIONS = [
+  "Active", "Docs Pending", "On Hold", "Rejected",
+  "In Closure", "Struck Off", "Dissolved", "Transferred Out",
+];
+
+// The exited statuses — hidden from the default Cases view, shown as "Closed RELs".
+export const CLOSED_REL_STATUSES = ["Struck Off", "Dissolved", "Transferred Out"];
+
+export const CLOSURE_METHOD_OPTIONS = [
+  "Voluntary Liquidation",
+  "Voluntary Strike Off",
+  "Lapse by Non-Payment",
+];
+
+export const RESTORATION_STATUS_OPTIONS = ["Not Applicable", "In Progress", "Completed"];
+
+export const STRIKE_OFF_CAUSE_OPTIONS = ["Client-related", "Agent-related", "Other"];
+
+export const LIFECYCLE_CHECKLIST_STATUS_OPTIONS = ["Pending", "Received", "N/A"];
+
+// Process Manual §XI — restoration document checklist (keys match the backend template).
+export const RESTORATION_CHECKLIST_ITEMS = [
+  { key: "ci", label: "Certificate of Incorporation (CI)" },
+  { key: "rom", label: "Register of Members (ROM)" },
+  { key: "rod", label: "Register of Directors (ROD)" },
+  { key: "rod_stamped", label: "Register of Directors — stamped (ROD Stamped)" },
+  { key: "moa", label: "Memorandum & Articles of Association (M&A)" },
+  { key: "resolution_carrying_business", label: "Resolution on carrying on business" },
+  { key: "es_fy_start_confirmation", label: "ES financial year start-date confirmation" },
+  { key: "es_filing_2020_2024", label: "2020–2024 Economic Substance filing status" },
+  { key: "ar_2023_form", label: "2023 Annual Return submission form" },
+  { key: "ar_2024_form", label: "2024 Annual Return submission form" },
+  { key: "bo_form", label: "BO / ROM-RBO form" },
+  { key: "indemnity_letter", label: "Indemnity letter" },
+  { key: "resolution_appointing_vistra", label: "Resolution appointing Vistra / RORA" },
+  { key: "bvi_record_keeping_resolution", label: "BVI record-keeping resolution" },
+  { key: "rom_bvi_form", label: "ROM BVI form" },
+];
 
 export const DOCUMENT_STATUS_OPTIONS = ["Not Started", "Submitted", "Under Review", "Approved", "Rejected"];
 
@@ -108,6 +151,8 @@ export const DOCUMENT_CATEGORY_OPTIONS = [
   "Corporate Document",
   "KYC Form",
   "Filed Return / Confirmation",
+  "Restoration",
+  "Closure / Strike Off",
   "Other",
 ];
 

@@ -33,6 +33,7 @@ _TABLES_TO_CLEAR = [
     "case_documents",
     "cdd_records",
     "company_profiles",
+    "entity_lifecycle",
     "compliance_schedules",
     "instructions",
     "invoices",

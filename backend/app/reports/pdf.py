@@ -190,7 +190,7 @@ def case_details_pdf(cases: list[Case]) -> bytes:
             c.case_uid,
             Paragraph(c.company_name[:35], styles["Body"]),
             c.stage.value,
-            c.status.value,
+            c.status,
             c.invoice_status.value,
             c.rm.name if c.rm else "—",
             c.created_at.date().isoformat() if c.created_at else "—",

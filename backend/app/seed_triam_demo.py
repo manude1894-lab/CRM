@@ -23,6 +23,7 @@ from app.models import (
     Invoice, InvoiceLedgerStatus,
     AMLRiskAssessment, AMLSubjectType,
     CompanyProfile, ComplianceSchedule,
+    EntityLifecycle, RestorationStatus, new_restoration_checklist,
 )
 from app.auth.security import hash_password
 from app.utils.uid import next_uid
@@ -436,6 +437,49 @@ def seed(db: Session, force: bool = False):
             charge_amount=Decimal(str(charge)) if charge is not None else None,
             invoice_reference=inv_ref, invoice_id=linked_invoice.id if linked_invoice else None,
         ))
+    db.commit()
+
+    print("-> Setting up entity-lifecycle demo states...")
+    # Melton Park — lapsed under its prior agent (ILS), now being restored and
+    # transferred to Vistra (matches the tracker's live "Transfer & Restoration" row).
+    mp_case = cases_by_name["Melton Park Ltd"]
+    mp_checklist = new_restoration_checklist()
+    for item in mp_checklist:
+        if item["key"] in ("ci", "rom", "rod", "moa", "indemnity_letter"):
+            item["status"] = "Received"
+    db.add(EntityLifecycle(
+        case_id=mp_case.id,
+        closure_method="Lapse by Non-Payment",
+        closure_initiated_date=date(2024, 5, 1),
+        closure_reason="Annual Licence Fee not paid by the prior registered agent.",
+        outstanding_filings_cleared=False,
+        strike_off_date=date(2024, 6, 30),
+        expected_dissolution_date=date(2031, 6, 30),
+        restoration_status=RestorationStatus.IN_PROGRESS.value,
+        restoration_initiated_date=date(2025, 3, 1),
+        strike_off_cause="Agent-related",
+        restoration_checklist=mp_checklist,
+        transfer_from_agent="ILS Fiduciary",
+        transfer_to_agent="Vistra",
+        transfer_initiated_date=date(2025, 3, 1),
+        transfer_ends_administration=False,
+        transfer_notes="Restoration application filed; RA transfer to Vistra to complete on restoration.",
+    ))
+    mp_case.status = CaseStatus.STRUCK_OFF.value
+
+    # Oxford Bridge — client moved administration elsewhere (a "Closed REL").
+    ob_case = cases_by_name["Oxford Bridge Holdings Limited"]
+    db.add(EntityLifecycle(
+        case_id=ob_case.id,
+        restoration_checklist=new_restoration_checklist(),
+        transfer_from_agent="Vistra",
+        transfer_to_agent="Other",
+        transfer_initiated_date=date(2025, 7, 1),
+        transfer_completed_date=date(2025, 8, 15),
+        transfer_ends_administration=True,
+        transfer_notes="Client appointed an in-house administrator; Triam engagement closed.",
+    ))
+    ob_case.status = CaseStatus.TRANSFERRED_OUT.value
     db.commit()
 
     print(f"\nSeeded: {len(DEMO_USERS)} Triam users, {len(ENTITIES)} BVI entities, "

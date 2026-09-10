@@ -23,6 +23,8 @@ class DocumentCategory(str, enum.Enum):
     CORPORATE_DOCUMENT = "Corporate Document"
     KYC_FORM = "KYC Form"
     FILED_RETURN = "Filed Return / Confirmation"
+    RESTORATION = "Restoration"
+    CLOSURE = "Closure / Strike Off"
     OTHER = "Other"
 
 

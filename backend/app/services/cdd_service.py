@@ -55,7 +55,7 @@ def review_cdd(db: Session, case_id: int, data: CDDReviewRequest, user: User) ->
         cdd.kyc_verification_status = DocumentStatus.APPROVED
         cdd.rejection_reason = None
         if case:
-            case.status = CaseStatus.ACTIVE
+            case.status = CaseStatus.ACTIVE.value
     else:
         if not data.rejection_reason:
             raise HTTPException(status_code=400, detail="rejection_reason is required when rejecting CDD")
@@ -63,7 +63,7 @@ def review_cdd(db: Session, case_id: int, data: CDDReviewRequest, user: User) ->
         cdd.kyc_verification_status = DocumentStatus.REJECTED
         cdd.rejection_reason = data.rejection_reason
         if case:
-            case.status = CaseStatus.REJECTED
+            case.status = CaseStatus.REJECTED.value
 
     cdd.screening_reviewer_id = user.id
     cdd.reviewed_at = datetime.now(timezone.utc)

@@ -14,6 +14,7 @@ from app.schemas.compliance import (
     ComplianceScheduleRead, ComplianceScheduleUpdate, ComplianceMarkDoneRequest, UpcomingComplianceItem,
 )
 from app.schemas.company_profile import CompanyProfileRead, CompanyProfileUpdate
+from app.schemas.entity_lifecycle import EntityLifecycleRead, EntityLifecycleUpdate, ChecklistItem
 from app.schemas.document import DocumentRead
 from app.schemas.notification import NotificationRead
 from app.schemas.activity import ActivityCreate, ActivityRead, ActivityUpdate
@@ -38,6 +39,7 @@ __all__ = [
     "CDDRecordRead", "CDDRecordUpdate", "CDDReviewRequest",
     "ComplianceScheduleRead", "ComplianceScheduleUpdate", "ComplianceMarkDoneRequest", "UpcomingComplianceItem",
     "CompanyProfileRead", "CompanyProfileUpdate",
+    "EntityLifecycleRead", "EntityLifecycleUpdate", "ChecklistItem",
     "DocumentRead",
     "NotificationRead",
     "ActivityCreate", "ActivityRead", "ActivityUpdate",

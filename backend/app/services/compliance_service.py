@@ -11,9 +11,18 @@ from sqlalchemy.orm import Session
 from fastapi import HTTPException
 
 from app.config import settings
-from app.models import ComplianceSchedule, Case, UserRole
+from app.models import ComplianceSchedule, Case, CaseStatus, UserRole
 from app.schemas.compliance import ComplianceMarkDoneRequest
 from app.services import notification_service
+
+# Case statuses for which the compliance calendar no longer applies — the entity
+# is struck off, dissolved or has left Triam's administration. Reminders and the
+# "upcoming" list skip these.
+DORMANT_CASE_STATUSES = {
+    CaseStatus.STRUCK_OFF.value,
+    CaseStatus.DISSOLVED.value,
+    CaseStatus.TRANSFERRED_OUT.value,
+}
 
 # item -> (due_field, last_completed_field, roll)
 #   roll("cadence") — add N months;  roll("sept30") — next 30 September;  roll("clear") — set due None
@@ -66,6 +75,7 @@ def list_upcoming(db: Session, days: int = 60) -> list[dict]:
     schedules = (
         db.query(ComplianceSchedule, Case)
         .join(Case, Case.id == ComplianceSchedule.case_id)
+        .filter(Case.status.notin_(DORMANT_CASE_STATUSES))
         .filter(or_(
             ComplianceSchedule.renewal_due_date <= horizon,
             ComplianceSchedule.esr_filing_due_date <= horizon,

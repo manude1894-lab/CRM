@@ -42,6 +42,11 @@ class CaseStatus(str, enum.Enum):
     DOCS_PENDING = "Docs Pending"
     REJECTED = "Rejected"
     ON_HOLD = "On Hold"
+    # Entity-lifecycle states — derived by lifecycle_service from EntityLifecycle.
+    IN_CLOSURE = "In Closure"
+    STRUCK_OFF = "Struck Off"
+    DISSOLVED = "Dissolved"
+    TRANSFERRED_OUT = "Transferred Out"
 
 
 class CaseSource(str, enum.Enum):
@@ -99,7 +104,9 @@ class Case(Base):
 
     # Pipeline state
     stage = Column(SAEnum(CaseStage, name="case_stage", values_callable=lambda obj: [e.value for e in obj]), default=CaseStage.NEW_INQUIRY, nullable=False)
-    status = Column(SAEnum(CaseStatus, name="case_status", values_callable=lambda obj: [e.value for e in obj]), default=CaseStatus.ACTIVE, nullable=False)
+    # Plain String (not a PG enum) so lifecycle values can be added freely — same
+    # precedent as jurisdiction / service_type (migration 0003).
+    status = Column(String(30), default=CaseStatus.ACTIVE.value, nullable=False)
 
     # Invoicing
     invoice_status = Column(SAEnum(InvoiceStatus, name="invoice_status", values_callable=lambda obj: [e.value for e in obj]), default=InvoiceStatus.NOT_RAISED, nullable=False)
@@ -125,6 +132,7 @@ class Case(Base):
     cdd_record = relationship("CDDRecord", back_populates="case", uselist=False, cascade="all, delete-orphan")
     compliance_schedule = relationship("ComplianceSchedule", back_populates="case", uselist=False, cascade="all, delete-orphan")
     company_profile = relationship("CompanyProfile", back_populates="case", uselist=False, cascade="all, delete-orphan")
+    lifecycle = relationship("EntityLifecycle", back_populates="case", uselist=False, cascade="all, delete-orphan")
     directors = relationship("Director", back_populates="case", cascade="all, delete-orphan", order_by="Director.id")
     shareholders = relationship("Shareholder", back_populates="case", cascade="all, delete-orphan", order_by="Shareholder.id")
     ubos = relationship("UBO", back_populates="case", cascade="all, delete-orphan", order_by="UBO.id")

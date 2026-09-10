@@ -24,7 +24,7 @@ def build_dashboard(db: Session, user: User) -> dict:
 
     open_cases = [c for c in cases if c.stage != CaseStage.ACTIVE]
 
-    docs_pending_cases = [c for c in cases if c.status == CaseStatus.DOCS_PENDING]
+    docs_pending_cases = [c for c in cases if c.status == CaseStatus.DOCS_PENDING.value]
     docs_pending = [{
         "case_id": c.id, "case_uid": c.case_uid, "company_name": c.company_name,
         "stage": c.stage.value,
@@ -86,7 +86,7 @@ def build_dashboard(db: Session, user: User) -> dict:
             "active_cases": len([c for c in my_cases if c.stage != CaseStage.ACTIVE]),
             "cases": [{
                 "case_id": c.id, "case_uid": c.case_uid, "company_name": c.company_name,
-                "stage": c.stage.value, "status": c.status.value, "invoice_status": c.invoice_status.value,
+                "stage": c.stage.value, "status": c.status, "invoice_status": c.invoice_status.value,
             } for c in sorted(my_cases, key=lambda c: c.company_name)],
         })
 

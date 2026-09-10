@@ -10,6 +10,7 @@ from datetime import date, datetime, timezone
 from app.database import SessionLocal
 from app.models import Case, CaseStatus, CDDRecord, DocumentStatus, ComplianceSchedule, UserRole
 from app.services import notification_service, compliance_service
+from app.services.compliance_service import DORMANT_CASE_STATUSES
 from app.utils.business_days import business_days_between, to_date
 
 logger = logging.getLogger("ezeetech.scheduler")
@@ -33,7 +34,7 @@ def check_docs_pending():
     db = SessionLocal()
     try:
         today = date.today()
-        cases = db.query(Case).filter(Case.status == CaseStatus.DOCS_PENDING).all()
+        cases = db.query(Case).filter(Case.status == CaseStatus.DOCS_PENDING.value).all()
         for case in cases:
             days = business_days_between(to_date(case.updated_at), today)
             if days > DOCS_PENDING_BUSINESS_DAYS and case.rm_id:
@@ -98,7 +99,7 @@ def _check_compliance_reminders(db, due_field: str, notification_type: str, remi
         days_remaining = (due_date - today).days
         if days_remaining in reminder_days:
             case = db.query(Case).filter(Case.id == schedule.case_id).first()
-            if not case:
+            if not case or case.status in DORMANT_CASE_STATUSES:
                 continue
             key = f"{notification_type}_{days_remaining}d"
             if notification_service.has_unresolved_notification(db, case.id, key):

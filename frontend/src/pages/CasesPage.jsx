@@ -3,7 +3,8 @@ import { casesApi, usersApi, accountsApi } from "../api/endpoints";
 import { Icon, Badge, Modal, Field, Input, Select, Textarea, Spinner, ErrorBanner } from "../components/ui";
 import PartyRegisterModal from "../components/PartyRegisterModal";
 import CompanyDetailsModal from "../components/CompanyDetailsModal";
-import { STAGES, STAGE_COLORS, CASE_SOURCE_OPTIONS, JURISDICTION_OPTIONS, SERVICE_TYPE_OPTIONS, fmt } from "../utils/constants";
+import LifecycleModal from "../components/LifecycleModal";
+import { STAGES, STAGE_COLORS, CASE_SOURCE_OPTIONS, JURISDICTION_OPTIONS, SERVICE_TYPE_OPTIONS, CASE_STATUS_OPTIONS, CLOSED_REL_STATUSES, fmt } from "../utils/constants";
 
 const NEXT_STAGE = STAGES.reduce((acc, s, i) => {
   if (i < STAGES.length - 1) acc[s] = STAGES[i + 1];
@@ -19,12 +20,14 @@ export default function CasesPage() {
   const [view, setView] = useState("kanban");
   const [search, setSearch] = useState("");
   const [stageFilter, setStageFilter] = useState("All");
+  const [statusFilter, setStatusFilter] = useState("All");
   const [modal, setModal] = useState(null);
   const [form, setForm] = useState({});
   const [invoiceCase, setInvoiceCase] = useState(null);
   const [invoiceAmount, setInvoiceAmount] = useState("");
   const [registerCase, setRegisterCase] = useState(null);
   const [detailsCase, setDetailsCase] = useState(null);
+  const [lifecycleCase, setLifecycleCase] = useState(null);
 
   const load = async () => {
     try {
@@ -46,8 +49,13 @@ export default function CasesPage() {
   const filtered = useMemo(() => cases.filter((c) => {
     const matchSearch = search === "" || [c.company_name, c.case_uid].some((v) => v?.toLowerCase().includes(search.toLowerCase()));
     const matchStage = stageFilter === "All" || c.stage === stageFilter;
-    return matchSearch && matchStage;
-  }), [cases, search, stageFilter]);
+    const isClosed = CLOSED_REL_STATUSES.includes(c.status);
+    let matchStatus;
+    if (statusFilter === "All") matchStatus = !isClosed;          // exited entities hidden by default
+    else if (statusFilter === "Closed RELs") matchStatus = isClosed;
+    else matchStatus = c.status === statusFilter;
+    return matchSearch && matchStage && matchStatus;
+  }), [cases, search, stageFilter, statusFilter]);
 
   const openNew = () => {
     setForm({ company_name: "", source: "Other", jurisdiction: "BVI", service_type: "Company Formation", account_id: null, rm_id: null, tags: "", notes: "" });
@@ -157,6 +165,10 @@ export default function CasesPage() {
           className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none">
           {["All", ...STAGES].map((s) => <option key={s}>{s}</option>)}
         </select>
+        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
+          className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none">
+          {["All", "Closed RELs", ...CASE_STATUS_OPTIONS].map((s) => <option key={s}>{s}</option>)}
+        </select>
       </div>
 
       {view === "kanban" ? (
@@ -194,6 +206,10 @@ export default function CasesPage() {
                         <button onClick={() => setDetailsCase(c)}
                           className="text-xs px-2 py-0.5 rounded border border-gray-200 hover:border-blue-300 hover:text-blue-600 text-gray-500">
                           Details
+                        </button>
+                        <button onClick={() => setLifecycleCase(c)}
+                          className="text-xs px-2 py-0.5 rounded border border-gray-200 hover:border-blue-300 hover:text-blue-600 text-gray-500">
+                          Lifecycle
                         </button>
                         {actionLabel(stage) && (
                           <button onClick={() => advance(c)}
@@ -253,6 +269,10 @@ export default function CasesPage() {
                         className="p-1.5 rounded hover:bg-blue-50 text-gray-400 hover:text-blue-600" title="Company Details">
                         <Icon name="compliance" size={14} />
                       </button>
+                      <button onClick={() => setLifecycleCase(c)}
+                        className="p-1.5 rounded hover:bg-blue-50 text-gray-400 hover:text-blue-600" title="Entity Lifecycle — closure / restoration / transfer">
+                        <Icon name="activities" size={14} />
+                      </button>
                       <button onClick={() => { setForm(c); setModal("edit"); }}
                         className="p-1.5 rounded hover:bg-blue-50 text-gray-400 hover:text-blue-600">
                         <Icon name="edit" size={14} />
@@ -300,6 +320,10 @@ export default function CasesPage() {
 
       {detailsCase && (
         <CompanyDetailsModal caseItem={detailsCase} onClose={() => setDetailsCase(null)} />
+      )}
+
+      {lifecycleCase && (
+        <LifecycleModal caseItem={lifecycleCase} onClose={(changed) => { setLifecycleCase(null); if (changed) load(); }} />
       )}
 
       {modal && (
