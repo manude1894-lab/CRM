@@ -3,6 +3,7 @@ import { documentsApi } from "../api/endpoints";
 import { useAuthStore } from "../store/auth";
 import { Icon } from "./ui";
 import { DOCUMENT_CATEGORY_OPTIONS } from "../utils/constants";
+import GenerateDocModal from "./GenerateDocModal";
 
 const fmtBytes = (b) =>
   b == null ? "" : b < 1024 ? `${b} B` : b < 1048576 ? `${(b / 1024).toFixed(0)} KB` : `${(b / 1048576).toFixed(1)} MB`;
@@ -25,6 +26,7 @@ export default function DocumentsPanel({ caseId, scope = null, compact = false, 
     scope?.category || defaultCategory || (scope?.case_document_id ? "CDD" : "Other")
   );
   const [notes, setNotes] = useState("");
+  const [genOpen, setGenOpen] = useState(false);
   const fileRef = useRef(null);
 
   const load = async () => {
@@ -88,6 +90,7 @@ export default function DocumentsPanel({ caseId, scope = null, compact = false, 
                 <span className="truncate">{d.filename}</span>
               </button>
               <div className="flex items-center gap-2 flex-shrink-0 text-[11px] text-gray-400">
+                {d.generated_from && <span className="px-1.5 py-0.5 rounded bg-blue-50 text-blue-600">generated</span>}
                 {!compact && !scope?.category && <span className="px-1.5 py-0.5 rounded bg-gray-100">{d.category}</span>}
                 <span>{fmtBytes(d.size_bytes)}</span>
                 <span>{(d.created_at || "").slice(0, 10)}</span>
@@ -118,7 +121,17 @@ export default function DocumentsPanel({ caseId, scope = null, compact = false, 
           className="px-2.5 py-1 text-xs text-white rounded-lg disabled:opacity-60" style={{ background: "#2B6D9A" }}>
           {busy ? "Uploading…" : "Upload"}
         </button>
+        {!compact && !scope?.case_document_id && (
+          <button onClick={() => setGenOpen(true)}
+            className="px-2.5 py-1 text-xs border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600">
+            Generate
+          </button>
+        )}
       </div>
+
+      {genOpen && (
+        <GenerateDocModal caseId={caseId} onClose={(created) => { setGenOpen(false); if (created) { load(); onChange?.(); } }} />
+      )}
     </div>
   );
 }

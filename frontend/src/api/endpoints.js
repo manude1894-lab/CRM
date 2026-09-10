@@ -105,6 +105,13 @@ export const actionPointsApi = {
   remove: (id) => api.delete(`/action-points/${id}`),
 };
 
+// ─── Document generation (templated PDFs) ────────────────────────────
+export const generationApi = {
+  templates: () => api.get("/document-templates").then((r) => r.data),
+  prefill: (caseId, code) => api.get(`/cases/${caseId}/document-templates/${code}/prefill`).then((r) => r.data),
+  generate: (caseId, body) => api.post(`/cases/${caseId}/documents/generate`, body).then((r) => r.data),
+};
+
 // ─── PEP assessments ─────────────────────────────────────────────────
 export const pepApi = {
   list: (caseId) => api.get(`/cases/${caseId}/pep-assessments`).then((r) => r.data),
@@ -117,6 +124,11 @@ export const pepApi = {
 export const companyProfileApi = {
   get: (caseId) => api.get(`/cases/${caseId}/company-profile`).then((r) => r.data),
   update: (caseId, data) => api.patch(`/cases/${caseId}/company-profile`, data).then((r) => r.data),
+};
+
+// ─── Jurisdictions (per-jurisdiction rules catalog) ──────────────────
+export const jurisdictionsApi = {
+  list: () => api.get("/jurisdictions").then((r) => r.data),
 };
 
 // ─── Entity lifecycle (closure / restoration / RA transfer) ───────────

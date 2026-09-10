@@ -309,6 +309,45 @@ def seed(db: Session, force: bool = False):
         ))
     db.commit()
 
+    print("-> Adding non-BVI entities (multi-jurisdiction demo)...")
+    from app.services.case_service import _create_compliance_schedule
+    for name, juris, incorp in (
+        ("Coral Bay Holdings (Cayman)", "Cayman Islands", date(2025, 11, 3)),
+        ("Praslin Ventures Ltd", "Seychelles", date(2026, 1, 20)),
+    ):
+        acc = Account(
+            account_uid=next_uid(db, Account, "account_uid", "ACC"),
+            company_name=name, industry="Holding Company", country=juris,
+            strategic_priority=Priority.MEDIUM, existing_relationship="Yes",
+            key_contacts="Managed via a local registered agent", owner_id=rm.id,
+        )
+        db.add(acc)
+        db.flush()
+        case = Case(
+            case_uid=next_uid(db, Case, "case_uid", "CASE"),
+            account_id=acc.id, rm_id=rm.id, ops_owner_id=users_by_name["Ritu Sharma"].id,
+            company_name=name, source=CaseSource.REFERRAL,
+            introducer="Local agent", onboarding_date=incorp,
+            jurisdiction=juris, service_type="Company Formation",
+            stage=CaseStage.ACTIVE, status=CaseStatus.ACTIVE,
+            license_received_date=incorp,
+        )
+        db.add(case)
+        db.flush()
+        cases_by_name[name] = case
+        cdd = CDDRecord(case_id=case.id)
+        db.add(cdd)
+        db.flush()
+        for doc_type in STANDARD_CDD_DOCUMENTS:
+            db.add(CaseDocument(cdd_record_id=cdd.id, doc_type=doc_type, received=True, received_date=incorp))
+        db.add(CompanyProfile(
+            case_id=case.id, incorporation_date=incorp, name_check_status="Name Confirmed",
+            authorised_shares=50000, par_value=Decimal("1.0000"), share_currency="USD",
+            nature_of_business="Investment holding - financial assets",
+        ))
+        db.commit()
+        _create_compliance_schedule(db, case)
+
     print("-> Adding mid-pipeline entities (Kanban variety)...")
     for name, stage, status, notes in PIPELINE_ENTITIES:
         acc = Account(
@@ -376,6 +415,14 @@ def seed(db: Session, force: bool = False):
     db.flush()
     generate_ubo_documents(db, cnh_ubo)
     db.commit()
+
+    print("-> Generating a sample document from a template...")
+    from app.services import generation_service
+    try:
+        generation_service.generate(db, cnh_case.id, "reference_letter", {"years_known": "4"},
+                                    users_by_name["Shirsendu Mukherjee"])
+    except Exception as exc:  # non-fatal for the demo seed
+        print(f"   (skipped document generation: {exc.__class__.__name__})")
 
     print("-> Attaching a sample document...")
     from app.models import Document, CaseDocument as _CD

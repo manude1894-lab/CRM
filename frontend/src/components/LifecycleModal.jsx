@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { lifecycleApi } from "../api/endpoints";
+import { lifecycleApi, jurisdictionsApi } from "../api/endpoints";
 import { Modal, Field, Input, Select, Textarea, Spinner, ErrorBanner } from "./ui";
 import DocumentsPanel from "./DocumentsPanel";
 import {
@@ -11,11 +11,11 @@ const cleanPayload = (obj) => Object.fromEntries(
   Object.entries(obj).map(([k, v]) => [k, v === "" ? null : v])
 );
 
-const fallbackChecklist = () =>
-  RESTORATION_CHECKLIST_ITEMS.map((i) => ({ ...i, status: "Pending", note: null }));
+const asChecklist = (items) => items.map((i) => ({ key: i.key, label: i.label, status: "Pending", note: null }));
 
 export default function LifecycleModal({ caseItem, onClose }) {
   const [form, setForm] = useState(null);
+  const [spec, setSpec] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -23,12 +23,25 @@ export default function LifecycleModal({ caseItem, onClose }) {
   useEffect(() => {
     let alive = true;
     setLoading(true);
-    lifecycleApi.get(caseItem.id)
-      .then((d) => { if (alive) { setForm({ ...d, restoration_checklist: d.restoration_checklist?.length ? d.restoration_checklist : fallbackChecklist() }); setError(null); } })
+    Promise.all([
+      lifecycleApi.get(caseItem.id),
+      jurisdictionsApi.list().catch(() => []),
+    ])
+      .then(([d, specs]) => {
+        if (!alive) return;
+        const js = (specs || []).find((s) => s.code === caseItem.jurisdiction)
+          || (specs || []).find((s) => s.code === "GENERIC") || null;
+        setSpec(js);
+        const fallback = js ? asChecklist(js.restoration_checklist) : asChecklist(RESTORATION_CHECKLIST_ITEMS);
+        setForm({ ...d, restoration_checklist: d.restoration_checklist?.length ? d.restoration_checklist : fallback });
+        setError(null);
+      })
       .catch((e) => { if (alive) setError(e.response?.data?.detail || "Failed to load lifecycle record"); })
       .finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
   }, [caseItem.id]);
+
+  const closureMethods = spec?.closure_methods || CLOSURE_METHOD_OPTIONS;
 
   const set = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
   const setBool = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.checked }));
@@ -63,7 +76,7 @@ export default function LifecycleModal({ caseItem, onClose }) {
               <Field label="Closure Method">
                 <Select value={form.closure_method || ""} onChange={set("closure_method")}>
                   <option value="">— select —</option>
-                  {CLOSURE_METHOD_OPTIONS.map((o) => <option key={o}>{o}</option>)}
+                  {closureMethods.map((o) => <option key={o}>{o}</option>)}
                 </Select>
               </Field>
               <Field label="Closure Initiated Date"><Input type="date" value={form.closure_initiated_date || ""} onChange={set("closure_initiated_date")} /></Field>

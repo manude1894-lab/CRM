@@ -45,6 +45,8 @@ class Document(Base):
 
     uploaded_by_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     notes = Column(String(500), nullable=True)
+    # The template code when this file was produced by generation_service; null = uploaded.
+    generated_from = Column(String(60), nullable=True)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 

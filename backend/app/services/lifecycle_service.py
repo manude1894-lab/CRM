@@ -17,6 +17,7 @@ from app.models import (
 )
 from app.schemas.entity_lifecycle import EntityLifecycleUpdate
 from app.services import notification_service
+from app import jurisdictions
 
 _NOTIFY_ON_ENTRY = {
     CaseStatus.IN_CLOSURE.value,
@@ -39,12 +40,13 @@ def get_or_create(db: Session, case_id: int) -> EntityLifecycle:
     lc = db.query(EntityLifecycle).filter(EntityLifecycle.case_id == case_id).first()
     if lc:
         return lc
-    if not db.query(Case).filter(Case.id == case_id).first():
+    case = db.query(Case).filter(Case.id == case_id).first()
+    if not case:
         raise HTTPException(status_code=404, detail="Case not found")
     lc = EntityLifecycle(
         case_id=case_id,
         restoration_status=RestorationStatus.NOT_APPLICABLE.value,
-        restoration_checklist=new_restoration_checklist(),
+        restoration_checklist=new_restoration_checklist(case.jurisdiction),
     )
     db.add(lc)
     db.commit()
@@ -81,7 +83,8 @@ def update(db: Session, case_id: int, data: EntityLifecycleUpdate, user: User) -
 
     # Fill in the obvious companion dates when a state is entered without one.
     if lc.strike_off_date and not lc.expected_dissolution_date:
-        lc.expected_dissolution_date = lc.strike_off_date + relativedelta(years=7)
+        years = jurisdictions.get(case.jurisdiction).strike_off_years
+        lc.expected_dissolution_date = lc.strike_off_date + relativedelta(years=years)
     if lc.restoration_status == RestorationStatus.IN_PROGRESS.value and not lc.restoration_initiated_date:
         lc.restoration_initiated_date = today
     if lc.restoration_status == RestorationStatus.COMPLETED.value and not lc.restoration_completed_date:

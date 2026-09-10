@@ -90,7 +90,7 @@ export default function CompliancePage() {
                 <td className="py-3 px-4 text-xs font-medium text-gray-800">{r.case_uid}</td>
                 <td className="py-3 px-4 text-xs text-gray-600">{r.company_name}</td>
                 <td className="py-3 px-4 text-xs text-gray-600">
-                  {ITEM_LABEL[r.item] || r.item}
+                  {r.label || ITEM_LABEL[r.item] || r.item}
                   {r.item === "bo_filing" && <span className="ml-1.5 text-xs px-1.5 py-0.5 rounded bg-red-100 text-red-700">30-day</span>}
                   {r.item === "ar_filing" && r.ar_filing_status && (
                     <div className="mt-1 flex items-center gap-1.5">

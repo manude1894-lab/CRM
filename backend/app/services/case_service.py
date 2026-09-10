@@ -112,11 +112,17 @@ def update_case(db: Session, case_id: int, data: CaseUpdate, user: User) -> Case
     if user.role == UserRole.RM:
         update_data.pop("rm_id", None)
 
+    old_jurisdiction = case.jurisdiction
     for field, value in update_data.items():
         setattr(case, field, value)
 
     db.commit()
     db.refresh(case)
+
+    # A jurisdiction change re-anchors the compliance calendar to the new rules.
+    if "jurisdiction" in update_data and case.jurisdiction != old_jurisdiction:
+        compliance_service.recompute_schedule(db, case)
+
     _refresh_account_stats(db, case.account_id)
     return case
 
@@ -208,20 +214,14 @@ def _create_compliance_schedule(db: Session, case: Case) -> ComplianceSchedule:
     existing = db.query(ComplianceSchedule).filter(ComplianceSchedule.case_id == case.id).first()
     if existing:
         return existing
+    from app import jurisdictions
     profile = company_service.get_or_create(db, case.id)
     base = profile.incorporation_date or case.license_received_date or date.today()
-    schedule = ComplianceSchedule(
-        case_id=case.id,
-        # Annual Licence Fee — the incorporation anniversary.
-        renewal_due_date=compliance_service.next_anniversary(profile.incorporation_date or base),
-        renewal_cadence_months=settings.RENEWAL_CADENCE_MONTHS,
-        # Economic Substance filing — annual (per Vistra portal reminder).
-        esr_filing_due_date=base + relativedelta(months=settings.ESR_FILING_CADENCE_MONTHS),
-        esr_filing_cadence_months=settings.ESR_FILING_CADENCE_MONTHS,
-        # Annual Return — fixed 30 September, effective 2024.
-        ar_filing_due_date=compliance_service.next_30_september(),
-        ar_filing_cadence_months=settings.AR_FILING_CADENCE_MONTHS,
+    spec = jurisdictions.get(case.jurisdiction)
+    dates = compliance_service.build_schedule_dates(
+        spec, incorporation_date=profile.incorporation_date, base=base,
     )
+    schedule = ComplianceSchedule(case_id=case.id, **dates)
     db.add(schedule)
     db.commit()
     db.refresh(schedule)

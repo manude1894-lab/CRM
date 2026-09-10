@@ -19,7 +19,9 @@ from app.schemas.entity_lifecycle import EntityLifecycleRead, EntityLifecycleUpd
 from app.schemas.formation import FormationRecordRead, FormationRecordUpdate
 from app.schemas.action_point import ActionPointCreate, ActionPointUpdate, ActionPointRead
 from app.schemas.pep_assessment import PEPAssessmentCreate, PEPAssessmentUpdate, PEPAssessmentRead
-from app.schemas.document import DocumentRead
+from app.schemas.document import (
+    DocumentRead, DocumentTemplateInfo, DocumentTemplateField, DocumentGenerateRequest,
+)
 from app.schemas.notification import NotificationRead
 from app.schemas.activity import ActivityCreate, ActivityRead, ActivityUpdate
 from app.schemas.dashboard import DashboardResponse, KPISummary, StageBreakdown
@@ -48,7 +50,7 @@ __all__ = [
     "FormationRecordRead", "FormationRecordUpdate",
     "ActionPointCreate", "ActionPointUpdate", "ActionPointRead",
     "PEPAssessmentCreate", "PEPAssessmentUpdate", "PEPAssessmentRead",
-    "DocumentRead",
+    "DocumentRead", "DocumentTemplateInfo", "DocumentTemplateField", "DocumentGenerateRequest",
     "NotificationRead",
     "ActivityCreate", "ActivityRead", "ActivityUpdate",
     "DashboardResponse", "KPISummary", "StageBreakdown",

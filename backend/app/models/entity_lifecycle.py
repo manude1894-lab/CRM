@@ -49,31 +49,18 @@ class ChecklistItemStatus(str, enum.Enum):
     NOT_APPLICABLE = "N/A"
 
 
-# Process Manual §XI — documents to collect for a restoration application.
-# (key, label) — the key is stable; the label is what the UI shows.
-RESTORATION_CHECKLIST_TEMPLATE: list[tuple[str, str]] = [
-    ("ci", "Certificate of Incorporation (CI)"),
-    ("rom", "Register of Members (ROM)"),
-    ("rod", "Register of Directors (ROD)"),
-    ("rod_stamped", "Register of Directors — stamped (ROD Stamped)"),
-    ("moa", "Memorandum & Articles of Association (M&A)"),
-    ("resolution_carrying_business", "Resolution on carrying on business"),
-    ("es_fy_start_confirmation", "ES financial year start-date confirmation"),
-    ("es_filing_2020_2024", "2020–2024 Economic Substance filing status"),
-    ("ar_2023_form", "2023 Annual Return submission form"),
-    ("ar_2024_form", "2024 Annual Return submission form"),
-    ("bo_form", "BO / ROM-RBO form"),
-    ("indemnity_letter", "Indemnity letter"),
-    ("resolution_appointing_vistra", "Resolution appointing Vistra / RORA"),
-    ("bvi_record_keeping_resolution", "BVI record-keeping resolution"),
-    ("rom_bvi_form", "ROM BVI form"),
-]
+from app import jurisdictions
+
+# Kept for back-compat; the source of truth is jurisdictions._BVI.restoration_checklist
+# (Process Manual §XI). The generic fallback list lives there too.
+RESTORATION_CHECKLIST_TEMPLATE = list(jurisdictions.get("BVI").restoration_checklist)
 
 
-def new_restoration_checklist() -> list[dict]:
+def new_restoration_checklist(jurisdiction: str | None = "BVI") -> list[dict]:
+    spec = jurisdictions.get(jurisdiction)
     return [
         {"key": key, "label": label, "status": ChecklistItemStatus.PENDING.value, "note": None}
-        for key, label in RESTORATION_CHECKLIST_TEMPLATE
+        for key, label in spec.restoration_checklist
     ]
 
 

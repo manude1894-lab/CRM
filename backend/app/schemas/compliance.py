@@ -51,6 +51,7 @@ class UpcomingComplianceItem(BaseModel):
     case_uid: str
     company_name: str
     item: ComplianceItem
+    label: Optional[str] = None
     due_date: date
     days_remaining: int
     ar_filing_status: Optional[str] = None

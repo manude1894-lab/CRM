@@ -42,11 +42,18 @@ def update(db: Session, case_id: int, data: CompanyProfileUpdate, user: User) ->
     db.commit()
     db.refresh(profile)
 
-    # Keep the Annual Licence Fee renewal date anchored to the incorporation anniversary.
+    # Keep the renewal date anchored to the incorporation anniversary (per the
+    # case's jurisdiction — for BVI that is the incorporation anniversary).
     if incorporation_changed and profile.incorporation_date:
         schedule = db.query(ComplianceSchedule).filter(ComplianceSchedule.case_id == case_id).first()
         if schedule:
-            schedule.renewal_due_date = compliance_service.next_anniversary(profile.incorporation_date)
-            db.commit()
+            from app import jurisdictions
+            case = db.query(Case).filter(Case.id == case_id).first()
+            renewal = jurisdictions.get(case.jurisdiction if case else None).item("renewal")
+            if renewal:
+                schedule.renewal_due_date = compliance_service.compute_due(
+                    renewal, incorporation_date=profile.incorporation_date, base=profile.incorporation_date,
+                )
+                db.commit()
 
     return profile
