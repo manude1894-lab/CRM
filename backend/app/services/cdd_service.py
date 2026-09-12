@@ -1,11 +1,12 @@
 """Service layer: CDDRecord + CaseDocument checklist + screening review."""
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
 
-from app.models import CDDRecord, CaseDocument, Case, CaseStatus, DocumentStatus, User, Director, Shareholder, UBO
+from app.models import CDDRecord, CaseDocument, Case, CaseStatus, DocumentStatus, User, UserRole, Director, Shareholder, UBO
 from app.schemas.cdd import CDDRecordUpdate, CDDReviewRequest, CaseDocumentCreate, CaseDocumentUpdate
+from app.services import notification_service
 
 # Per-party CDD requirements — Vistra KYC Appendix C.
 INDIVIDUAL_PARTY_DOCUMENTS = [
@@ -67,6 +68,38 @@ def review_cdd(db: Session, case_id: int, data: CDDReviewRequest, user: User) ->
 
     cdd.screening_reviewer_id = user.id
     cdd.reviewed_at = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(cdd)
+    return cdd
+
+
+def grant_cdd_exception(db: Session, case_id: int, reason: str, days: int, user: User) -> CDDRecord:
+    """Time-boxed override letting the case proceed to invoicing before CDD is fully
+    approved. Admin-only (enforced at the router); always expires."""
+    cdd = get_cdd_record(db, case_id)
+    cdd.exception_granted = True
+    cdd.exception_reason = reason
+    cdd.exception_granted_by_id = user.id
+    cdd.exception_granted_at = datetime.now(timezone.utc)
+    cdd.exception_expires_on = date.today() + timedelta(days=days)
+    db.commit()
+    db.refresh(cdd)
+
+    case = db.query(Case).filter(Case.id == case_id).first()
+    if case:
+        msg = (f"CDD exception granted on {case.case_uid} ({case.company_name}) — "
+               f"expires {cdd.exception_expires_on}. Reason: {reason}")
+        if case.rm_id:
+            notification_service.notify_user(db, case.rm_id, msg, "cdd_exception_granted",
+                                             link=f"/cases/{case_id}", case_id=case_id)
+        notification_service.notify_role(db, UserRole.OPS, msg, "cdd_exception_granted",
+                                         link=f"/cases/{case_id}", case_id=case_id)
+    return cdd
+
+
+def revoke_cdd_exception(db: Session, case_id: int) -> CDDRecord:
+    cdd = get_cdd_record(db, case_id)
+    cdd.exception_granted = False
     db.commit()
     db.refresh(cdd)
     return cdd

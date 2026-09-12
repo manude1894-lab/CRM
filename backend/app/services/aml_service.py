@@ -19,7 +19,7 @@ from app.models import (
 from app.schemas.aml import (
     AMLAssessmentCreate, AMLAssessmentUpdate, CountryRiskCreate, CountryRiskUpdate,
 )
-from app.services import aml_matrix
+from app.services import aml_matrix, access_control
 
 _DATA_FILE = Path(__file__).resolve().parent.parent / "data" / "country_risk.json"
 
@@ -90,7 +90,7 @@ def _get_case_for_write(db: Session, case_id: int, user: User) -> Case:
     case = db.query(Case).filter(Case.id == case_id).first()
     if not case:
         raise HTTPException(status_code=404, detail="Case not found")
-    if user.role == UserRole.RM and case.rm_id != user.id:
+    if not access_control.user_can_access_case(case, user):
         raise HTTPException(status_code=403, detail="Access denied")
     return case
 

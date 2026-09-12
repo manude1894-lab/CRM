@@ -35,9 +35,12 @@ class Account(Base):
     total_invoiced_amount = Column(Numeric(14, 2), default=0, nullable=False)
 
     owner_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    # Single Point of Contact — the staff member who manages this client's section.
+    spoc_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     owner = relationship("User", back_populates="accounts", foreign_keys=[owner_id])
+    spoc = relationship("User", foreign_keys=[spoc_id])
     cases = relationship("Case", back_populates="account")

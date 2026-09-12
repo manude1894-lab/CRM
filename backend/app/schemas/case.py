@@ -24,6 +24,8 @@ class CaseBase(BaseModel):
     account_id: Optional[int] = None
     rm_id: Optional[int] = None
     ops_owner_id: Optional[int] = None
+    engagement_letter_sent_date: Optional[date] = None
+    engagement_letter_signed_date: Optional[date] = None
 
 
 class CaseCreate(CaseBase):
@@ -46,6 +48,8 @@ class CaseUpdate(BaseModel):
     account_id: Optional[int] = None
     rm_id: Optional[int] = None
     ops_owner_id: Optional[int] = None
+    engagement_letter_sent_date: Optional[date] = None
+    engagement_letter_signed_date: Optional[date] = None
 
 
 class CaseStageChangeRequest(BaseModel):
@@ -62,7 +66,12 @@ class CaseRead(CaseBase):
     invoice_status: InvoiceStatus
     invoice_raised_date: Optional[date] = None
     invoice_paid_date: Optional[date] = None
+    additional_rm_ids: list[int] = []
     created_at: datetime
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class AdditionalRMRequest(BaseModel):
+    user_id: int

@@ -143,6 +143,67 @@ def check_bo_filings_due():
         db.close()
 
 
+CDD_EXCEPTION_REMINDER_DAYS = (7, 3, 0)
+
+
+def check_cdd_exceptions_expiring():
+    db = SessionLocal()
+    try:
+        today = date.today()
+        records = db.query(CDDRecord).filter(CDDRecord.exception_granted == True).all()  # noqa: E712
+        for cdd in records:
+            if not cdd.exception_expires_on:
+                continue
+            days_remaining = (cdd.exception_expires_on - today).days
+            if days_remaining not in CDD_EXCEPTION_REMINDER_DAYS:
+                continue
+            case = db.query(Case).filter(Case.id == cdd.case_id).first()
+            if not case:
+                continue
+            key = f"cdd_exception_expiring_{days_remaining}d"
+            if notification_service.has_unresolved_notification(db, case.id, key):
+                continue
+            msg = (f"CDD exception for case {case.case_uid} ({case.company_name}) "
+                   f"expires in {days_remaining} days ({cdd.exception_expires_on}).")
+            if case.rm_id:
+                notification_service.notify_user(db, case.rm_id, msg, key, link=f"/cdd/{case.id}", case_id=case.id)
+            notification_service.notify_role(db, UserRole.ADMIN, msg, key, link=f"/cdd/{case.id}", case_id=case.id)
+    finally:
+        db.close()
+
+
+def check_recurring_service_billing():
+    """Auto-create a Draft invoice for each Active service subscription whose next
+    billing date has arrived, then roll the date forward by its billing frequency."""
+    from dateutil.relativedelta import relativedelta
+    from app.models import ServiceSubscription, Invoice
+
+    db = SessionLocal()
+    try:
+        today = date.today()
+        subs = db.query(ServiceSubscription).filter(
+            ServiceSubscription.status == "Active",
+            ServiceSubscription.next_billing_date != None,  # noqa: E711
+            ServiceSubscription.next_billing_date <= today,
+        ).all()
+        step = {"Monthly": 1, "Quarterly": 3, "Annually": 12}
+        for sub in subs:
+            db.add(Invoice(
+                case_id=sub.case_id,
+                description=sub.service_name,
+                amount=sub.fee_amount or 0,
+                status="Draft",
+            ))
+            months = step.get(sub.billing_frequency)
+            if months:
+                sub.next_billing_date = sub.next_billing_date + relativedelta(months=months)
+            else:  # One-off — don't keep billing it
+                sub.status = "Cancelled"
+        db.commit()
+    finally:
+        db.close()
+
+
 def run_daily_sweep():
     """Entry point registered with APScheduler — runs all checks in sequence."""
     for job in (
@@ -153,6 +214,8 @@ def run_daily_sweep():
         check_esr_filings_due,
         check_ar_filings_due,
         check_bo_filings_due,
+        check_cdd_exceptions_expiring,
+        check_recurring_service_billing,
     ):
         try:
             job()

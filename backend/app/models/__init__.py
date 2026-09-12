@@ -8,6 +8,7 @@ from app.models.case import (
     CaseSource,
     InvoiceStatus,
     CASE_STAGE_TRANSITIONS,
+    CaseAdditionalRM,
 )
 from app.models.cdd import CDDRecord, CaseDocument, DocumentStatus
 from app.models.compliance import ComplianceSchedule
@@ -35,11 +36,17 @@ from app.models.invoice import Invoice, InvoiceLedgerStatus
 from app.models.country_risk import CountryRisk
 from app.models.aml import AMLRiskAssessment, AMLSubjectType
 from app.models.document import Document, DocumentCategory
+from app.models.prospect import Prospect, ProspectStatus
+from app.models.service_subscription import (
+    ServiceSubscription, ServiceBillingFrequency, ServiceSubscriptionStatus,
+)
+from app.models.service_feedback import ServiceFeedback
 
 __all__ = [
     "User", "UserRole",
     "Account", "Priority",
     "Case", "CaseStage", "CaseStatus", "CaseSource", "InvoiceStatus", "CASE_STAGE_TRANSITIONS",
+    "CaseAdditionalRM",
     "CDDRecord", "CaseDocument", "DocumentStatus",
     "ComplianceSchedule",
     "CompanyProfile", "RegisteredAgent", "NameCheckStatus", "SourceOfFunds",
@@ -58,4 +65,7 @@ __all__ = [
     "CountryRisk",
     "AMLRiskAssessment", "AMLSubjectType",
     "Document", "DocumentCategory",
+    "Prospect", "ProspectStatus",
+    "ServiceSubscription", "ServiceBillingFrequency", "ServiceSubscriptionStatus",
+    "ServiceFeedback",
 ]

@@ -25,6 +25,8 @@ export const casesApi = {
   raiseInvoice: (id, amount = 0) => api.post(`/cases/${id}/invoice/raise`, { amount }).then((r) => r.data),
   markInvoicePaid: (id) => api.post(`/cases/${id}/invoice/mark-paid`).then((r) => r.data),
   delete: (id) => api.delete(`/cases/${id}`),
+  addRM: (id, userId) => api.post(`/cases/${id}/relationship-managers`, { user_id: userId }).then((r) => r.data),
+  removeRM: (id, userId) => api.delete(`/cases/${id}/relationship-managers/${userId}`).then((r) => r.data),
 };
 
 // ─── CDD / KYC ─────────────────────────────────────────────────────────
@@ -34,6 +36,8 @@ export const cddApi = {
   update: (caseId, data) => api.patch(`/cdd/${caseId}`, data).then((r) => r.data),
   review: (caseId, data) => api.post(`/cdd/${caseId}/review`, data).then((r) => r.data),
   applyIntroducerExemption: (caseId) => api.post(`/cdd/${caseId}/apply-introducer-exemption`).then((r) => r.data),
+  grantException: (caseId, reason, days) => api.post(`/cdd/${caseId}/grant-exception`, { reason, days }).then((r) => r.data),
+  revokeException: (caseId) => api.post(`/cdd/${caseId}/revoke-exception`).then((r) => r.data),
   addDocument: (caseId, data) => api.post(`/cdd/${caseId}/documents`, data).then((r) => r.data),
   updateDocument: (documentId, data) => api.patch(`/cdd/documents/${documentId}`, data).then((r) => r.data),
   deleteDocument: (documentId) => api.delete(`/cdd/documents/${documentId}`),
@@ -200,6 +204,31 @@ export const activitiesApi = {
 // ─── Dashboard ─────────────────────────────────────────────────────────
 export const dashboardApi = {
   get: () => api.get("/dashboard").then((r) => r.data),
+};
+
+// ─── Prospects (pre-Case proposal tracking) ───────────────────────────
+export const prospectsApi = {
+  list: (status) => api.get("/prospects", { params: status ? { status } : {} }).then((r) => r.data),
+  get: (id) => api.get(`/prospects/${id}`).then((r) => r.data),
+  create: (data) => api.post("/prospects", data).then((r) => r.data),
+  update: (id, data) => api.patch(`/prospects/${id}`, data).then((r) => r.data),
+  delete: (id) => api.delete(`/prospects/${id}`),
+  convert: (id, data = {}) => api.post(`/prospects/${id}/convert`, data).then((r) => r.data),
+};
+
+// ─── Service subscriptions (recurring services per entity) ────────────
+export const serviceSubscriptionsApi = {
+  list: (caseId) => api.get(`/cases/${caseId}/service-subscriptions`).then((r) => r.data),
+  create: (caseId, data) => api.post(`/cases/${caseId}/service-subscriptions`, data).then((r) => r.data),
+  update: (id, data) => api.patch(`/service-subscriptions/${id}`, data).then((r) => r.data),
+  remove: (id) => api.delete(`/service-subscriptions/${id}`),
+};
+
+// ─── Client feedback ────────────────────────────────────────────────────
+export const feedbackApi = {
+  list: (caseId) => api.get(`/cases/${caseId}/feedback`).then((r) => r.data),
+  create: (caseId, data) => api.post(`/cases/${caseId}/feedback`, data).then((r) => r.data),
+  remove: (id) => api.delete(`/feedback/${id}`),
 };
 
 // ─── Reports (PDF) ─────────────────────────────────────────────────────

@@ -16,6 +16,8 @@ class CompanyProfileBase(BaseModel):
     company_number: Optional[str] = None
     registered_agent: Optional[RegisteredAgent] = None
     incorporation_date: Optional[date] = None
+    entity_category: Optional[str] = None
+    regulator: Optional[str] = None
 
     proposed_name_1: Optional[str] = None
     proposed_name_2: Optional[str] = None

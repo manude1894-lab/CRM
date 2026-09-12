@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { accountsApi, casesApi } from "../api/endpoints";
+import { accountsApi, casesApi, usersApi } from "../api/endpoints";
 import { Icon, Badge, Modal, Field, Input, Select, Spinner, ErrorBanner } from "../components/ui";
 import { fmt } from "../utils/constants";
 
@@ -8,6 +8,7 @@ const PRIORITY_OPTIONS = ["Low", "Medium", "High"];
 export default function AccountsPage() {
   const [accounts, setAccounts] = useState([]);
   const [cases, setCases] = useState([]);
+  const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [search, setSearch] = useState("");
@@ -19,21 +20,22 @@ export default function AccountsPage() {
   const load = async () => {
     try {
       setLoading(true); setError(null);
-      const [accRes, caseRes] = await Promise.all([accountsApi.list({ limit: 200 }), casesApi.list({ limit: 500 })]);
+      const [accRes, caseRes, usersRes] = await Promise.all([accountsApi.list({ limit: 200 }), casesApi.list({ limit: 500 }), usersApi.list()]);
       setAccounts(accRes.items || []);
       setCases(caseRes.items || []);
+      setUsers(usersRes || []);
     } catch (e) {
       setError(e.response?.data?.detail || "Failed to load accounts");
     } finally { setLoading(false); }
   };
   useEffect(() => { load(); }, []);
 
-  const BLANK = { company_name: "", industry: "", country: "", strategic_priority: "Medium", existing_relationship: "No", key_contacts: "", website: "" };
+  const BLANK = { company_name: "", industry: "", country: "", strategic_priority: "Medium", existing_relationship: "No", key_contacts: "", website: "", spoc_id: "" };
 
   const openNew = () => { setForm(BLANK); setModal("new"); };
 
   const openEdit = (a) => {
-    setForm({ company_name: a.company_name, industry: a.industry || "", country: a.country || "", strategic_priority: a.strategic_priority, existing_relationship: a.existing_relationship, key_contacts: a.key_contacts || "", website: a.website || "", _id: a.id });
+    setForm({ company_name: a.company_name, industry: a.industry || "", country: a.country || "", strategic_priority: a.strategic_priority, existing_relationship: a.existing_relationship, key_contacts: a.key_contacts || "", website: a.website || "", spoc_id: a.spoc_id || "", _id: a.id });
     setModal("edit");
   };
 
@@ -54,9 +56,9 @@ export default function AccountsPage() {
       setSaving(true);
       if (modal === "edit") {
         const { _id, ...patch } = form;
-        await accountsApi.update(_id, patch);
+        await accountsApi.update(_id, { ...patch, spoc_id: patch.spoc_id ? +patch.spoc_id : null });
       } else {
-        await accountsApi.create(form);
+        await accountsApi.create({ ...form, spoc_id: form.spoc_id ? +form.spoc_id : null });
       }
       setModal(null);
       load();
@@ -196,6 +198,12 @@ export default function AccountsPage() {
                 </Select>
               </Field>
             </div>
+            <Field label="SPOC (Single Point of Contact)">
+              <Select value={form.spoc_id || ""} onChange={(e) => setForm({ ...form, spoc_id: e.target.value })}>
+                <option value="">— None —</option>
+                {users.filter((u) => u.role === "rm").map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+              </Select>
+            </Field>
           </div>
           <div className="flex justify-end gap-3 mt-5">
             <button onClick={() => setModal(null)} className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>

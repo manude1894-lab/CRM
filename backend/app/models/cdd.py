@@ -35,11 +35,20 @@ class CDDRecord(Base):
     reviewed_at = Column(DateTime(timezone=True), nullable=True)
     rejection_reason = Column(Text, nullable=True)
 
+    # Time-boxed override letting the case proceed to invoicing before CDD is fully
+    # approved — Admin-granted, always expires.
+    exception_granted = Column(Boolean, default=False, nullable=False)
+    exception_reason = Column(Text, nullable=True)
+    exception_granted_by_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    exception_granted_at = Column(DateTime(timezone=True), nullable=True)
+    exception_expires_on = Column(Date, nullable=True)
+
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     case = relationship("Case", back_populates="cdd_record")
     screening_reviewer = relationship("User", foreign_keys=[screening_reviewer_id])
+    exception_granted_by = relationship("User", foreign_keys=[exception_granted_by_id])
     documents = relationship("CaseDocument", back_populates="cdd_record", cascade="all, delete-orphan")
 
 

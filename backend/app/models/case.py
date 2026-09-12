@@ -64,6 +64,8 @@ class Jurisdiction(str, enum.Enum):
     GUERNSEY = "Guernsey"
     ISLE_OF_MAN = "Isle of Man"
     MAURITIUS = "Mauritius"
+    ADGM = "ADGM"
+    DIFC = "DIFC"
     OTHER = "Other"
 
 
@@ -126,6 +128,10 @@ class Case(Base):
     tags = Column(String(500), nullable=True)
     notes = Column(Text, nullable=True)
 
+    # Engagement Letter tracking (the letter itself lives in the document store).
+    engagement_letter_sent_date = Column(Date, nullable=True)
+    engagement_letter_signed_date = Column(Date, nullable=True)
+
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
@@ -146,3 +152,19 @@ class Case(Base):
     invoices = relationship("Invoice", back_populates="case", cascade="all, delete-orphan", order_by="Invoice.id.desc()")
     aml_assessments = relationship("AMLRiskAssessment", back_populates="case", cascade="all, delete-orphan", order_by="AMLRiskAssessment.id.desc()")
     documents = relationship("Document", back_populates="case", cascade="all, delete-orphan", order_by="Document.id.desc()")
+    additional_rms = relationship("CaseAdditionalRM", back_populates="case", cascade="all, delete-orphan")
+
+    @property
+    def additional_rm_ids(self) -> list[int]:
+        return [r.user_id for r in self.additional_rms]
+
+
+class CaseAdditionalRM(Base):
+    """A secondary Relationship Manager on a case — Case.rm_id remains the primary RM."""
+    __tablename__ = "case_relationship_managers"
+
+    case_id = Column(Integer, ForeignKey("cases.id", ondelete="CASCADE"), primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+
+    case = relationship("Case", back_populates="additional_rms")
+    user = relationship("User")

@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from "react";
-import { companyProfileApi } from "../api/endpoints";
+import { companyProfileApi, casesApi } from "../api/endpoints";
 import { Modal, Field, Input, Select, Textarea, Spinner, ErrorBanner } from "./ui";
 import DocumentsPanel from "./DocumentsPanel";
 import {
   REGISTERED_AGENT_OPTIONS, NAME_CHECK_STATUS_OPTIONS, SOURCE_OF_FUNDS_OPTIONS,
-  NATURE_OF_BUSINESS_OPTIONS, COMPANY_SECRETARY_OPTIONS,
+  NATURE_OF_BUSINESS_OPTIONS, COMPANY_SECRETARY_OPTIONS, ENTITY_CATEGORY_OPTIONS,
 } from "../utils/constants";
 
 const cleanPayload = (obj) => Object.fromEntries(
@@ -21,6 +21,10 @@ const ACTIVATION_DOCS = [
 
 export default function CompanyDetailsModal({ caseItem, onClose }) {
   const [form, setForm] = useState(null);
+  const [el, setEl] = useState({
+    engagement_letter_sent_date: caseItem.engagement_letter_sent_date || "",
+    engagement_letter_signed_date: caseItem.engagement_letter_signed_date || "",
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -37,12 +41,14 @@ export default function CompanyDetailsModal({ caseItem, onClose }) {
 
   const set = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
   const setBool = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.checked }));
+  const setEngagement = (k) => (e) => setEl((p) => ({ ...p, [k]: e.target.value }));
 
   const save = async () => {
     setSaving(true);
     try {
       const { id, case_id, created_at, updated_at, ...patch } = form;
       await companyProfileApi.update(caseItem.id, cleanPayload(patch));
+      await casesApi.update(caseItem.id, cleanPayload(el));
       onClose(true);
     } catch (e) {
       alert(e.response?.data?.detail || "Save failed");
@@ -73,6 +79,13 @@ export default function CompanyDetailsModal({ caseItem, onClose }) {
               <Field label="Incorporation Date"><Input type="date" value={form.incorporation_date || ""} onChange={set("incorporation_date")} /></Field>
               <Field label="Company Number"><Input value={form.company_number || ""} onChange={set("company_number")} /></Field>
               <Field label="Chinese Name"><Input value={form.chinese_name || ""} onChange={set("chinese_name")} /></Field>
+              <Field label="Entity Category">
+                <Select value={form.entity_category || ""} onChange={set("entity_category")}>
+                  <option value="">— select —</option>
+                  {ENTITY_CATEGORY_OPTIONS.map((o) => <option key={o}>{o}</option>)}
+                </Select>
+              </Field>
+              <Field label="Regulator (if any)"><Input value={form.regulator || ""} onChange={set("regulator")} placeholder="e.g. DFSA, FSRA" /></Field>
             </div>
           </Section>
 
@@ -135,6 +148,14 @@ export default function CompanyDetailsModal({ caseItem, onClose }) {
               ))}
             </div>
             <Field label="Activation Docs Received Date"><Input type="date" value={form.activation_docs_received_date || ""} onChange={set("activation_docs_received_date")} /></Field>
+          </Section>
+
+          <Section title="Engagement">
+            <div className="grid grid-cols-2 gap-x-3">
+              <Field label="Engagement Letter Sent"><Input type="date" value={el.engagement_letter_sent_date || ""} onChange={setEngagement("engagement_letter_sent_date")} /></Field>
+              <Field label="Engagement Letter Signed"><Input type="date" value={el.engagement_letter_signed_date || ""} onChange={setEngagement("engagement_letter_signed_date")} /></Field>
+            </div>
+            <p className="text-[11px] text-gray-400">Generate the letter itself from the Attachments panel below ("Generate" → Engagement Letter).</p>
           </Section>
 
           <Section title="Attachments">

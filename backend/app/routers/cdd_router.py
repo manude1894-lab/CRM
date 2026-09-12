@@ -3,12 +3,12 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.auth.dependencies import get_current_user, require_screening
+from app.auth.dependencies import get_current_user, require_screening, require_admin
 from app.models import User
 from typing import List
 
 from app.schemas import (
-    CDDRecordRead, CDDRecordUpdate, CDDReviewRequest,
+    CDDRecordRead, CDDRecordUpdate, CDDReviewRequest, CDDExceptionRequest,
     CaseDocumentCreate, CaseDocumentRead, CaseDocumentUpdate,
 )
 from app.services import cdd_service
@@ -40,6 +40,17 @@ def review_cdd(case_id: int, data: CDDReviewRequest, db: Session = Depends(get_d
              summary="Waive per-party CDD evidence under the professional-introducer exemption")
 def apply_introducer_exemption(case_id: int, db: Session = Depends(get_db), user: User = Depends(require_screening)):
     return cdd_service.apply_introducer_exemption(db, case_id)
+
+
+@router.post("/{case_id}/grant-exception", response_model=CDDRecordRead,
+             summary="Grant a time-boxed CDD exception so the case can proceed to invoicing (Admin only)")
+def grant_cdd_exception(case_id: int, data: CDDExceptionRequest, db: Session = Depends(get_db), user: User = Depends(require_admin)):
+    return cdd_service.grant_cdd_exception(db, case_id, data.reason, data.days, user)
+
+
+@router.post("/{case_id}/revoke-exception", response_model=CDDRecordRead, summary="Revoke an active CDD exception (Admin only)")
+def revoke_cdd_exception(case_id: int, db: Session = Depends(get_db), user: User = Depends(require_admin)):
+    return cdd_service.revoke_cdd_exception(db, case_id)
 
 
 @router.post("/{case_id}/documents", response_model=CaseDocumentRead, status_code=status.HTTP_201_CREATED)

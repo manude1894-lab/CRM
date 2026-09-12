@@ -68,6 +68,10 @@ class CompanyProfile(Base):
     company_number = Column(String(100), nullable=True)
     registered_agent = Column(String(50), nullable=True)
     incorporation_date = Column(Date, nullable=True)
+    # Entity category is orthogonal to Jurisdiction — e.g. "Foundation" can exist in
+    # several jurisdictions; "ADGM/DIFC Regulated" carries its own filing obligations.
+    entity_category = Column(String(60), nullable=True)
+    regulator = Column(String(60), nullable=True)  # e.g. "DFSA", "FSRA" — free text
 
     proposed_name_1 = Column(String(255), nullable=True)
     proposed_name_2 = Column(String(255), nullable=True)

@@ -5,6 +5,7 @@ from app.routers import (
     party_router, instructions_router, invoices_router, aml_router, company_router,
     documents_router, lifecycle_router, formation_router,
     action_points_router, pep_router, generation_router, jurisdictions_router,
+    prospects_router, service_subscriptions_router, service_feedback_router,
 )
 
 __all__ = [
@@ -13,4 +14,5 @@ __all__ = [
     "party_router", "instructions_router", "invoices_router", "aml_router", "company_router",
     "documents_router", "lifecycle_router", "formation_router",
     "action_points_router", "pep_router", "generation_router", "jurisdictions_router",
+    "prospects_router", "service_subscriptions_router", "service_feedback_router",
 ]

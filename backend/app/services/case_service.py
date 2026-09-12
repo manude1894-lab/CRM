@@ -23,12 +23,12 @@ from app.models import (
 )
 from app.schemas.case import CaseCreate, CaseUpdate
 from app.utils.uid import next_uid
-from app.services import notification_service, company_service, compliance_service
+from app.services import notification_service, company_service, compliance_service, access_control
 
 
 def _apply_rbac_filter(query, user: User):
     if user.role == UserRole.RM:
-        query = query.filter(Case.rm_id == user.id)
+        query = query.filter(access_control.rm_visibility_clause(user.id))
     return query
 
 
@@ -64,7 +64,7 @@ def get_case(db: Session, case_id: int, user: User) -> Case:
     case = db.query(Case).filter(Case.id == case_id).first()
     if not case:
         raise HTTPException(status_code=404, detail="Case not found")
-    if user.role == UserRole.RM and case.rm_id != user.id:
+    if not access_control.user_can_access_case(case, user):
         raise HTTPException(status_code=403, detail="Access denied")
     return case
 
@@ -198,11 +198,21 @@ def mark_invoice_paid(db: Session, case_id: int, user: User) -> Case:
 
 def _assert_cdd_approved(db: Session, case: Case) -> None:
     cdd = db.query(CDDRecord).filter(CDDRecord.case_id == case.id).first()
-    if not cdd or cdd.cdd_form_status != DocumentStatus.APPROVED or cdd.kyc_verification_status != DocumentStatus.APPROVED:
+    approved = cdd and cdd.cdd_form_status == DocumentStatus.APPROVED and cdd.kyc_verification_status == DocumentStatus.APPROVED
+    if approved:
+        return
+    # A live, Admin-granted CDD exception lets the case proceed anyway.
+    if cdd and cdd.exception_granted and cdd.exception_expires_on and cdd.exception_expires_on >= date.today():
+        return
+    if cdd and cdd.exception_granted:
         raise HTTPException(
             status_code=400,
-            detail="CDD form and KYC verification must both be Approved before raising an invoice",
+            detail=f"CDD exception expired on {cdd.exception_expires_on} — complete CDD or grant a new exception before raising an invoice",
         )
+    raise HTTPException(
+        status_code=400,
+        detail="CDD form and KYC verification must both be Approved before raising an invoice",
+    )
 
 
 def _assert_invoice_paid(case: Case) -> None:
@@ -251,6 +261,26 @@ def delete_case(db: Session, case_id: int, user: User) -> None:
     db.delete(case)
     db.commit()
     _refresh_account_stats(db, account_id)
+
+
+def add_relationship_manager(db: Session, case_id: int, rm_user_id: int, user: User) -> Case:
+    from app.models import CaseAdditionalRM
+    case = get_case(db, case_id, user)
+    exists = db.query(CaseAdditionalRM).filter_by(case_id=case_id, user_id=rm_user_id).first()
+    if not exists and case.rm_id != rm_user_id:
+        db.add(CaseAdditionalRM(case_id=case_id, user_id=rm_user_id))
+        db.commit()
+        db.refresh(case)
+    return case
+
+
+def remove_relationship_manager(db: Session, case_id: int, rm_user_id: int, user: User) -> Case:
+    from app.models import CaseAdditionalRM
+    case = get_case(db, case_id, user)
+    db.query(CaseAdditionalRM).filter_by(case_id=case_id, user_id=rm_user_id).delete()
+    db.commit()
+    db.refresh(case)
+    return case
 
 
 def _refresh_account_stats(db: Session, account_id: Optional[int]) -> None:

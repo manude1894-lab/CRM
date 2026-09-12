@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.models import Document, DocumentCategory, Case, CaseDocument, Instruction, User, UserRole
+from app.services import access_control
 
 # Allow-list — reject anything not here (executables, html, svg, ...).
 ALLOWED_CONTENT_TYPES = {
@@ -44,7 +45,7 @@ def _case_for_read(db: Session, case_id: int, user: User) -> Case:
     case = db.query(Case).filter(Case.id == case_id).first()
     if not case:
         raise HTTPException(status_code=404, detail="Case not found")
-    if user.role == UserRole.RM and case.rm_id != user.id:
+    if not access_control.user_can_access_case(case, user):
         raise HTTPException(status_code=403, detail="Access denied")
     return case
 

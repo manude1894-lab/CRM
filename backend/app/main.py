@@ -13,6 +13,7 @@ from app.routers import (
     party_router, instructions_router, invoices_router, aml_router, company_router,
     documents_router, lifecycle_router, formation_router,
     action_points_router, pep_router, generation_router, jurisdictions_router,
+    prospects_router, service_subscriptions_router, service_feedback_router,
 )
 from app.services.scheduler_jobs import run_daily_sweep
 
@@ -77,5 +78,6 @@ for r in (
     lifecycle_router.router, formation_router.router,
     action_points_router.router, pep_router.router, generation_router.router,
     jurisdictions_router.router,
+    prospects_router.router, service_subscriptions_router.router, service_feedback_router.router,
 ):
     app.include_router(r, prefix=settings.API_V1_PREFIX)

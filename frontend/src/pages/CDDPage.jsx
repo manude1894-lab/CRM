@@ -23,6 +23,10 @@ const expiryInfo = (dateStr) => {
 
 export default function CDDPage() {
   const canReview = useAuthStore((s) => ["admin", "screening"].includes(s.user?.role));
+  const isAdmin = useAuthStore((s) => s.user?.role === "admin");
+  const [exceptionModal, setExceptionModal] = useState(false);
+  const [exceptionReason, setExceptionReason] = useState("");
+  const [exceptionDays, setExceptionDays] = useState(30);
   const [cases, setCases] = useState([]);
   const [cddByCase, setCddByCase] = useState({});
   const [loading, setLoading] = useState(true);
@@ -130,6 +134,28 @@ export default function CDDPage() {
     }
   };
 
+  const grantException = async () => {
+    if (!selected || !exceptionReason.trim()) return;
+    try {
+      await cddApi.grantException(selected.id, exceptionReason.trim(), Number(exceptionDays) || 30);
+      setExceptionModal(false); setExceptionReason(""); setExceptionDays(30);
+      load();
+    } catch (e) {
+      alert(e.response?.data?.detail || "Failed to grant exception");
+    }
+  };
+
+  const revokeException = async () => {
+    if (!selected) return;
+    if (!confirm("Revoke the CDD exception on this case?")) return;
+    try {
+      await cddApi.revokeException(selected.id);
+      load();
+    } catch (e) {
+      alert(e.response?.data?.detail || "Failed to revoke exception");
+    }
+  };
+
   const submitReview = async (approve) => {
     try {
       await cddApi.review(selected.id, { approve, rejection_reason: approve ? null : rejectionReason });
@@ -183,6 +209,19 @@ export default function CDDPage() {
                 </div>
                 {canReview && (
                   <div className="flex gap-2">
+                    {isAdmin && (
+                      selectedCdd?.exception_granted ? (
+                        <button onClick={revokeException}
+                          className="px-3 py-1.5 text-xs border border-amber-200 rounded-lg hover:bg-amber-50 text-amber-700">
+                          Revoke CDD Exception
+                        </button>
+                      ) : (
+                        <button onClick={() => setExceptionModal(true)}
+                          className="px-3 py-1.5 text-xs border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600">
+                          Grant CDD Exception
+                        </button>
+                      )
+                    )}
                     <button onClick={applyIntroducerExemption}
                       className="px-3 py-1.5 text-xs border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600"
                       title="Vistra KYC Appendix C — a professional introducer need not provide supporting evidence unless the RA asks">
@@ -224,6 +263,13 @@ export default function CDDPage() {
               {selectedCdd?.rejection_reason && (
                 <div className="bg-red-50 border border-red-100 rounded-lg p-3 text-xs text-red-700">
                   <strong>Rejection reason:</strong> {selectedCdd.rejection_reason}
+                </div>
+              )}
+
+              {selectedCdd?.exception_granted && (
+                <div className="bg-amber-50 border border-amber-100 rounded-lg p-3 text-xs text-amber-700">
+                  <strong>CDD exception active</strong> — expires {selectedCdd.exception_expires_on}.
+                  {selectedCdd.exception_reason && <> Reason: {selectedCdd.exception_reason}</>}
                 </div>
               )}
 
@@ -356,6 +402,28 @@ export default function CDDPage() {
           <div className="flex justify-end gap-3 mt-4">
             <button onClick={() => submitReview(false)} className="px-4 py-2 text-sm border border-red-200 text-red-600 rounded-lg hover:bg-red-50">Reject</button>
             <button onClick={() => submitReview(true)} className="px-4 py-2 text-sm text-white rounded-lg" style={{ background: "#10b981" }}>Approve</button>
+          </div>
+        </Modal>
+      )}
+
+      {exceptionModal && (
+        <Modal title="Grant CDD Exception" onClose={() => setExceptionModal(false)}>
+          <p className="text-sm text-gray-600 mb-4">
+            Lets this case proceed to invoicing before CDD is fully approved. Always time-boxed —
+            it expires automatically and the case is blocked again once it does.
+          </p>
+          <Field label="Reason" required>
+            <Input value={exceptionReason} onChange={(e) => setExceptionReason(e.target.value)} placeholder="e.g. client documents delayed by courier" />
+          </Field>
+          <Field label="Days (default 30)">
+            <Input type="number" min="1" max="365" value={exceptionDays} onChange={(e) => setExceptionDays(e.target.value)} />
+          </Field>
+          <div className="flex justify-end gap-3 mt-4">
+            <button onClick={() => setExceptionModal(false)} className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
+            <button onClick={grantException} disabled={!exceptionReason.trim()}
+              className="px-4 py-2 text-sm text-white rounded-lg disabled:opacity-50" style={{ background: "#2B6D9A" }}>
+              Grant Exception
+            </button>
           </div>
         </Modal>
       )}

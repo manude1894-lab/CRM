@@ -10,7 +10,7 @@ from fastapi import HTTPException
 
 from app.models import Document, Case, User, UserRole
 from app.reports import letter_pdf, resolution_pdf
-from app.services import company_service, party_service
+from app.services import company_service, party_service, access_control
 from app import jurisdictions
 
 SIGNATORY_NAME = "Kalyanaram Sivalanka"
@@ -22,7 +22,7 @@ def _get_case_for_write(db: Session, case_id: int, user: User) -> Case:
     case = db.query(Case).filter(Case.id == case_id).first()
     if not case:
         raise HTTPException(status_code=404, detail="Case not found")
-    if user.role == UserRole.RM and case.rm_id != user.id:
+    if not access_control.user_can_access_case(case, user):
         raise HTTPException(status_code=403, detail="Access denied")
     return case
 
@@ -280,11 +280,53 @@ def _pf_vistra_cover(ctx: dict) -> dict:
             "signatory_name": SIGNATORY_NAME, "signatory_title": SIGNATORY_TITLE}
 
 
+def _b_engagement_letter(p: dict, ctx: dict):
+    client_name = p.get("client_contact_name") or ctx["case"].company_name
+    scope = p.get("scope_description") or "company formation and ongoing administration services"
+    fee_basis = p.get("fee_basis") or "as set out in our fee schedule, payable in advance"
+    body = [
+        f"We are pleased to confirm our engagement to provide {scope} in respect of "
+        f"{ctx['case'].company_name} (the \"Company\").",
+        f"Our fees for these services are {fee_basis}. Fees are subject to periodic review and "
+        "additional work outside this scope will be billed separately.",
+        "This engagement is governed by our standard terms of business, a copy of which is "
+        "available on request. Please sign and return a copy of this letter to confirm your "
+        "acceptance of these terms.",
+    ]
+    pdf = letter_pdf(
+        recipient_lines=[p.get("addressed_to") or client_name],
+        subject=f"Engagement Letter — {ctx['case'].company_name}",
+        body_paragraphs=body,
+        signatory_name=p.get("signatory_name") or SIGNATORY_NAME,
+        signatory_title=p.get("signatory_title") or SIGNATORY_TITLE,
+    )
+    return pdf, _fname("Engagement_Letter", ctx)
+
+
+def _pf_engagement_letter(ctx: dict) -> dict:
+    return {"client_contact_name": "", "addressed_to": "",
+            "scope_description": "company formation and ongoing administration services",
+            "fee_basis": "as set out in our fee schedule, payable in advance",
+            "signatory_name": SIGNATORY_NAME, "signatory_title": SIGNATORY_TITLE}
+
+
 _TXT = "text"
 _TA = "textarea"
 _DT = "date"
 
 TEMPLATE_CATALOG = [
+    {
+        "code": "engagement_letter", "label": "Engagement Letter",
+        "category": "Corporate Document", "builder": _b_engagement_letter, "prefill": _pf_engagement_letter,
+        "fields": [
+            {"key": "client_contact_name", "label": "Client contact name", "type": _TXT},
+            {"key": "addressed_to", "label": "Addressed to", "type": _TXT},
+            {"key": "scope_description", "label": "Scope of services", "type": _TA},
+            {"key": "fee_basis", "label": "Fee basis", "type": _TA},
+            {"key": "signatory_name", "label": "Signatory name", "type": _TXT},
+            {"key": "signatory_title", "label": "Signatory title", "type": _TXT},
+        ],
+    },
     {
         "code": "reference_letter", "label": "Reference Letter (to Registered Agent)",
         "category": "Reference Letter", "builder": _b_reference_letter, "prefill": _pf_reference_letter,

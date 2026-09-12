@@ -89,6 +89,20 @@ export const JURISDICTION_OPTIONS = [
   "Guernsey",
   "Isle of Man",
   "Mauritius",
+  "ADGM",
+  "DIFC",
+  "Other",
+];
+
+export const ENTITY_CATEGORY_OPTIONS = [
+  "BVI/Offshore Company",
+  "ADGM Regulated Entity",
+  "ADGM Non-Regulated Entity",
+  "DIFC Regulated Entity",
+  "DIFC Non-Regulated Entity",
+  "Foundation",
+  "Trust",
+  "Fund",
   "Other",
 ];
 
@@ -246,3 +260,21 @@ export const ROLE_LABEL = {
   ops: "Ops",
   screening: "Screening",
 };
+
+export const PROSPECT_STATUS_OPTIONS = ["New", "Proposal Sent", "Negotiating", "Won", "Lost"];
+
+export const SERVICE_BILLING_FREQUENCY_OPTIONS = ["Monthly", "Quarterly", "Annually", "One-off"];
+
+export const SERVICE_SUBSCRIPTION_STATUS_OPTIONS = ["Active", "Paused", "Cancelled"];
+
+export const SERVICE_NAME_SUGGESTIONS = [
+  "Monthly Accounting",
+  "VAT Registration",
+  "VAT Return Filing",
+  "Corporate Tax Registration",
+  "Corporate Tax Return Filing",
+  "Company Secretarial",
+  "Other",
+];
+
+export const FEEDBACK_CHANNEL_OPTIONS = ["Email", "Phone", "WhatsApp", "In-person", "Other"];

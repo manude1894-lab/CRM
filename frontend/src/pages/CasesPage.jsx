@@ -5,6 +5,7 @@ import PartyRegisterModal from "../components/PartyRegisterModal";
 import CompanyDetailsModal from "../components/CompanyDetailsModal";
 import LifecycleModal from "../components/LifecycleModal";
 import FormationModal from "../components/FormationModal";
+import ServiceSubscriptionsModal from "../components/ServiceSubscriptionsModal";
 import { STAGES, STAGE_COLORS, CASE_SOURCE_OPTIONS, JURISDICTION_OPTIONS, SERVICE_TYPE_OPTIONS, CASE_STATUS_OPTIONS, CLOSED_REL_STATUSES, fmt } from "../utils/constants";
 
 const NEXT_STAGE = STAGES.reduce((acc, s, i) => {
@@ -30,6 +31,7 @@ export default function CasesPage() {
   const [detailsCase, setDetailsCase] = useState(null);
   const [lifecycleCase, setLifecycleCase] = useState(null);
   const [formationCase, setFormationCase] = useState(null);
+  const [servicesCase, setServicesCase] = useState(null);
 
   const load = async () => {
     try {
@@ -218,6 +220,10 @@ export default function CasesPage() {
                           className="text-xs px-2 py-0.5 rounded border border-gray-200 hover:border-blue-300 hover:text-blue-600 text-gray-500">
                           Lifecycle
                         </button>
+                        <button onClick={() => setServicesCase(c)}
+                          className="text-xs px-2 py-0.5 rounded border border-gray-200 hover:border-blue-300 hover:text-blue-600 text-gray-500">
+                          Services
+                        </button>
                         {actionLabel(stage) && (
                           <button onClick={() => advance(c)}
                             className="text-xs px-2 py-0.5 rounded border border-gray-200 hover:border-blue-300 hover:text-blue-600 text-gray-500">
@@ -286,6 +292,10 @@ export default function CasesPage() {
                         className="p-1.5 rounded hover:bg-blue-50 text-gray-400 hover:text-blue-600" title="Entity Lifecycle — closure / restoration / transfer">
                         <Icon name="activities" size={14} />
                       </button>
+                      <button onClick={() => setServicesCase(c)}
+                        className="p-1.5 rounded hover:bg-blue-50 text-gray-400 hover:text-blue-600" title="Service Subscriptions">
+                        <Icon name="invoices" size={14} />
+                      </button>
                       <button onClick={() => { setForm(c); setModal("edit"); }}
                         className="p-1.5 rounded hover:bg-blue-50 text-gray-400 hover:text-blue-600">
                         <Icon name="edit" size={14} />
@@ -343,6 +353,10 @@ export default function CasesPage() {
         <FormationModal caseItem={formationCase} users={users} onClose={(changed) => { setFormationCase(null); if (changed) load(); }} />
       )}
 
+      {servicesCase && (
+        <ServiceSubscriptionsModal caseItem={servicesCase} onClose={() => setServicesCase(null)} />
+      )}
+
       {modal && (
         <Modal title={modal === "new" ? "New Case" : `Edit ${form.case_uid}`} onClose={() => setModal(null)}>
           <div className="grid grid-cols-2 gap-x-4">
@@ -378,6 +392,17 @@ export default function CasesPage() {
                 {users.filter((u) => u.role === "rm").map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
               </Select>
             </Field>
+            {modal === "edit" && (
+              <Field label="Additional RMs">
+                <AdditionalRMsEditor
+                  caseId={form.id}
+                  rmIds={form.additional_rm_ids || []}
+                  primaryRmId={form.rm_id}
+                  users={users}
+                  onChange={(ids) => setForm((p) => ({ ...p, additional_rm_ids: ids }))}
+                />
+              </Field>
+            )}
             <Field label="Ops Owner">
               <Select value={form.ops_owner_id || ""} onChange={(e) => setForm((p) => ({ ...p, ops_owner_id: e.target.value ? +e.target.value : null }))}>
                 <option value="">— Unassigned —</option>
@@ -392,6 +417,62 @@ export default function CasesPage() {
             <button onClick={save} className="px-4 py-2 text-sm text-white rounded-lg" style={{ background: "#2B6D9A" }}>Save</button>
           </div>
         </Modal>
+      )}
+    </div>
+  );
+}
+
+function AdditionalRMsEditor({ caseId, rmIds, primaryRmId, users, onChange }) {
+  const [adding, setAdding] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const rmUsers = users.filter((u) => u.role === "rm");
+  const byId = (id) => rmUsers.find((u) => u.id === id);
+  const available = rmUsers.filter((u) => u.id !== primaryRmId && !rmIds.includes(u.id));
+
+  const add = async (userId) => {
+    if (!userId) return;
+    setBusy(true);
+    try {
+      const updated = await casesApi.addRM(caseId, +userId);
+      onChange(updated.additional_rm_ids || []);
+      setAdding(false);
+    } catch (e) {
+      alert(e.response?.data?.detail || "Failed to add RM");
+    } finally { setBusy(false); }
+  };
+
+  const remove = async (userId) => {
+    setBusy(true);
+    try {
+      const updated = await casesApi.removeRM(caseId, userId);
+      onChange(updated.additional_rm_ids || []);
+    } catch (e) {
+      alert(e.response?.data?.detail || "Failed to remove RM");
+    } finally { setBusy(false); }
+  };
+
+  return (
+    <div className="space-y-1.5">
+      <div className="flex flex-wrap gap-1.5">
+        {rmIds.length === 0 && !adding && <span className="text-xs text-gray-400">None</span>}
+        {rmIds.map((id) => (
+          <span key={id} className="inline-flex items-center gap-1 px-2 py-0.5 text-xs rounded-full bg-gray-100 text-gray-700">
+            {byId(id)?.name || `User #${id}`}
+            <button type="button" disabled={busy} onClick={() => remove(id)} className="text-gray-400 hover:text-red-500">✕</button>
+          </span>
+        ))}
+      </div>
+      {adding ? (
+        <div className="flex gap-1">
+          <Select autoFocus disabled={busy} onChange={(e) => add(e.target.value)} defaultValue="">
+            <option value="">— select RM —</option>
+            {available.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+          </Select>
+          <button type="button" onClick={() => setAdding(false)} className="px-2 text-xs text-gray-400 hover:text-red-500">✕</button>
+        </div>
+      ) : (
+        <button type="button" onClick={() => setAdding(true)} disabled={busy || available.length === 0}
+          className="text-xs px-2 py-0.5 border border-gray-200 rounded hover:bg-gray-50 disabled:opacity-50">＋ Add RM</button>
       )}
     </div>
   );

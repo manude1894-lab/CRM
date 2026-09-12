@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { instructionsApi, casesApi, invoicesApi } from "../api/endpoints";
 import { Icon, Badge, Modal, Field, Input, Select, Textarea, Spinner, ErrorBanner } from "../components/ui";
 import DocumentsPanel from "../components/DocumentsPanel";
+import FeedbackPanel from "../components/FeedbackPanel";
 import { INSTRUCTION_STATUS_OPTIONS, INSTRUCTION_TYPE_OPTIONS, fmtFull } from "../utils/constants";
 
 const emptyForm = (cases) => ({
@@ -268,6 +269,13 @@ export default function InstructionsPage() {
             <div className="border-t border-gray-100 pt-3 mb-1">
               <p className="text-xs font-semibold text-gray-600 mb-2">Attachments <span className="text-gray-400 font-normal">· issued docs, filed-return confirmations</span></p>
               <DocumentsPanel caseId={Number(form.case_id)} scope={{ instruction_id: form.id }} defaultCategory="Filed Return / Confirmation" />
+            </div>
+          )}
+
+          {modal === "edit" && form.id && (
+            <div className="border-t border-gray-100 pt-3 mb-1">
+              <p className="text-xs font-semibold text-gray-600 mb-2">Client Feedback <span className="text-gray-400 font-normal">· logged by staff, not client-submitted</span></p>
+              <FeedbackPanel caseId={Number(form.case_id)} instructionId={form.id} />
             </div>
           )}
 

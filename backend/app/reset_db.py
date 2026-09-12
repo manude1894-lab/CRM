@@ -38,6 +38,8 @@ _TABLES_TO_CLEAR = [
     "entity_lifecycle",
     "formation_records",
     "compliance_schedules",
+    "service_feedback",
+    "service_subscriptions",
     "instructions",
     "invoices",
     "directors",
@@ -45,6 +47,8 @@ _TABLES_TO_CLEAR = [
     "ubos",
     "activities",
     "notifications",
+    "case_relationship_managers",
+    "prospects",
     "cases",
     "accounts",
 ]

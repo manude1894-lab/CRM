@@ -6,7 +6,7 @@ from typing import Optional
 from app.database import get_db
 from app.auth.dependencies import get_current_user, require_admin
 from app.models import User
-from app.schemas import CaseCreate, CaseRead, CaseUpdate, CaseStageChangeRequest
+from app.schemas import CaseCreate, CaseRead, CaseUpdate, CaseStageChangeRequest, AdditionalRMRequest
 from app.schemas.case import InvoiceRaiseRequest
 from app.services import case_service
 
@@ -72,3 +72,13 @@ def mark_invoice_paid(case_id: int, db: Session = Depends(get_db), user: User = 
 def delete_case(case_id: int, db: Session = Depends(get_db), user: User = Depends(require_admin)):
     case_service.delete_case(db, case_id, user)
     return None
+
+
+@router.post("/{case_id}/relationship-managers", response_model=CaseRead, summary="Add an additional RM to a case")
+def add_relationship_manager(case_id: int, body: AdditionalRMRequest, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    return case_service.add_relationship_manager(db, case_id, body.user_id, user)
+
+
+@router.delete("/{case_id}/relationship-managers/{rm_user_id}", response_model=CaseRead, summary="Remove an additional RM from a case")
+def remove_relationship_manager(case_id: int, rm_user_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    return case_service.remove_relationship_manager(db, case_id, rm_user_id, user)

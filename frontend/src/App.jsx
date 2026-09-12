@@ -5,6 +5,7 @@ import NotificationBell from "./components/NotificationBell";
 import LoginPage from "./pages/LoginPage";
 import Dashboard from "./pages/Dashboard";
 import CasesPage from "./pages/CasesPage";
+import ProspectsPage from "./pages/ProspectsPage";
 import CDDPage from "./pages/CDDPage";
 import CompliancePage from "./pages/CompliancePage";
 import AccountsPage from "./pages/AccountsPage";
@@ -18,6 +19,7 @@ import { ROLE_LABEL } from "./utils/constants";
 
 const NAV = [
   { key: "dashboard", label: "Dashboard", icon: "dashboard", component: Dashboard },
+  { key: "prospects", label: "Prospects", icon: "kanban", component: ProspectsPage },
   { key: "cases", label: "Cases", icon: "cases", component: CasesPage },
   { key: "cdd", label: "CDD / Screening", icon: "cdd", component: CDDPage, roles: ["admin", "screening", "rm"] },
   { key: "compliance", label: "Compliance", icon: "compliance", component: CompliancePage },

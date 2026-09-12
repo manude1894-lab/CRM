@@ -53,6 +53,11 @@ class CDDReviewRequest(BaseModel):
     rejection_reason: Optional[str] = None
 
 
+class CDDExceptionRequest(BaseModel):
+    reason: str = Field(..., min_length=1)
+    days: int = Field(30, ge=1, le=365)
+
+
 class CDDRecordRead(BaseModel):
     id: int
     case_id: int
@@ -62,6 +67,11 @@ class CDDRecordRead(BaseModel):
     screening_reviewer_id: Optional[int] = None
     reviewed_at: Optional[datetime] = None
     rejection_reason: Optional[str] = None
+    exception_granted: bool = False
+    exception_reason: Optional[str] = None
+    exception_granted_by_id: Optional[int] = None
+    exception_granted_at: Optional[datetime] = None
+    exception_expires_on: Optional[date] = None
     documents: List[CaseDocumentRead] = []
     created_at: datetime
     updated_at: datetime

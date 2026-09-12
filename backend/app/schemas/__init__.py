@@ -4,11 +4,11 @@ from app.schemas.user import (
 )
 from app.schemas.account import AccountCreate, AccountRead, AccountUpdate
 from app.schemas.case import (
-    CaseCreate, CaseRead, CaseUpdate, CaseStageChangeRequest
+    CaseCreate, CaseRead, CaseUpdate, CaseStageChangeRequest, AdditionalRMRequest,
 )
 from app.schemas.cdd import (
     CaseDocumentCreate, CaseDocumentRead, CaseDocumentUpdate,
-    CDDRecordRead, CDDRecordUpdate, CDDReviewRequest,
+    CDDRecordRead, CDDRecordUpdate, CDDReviewRequest, CDDExceptionRequest,
 )
 from app.schemas.compliance import (
     ComplianceScheduleRead, ComplianceScheduleUpdate, ComplianceMarkDoneRequest, UpcomingComplianceItem,
@@ -36,13 +36,20 @@ from app.schemas.aml import (
     AMLAssessmentCreate, AMLAssessmentUpdate, AMLAssessmentRead, AMLCatalogRead, AMLPrefillRead,
     CountryRiskCreate, CountryRiskUpdate, CountryRiskRead,
 )
+from app.schemas.prospect import (
+    ProspectCreate, ProspectUpdate, ProspectRead, ProspectConvertRequest,
+)
+from app.schemas.service_subscription import (
+    ServiceSubscriptionCreate, ServiceSubscriptionUpdate, ServiceSubscriptionRead,
+)
+from app.schemas.service_feedback import ServiceFeedbackCreate, ServiceFeedbackRead
 
 __all__ = [
     "UserCreate", "UserRead", "UserUpdate", "LoginRequest", "Token", "RefreshTokenRequest", "TokenPayload",
     "AccountCreate", "AccountRead", "AccountUpdate",
-    "CaseCreate", "CaseRead", "CaseUpdate", "CaseStageChangeRequest",
+    "CaseCreate", "CaseRead", "CaseUpdate", "CaseStageChangeRequest", "AdditionalRMRequest",
     "CaseDocumentCreate", "CaseDocumentRead", "CaseDocumentUpdate",
-    "CDDRecordRead", "CDDRecordUpdate", "CDDReviewRequest",
+    "CDDRecordRead", "CDDRecordUpdate", "CDDReviewRequest", "CDDExceptionRequest",
     "ComplianceScheduleRead", "ComplianceScheduleUpdate", "ComplianceMarkDoneRequest", "UpcomingComplianceItem",
     "ARStatusRequest",
     "CompanyProfileRead", "CompanyProfileUpdate",
@@ -61,4 +68,7 @@ __all__ = [
     "InvoiceCreate", "InvoiceRead", "InvoiceUpdate",
     "AMLAssessmentCreate", "AMLAssessmentUpdate", "AMLAssessmentRead", "AMLCatalogRead", "AMLPrefillRead",
     "CountryRiskCreate", "CountryRiskUpdate", "CountryRiskRead",
+    "ProspectCreate", "ProspectUpdate", "ProspectRead", "ProspectConvertRequest",
+    "ServiceSubscriptionCreate", "ServiceSubscriptionUpdate", "ServiceSubscriptionRead",
+    "ServiceFeedbackCreate", "ServiceFeedbackRead",
 ]

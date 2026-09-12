@@ -7,6 +7,7 @@ from typing import Optional
 from app.models import Activity, Case, User, UserRole
 from app.schemas.activity import ActivityCreate, ActivityUpdate
 from app.utils.uid import next_uid
+from app.services import access_control
 
 
 def list_activities(
@@ -55,7 +56,7 @@ def create_activity(db: Session, data: ActivityCreate, user: User) -> Activity:
     case = db.query(Case).filter(Case.id == data.case_id).first()
     if not case:
         raise HTTPException(status_code=400, detail="Case does not exist")
-    if user.role == UserRole.RM and case.rm_id != user.id:
+    if not access_control.user_can_access_case(case, user):
         raise HTTPException(status_code=403, detail="You don't own this case")
 
     owner_id = data.owner_id or user.id

@@ -10,13 +10,14 @@ from fastapi import HTTPException
 
 from app.models import PEPAssessment, Case, User, UserRole
 from app.schemas.pep_assessment import PEPAssessmentCreate, PEPAssessmentUpdate
+from app.services import access_control
 
 
 def _get_case_for_write(db: Session, case_id: int, user: User) -> Case:
     case = db.query(Case).filter(Case.id == case_id).first()
     if not case:
         raise HTTPException(status_code=404, detail="Case not found")
-    if user.role == UserRole.RM and case.rm_id != user.id:
+    if not access_control.user_can_access_case(case, user):
         raise HTTPException(status_code=403, detail="Access denied")
     return case
 

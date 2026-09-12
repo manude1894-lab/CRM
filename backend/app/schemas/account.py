@@ -18,6 +18,7 @@ class AccountBase(BaseModel):
     key_contacts: Optional[str] = None
     tags: Optional[str] = None
     owner_id: Optional[int] = None
+    spoc_id: Optional[int] = None
 
 
 class AccountCreate(AccountBase):
@@ -35,6 +36,7 @@ class AccountUpdate(BaseModel):
     key_contacts: Optional[str] = None
     tags: Optional[str] = None
     owner_id: Optional[int] = None
+    spoc_id: Optional[int] = None
 
 
 class AccountRead(AccountBase):

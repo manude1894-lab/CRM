@@ -6,11 +6,12 @@ from typing import Optional
 
 from app.models import Invoice, Case, User, UserRole
 from app.schemas.invoice import InvoiceCreate, InvoiceUpdate
+from app.services import access_control
 
 
 def _apply_rbac_filter(query, user: User):
     if user.role == UserRole.RM:
-        query = query.join(Case, Invoice.case_id == Case.id).filter(Case.rm_id == user.id)
+        query = query.join(Case, Invoice.case_id == Case.id).filter(access_control.rm_visibility_clause(user.id))
     return query
 
 
@@ -47,7 +48,7 @@ def _get_case_for_write(db: Session, case_id: int, user: User) -> Case:
     case = db.query(Case).filter(Case.id == case_id).first()
     if not case:
         raise HTTPException(status_code=400, detail="Case does not exist")
-    if user.role == UserRole.RM and case.rm_id != user.id:
+    if not access_control.user_can_access_case(case, user):
         raise HTTPException(status_code=403, detail="You don't own this case")
     return case
 
@@ -57,7 +58,7 @@ def get_invoice(db: Session, invoice_id: int, user: User) -> Invoice:
     if not inv:
         raise HTTPException(status_code=404, detail="Invoice not found")
     case = db.query(Case).filter(Case.id == inv.case_id).first()
-    if user.role == UserRole.RM and case and case.rm_id != user.id:
+    if case and not access_control.user_can_access_case(case, user):
         raise HTTPException(status_code=403, detail="Access denied")
     return inv
 

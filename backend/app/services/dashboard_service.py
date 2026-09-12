@@ -8,13 +8,14 @@ from app.models import (
     CDDRecord, DocumentStatus, ComplianceSchedule,
 )
 from app.services.compliance_service import list_upcoming
+from app.services import access_control
 from app.utils.business_days import business_days_between, to_date
 
 
 def _rbac_case_query(db: Session, user: User):
     q = db.query(Case)
     if user.role == UserRole.RM:
-        q = q.filter(Case.rm_id == user.id)
+        q = q.filter(access_control.rm_visibility_clause(user.id))
     return q
 
 

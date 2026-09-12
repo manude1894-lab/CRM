@@ -107,9 +107,56 @@ _GENERIC = JurisdictionSpec(
     closure_methods=_CLOSURE_METHODS,
 )
 
-_REGISTRY = {"BVI": _BVI}
+# ADGM / DIFC (UAE onshore free zones) — a different regulatory model entirely from the
+# offshore jurisdictions above (their own registry, VAT, UAE corporate tax, direct
+# licensing — no "registered agent"). Triam hasn't operated these on this system yet, so
+# these entries are structurally real (their own named jurisdiction, not the generic
+# fallback) but the actual cadences below are ILLUSTRATIVE PLACEHOLDERS — confirm the
+# current VAT / corporate-tax filing deadlines with the FTA / registrar before relying
+# on them operationally. The four compliance slots are reused with jurisdiction-
+# appropriate labels (same pattern as the generic spec) rather than adding new slots,
+# since ComplianceSchedule has exactly four due-date columns.
+_ADGM = JurisdictionSpec(
+    code="ADGM",
+    name="Abu Dhabi Global Market (ADGM)",
+    company_law_name="ADGM Companies Regulations 2020",
+    registry_name="ADGM Registration Authority",
+    law_short="ADGM law",
+    strike_off_years=7,
+    rod_filing_days=21,
+    bo_filing_days=14,
+    compliance_items=(
+        ComplianceItemSpec("renewal", "ADGM Commercial Licence renewal", "anniversary", 12, (60, 30, 7)),
+        ComplianceItemSpec("esr_filing", "UAE Corporate Tax return", "annual", 12, (30, 7)),
+        ComplianceItemSpec("ar_filing", "VAT return", "annual", 3, (14, 7)),
+        ComplianceItemSpec("bo_filing", "UBO register update", "event", 12, (14, 7, 3)),
+    ),
+    restoration_checklist=_GENERIC_RESTORATION,
+    closure_methods=_CLOSURE_METHODS,
+)
 
-ALL_SPECS = (_BVI, _GENERIC)
+_DIFC = JurisdictionSpec(
+    code="DIFC",
+    name="Dubai International Financial Centre (DIFC)",
+    company_law_name="DIFC Companies Law No. 5 of 2018",
+    registry_name="DIFC Registrar of Companies",
+    law_short="DIFC law",
+    strike_off_years=7,
+    rod_filing_days=21,
+    bo_filing_days=14,
+    compliance_items=(
+        ComplianceItemSpec("renewal", "DIFC Commercial Licence renewal", "anniversary", 12, (60, 30, 7)),
+        ComplianceItemSpec("esr_filing", "UAE Corporate Tax return", "annual", 12, (30, 7)),
+        ComplianceItemSpec("ar_filing", "VAT return", "annual", 3, (14, 7)),
+        ComplianceItemSpec("bo_filing", "UBO register update", "event", 12, (14, 7, 3)),
+    ),
+    restoration_checklist=_GENERIC_RESTORATION,
+    closure_methods=_CLOSURE_METHODS,
+)
+
+_REGISTRY = {"BVI": _BVI, "ADGM": _ADGM, "DIFC": _DIFC}
+
+ALL_SPECS = (_BVI, _ADGM, _DIFC, _GENERIC)
 
 
 def get(jurisdiction: str | None) -> JurisdictionSpec:
