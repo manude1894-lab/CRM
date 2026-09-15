@@ -6,7 +6,7 @@ from typing import Optional
 from app.database import get_db
 from app.auth.dependencies import get_current_user, require_admin
 from app.models import User
-from app.schemas import AccountCreate, AccountRead, AccountUpdate
+from app.schemas import AccountCreate, AccountRead, AccountUpdate, AccountImportRequest, AccountImportResponse
 from app.services import account_service
 
 router = APIRouter(prefix="/accounts", tags=["Accounts"])
@@ -53,3 +53,11 @@ def update_account(
 def delete_account(account_id: int, db: Session = Depends(get_db), user: User = Depends(require_admin)):
     account_service.delete_account(db, account_id, user)
     return None
+
+
+@router.post("/import", response_model=AccountImportResponse, summary="Bulk import clients (Admin only)")
+def import_accounts(data: AccountImportRequest, db: Session = Depends(get_db), user: User = Depends(require_admin)):
+    results = account_service.import_accounts(db, user, data.rows, data.dry_run)
+    created = sum(1 for r in results if r.status == "ok" and not data.dry_run)
+    skipped = sum(1 for r in results if r.status != "ok")
+    return AccountImportResponse(dry_run=data.dry_run, created=created, skipped=skipped, results=results)

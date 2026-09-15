@@ -1,11 +1,58 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { accountsApi, casesApi, usersApi } from "../api/endpoints";
 import { Icon, Badge, Modal, Field, Input, Select, Spinner, ErrorBanner } from "../components/ui";
 import { fmt } from "../utils/constants";
+import { useAuthStore } from "../store/auth";
 
 const PRIORITY_OPTIONS = ["Low", "Medium", "High"];
 const RISK_OPTIONS = ["Low", "Medium", "High"];
 const KYC_STATUS_OPTIONS = ["Not Started", "Submitted", "Under Review", "Approved", "Rejected"];
+
+const IMPORT_HEADER_MAP = {
+  "company name": "company_name",
+  "industry": "industry",
+  "country": "country",
+  "website": "website",
+  "key contacts": "key_contacts",
+  "strategic priority": "strategic_priority",
+  "existing relationship": "existing_relationship",
+  "registration number": "registration_number",
+  "license number": "license_number",
+  "risk rating": "risk_rating",
+  "kyc status": "kyc_status",
+};
+
+// Minimal RFC-4180-ish CSV parser: handles quoted fields, escaped "" quotes, commas/newlines inside quotes.
+function parseCSV(text) {
+  const rows = [];
+  let row = [], field = "", inQuotes = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (inQuotes) {
+      if (c === '"' && text[i + 1] === '"') { field += '"'; i++; }
+      else if (c === '"') { inQuotes = false; }
+      else { field += c; }
+    } else if (c === '"') { inQuotes = true; }
+    else if (c === ",") { row.push(field); field = ""; }
+    else if (c === "\n" || c === "\r") {
+      if (c === "\r" && text[i + 1] === "\n") i++;
+      row.push(field); field = "";
+      if (row.some((v) => v !== "")) rows.push(row);
+      row = [];
+    } else { field += c; }
+  }
+  if (field !== "" || row.length) { row.push(field); rows.push(row); }
+  if (rows.length === 0) return [];
+  const headers = rows[0].map((h) => h.trim().toLowerCase());
+  return rows.slice(1).map((r) => {
+    const obj = {};
+    headers.forEach((h, i) => {
+      const key = IMPORT_HEADER_MAP[h];
+      if (key) obj[key] = (r[i] || "").trim();
+    });
+    return obj;
+  });
+}
 
 export default function AccountsPage() {
   const [accounts, setAccounts] = useState([]);
@@ -18,6 +65,10 @@ export default function AccountsPage() {
   const [modal, setModal] = useState(null); // "new" | "edit" | null
   const [form, setForm] = useState({});
   const [saving, setSaving] = useState(false);
+  const [importPreview, setImportPreview] = useState(null); // { rows, results, created, skipped }
+  const [importing, setImporting] = useState(false);
+  const fileInputRef = useRef(null);
+  const isAdmin = useAuthStore((s) => s.isAdmin());
 
   const load = async () => {
     try {
@@ -69,6 +120,40 @@ export default function AccountsPage() {
     } finally { setSaving(false); }
   };
 
+  const exportCSV = () => {
+    const headers = ["Company Name", "Industry", "Country", "Website", "Key Contacts", "Strategic Priority", "Existing Relationship", "Registration Number", "License Number", "Risk Rating", "KYC Status"];
+    const rows = accounts.map((a) => [a.company_name, a.industry, a.country, a.website, a.key_contacts, a.strategic_priority, a.existing_relationship, a.registration_number, a.license_number, a.risk_rating, a.kyc_status]);
+    const csv = [headers, ...rows].map((r) => r.map((v) => `"${(v ?? "").toString().replace(/"/g, '""')}"`).join(",")).join("\n");
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+    a.download = "clients.csv"; a.click();
+  };
+
+  const handleImportFile = async (file) => {
+    const text = await file.text();
+    const parsed = parseCSV(text).filter((r) => r.company_name);
+    if (parsed.length === 0) { alert("No rows with a Company Name found in that CSV."); return; }
+    try {
+      setImporting(true);
+      const res = await accountsApi.import(parsed, true);
+      setImportPreview({ rows: parsed, ...res });
+    } catch (e) {
+      alert(e.response?.data?.detail || "Failed to preview import");
+    } finally { setImporting(false); }
+  };
+
+  const confirmImport = async () => {
+    if (!importPreview) return;
+    try {
+      setImporting(true);
+      await accountsApi.import(importPreview.rows, false);
+      setImportPreview(null);
+      load();
+    } catch (e) {
+      alert(e.response?.data?.detail || "Import failed");
+    } finally { setImporting(false); }
+  };
+
   if (loading) return <Spinner />;
   if (error) return <ErrorBanner message={error} onRetry={load} />;
 
@@ -76,16 +161,29 @@ export default function AccountsPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
           <h1 className="text-xl font-bold text-gray-900">Clients</h1>
           <p className="text-sm text-gray-500">{accounts.length} clients · {fmt(accounts.reduce((s, a) => s + Number(a.total_invoiced_amount || 0), 0))} total invoiced</p>
         </div>
-        <button onClick={openNew}
-          className="flex items-center gap-2 px-4 py-2 text-sm text-white rounded-lg font-medium"
-          style={{ background: "#2B6D9A" }}>
-          <Icon name="plus" size={15} /> New Client
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={exportCSV} className="px-3 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600">Export CSV</button>
+          {isAdmin && (
+            <>
+              <input ref={fileInputRef} type="file" accept=".csv,text/csv" className="hidden"
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImportFile(f); e.target.value = ""; }} />
+              <button onClick={() => fileInputRef.current?.click()} disabled={importing}
+                className="px-3 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600 disabled:opacity-50">
+                {importing ? "Reading..." : "Import CSV"}
+              </button>
+            </>
+          )}
+          <button onClick={openNew}
+            className="flex items-center gap-2 px-4 py-2 text-sm text-white rounded-lg font-medium"
+            style={{ background: "#2B6D9A" }}>
+            <Icon name="plus" size={15} /> New Client
+          </button>
+        </div>
       </div>
 
       <div className="relative max-w-md">
@@ -250,6 +348,50 @@ export default function AccountsPage() {
               className="px-4 py-2 text-sm text-white rounded-lg font-medium disabled:opacity-50"
               style={{ background: "#2B6D9A" }}>
               {saving ? "Saving..." : modal === "edit" ? "Save Changes" : "Create Client"}
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {importPreview && (
+        <Modal title="Import Clients — Preview" onClose={() => setImportPreview(null)}>
+          <p className="text-sm text-gray-600 mb-3">
+            {importPreview.results.filter((r) => r.status === "ok").length} of {importPreview.results.length} rows will be created.
+            {" "}{importPreview.results.filter((r) => r.status === "duplicate").length} duplicate(s), {" "}
+            {importPreview.results.filter((r) => r.status === "error").length} error(s) will be skipped.
+          </p>
+          <div className="max-h-80 overflow-y-auto border border-gray-100 rounded-lg">
+            <table className="w-full text-xs">
+              <thead className="bg-gray-50 sticky top-0">
+                <tr>
+                  <th className="text-left p-2 font-semibold text-gray-600">Row</th>
+                  <th className="text-left p-2 font-semibold text-gray-600">Company Name</th>
+                  <th className="text-left p-2 font-semibold text-gray-600">Status</th>
+                  <th className="text-left p-2 font-semibold text-gray-600">Note</th>
+                </tr>
+              </thead>
+              <tbody>
+                {importPreview.results.map((r) => (
+                  <tr key={r.row_index} className="border-t border-gray-100">
+                    <td className="p-2 text-gray-400">{r.row_index + 1}</td>
+                    <td className="p-2 text-gray-700">{r.company_name || "—"}</td>
+                    <td className="p-2">
+                      {r.status === "ok" && <span className="text-emerald-600 font-medium">Will create</span>}
+                      {r.status === "duplicate" && <span className="text-amber-600 font-medium">Duplicate</span>}
+                      {r.status === "error" && <span className="text-red-600 font-medium">Error</span>}
+                    </td>
+                    <td className="p-2 text-gray-400">{r.message || "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="flex justify-end gap-3 mt-5">
+            <button onClick={() => setImportPreview(null)} className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
+            <button onClick={confirmImport} disabled={importing || !importPreview.results.some((r) => r.status === "ok")}
+              className="px-4 py-2 text-sm text-white rounded-lg font-medium disabled:opacity-50"
+              style={{ background: "#2B6D9A" }}>
+              {importing ? "Importing..." : `Import ${importPreview.results.filter((r) => r.status === "ok").length} Client(s)`}
             </button>
           </div>
         </Modal>

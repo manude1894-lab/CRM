@@ -7,6 +7,42 @@ from decimal import Decimal
 from app.models.account import Priority
 
 
+class AccountImportRow(BaseModel):
+    company_name: str = Field(..., min_length=1, max_length=255)
+    industry: Optional[str] = None
+    country: Optional[str] = None
+    company_size: Optional[str] = None
+    website: Optional[str] = None
+    strategic_priority: Optional[str] = None
+    existing_relationship: Optional[str] = None
+    key_contacts: Optional[str] = None
+    tags: Optional[str] = None
+    registration_number: Optional[str] = None
+    license_number: Optional[str] = None
+    risk_rating: Optional[str] = None
+    kyc_status: Optional[str] = None
+
+
+class AccountImportRequest(BaseModel):
+    rows: list[AccountImportRow]
+    dry_run: bool = True
+
+
+class AccountImportRowResult(BaseModel):
+    row_index: int
+    company_name: str
+    status: str  # "ok" | "duplicate" | "error"
+    message: Optional[str] = None
+    account_id: Optional[int] = None
+
+
+class AccountImportResponse(BaseModel):
+    dry_run: bool
+    created: int
+    skipped: int
+    results: list[AccountImportRowResult]
+
+
 class AccountBase(BaseModel):
     company_name: str = Field(..., min_length=1, max_length=255)
     industry: Optional[str] = None

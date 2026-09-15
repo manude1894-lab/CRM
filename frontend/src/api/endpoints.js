@@ -190,6 +190,7 @@ export const accountsApi = {
   create: (data) => api.post("/accounts", data).then((r) => r.data),
   update: (id, data) => api.patch(`/accounts/${id}`, data).then((r) => r.data),
   delete: (id) => api.delete(`/accounts/${id}`),
+  import: (rows, dryRun) => api.post("/accounts/import", { rows, dry_run: dryRun }).then((r) => r.data),
 };
 
 // ─── Activities ────────────────────────────────────────────────────────

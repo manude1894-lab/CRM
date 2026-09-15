@@ -2,7 +2,10 @@
 from app.schemas.user import (
     UserCreate, UserRead, UserUpdate, LoginRequest, Token, RefreshTokenRequest, TokenPayload
 )
-from app.schemas.account import AccountCreate, AccountRead, AccountUpdate
+from app.schemas.account import (
+    AccountCreate, AccountRead, AccountUpdate,
+    AccountImportRow, AccountImportRequest, AccountImportRowResult, AccountImportResponse,
+)
 from app.schemas.case import (
     CaseCreate, CaseRead, CaseUpdate, CaseStageChangeRequest, AdditionalRMRequest,
 )
@@ -47,6 +50,7 @@ from app.schemas.service_feedback import ServiceFeedbackCreate, ServiceFeedbackR
 __all__ = [
     "UserCreate", "UserRead", "UserUpdate", "LoginRequest", "Token", "RefreshTokenRequest", "TokenPayload",
     "AccountCreate", "AccountRead", "AccountUpdate",
+    "AccountImportRow", "AccountImportRequest", "AccountImportRowResult", "AccountImportResponse",
     "CaseCreate", "CaseRead", "CaseUpdate", "CaseStageChangeRequest", "AdditionalRMRequest",
     "CaseDocumentCreate", "CaseDocumentRead", "CaseDocumentUpdate",
     "CDDRecordRead", "CDDRecordUpdate", "CDDReviewRequest", "CDDExceptionRequest",

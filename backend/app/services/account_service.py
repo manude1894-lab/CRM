@@ -4,8 +4,8 @@ from sqlalchemy import or_
 from fastapi import HTTPException
 from typing import Optional
 
-from app.models import Account, User, UserRole
-from app.schemas.account import AccountCreate, AccountUpdate
+from app.models import Account, Priority, User, UserRole
+from app.schemas.account import AccountCreate, AccountUpdate, AccountImportRow, AccountImportRowResult
 from app.utils.uid import next_uid
 
 
@@ -88,3 +88,49 @@ def delete_account(db: Session, account_id: int, user: User) -> None:
         raise HTTPException(status_code=404, detail="Account not found")
     db.delete(acc)
     db.commit()
+
+
+def import_accounts(
+    db: Session, user: User, rows: list[AccountImportRow], dry_run: bool,
+) -> list[AccountImportRowResult]:
+    existing_names = {name for (name,) in db.query(Account.company_name).all()}
+    seen_in_batch: set[str] = set()
+    results: list[AccountImportRowResult] = []
+
+    for idx, row in enumerate(rows):
+        name = (row.company_name or "").strip()
+        if not name:
+            results.append(AccountImportRowResult(row_index=idx, company_name=name, status="error", message="Company name is required"))
+            continue
+        if name in existing_names or name in seen_in_batch:
+            results.append(AccountImportRowResult(row_index=idx, company_name=name, status="duplicate", message="Client with this company name already exists"))
+            continue
+
+        seen_in_batch.add(name)
+        if dry_run:
+            results.append(AccountImportRowResult(row_index=idx, company_name=name, status="ok"))
+            continue
+
+        payload = row.model_dump(exclude_none=True)
+        payload["company_name"] = name
+        # strategic_priority is a DB-level enum — an unrecognized CSV value would fail at
+        # insert time, so normalize case-insensitively and drop it (falls back to the
+        # column default) rather than let the whole row error out.
+        raw_priority = payload.pop("strategic_priority", None)
+        if raw_priority:
+            matched = next((p for p in Priority if p.value.lower() == raw_priority.strip().lower()), None)
+            if matched:
+                payload["strategic_priority"] = matched
+        acc = Account(
+            account_uid=next_uid(db, Account, "account_uid", "ACC"),
+            owner_id=user.id,
+            **payload,
+        )
+        db.add(acc)
+        db.flush()
+        results.append(AccountImportRowResult(row_index=idx, company_name=name, status="ok", account_id=acc.id))
+
+    if not dry_run:
+        db.commit()
+
+    return results
