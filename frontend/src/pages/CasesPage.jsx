@@ -360,7 +360,23 @@ export default function CasesPage() {
       {modal && (
         <Modal title={modal === "new" ? "New Case" : `Edit ${form.case_uid}`} onClose={() => setModal(null)}>
           <div className="grid grid-cols-2 gap-x-4">
-            <Field label="Company Name" required><Input value={form.company_name || ""} onChange={(e) => setForm((p) => ({ ...p, company_name: e.target.value }))} /></Field>
+            <Field label="Client">
+              <Select value={form.account_id || ""} onChange={(e) => {
+                const id = e.target.value ? +e.target.value : null;
+                const picked = accounts.find((a) => a.id === id);
+                setForm((p) => ({ ...p, account_id: id, company_name: picked ? picked.company_name : "" }));
+              }}>
+                <option value="">— New / not yet a client —</option>
+                {accounts.map((a) => <option key={a.id} value={a.id}>{a.company_name}</option>)}
+              </Select>
+            </Field>
+            <Field label="Company Name" required>
+              {form.account_id ? (
+                <Input value={form.company_name || ""} readOnly disabled className="bg-gray-50 text-gray-500" />
+              ) : (
+                <Input value={form.company_name || ""} onChange={(e) => setForm((p) => ({ ...p, company_name: e.target.value }))} placeholder="Type a name, or pick an existing Client above" />
+              )}
+            </Field>
             <Field label="Source">
               <Select value={form.source || "Other"} onChange={(e) => setForm((p) => ({ ...p, source: e.target.value }))}>
                 {CASE_SOURCE_OPTIONS.map((s) => <option key={s}>{s}</option>)}
@@ -378,12 +394,6 @@ export default function CasesPage() {
               <Select value={form.service_type || ""} onChange={(e) => setForm((p) => ({ ...p, service_type: e.target.value }))}>
                 <option value="">— Select —</option>
                 {SERVICE_TYPE_OPTIONS.map((s) => <option key={s}>{s}</option>)}
-              </Select>
-            </Field>
-            <Field label="Client">
-              <Select value={form.account_id || ""} onChange={(e) => setForm((p) => ({ ...p, account_id: e.target.value ? +e.target.value : null }))}>
-                <option value="">— None —</option>
-                {accounts.map((a) => <option key={a.id} value={a.id}>{a.company_name}</option>)}
               </Select>
             </Field>
             <Field label="Relationship Manager">
