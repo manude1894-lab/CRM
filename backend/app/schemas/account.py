@@ -17,6 +17,10 @@ class AccountBase(BaseModel):
     existing_relationship: str = "No"
     key_contacts: Optional[str] = None
     tags: Optional[str] = None
+    registration_number: Optional[str] = None
+    license_number: Optional[str] = None
+    risk_rating: Optional[str] = None
+    kyc_status: str = "Not Started"
     owner_id: Optional[int] = None
     spoc_id: Optional[int] = None
 
@@ -35,6 +39,10 @@ class AccountUpdate(BaseModel):
     existing_relationship: Optional[str] = None
     key_contacts: Optional[str] = None
     tags: Optional[str] = None
+    registration_number: Optional[str] = None
+    license_number: Optional[str] = None
+    risk_rating: Optional[str] = None
+    kyc_status: Optional[str] = None
     owner_id: Optional[int] = None
     spoc_id: Optional[int] = None
 

@@ -380,7 +380,7 @@ export default function CasesPage() {
                 {SERVICE_TYPE_OPTIONS.map((s) => <option key={s}>{s}</option>)}
               </Select>
             </Field>
-            <Field label="Account">
+            <Field label="Client">
               <Select value={form.account_id || ""} onChange={(e) => setForm((p) => ({ ...p, account_id: e.target.value ? +e.target.value : null }))}>
                 <option value="">— None —</option>
                 {accounts.map((a) => <option key={a.id} value={a.id}>{a.company_name}</option>)}

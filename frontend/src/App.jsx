@@ -23,7 +23,7 @@ const NAV = [
   { key: "cases", label: "Cases", icon: "cases", component: CasesPage },
   { key: "cdd", label: "CDD / Screening", icon: "cdd", component: CDDPage, roles: ["admin", "screening", "rm"] },
   { key: "compliance", label: "Compliance", icon: "compliance", component: CompliancePage },
-  { key: "accounts", label: "Accounts", icon: "accounts", component: AccountsPage },
+  { key: "accounts", label: "Clients", icon: "accounts", component: AccountsPage },
   { key: "activities", label: "Activities", icon: "activities", component: ActivitiesPage },
   { key: "instructions", label: "Instruction Tracker", icon: "instructions", component: InstructionsPage },
   { key: "action-points", label: "Action Points", icon: "check", component: ActionPointsPage },

@@ -4,6 +4,8 @@ import { Icon, Badge, Modal, Field, Input, Select, Spinner, ErrorBanner } from "
 import { fmt } from "../utils/constants";
 
 const PRIORITY_OPTIONS = ["Low", "Medium", "High"];
+const RISK_OPTIONS = ["Low", "Medium", "High"];
+const KYC_STATUS_OPTIONS = ["Not Started", "Submitted", "Under Review", "Approved", "Rejected"];
 
 export default function AccountsPage() {
   const [accounts, setAccounts] = useState([]);
@@ -25,28 +27,28 @@ export default function AccountsPage() {
       setCases(caseRes.items || []);
       setUsers(usersRes || []);
     } catch (e) {
-      setError(e.response?.data?.detail || "Failed to load accounts");
+      setError(e.response?.data?.detail || "Failed to load clients");
     } finally { setLoading(false); }
   };
   useEffect(() => { load(); }, []);
 
-  const BLANK = { company_name: "", industry: "", country: "", strategic_priority: "Medium", existing_relationship: "No", key_contacts: "", website: "", spoc_id: "" };
+  const BLANK = { company_name: "", industry: "", country: "", strategic_priority: "Medium", existing_relationship: "No", key_contacts: "", website: "", spoc_id: "", registration_number: "", license_number: "", risk_rating: "", kyc_status: "Not Started" };
 
   const openNew = () => { setForm(BLANK); setModal("new"); };
 
   const openEdit = (a) => {
-    setForm({ company_name: a.company_name, industry: a.industry || "", country: a.country || "", strategic_priority: a.strategic_priority, existing_relationship: a.existing_relationship, key_contacts: a.key_contacts || "", website: a.website || "", spoc_id: a.spoc_id || "", _id: a.id });
+    setForm({ company_name: a.company_name, industry: a.industry || "", country: a.country || "", strategic_priority: a.strategic_priority, existing_relationship: a.existing_relationship, key_contacts: a.key_contacts || "", website: a.website || "", spoc_id: a.spoc_id || "", registration_number: a.registration_number || "", license_number: a.license_number || "", risk_rating: a.risk_rating || "", kyc_status: a.kyc_status || "Not Started", _id: a.id });
     setModal("edit");
   };
 
   const deleteAccount = async (id) => {
-    if (!confirm("Delete this account? This cannot be undone.")) return;
+    if (!confirm("Delete this client? This cannot be undone.")) return;
     try {
       await accountsApi.delete(id);
       setSelectedId(null);
       load();
     } catch (e) {
-      alert(e.response?.data?.detail || "Failed to delete account");
+      alert(e.response?.data?.detail || "Failed to delete client");
     }
   };
 
@@ -63,7 +65,7 @@ export default function AccountsPage() {
       setModal(null);
       load();
     } catch (e) {
-      alert(e.response?.data?.detail || (modal === "edit" ? "Failed to update account" : "Failed to create account"));
+      alert(e.response?.data?.detail || (modal === "edit" ? "Failed to update client" : "Failed to create client"));
     } finally { setSaving(false); }
   };
 
@@ -76,25 +78,25 @@ export default function AccountsPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-gray-900">Accounts</h1>
-          <p className="text-sm text-gray-500">{accounts.length} accounts · {fmt(accounts.reduce((s, a) => s + Number(a.total_invoiced_amount || 0), 0))} total invoiced</p>
+          <h1 className="text-xl font-bold text-gray-900">Clients</h1>
+          <p className="text-sm text-gray-500">{accounts.length} clients · {fmt(accounts.reduce((s, a) => s + Number(a.total_invoiced_amount || 0), 0))} total invoiced</p>
         </div>
         <button onClick={openNew}
           className="flex items-center gap-2 px-4 py-2 text-sm text-white rounded-lg font-medium"
           style={{ background: "#2B6D9A" }}>
-          <Icon name="plus" size={15} /> New Account
+          <Icon name="plus" size={15} /> New Client
         </button>
       </div>
 
       <div className="relative max-w-md">
         <Icon name="search" size={15} className="absolute left-3 top-2.5 text-gray-400" />
-        <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search accounts..."
+        <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search clients..."
           className="w-full pl-8 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400" />
       </div>
 
       {filtered.length === 0 && (
         <div className="text-center py-16 text-gray-400 text-sm">
-          No accounts yet. Click <strong>New Account</strong> to add your first client company.
+          No clients yet. Click <strong>New Client</strong> to add your first client company.
         </div>
       )}
 
@@ -119,6 +121,7 @@ export default function AccountsPage() {
                 </div>
                 <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                   <Badge text={a.strategic_priority} />
+                  {a.risk_rating && <Badge text={`${a.risk_rating} Risk`} />}
                   <button onClick={() => openEdit(a)} title="Edit" className="p-1.5 rounded hover:bg-blue-50 text-gray-400 hover:text-blue-600 ml-1">
                     <Icon name="edit" size={14} />
                   </button>
@@ -145,6 +148,21 @@ export default function AccountsPage() {
                 <div className="mt-4 pt-4 border-t border-gray-100">
                   <p className="text-xs font-semibold text-gray-600 mb-2">Key Contacts</p>
                   <p className="text-xs text-gray-600 mb-3">{a.key_contacts || "—"}</p>
+                  <p className="text-xs font-semibold text-gray-600 mb-2">Compliance</p>
+                  <div className="grid grid-cols-3 gap-3 text-center mb-3">
+                    <div className="bg-gray-50 rounded-lg p-2">
+                      <p className="text-xs text-gray-500">Reg. No.</p>
+                      <p className="text-xs font-bold text-gray-800 truncate">{a.registration_number || "—"}</p>
+                    </div>
+                    <div className="bg-gray-50 rounded-lg p-2">
+                      <p className="text-xs text-gray-500">License No.</p>
+                      <p className="text-xs font-bold text-gray-800 truncate">{a.license_number || "—"}</p>
+                    </div>
+                    <div className="bg-gray-50 rounded-lg p-2">
+                      <p className="text-xs text-gray-500">KYC Status</p>
+                      <p className="text-xs font-bold text-gray-800 truncate">{a.kyc_status || "—"}</p>
+                    </div>
+                  </div>
                   <p className="text-xs font-semibold text-gray-600 mb-2">Cases ({accountCases.length})</p>
                   <div className="space-y-1.5">
                     {accountCases.map((c) => (
@@ -166,7 +184,7 @@ export default function AccountsPage() {
       </div>
 
       {modal && (
-        <Modal title={modal === "edit" ? `Edit Account` : "New Account"} onClose={() => setModal(null)}>
+        <Modal title={modal === "edit" ? `Edit Client` : "New Client"} onClose={() => setModal(null)}>
           <div className="space-y-3">
             <Field label="Company Name *">
               <Input value={form.company_name} onChange={(e) => setForm({ ...form, company_name: e.target.value })} placeholder="e.g. Al Futtaim Group" />
@@ -204,13 +222,34 @@ export default function AccountsPage() {
                 {users.filter((u) => u.role === "rm").map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
               </Select>
             </Field>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Registration Number">
+                <Input value={form.registration_number} onChange={(e) => setForm({ ...form, registration_number: e.target.value })} placeholder="e.g. 123456" />
+              </Field>
+              <Field label="License Number">
+                <Input value={form.license_number} onChange={(e) => setForm({ ...form, license_number: e.target.value })} placeholder="e.g. DIFC-LIC-9012" />
+              </Field>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Risk Rating">
+                <Select value={form.risk_rating || ""} onChange={(e) => setForm({ ...form, risk_rating: e.target.value })}>
+                  <option value="">— Not set —</option>
+                  {RISK_OPTIONS.map((r) => <option key={r}>{r}</option>)}
+                </Select>
+              </Field>
+              <Field label="KYC Status">
+                <Select value={form.kyc_status} onChange={(e) => setForm({ ...form, kyc_status: e.target.value })}>
+                  {KYC_STATUS_OPTIONS.map((s) => <option key={s}>{s}</option>)}
+                </Select>
+              </Field>
+            </div>
           </div>
           <div className="flex justify-end gap-3 mt-5">
             <button onClick={() => setModal(null)} className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
             <button onClick={save} disabled={saving}
               className="px-4 py-2 text-sm text-white rounded-lg font-medium disabled:opacity-50"
               style={{ background: "#2B6D9A" }}>
-              {saving ? "Saving..." : modal === "edit" ? "Save Changes" : "Create Account"}
+              {saving ? "Saving..." : modal === "edit" ? "Save Changes" : "Create Client"}
             </button>
           </div>
         </Modal>

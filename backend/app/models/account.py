@@ -30,6 +30,12 @@ class Account(Base):
     key_contacts = Column(Text, nullable=True)
     tags = Column(String(500), nullable=True)
 
+    # Compliance & risk — client-level (distinct from the per-case CDDRecord.aml_risk_rating)
+    registration_number = Column(String(100), nullable=True)
+    license_number = Column(String(100), nullable=True)
+    risk_rating = Column(String(20), nullable=True)  # Low / Medium / High
+    kyc_status = Column(String(30), default="Not Started", nullable=False)  # Not Started / Submitted / Under Review / Approved / Rejected
+
     # Computed / denormalized
     total_cases = Column(Integer, default=0, nullable=False)
     total_invoiced_amount = Column(Numeric(14, 2), default=0, nullable=False)
