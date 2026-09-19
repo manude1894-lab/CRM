@@ -181,6 +181,24 @@ export const Textarea = (props) => (
   />
 );
 
+// Checkbox-list multi-select, styled to match Select/Input. `value` is an array of
+// selected option strings; `onChange` receives the new array.
+export const MultiSelect = ({ options, value, onChange }) => {
+  const selected = value || [];
+  const toggle = (opt) => {
+    onChange(selected.includes(opt) ? selected.filter((o) => o !== opt) : [...selected, opt]);
+  };
+  return (
+    <div className="w-full border border-gray-200 rounded-lg px-3 py-2 max-h-40 overflow-y-auto space-y-1">
+      {options.map((opt) => (
+        <label key={opt} className="flex items-center gap-2 text-xs text-gray-700">
+          <input type="checkbox" checked={selected.includes(opt)} onChange={() => toggle(opt)} /> {opt}
+        </label>
+      ))}
+    </div>
+  );
+};
+
 // ─── Chart Tooltip ──────────────────────────────────────────────────────
 export const CustomTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null;

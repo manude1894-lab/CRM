@@ -1,5 +1,5 @@
 """SQLAlchemy model: Account (client company)."""
-from sqlalchemy import Column, Integer, String, Text, DateTime, Numeric, ForeignKey, Enum as SAEnum
+from sqlalchemy import Column, Integer, String, Text, Date, DateTime, Numeric, Boolean, JSON, ForeignKey, Enum as SAEnum
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 import enum
@@ -35,6 +35,46 @@ class Account(Base):
     license_number = Column(String(100), nullable=True)
     risk_rating = Column(String(20), nullable=True)  # Low / Medium / High
     kyc_status = Column(String(30), default="Not Started", nullable=False)  # Not Started / Submitted / Under Review / Approved / Rejected
+
+    # Licensing & regulatory (client-database spec §6.1-7.6)
+    licensing_authority = Column(String(150), nullable=True)
+    license_start_date = Column(Date, nullable=True)
+    license_expiry_date = Column(Date, nullable=True)
+    is_regulated = Column(Boolean, default=False, nullable=False)
+    regulator_name = Column(String(50), nullable=True)  # DFSA / FSRA / CMA / UAECB / Other
+    regulator_other = Column(String(100), nullable=True)
+    license_category = Column(String(100), nullable=True)
+    license_activities = Column(Text, nullable=True)
+
+    # Addresses (§8.1/8.2) — {line1, line2, landmark, zip, po_box, city, country}
+    registered_address = Column(JSON, nullable=True)
+    operating_address = Column(JSON, nullable=True)
+
+    # Tax (§9-10.1)
+    trn_vat_number = Column(String(30), nullable=True)
+    corp_tax_registered = Column(Boolean, default=False, nullable=False)
+    corp_tax_registration_number = Column(String(30), nullable=True)
+
+    financial_year_end = Column(String(5), nullable=True)  # "MM-DD"
+
+    # Introducer (§12-13)
+    has_introducer = Column(Boolean, default=False, nullable=False)
+    introducer_name = Column(String(255), nullable=True)
+
+    services_obtained = Column(JSON, nullable=True)  # list[str]
+
+    # Profile status workflow (§25)
+    profile_status = Column(String(30), default="New", nullable=False)
+
+    # Engagement Letter — client-level (§26-27), distinct from Case's onboarding-pipeline dates
+    engagement_letter_signed = Column(Boolean, default=False, nullable=False)
+    engagement_letter_valid_until = Column(Date, nullable=True)
+
+    # AML classification (§24.1, 24.3, 24.5-24.6) — distinct from risk_rating (High/Med/Low)
+    aml_classification = Column(String(20), nullable=True)  # Standard / SDD / EDD
+    edd_reason = Column(String(255), nullable=True)
+    cdd_completion_date = Column(Date, nullable=True)
+    next_aml_review_date = Column(Date, nullable=True)  # server-computed from risk_rating + cdd_completion_date
 
     # Computed / denormalized
     total_cases = Column(Integer, default=0, nullable=False)

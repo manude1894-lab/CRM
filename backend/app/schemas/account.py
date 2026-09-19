@@ -1,10 +1,20 @@
 """Pydantic schemas: Account."""
 from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 
 from app.models.account import Priority
+
+
+class AddressBlock(BaseModel):
+    line1: Optional[str] = None
+    line2: Optional[str] = None
+    landmark: Optional[str] = None
+    zip: Optional[str] = None
+    po_box: Optional[str] = None
+    city: Optional[str] = None
+    country: Optional[str] = None
 
 
 class AccountImportRow(BaseModel):
@@ -60,6 +70,38 @@ class AccountBase(BaseModel):
     owner_id: Optional[int] = None
     spoc_id: Optional[int] = None
 
+    licensing_authority: Optional[str] = None
+    license_start_date: Optional[date] = None
+    license_expiry_date: Optional[date] = None
+    is_regulated: bool = False
+    regulator_name: Optional[str] = None
+    regulator_other: Optional[str] = None
+    license_category: Optional[str] = None
+    license_activities: Optional[str] = None
+
+    registered_address: Optional[AddressBlock] = None
+    operating_address: Optional[AddressBlock] = None
+
+    trn_vat_number: Optional[str] = None
+    corp_tax_registered: bool = False
+    corp_tax_registration_number: Optional[str] = None
+
+    financial_year_end: Optional[str] = None
+
+    has_introducer: bool = False
+    introducer_name: Optional[str] = None
+
+    services_obtained: Optional[list[str]] = None
+
+    profile_status: str = "New"
+
+    engagement_letter_signed: bool = False
+    engagement_letter_valid_until: Optional[date] = None
+
+    aml_classification: Optional[str] = None
+    edd_reason: Optional[str] = None
+    cdd_completion_date: Optional[date] = None
+
 
 class AccountCreate(AccountBase):
     pass
@@ -82,12 +124,45 @@ class AccountUpdate(BaseModel):
     owner_id: Optional[int] = None
     spoc_id: Optional[int] = None
 
+    licensing_authority: Optional[str] = None
+    license_start_date: Optional[date] = None
+    license_expiry_date: Optional[date] = None
+    is_regulated: Optional[bool] = None
+    regulator_name: Optional[str] = None
+    regulator_other: Optional[str] = None
+    license_category: Optional[str] = None
+    license_activities: Optional[str] = None
+
+    registered_address: Optional[AddressBlock] = None
+    operating_address: Optional[AddressBlock] = None
+
+    trn_vat_number: Optional[str] = None
+    corp_tax_registered: Optional[bool] = None
+    corp_tax_registration_number: Optional[str] = None
+
+    financial_year_end: Optional[str] = None
+
+    has_introducer: Optional[bool] = None
+    introducer_name: Optional[str] = None
+
+    services_obtained: Optional[list[str]] = None
+
+    profile_status: Optional[str] = None
+
+    engagement_letter_signed: Optional[bool] = None
+    engagement_letter_valid_until: Optional[date] = None
+
+    aml_classification: Optional[str] = None
+    edd_reason: Optional[str] = None
+    cdd_completion_date: Optional[date] = None
+
 
 class AccountRead(AccountBase):
     id: int
     account_uid: str
     total_cases: int
     total_invoiced_amount: Decimal
+    next_aml_review_date: Optional[date] = None
     created_at: datetime
     updated_at: datetime
 

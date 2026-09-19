@@ -1,12 +1,40 @@
 import React, { useEffect, useRef, useState } from "react";
 import { accountsApi, casesApi, usersApi } from "../api/endpoints";
-import { Icon, Badge, Modal, Field, Input, Select, Spinner, ErrorBanner } from "../components/ui";
-import { fmt } from "../utils/constants";
+import { Icon, Badge, Modal, Field, Input, Select, MultiSelect, Spinner, ErrorBanner } from "../components/ui";
+import {
+  fmt, REGULATOR_OPTIONS, TAG_OPTIONS, SERVICES_OBTAINED_OPTIONS,
+  PROFILE_STATUS_OPTIONS, AML_CLASSIFICATION_OPTIONS,
+} from "../utils/constants";
 import { useAuthStore } from "../store/auth";
 
 const PRIORITY_OPTIONS = ["Low", "Medium", "High"];
 const RISK_OPTIONS = ["Low", "Medium", "High"];
 const KYC_STATUS_OPTIONS = ["Not Started", "Submitted", "Under Review", "Approved", "Rejected"];
+
+const BLANK_ADDRESS = { line1: "", line2: "", landmark: "", zip: "", po_box: "", city: "", country: "" };
+
+const Section = ({ title, children }) => (
+  <div className="mb-1">
+    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">{title}</p>
+    {children}
+  </div>
+);
+
+const AddressFields = ({ value, onChange }) => {
+  const v = value || BLANK_ADDRESS;
+  const set = (k) => (e) => onChange({ ...v, [k]: e.target.value });
+  return (
+    <div className="grid grid-cols-2 gap-3">
+      <Field label="Address Line 1"><Input value={v.line1 || ""} onChange={set("line1")} /></Field>
+      <Field label="Address Line 2"><Input value={v.line2 || ""} onChange={set("line2")} /></Field>
+      <Field label="Landmark"><Input value={v.landmark || ""} onChange={set("landmark")} /></Field>
+      <Field label="City"><Input value={v.city || ""} onChange={set("city")} /></Field>
+      <Field label="ZIP Code"><Input value={v.zip || ""} onChange={set("zip")} /></Field>
+      <Field label="P.O. Box No."><Input value={v.po_box || ""} onChange={set("po_box")} /></Field>
+      <Field label="Country"><Input value={v.country || ""} onChange={set("country")} /></Field>
+    </div>
+  );
+};
 
 const IMPORT_HEADER_MAP = {
   "company name": "company_name",
@@ -83,12 +111,40 @@ export default function AccountsPage() {
   };
   useEffect(() => { load(); }, []);
 
-  const BLANK = { company_name: "", industry: "", country: "", strategic_priority: "Medium", existing_relationship: "No", key_contacts: "", website: "", spoc_id: "", registration_number: "", license_number: "", risk_rating: "", kyc_status: "Not Started" };
+  const BLANK = {
+    company_name: "", industry: "", country: "", strategic_priority: "Medium", existing_relationship: "No",
+    key_contacts: "", website: "", spoc_id: "", registration_number: "", license_number: "", risk_rating: "", kyc_status: "Not Started",
+    licensing_authority: "", license_start_date: "", license_expiry_date: "", is_regulated: false, regulator_name: "", regulator_other: "",
+    license_category: "", license_activities: "",
+    registered_address: { ...BLANK_ADDRESS }, operating_address: { ...BLANK_ADDRESS },
+    trn_vat_number: "", corp_tax_registered: false, corp_tax_registration_number: "",
+    financial_year_end: "", has_introducer: false, introducer_name: "",
+    services_obtained: [], tags: [],
+    profile_status: "New",
+    engagement_letter_signed: false, engagement_letter_valid_until: "",
+    aml_classification: "", edd_reason: "", cdd_completion_date: "",
+  };
 
   const openNew = () => { setForm(BLANK); setModal("new"); };
 
   const openEdit = (a) => {
-    setForm({ company_name: a.company_name, industry: a.industry || "", country: a.country || "", strategic_priority: a.strategic_priority, existing_relationship: a.existing_relationship, key_contacts: a.key_contacts || "", website: a.website || "", spoc_id: a.spoc_id || "", registration_number: a.registration_number || "", license_number: a.license_number || "", risk_rating: a.risk_rating || "", kyc_status: a.kyc_status || "Not Started", _id: a.id });
+    setForm({
+      company_name: a.company_name, industry: a.industry || "", country: a.country || "", strategic_priority: a.strategic_priority,
+      existing_relationship: a.existing_relationship, key_contacts: a.key_contacts || "", website: a.website || "", spoc_id: a.spoc_id || "",
+      registration_number: a.registration_number || "", license_number: a.license_number || "", risk_rating: a.risk_rating || "", kyc_status: a.kyc_status || "Not Started",
+      licensing_authority: a.licensing_authority || "", license_start_date: a.license_start_date || "", license_expiry_date: a.license_expiry_date || "",
+      is_regulated: !!a.is_regulated, regulator_name: a.regulator_name || "", regulator_other: a.regulator_other || "",
+      license_category: a.license_category || "", license_activities: a.license_activities || "",
+      registered_address: { ...BLANK_ADDRESS, ...(a.registered_address || {}) }, operating_address: { ...BLANK_ADDRESS, ...(a.operating_address || {}) },
+      trn_vat_number: a.trn_vat_number || "", corp_tax_registered: !!a.corp_tax_registered, corp_tax_registration_number: a.corp_tax_registration_number || "",
+      financial_year_end: a.financial_year_end || "", has_introducer: !!a.has_introducer, introducer_name: a.introducer_name || "",
+      services_obtained: a.services_obtained || [], tags: a.tags ? a.tags.split(",").map((t) => t.trim()).filter(Boolean) : [],
+      profile_status: a.profile_status || "New",
+      engagement_letter_signed: !!a.engagement_letter_signed, engagement_letter_valid_until: a.engagement_letter_valid_until || "",
+      aml_classification: a.aml_classification || "", edd_reason: a.edd_reason || "", cdd_completion_date: a.cdd_completion_date || "",
+      next_aml_review_date: a.next_aml_review_date || null,
+      _id: a.id,
+    });
     setModal("edit");
   };
 
@@ -103,15 +159,22 @@ export default function AccountsPage() {
     }
   };
 
+  // Empty-string optional date fields must become null (FastAPI can't parse "" as a date).
+  const cleanPayload = (obj) => Object.fromEntries(
+    Object.entries(obj).map(([k, v]) => [k, v === "" ? null : v])
+  );
+
   const save = async () => {
     if (!form.company_name?.trim()) return alert("Company name is required");
     try {
       setSaving(true);
+      const { next_aml_review_date, tags, ...rest } = form;
+      const payload = cleanPayload({ ...rest, tags: (tags || []).join(", ") || null });
       if (modal === "edit") {
-        const { _id, ...patch } = form;
+        const { _id, ...patch } = payload;
         await accountsApi.update(_id, { ...patch, spoc_id: patch.spoc_id ? +patch.spoc_id : null });
       } else {
-        await accountsApi.create({ ...form, spoc_id: form.spoc_id ? +form.spoc_id : null });
+        await accountsApi.create({ ...payload, spoc_id: payload.spoc_id ? +payload.spoc_id : null });
       }
       setModal(null);
       load();
@@ -218,6 +281,7 @@ export default function AccountsPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                  {a.profile_status && a.profile_status !== "New" && <Badge text={a.profile_status} />}
                   <Badge text={a.strategic_priority} />
                   {a.risk_rating && <Badge text={`${a.risk_rating} Risk`} />}
                   <button onClick={() => openEdit(a)} title="Edit" className="p-1.5 rounded hover:bg-blue-50 text-gray-400 hover:text-blue-600 ml-1">
@@ -259,6 +323,18 @@ export default function AccountsPage() {
                     <div className="bg-gray-50 rounded-lg p-2">
                       <p className="text-xs text-gray-500">KYC Status</p>
                       <p className="text-xs font-bold text-gray-800 truncate">{a.kyc_status || "—"}</p>
+                    </div>
+                    <div className="bg-gray-50 rounded-lg p-2">
+                      <p className="text-xs text-gray-500">AML Class</p>
+                      <p className="text-xs font-bold text-gray-800 truncate">{a.aml_classification || "—"}</p>
+                    </div>
+                    <div className="bg-gray-50 rounded-lg p-2">
+                      <p className="text-xs text-gray-500">Next AML Review</p>
+                      <p className="text-xs font-bold text-gray-800 truncate">{a.next_aml_review_date || "—"}</p>
+                    </div>
+                    <div className="bg-gray-50 rounded-lg p-2">
+                      <p className="text-xs text-gray-500">TRN/VAT</p>
+                      <p className="text-xs font-bold text-gray-800 truncate">{a.trn_vat_number || "—"}</p>
                     </div>
                   </div>
                   <p className="text-xs font-semibold text-gray-600 mb-2">Cases ({accountCases.length})</p>
@@ -341,6 +417,105 @@ export default function AccountsPage() {
                 </Select>
               </Field>
             </div>
+
+            <Section title="Licensing & Regulatory">
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Licensing Authority">
+                  <Input value={form.licensing_authority} onChange={(e) => setForm({ ...form, licensing_authority: e.target.value })} placeholder="e.g. DIFC, ADGM, DED" />
+                </Field>
+                <Field label="License Activities">
+                  <Input value={form.license_activities} onChange={(e) => setForm({ ...form, license_activities: e.target.value })} />
+                </Field>
+                <Field label="License Start Date"><Input type="date" value={form.license_start_date || ""} onChange={(e) => setForm({ ...form, license_start_date: e.target.value })} /></Field>
+                <Field label="License Expiry Date"><Input type="date" value={form.license_expiry_date || ""} onChange={(e) => setForm({ ...form, license_expiry_date: e.target.value })} /></Field>
+              </div>
+              <label className="flex items-center gap-2 text-xs text-gray-700 mb-3">
+                <input type="checkbox" checked={!!form.is_regulated} onChange={(e) => setForm({ ...form, is_regulated: e.target.checked })} /> Is entity regulated
+              </label>
+              {form.is_regulated && (
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="Regulator">
+                    <Select value={form.regulator_name || ""} onChange={(e) => setForm({ ...form, regulator_name: e.target.value })}>
+                      <option value="">— select —</option>
+                      {REGULATOR_OPTIONS.map((o) => <option key={o}>{o}</option>)}
+                    </Select>
+                  </Field>
+                  {form.regulator_name === "Other" && (
+                    <Field label="Other Regulator"><Input value={form.regulator_other} onChange={(e) => setForm({ ...form, regulator_other: e.target.value })} /></Field>
+                  )}
+                  <Field label="License Category"><Input value={form.license_category} onChange={(e) => setForm({ ...form, license_category: e.target.value })} /></Field>
+                </div>
+              )}
+              <Field label="Tags">
+                <MultiSelect options={TAG_OPTIONS} value={form.tags} onChange={(v) => setForm({ ...form, tags: v })} />
+              </Field>
+            </Section>
+
+            <Section title="Registered Address">
+              <AddressFields value={form.registered_address} onChange={(v) => setForm({ ...form, registered_address: v })} />
+            </Section>
+
+            <Section title="Operating Address">
+              <AddressFields value={form.operating_address} onChange={(v) => setForm({ ...form, operating_address: v })} />
+            </Section>
+
+            <Section title="Tax">
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="TRN / VAT Registration No."><Input value={form.trn_vat_number} onChange={(e) => setForm({ ...form, trn_vat_number: e.target.value })} /></Field>
+                <Field label="Financial Year End (MM-DD)"><Input value={form.financial_year_end} onChange={(e) => setForm({ ...form, financial_year_end: e.target.value })} placeholder="12-31" /></Field>
+              </div>
+              <label className="flex items-center gap-2 text-xs text-gray-700 mb-3">
+                <input type="checkbox" checked={!!form.corp_tax_registered} onChange={(e) => setForm({ ...form, corp_tax_registered: e.target.checked })} /> Corporate Tax Registered
+              </label>
+              {form.corp_tax_registered && (
+                <Field label="Corp Tax Registration No. / TAN"><Input value={form.corp_tax_registration_number} onChange={(e) => setForm({ ...form, corp_tax_registration_number: e.target.value })} /></Field>
+              )}
+            </Section>
+
+            <Section title="Introducer">
+              <label className="flex items-center gap-2 text-xs text-gray-700 mb-3">
+                <input type="checkbox" checked={!!form.has_introducer} onChange={(e) => setForm({ ...form, has_introducer: e.target.checked })} /> Introduced by a third party
+              </label>
+              {form.has_introducer && (
+                <Field label="Introducer Name"><Input value={form.introducer_name} onChange={(e) => setForm({ ...form, introducer_name: e.target.value })} /></Field>
+              )}
+            </Section>
+
+            <Section title="Services Obtained">
+              <MultiSelect options={SERVICES_OBTAINED_OPTIONS} value={form.services_obtained} onChange={(v) => setForm({ ...form, services_obtained: v })} />
+            </Section>
+
+            <Section title="Profile Status & Engagement">
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Profile Status">
+                  <Select value={form.profile_status} onChange={(e) => setForm({ ...form, profile_status: e.target.value })}>
+                    {PROFILE_STATUS_OPTIONS.map((s) => <option key={s}>{s}</option>)}
+                  </Select>
+                </Field>
+                <Field label="Engagement Letter Valid Until"><Input type="date" value={form.engagement_letter_valid_until || ""} onChange={(e) => setForm({ ...form, engagement_letter_valid_until: e.target.value })} /></Field>
+              </div>
+              <label className="flex items-center gap-2 text-xs text-gray-700">
+                <input type="checkbox" checked={!!form.engagement_letter_signed} onChange={(e) => setForm({ ...form, engagement_letter_signed: e.target.checked })} /> Engagement Letter Signed
+              </label>
+            </Section>
+
+            <Section title="AML Classification">
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="AML Classification">
+                  <Select value={form.aml_classification || ""} onChange={(e) => setForm({ ...form, aml_classification: e.target.value })}>
+                    <option value="">— select —</option>
+                    {AML_CLASSIFICATION_OPTIONS.map((o) => <option key={o}>{o}</option>)}
+                  </Select>
+                </Field>
+                <Field label="CDD Completion Date"><Input type="date" value={form.cdd_completion_date || ""} onChange={(e) => setForm({ ...form, cdd_completion_date: e.target.value })} /></Field>
+              </div>
+              {form.aml_classification === "EDD" && (
+                <Field label="Reason for EDD"><Input value={form.edd_reason} onChange={(e) => setForm({ ...form, edd_reason: e.target.value })} maxLength={255} /></Field>
+              )}
+              {form.next_aml_review_date && (
+                <p className="text-xs text-gray-400">Next AML Review Date: <span className="font-medium text-gray-600">{form.next_aml_review_date}</span> (auto-calculated from Risk Rating + CDD Completion Date)</p>
+              )}
+            </Section>
           </div>
           <div className="flex justify-end gap-3 mt-5">
             <button onClick={() => setModal(null)} className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>

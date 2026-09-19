@@ -278,3 +278,27 @@ export const SERVICE_NAME_SUGGESTIONS = [
 ];
 
 export const FEEDBACK_CHANNEL_OPTIONS = ["Email", "Phone", "WhatsApp", "In-person", "Other"];
+
+// ─── Client profile (client-database spec, Phase A) ──────────────────────
+export const REGULATOR_OPTIONS = ["DFSA", "FSRA", "CMA", "UAECB", "Other"];
+
+export const TAG_OPTIONS = ["DIFC", "ADGM", "DNFPB", "Mainland", "Holding Co.", "SPV"];
+
+export const SERVICES_OBTAINED_OPTIONS = [
+  "Company Formation",
+  "Corporate Secretarial",
+  "Accounting & Bookkeeping",
+  "VAT Registration & Filing",
+  "Corporate Tax Registration & Filing",
+  "Compliance & AML Advisory",
+  "Registered Agent Services",
+  "Trust & Fiduciary Services",
+  "Licensing & Regulatory Support",
+  "Other",
+];
+
+export const PROFILE_STATUS_OPTIONS = [
+  "New", "WIP", "Awaiting Approval", "Approved", "Active", "Inactive", "Marked for Exit", "Exited",
+];
+
+export const AML_CLASSIFICATION_OPTIONS = ["Standard", "SDD", "EDD"];
