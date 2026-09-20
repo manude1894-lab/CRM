@@ -116,6 +116,17 @@ def create_case(db: Session, data: CaseCreate, user: User) -> Case:
     db.commit()
     db.refresh(case)
 
+    if case.rm_id and case.rm_id != user.id:
+        notification_service.notify_user(
+            db, case.rm_id, f"You've been assigned as RM for new case {case.case_uid} ({case.company_name}).",
+            "case_rm_assigned", link=f"/cases/{case.id}", case_id=case.id,
+        )
+    if case.ops_owner_id and case.ops_owner_id != user.id:
+        notification_service.notify_user(
+            db, case.ops_owner_id, f"You've been assigned as Ops owner for new case {case.case_uid} ({case.company_name}).",
+            "case_ops_assigned", link=f"/cases/{case.id}", case_id=case.id,
+        )
+
     _refresh_account_stats(db, case.account_id)
     return case
 
@@ -127,6 +138,8 @@ def update_case(db: Session, case_id: int, data: CaseUpdate, user: User) -> Case
         update_data.pop("rm_id", None)
 
     old_jurisdiction = case.jurisdiction
+    old_rm_id = case.rm_id
+    old_ops_owner_id = case.ops_owner_id
     for field, value in update_data.items():
         setattr(case, field, value)
 
@@ -136,6 +149,17 @@ def update_case(db: Session, case_id: int, data: CaseUpdate, user: User) -> Case
     # A jurisdiction change re-anchors the compliance calendar to the new rules.
     if "jurisdiction" in update_data and case.jurisdiction != old_jurisdiction:
         compliance_service.recompute_schedule(db, case)
+
+    if "rm_id" in update_data and case.rm_id and case.rm_id != old_rm_id and case.rm_id != user.id:
+        notification_service.notify_user(
+            db, case.rm_id, f"You've been assigned as RM for case {case.case_uid} ({case.company_name}).",
+            "case_rm_assigned", link=f"/cases/{case.id}", case_id=case.id,
+        )
+    if "ops_owner_id" in update_data and case.ops_owner_id and case.ops_owner_id != old_ops_owner_id and case.ops_owner_id != user.id:
+        notification_service.notify_user(
+            db, case.ops_owner_id, f"You've been assigned as Ops owner for case {case.case_uid} ({case.company_name}).",
+            "case_ops_assigned", link=f"/cases/{case.id}", case_id=case.id,
+        )
 
     _refresh_account_stats(db, case.account_id)
     return case
@@ -165,12 +189,12 @@ def change_stage(db: Session, case_id: int, new_stage: CaseStage, user: User) ->
     db.refresh(case)
 
     if target == CaseStage.CDD_APPROVED.value:
-        notification_service.notify_role(
-            db, UserRole.ADMIN,
-            message=f"CDD approved for case {case.case_uid} ({case.company_name}) — ready to raise invoice.",
-            link=f"/cases/{case.id}",
-            notification_type="cdd_approved",
-            case_id=case.id,
+        notification_service.notify_case_rm_and_admin(
+            db, case, f"CDD approved for case {case.case_uid} ({case.company_name}) — ready to raise invoice.", "cdd_approved",
+        )
+    else:
+        notification_service.notify_case_rm_and_admin(
+            db, case, f"Case {case.case_uid} ({case.company_name}) moved to stage '{target}'.", "case_stage_changed",
         )
 
     if target == CaseStage.LICENSE_RECEIVED.value:
@@ -192,6 +216,9 @@ def raise_invoice(db: Session, case_id: int, user: User, amount: float = 0.0) ->
     case.stage = CaseStage.INVOICE_RAISED
     db.commit()
     db.refresh(case)
+    notification_service.notify_case_rm_and_admin(
+        db, case, f"Invoice raised for case {case.case_uid} ({case.company_name}) — amount {case.invoice_amount}.", "invoice_raised",
+    )
     _refresh_account_stats(db, case.account_id)
     return case
 
@@ -207,6 +234,9 @@ def mark_invoice_paid(db: Session, case_id: int, user: User) -> Case:
     case.stage = CaseStage.INVOICE_PAID
     db.commit()
     db.refresh(case)
+    notification_service.notify_case_rm_and_admin(
+        db, case, f"Invoice for case {case.case_uid} ({case.company_name}) marked paid.", "invoice_paid",
+    )
     return case
 
 

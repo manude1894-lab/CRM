@@ -57,6 +57,14 @@ def notify_role(
     ]
 
 
+def notify_case_rm_and_admin(db: Session, case, message: str, notification_type: str) -> None:
+    """Standard 'key case action happened' pair: the case's RM (if set) plus the whole Admin role."""
+    link = f"/cases/{case.id}"
+    if case.rm_id:
+        notify_user(db, case.rm_id, message, notification_type, link=link, case_id=case.id)
+    notify_role(db, UserRole.ADMIN, message, notification_type, link=link, case_id=case.id)
+
+
 def has_unresolved_notification(db: Session, case_id: int, notification_type: str) -> bool:
     """Dedup helper for scheduled jobs: skip if an unread notification of this type already exists for the case."""
     return db.query(Notification).filter(

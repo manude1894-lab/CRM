@@ -59,12 +59,8 @@ def review_cdd(db: Session, case_id: int, data: CDDReviewRequest, user: User) ->
             case.status = CaseStatus.ACTIVE.value
             if case.stage == CaseStage.CDD_KYC_IN_REVIEW:
                 case.stage = CaseStage.CDD_APPROVED
-                notification_service.notify_role(
-                    db, UserRole.ADMIN,
-                    message=f"CDD approved for case {case.case_uid} ({case.company_name}) — ready to raise invoice.",
-                    link=f"/cases/{case.id}",
-                    notification_type="cdd_approved",
-                    case_id=case.id,
+                notification_service.notify_case_rm_and_admin(
+                    db, case, f"CDD approved for case {case.case_uid} ({case.company_name}) — ready to raise invoice.", "cdd_approved",
                 )
     else:
         if not data.rejection_reason:
@@ -74,6 +70,9 @@ def review_cdd(db: Session, case_id: int, data: CDDReviewRequest, user: User) ->
         cdd.rejection_reason = data.rejection_reason
         if case:
             case.status = CaseStatus.REJECTED.value
+            notification_service.notify_case_rm_and_admin(
+                db, case, f"CDD rejected for case {case.case_uid} ({case.company_name}). Reason: {data.rejection_reason}", "cdd_rejected",
+            )
 
     cdd.screening_reviewer_id = user.id
     cdd.reviewed_at = datetime.now(timezone.utc)
