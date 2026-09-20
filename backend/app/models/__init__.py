@@ -31,6 +31,7 @@ from app.models.party import (
     Director, Shareholder, UBO, PartyType, ShareholderType,
     OwnershipNature, SourceOfWealthCategory,
 )
+from app.models.account_party import AccountParty, AccountPartyRole, AccountPartyConstitution
 from app.models.instruction import Instruction, InstructionStatus
 from app.models.invoice import Invoice, InvoiceLedgerStatus
 from app.models.country_risk import CountryRisk
@@ -60,6 +61,7 @@ __all__ = [
     "Activity", "ActivityType", "ActivityStatus",
     "Director", "Shareholder", "UBO", "PartyType", "ShareholderType",
     "OwnershipNature", "SourceOfWealthCategory",
+    "AccountParty", "AccountPartyRole", "AccountPartyConstitution",
     "Instruction", "InstructionStatus",
     "Invoice", "InvoiceLedgerStatus",
     "CountryRisk",

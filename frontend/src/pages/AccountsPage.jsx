@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { accountsApi, casesApi, usersApi } from "../api/endpoints";
 import { Icon, Badge, Modal, Field, Input, Select, MultiSelect, Spinner, ErrorBanner } from "../components/ui";
+import AccountPartyModal from "../components/AccountPartyModal";
 import {
   fmt, REGULATOR_OPTIONS, TAG_OPTIONS, SERVICES_OBTAINED_OPTIONS,
   PROFILE_STATUS_OPTIONS, AML_CLASSIFICATION_OPTIONS,
@@ -95,6 +96,7 @@ export default function AccountsPage() {
   const [saving, setSaving] = useState(false);
   const [importPreview, setImportPreview] = useState(null); // { rows, results, created, skipped }
   const [importing, setImporting] = useState(false);
+  const [partiesAccount, setPartiesAccount] = useState(null); // Account being edited in AccountPartyModal
   const fileInputRef = useRef(null);
   const isAdmin = useAuthStore((s) => s.isAdmin());
 
@@ -281,6 +283,7 @@ export default function AccountsPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                  {a.is_pep && <Badge text="PEP" />}
                   {a.profile_status && a.profile_status !== "New" && <Badge text={a.profile_status} />}
                   <Badge text={a.strategic_priority} />
                   {a.risk_rating && <Badge text={`${a.risk_rating} Risk`} />}
@@ -337,6 +340,10 @@ export default function AccountsPage() {
                       <p className="text-xs font-bold text-gray-800 truncate">{a.trn_vat_number || "—"}</p>
                     </div>
                   </div>
+                  <button onClick={(e) => { e.stopPropagation(); setPartiesAccount(a); }}
+                    className="w-full mb-3 px-3 py-1.5 text-xs border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600 flex items-center justify-center gap-1">
+                    <Icon name="accounts" size={13} /> Manage Shareholders / Directors / Signatories
+                  </button>
                   <p className="text-xs font-semibold text-gray-600 mb-2">Cases ({accountCases.length})</p>
                   <div className="space-y-1.5">
                     {accountCases.map((c) => (
@@ -570,6 +577,10 @@ export default function AccountsPage() {
             </button>
           </div>
         </Modal>
+      )}
+
+      {partiesAccount && (
+        <AccountPartyModal account={partiesAccount} onClose={() => { setPartiesAccount(null); load(); }} />
       )}
     </div>
   );

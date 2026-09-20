@@ -163,6 +163,7 @@ class AccountRead(AccountBase):
     total_cases: int
     total_invoiced_amount: Decimal
     next_aml_review_date: Optional[date] = None
+    is_pep: bool = False
     created_at: datetime
     updated_at: datetime
 

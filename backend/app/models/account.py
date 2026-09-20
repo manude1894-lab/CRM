@@ -76,6 +76,9 @@ class Account(Base):
     cdd_completion_date = Column(Date, nullable=True)
     next_aml_review_date = Column(Date, nullable=True)  # server-computed from risk_rating + cdd_completion_date
 
+    # server-computed (§24.2) — true if any account_parties row has is_pep=True
+    is_pep = Column(Boolean, default=False, nullable=False)
+
     # Computed / denormalized
     total_cases = Column(Integer, default=0, nullable=False)
     total_invoiced_amount = Column(Numeric(14, 2), default=0, nullable=False)
@@ -90,3 +93,4 @@ class Account(Base):
     owner = relationship("User", back_populates="accounts", foreign_keys=[owner_id])
     spoc = relationship("User", foreign_keys=[spoc_id])
     cases = relationship("Case", back_populates="account")
+    parties = relationship("AccountParty", back_populates="account", cascade="all, delete-orphan")

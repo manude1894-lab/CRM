@@ -65,6 +65,14 @@ export const ubosApi = {
   delete: (id) => api.delete(`/ubos/${id}`),
 };
 
+// ─── Client Parties (Shareholders/Directors/Authorised Signatories on an Account) ──
+export const accountPartiesApi = {
+  list: (accountId) => api.get(`/accounts/${accountId}/parties`).then((r) => r.data),
+  create: (accountId, data) => api.post(`/accounts/${accountId}/parties`, data).then((r) => r.data),
+  update: (id, data) => api.patch(`/account-parties/${id}`, data).then((r) => r.data),
+  delete: (id) => api.delete(`/account-parties/${id}`),
+};
+
 // ─── Instructions (service-request tracker) ───────────────────────────
 export const instructionsApi = {
   list: (params = {}) => api.get("/instructions", { params }).then((r) => r.data),

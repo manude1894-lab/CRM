@@ -6,6 +6,7 @@ from app.schemas.account import (
     AccountCreate, AccountRead, AccountUpdate,
     AccountImportRow, AccountImportRequest, AccountImportRowResult, AccountImportResponse,
 )
+from app.schemas.account_party import AccountPartyCreate, AccountPartyRead, AccountPartyUpdate
 from app.schemas.case import (
     CaseCreate, CaseRead, CaseUpdate, CaseStageChangeRequest, AdditionalRMRequest,
 )
@@ -51,6 +52,7 @@ __all__ = [
     "UserCreate", "UserRead", "UserUpdate", "LoginRequest", "Token", "RefreshTokenRequest", "TokenPayload",
     "AccountCreate", "AccountRead", "AccountUpdate",
     "AccountImportRow", "AccountImportRequest", "AccountImportRowResult", "AccountImportResponse",
+    "AccountPartyCreate", "AccountPartyRead", "AccountPartyUpdate",
     "CaseCreate", "CaseRead", "CaseUpdate", "CaseStageChangeRequest", "AdditionalRMRequest",
     "CaseDocumentCreate", "CaseDocumentRead", "CaseDocumentUpdate",
     "CDDRecordRead", "CDDRecordUpdate", "CDDReviewRequest", "CDDExceptionRequest",
