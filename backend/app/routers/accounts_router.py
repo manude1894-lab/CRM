@@ -7,7 +7,7 @@ from app.database import get_db
 from app.auth.dependencies import get_current_user, require_admin
 from app.models import User
 from app.schemas import AccountCreate, AccountRead, AccountUpdate, AccountImportRequest, AccountImportResponse
-from app.schemas.account import DuplicateMatch
+from app.schemas.account import DuplicateMatch, AccountBulkUpdateRequest, BulkUpdateResult
 from app.services import account_service
 
 router = APIRouter(prefix="/accounts", tags=["Accounts"])
@@ -38,6 +38,11 @@ def check_duplicate_account(name: str, exclude_id: Optional[int] = None, db: Ses
         DuplicateMatch(id=cid, company_name=cname, score=score)
         for cid, cname, score in account_service.find_similar_accounts(db, name, exclude_id)
     ]
+
+
+@router.patch("/bulk", response_model=list[BulkUpdateResult], summary="Bulk-update SPOC / Risk Rating / KYC Status across selected clients")
+def bulk_update_accounts(data: AccountBulkUpdateRequest, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    return account_service.bulk_update_accounts(db, user, data)
 
 
 @router.get("/{account_id}", response_model=AccountRead)

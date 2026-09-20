@@ -33,6 +33,9 @@ export default function CasesPage({ initialCaseId } = {}) {
   const [lifecycleCase, setLifecycleCase] = useState(null);
   const [formationCase, setFormationCase] = useState(null);
   const [servicesCase, setServicesCase] = useState(null);
+  const [selectedIds, setSelectedIds] = useState(() => new Set());
+  const [bulkValues, setBulkValues] = useState({ rm_id: "", status: "" });
+  const [bulkApplying, setBulkApplying] = useState(false);
 
   const load = async () => {
     try {
@@ -129,6 +132,36 @@ export default function CasesPage({ initialCaseId } = {}) {
     catch (e) { alert(e.response?.data?.detail || "Delete failed"); }
   };
 
+  const toggleSelected = (id) => setSelectedIds((prev) => {
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
+
+  const toggleSelectAllFiltered = (ids) => setSelectedIds((prev) =>
+    ids.every((id) => prev.has(id)) ? new Set() : new Set(ids)
+  );
+
+  const applyBulkField = async (field) => {
+    const value = bulkValues[field];
+    if (!value || selectedIds.size === 0) return;
+    setBulkApplying(true);
+    try {
+      const results = await casesApi.bulkUpdate({ ids: [...selectedIds], [field]: field === "rm_id" ? +value : value });
+      const failed = results.filter((r) => r.status === "error");
+      alert(failed.length === 0
+        ? `Updated ${results.length} case${results.length !== 1 ? "s" : ""}.`
+        : `Updated ${results.length - failed.length}/${results.length}. ${failed.length} failed (e.g. access denied).`);
+      setSelectedIds(new Set());
+      setBulkValues({ rm_id: "", status: "" });
+      load();
+    } catch (e) {
+      alert(e.response?.data?.detail || "Bulk update failed");
+    } finally {
+      setBulkApplying(false);
+    }
+  };
+
   const exportCSV = () => {
     const headers = ["UID", "Company", "Introduced By", "Onboarding Date", "Stage", "Status", "Invoice", "Source"];
     const rows = filtered.map((c) => [c.case_uid, c.company_name, c.introducer, c.onboarding_date, c.stage, c.status, c.invoice_status, c.source]);
@@ -186,6 +219,31 @@ export default function CasesPage({ initialCaseId } = {}) {
           {["All", "Closed RELs", ...CASE_STATUS_OPTIONS].map((s) => <option key={s}>{s}</option>)}
         </select>
       </div>
+
+      {view === "table" && selectedIds.size > 0 && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 flex items-center flex-wrap gap-3">
+          <span className="text-xs font-medium text-blue-700">{selectedIds.size} selected</span>
+          <div className="flex items-center gap-1.5">
+            <select value={bulkValues.rm_id} onChange={(e) => setBulkValues((p) => ({ ...p, rm_id: e.target.value }))}
+              className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none">
+              <option value="">Relationship Manager…</option>
+              {users.filter((u) => u.role === "rm").map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+            </select>
+            <button disabled={!bulkValues.rm_id || bulkApplying} onClick={() => applyBulkField("rm_id")}
+              className="px-2.5 py-1.5 text-xs border border-blue-300 rounded-lg bg-white hover:bg-blue-100 disabled:opacity-40">Apply</button>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <select value={bulkValues.status} onChange={(e) => setBulkValues((p) => ({ ...p, status: e.target.value }))}
+              className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none">
+              <option value="">Status…</option>
+              {CASE_STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
+            </select>
+            <button disabled={!bulkValues.status || bulkApplying} onClick={() => applyBulkField("status")}
+              className="px-2.5 py-1.5 text-xs border border-blue-300 rounded-lg bg-white hover:bg-blue-100 disabled:opacity-40">Apply</button>
+          </div>
+          <button onClick={() => setSelectedIds(new Set())} className="text-xs text-blue-500 hover:underline ml-auto">Clear selection</button>
+        </div>
+      )}
 
       {view === "kanban" ? (
         <div className="flex gap-3 overflow-x-auto pb-4">
@@ -265,6 +323,10 @@ export default function CasesPage({ initialCaseId } = {}) {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50">
+                <th className="py-3 px-4">
+                  <input type="checkbox" checked={filtered.length > 0 && filtered.every((c) => selectedIds.has(c.id))}
+                    onChange={() => toggleSelectAllFiltered(filtered.map((c) => c.id))} />
+                </th>
                 <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500">Case</th>
                 <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500">Company</th>
                 <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500">Introduced By</th>
@@ -278,6 +340,9 @@ export default function CasesPage({ initialCaseId } = {}) {
             <tbody>
               {filtered.map((c) => (
                 <tr key={c.id} className="border-b border-gray-50 hover:bg-gray-50">
+                  <td className="py-3 px-4">
+                    <input type="checkbox" checked={selectedIds.has(c.id)} onChange={() => toggleSelected(c.id)} />
+                  </td>
                   <td className="py-3 px-4 text-xs font-medium text-gray-800">{c.case_uid}</td>
                   <td className="py-3 px-4 text-xs text-gray-600">{c.company_name}</td>
                   <td className="py-3 px-4 text-xs text-gray-500">{c.introducer || "—"}</td>

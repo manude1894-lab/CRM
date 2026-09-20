@@ -100,6 +100,9 @@ export default function AccountsPage({ initialAccountId } = {}) {
   const [importPreview, setImportPreview] = useState(null); // { rows, results, created, skipped }
   const [importing, setImporting] = useState(false);
   const [partiesAccount, setPartiesAccount] = useState(null); // Account being edited in AccountPartyModal
+  const [selectedIds, setSelectedIds] = useState(() => new Set());
+  const [bulkValues, setBulkValues] = useState({ spoc_id: "", risk_rating: "", kyc_status: "" });
+  const [bulkApplying, setBulkApplying] = useState(false);
   const fileInputRef = useRef(null);
   const isAdmin = useAuthStore((s) => s.isAdmin());
 
@@ -185,6 +188,36 @@ export default function AccountsPage({ initialAccountId } = {}) {
       load();
     } catch (e) {
       alert(e.response?.data?.detail || "Failed to delete client");
+    }
+  };
+
+  const toggleSelected = (id) => setSelectedIds((prev) => {
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
+
+  const toggleSelectAllFiltered = (ids) => setSelectedIds((prev) =>
+    ids.every((id) => prev.has(id)) ? new Set() : new Set(ids)
+  );
+
+  const applyBulkField = async (field) => {
+    const value = bulkValues[field];
+    if (!value || selectedIds.size === 0) return;
+    setBulkApplying(true);
+    try {
+      const results = await accountsApi.bulkUpdate({ ids: [...selectedIds], [field]: field === "spoc_id" ? +value : value });
+      const failed = results.filter((r) => r.status === "error");
+      alert(failed.length === 0
+        ? `Updated ${results.length} client${results.length !== 1 ? "s" : ""}.`
+        : `Updated ${results.length - failed.length}/${results.length}. ${failed.length} failed (e.g. access denied).`);
+      setSelectedIds(new Set());
+      setBulkValues({ spoc_id: "", risk_rating: "", kyc_status: "" });
+      load();
+    } catch (e) {
+      alert(e.response?.data?.detail || "Bulk update failed");
+    } finally {
+      setBulkApplying(false);
     }
   };
 
@@ -278,11 +311,51 @@ export default function AccountsPage({ initialAccountId } = {}) {
         </div>
       </div>
 
-      <div className="relative max-w-md">
-        <Icon name="search" size={15} className="absolute left-3 top-2.5 text-gray-400" />
-        <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search clients..."
-          className="w-full pl-8 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400" />
+      <div className="flex items-center gap-3 flex-wrap">
+        <div className="relative max-w-md flex-1 min-w-[200px]">
+          <Icon name="search" size={15} className="absolute left-3 top-2.5 text-gray-400" />
+          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search clients..."
+            className="w-full pl-8 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400" />
+        </div>
+        {filtered.length > 0 && (
+          <label className="flex items-center gap-1.5 text-xs text-gray-500">
+            <input type="checkbox" checked={filtered.every((a) => selectedIds.has(a.id))}
+              onChange={() => toggleSelectAllFiltered(filtered.map((a) => a.id))} />
+            Select all ({filtered.length})
+          </label>
+        )}
       </div>
+
+      {selectedIds.size > 0 && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 flex items-center flex-wrap gap-3">
+          <span className="text-xs font-medium text-blue-700">{selectedIds.size} selected</span>
+          <div className="flex items-center gap-1.5">
+            <Select value={bulkValues.spoc_id} onChange={(e) => setBulkValues((p) => ({ ...p, spoc_id: e.target.value }))} className="text-xs">
+              <option value="">SPOC…</option>
+              {users.filter((u) => u.role === "rm").map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+            </Select>
+            <button disabled={!bulkValues.spoc_id || bulkApplying} onClick={() => applyBulkField("spoc_id")}
+              className="px-2.5 py-1.5 text-xs border border-blue-300 rounded-lg bg-white hover:bg-blue-100 disabled:opacity-40">Apply</button>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <Select value={bulkValues.risk_rating} onChange={(e) => setBulkValues((p) => ({ ...p, risk_rating: e.target.value }))} className="text-xs">
+              <option value="">Risk Rating…</option>
+              {RISK_OPTIONS.map((r) => <option key={r} value={r}>{r}</option>)}
+            </Select>
+            <button disabled={!bulkValues.risk_rating || bulkApplying} onClick={() => applyBulkField("risk_rating")}
+              className="px-2.5 py-1.5 text-xs border border-blue-300 rounded-lg bg-white hover:bg-blue-100 disabled:opacity-40">Apply</button>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <Select value={bulkValues.kyc_status} onChange={(e) => setBulkValues((p) => ({ ...p, kyc_status: e.target.value }))} className="text-xs">
+              <option value="">KYC Status…</option>
+              {KYC_STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
+            </Select>
+            <button disabled={!bulkValues.kyc_status || bulkApplying} onClick={() => applyBulkField("kyc_status")}
+              className="px-2.5 py-1.5 text-xs border border-blue-300 rounded-lg bg-white hover:bg-blue-100 disabled:opacity-40">Apply</button>
+          </div>
+          <button onClick={() => setSelectedIds(new Set())} className="text-xs text-blue-500 hover:underline ml-auto">Clear selection</button>
+        </div>
+      )}
 
       {filtered.length === 0 && (
         <div className="text-center py-16 text-gray-400 text-sm">
@@ -300,6 +373,8 @@ export default function AccountsPage({ initialAccountId } = {}) {
               className={`bg-white border rounded-xl p-5 shadow-sm cursor-pointer hover:shadow-md transition-all ${isOpen ? "border-blue-400 ring-1 ring-blue-200" : "border-gray-100"}`}>
               <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center gap-3">
+                  <input type="checkbox" checked={selectedIds.has(a.id)} onClick={(e) => e.stopPropagation()}
+                    onChange={() => toggleSelected(a.id)} className="mt-1 flex-shrink-0" />
                   <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm"
                     style={{ background: "#2B6D9A" }}>
                     {a.company_name.slice(0, 2).toUpperCase()}

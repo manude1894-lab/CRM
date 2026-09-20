@@ -39,6 +39,19 @@ class DuplicateMatch(BaseModel):
     score: int
 
 
+class AccountBulkUpdateRequest(BaseModel):
+    ids: list[int] = Field(..., min_length=1)
+    spoc_id: Optional[int] = None
+    risk_rating: Optional[str] = None
+    kyc_status: Optional[str] = None
+
+
+class BulkUpdateResult(BaseModel):
+    id: int
+    status: str  # "ok" | "error"
+    message: Optional[str] = None
+
+
 class AccountImportRequest(BaseModel):
     rows: list[AccountImportRow]
     dry_run: bool = True

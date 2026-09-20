@@ -52,6 +52,12 @@ class CaseUpdate(BaseModel):
     engagement_letter_signed_date: Optional[date] = None
 
 
+class CaseBulkUpdateRequest(BaseModel):
+    ids: list[int] = Field(..., min_length=1)
+    rm_id: Optional[int] = None
+    status: Optional[CaseStatus] = None
+
+
 class CaseStageChangeRequest(BaseModel):
     stage: CaseStage
 

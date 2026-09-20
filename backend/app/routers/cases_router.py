@@ -7,7 +7,8 @@ from app.database import get_db
 from app.auth.dependencies import get_current_user, require_admin
 from app.models import User
 from app.schemas import CaseCreate, CaseRead, CaseUpdate, CaseStageChangeRequest, AdditionalRMRequest
-from app.schemas.case import InvoiceRaiseRequest
+from app.schemas.case import InvoiceRaiseRequest, CaseBulkUpdateRequest
+from app.schemas.account import BulkUpdateResult
 from app.services import case_service
 
 router = APIRouter(prefix="/cases", tags=["Cases"])
@@ -30,6 +31,11 @@ def list_cases(
     if response is not None:
         response.headers["X-Total-Count"] = str(total)
     return {"items": [CaseRead.model_validate(i) for i in items], "total": total}
+
+
+@router.patch("/bulk", response_model=list[BulkUpdateResult], summary="Bulk-update Relationship Manager / Status across selected cases")
+def bulk_update_cases(data: CaseBulkUpdateRequest, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    return case_service.bulk_update_cases(db, user, data)
 
 
 @router.get("/{case_id}", response_model=CaseRead)

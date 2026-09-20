@@ -34,6 +34,7 @@ export const casesApi = {
   delete: (id) => api.delete(`/cases/${id}`),
   addRM: (id, userId) => api.post(`/cases/${id}/relationship-managers`, { user_id: userId }).then((r) => r.data),
   removeRM: (id, userId) => api.delete(`/cases/${id}/relationship-managers/${userId}`).then((r) => r.data),
+  bulkUpdate: (payload) => api.patch("/cases/bulk", payload).then((r) => r.data),
 };
 
 // ─── CDD / KYC ─────────────────────────────────────────────────────────
@@ -207,6 +208,7 @@ export const accountsApi = {
   delete: (id) => api.delete(`/accounts/${id}`),
   import: (rows, dryRun) => api.post("/accounts/import", { rows, dry_run: dryRun }).then((r) => r.data),
   checkDuplicate: (name, excludeId) => api.get("/accounts/check-duplicate", { params: { name, exclude_id: excludeId || undefined } }).then((r) => r.data),
+  bulkUpdate: (payload) => api.patch("/accounts/bulk", payload).then((r) => r.data),
 };
 
 // ─── Activities ────────────────────────────────────────────────────────

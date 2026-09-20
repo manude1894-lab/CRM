@@ -6,7 +6,7 @@ from typing import Optional
 from dateutil.relativedelta import relativedelta
 
 from app.models import Account, Priority, User, UserRole
-from app.schemas.account import AccountCreate, AccountUpdate, AccountImportRow, AccountImportRowResult
+from app.schemas.account import AccountCreate, AccountUpdate, AccountImportRow, AccountImportRowResult, AccountBulkUpdateRequest, BulkUpdateResult
 from app.utils.uid import next_uid
 from app.utils.fuzzy_match import top_matches
 
@@ -106,6 +106,19 @@ def update_account(db: Session, account_id: int, data: AccountUpdate, user: User
     db.commit()
     db.refresh(acc)
     return acc
+
+
+def bulk_update_accounts(db: Session, user: User, data: AccountBulkUpdateRequest) -> list[BulkUpdateResult]:
+    patch_fields = {k: v for k, v in data.model_dump(exclude={"ids"}).items() if v is not None}
+    patch = AccountUpdate(**patch_fields)
+    results = []
+    for account_id in data.ids:
+        try:
+            update_account(db, account_id, patch, user)
+            results.append(BulkUpdateResult(id=account_id, status="ok"))
+        except HTTPException as e:
+            results.append(BulkUpdateResult(id=account_id, status="error", message=e.detail))
+    return results
 
 
 def delete_account(db: Session, account_id: int, user: User) -> None:

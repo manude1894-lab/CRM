@@ -21,7 +21,8 @@ from app.models import (
     Case, CaseStage, CaseStatus, InvoiceStatus, CASE_STAGE_TRANSITIONS,
     User, UserRole, Account, CDDRecord, CaseDocument, DocumentStatus, ComplianceSchedule,
 )
-from app.schemas.case import CaseCreate, CaseUpdate
+from app.schemas.case import CaseCreate, CaseUpdate, CaseBulkUpdateRequest
+from app.schemas.account import BulkUpdateResult
 from app.utils.uid import next_uid
 from app.services import notification_service, company_service, compliance_service, access_control
 
@@ -262,6 +263,19 @@ def _validate_transition(current_stage, new_stage) -> None:
             status_code=400,
             detail=f"Invalid stage transition: '{current}' → '{target}'. Allowed: {allowed}",
         )
+
+
+def bulk_update_cases(db: Session, user: User, data: CaseBulkUpdateRequest) -> list[BulkUpdateResult]:
+    patch_fields = {k: v for k, v in data.model_dump(exclude={"ids"}).items() if v is not None}
+    patch = CaseUpdate(**patch_fields)
+    results = []
+    for case_id in data.ids:
+        try:
+            update_case(db, case_id, patch, user)
+            results.append(BulkUpdateResult(id=case_id, status="ok"))
+        except HTTPException as e:
+            results.append(BulkUpdateResult(id=case_id, status="error", message=e.detail))
+    return results
 
 
 def delete_case(db: Session, case_id: int, user: User) -> None:
