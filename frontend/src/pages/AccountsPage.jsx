@@ -255,9 +255,46 @@ export default function AccountsPage({ initialAccountId } = {}) {
     } finally { setSaving(false); }
   };
 
+  const ADDRESS_COLS = ["Line 1", "Line 2", "Landmark", "City", "ZIP", "P.O. Box", "Country"];
+  const addrRow = (v) => { const a = v || {}; return [a.line1, a.line2, a.landmark, a.city, a.zip, a.po_box, a.country]; };
+
   const exportCSV = () => {
-    const headers = ["Company Name", "Industry", "Country", "Website", "Key Contacts", "Strategic Priority", "Existing Relationship", "Registration Number", "License Number", "Risk Rating", "KYC Status"];
-    const rows = accounts.map((a) => [a.company_name, a.industry, a.country, a.website, a.key_contacts, a.strategic_priority, a.existing_relationship, a.registration_number, a.license_number, a.risk_rating, a.kyc_status]);
+    const headers = [
+      "Account UID", "Client Type", "Company Name", "Industry", "Country", "Website", "Key Contacts",
+      "Strategic Priority", "Existing Relationship", "Tags", "Registration Number", "License Number",
+      "Risk Rating", "KYC Status", "SPOC",
+      "Licensing Authority", "License Activities", "License Start Date", "License Expiry Date",
+      "Is Regulated", "Regulator", "Other Regulator", "License Category",
+      ...ADDRESS_COLS.map((c) => `Registered Address ${c}`),
+      ...ADDRESS_COLS.map((c) => `Operating Address ${c}`),
+      "TRN/VAT Number", "Corp Tax Registered", "Corp Tax Registration No.", "Financial Year End",
+      "Has Introducer", "Introducer Name", "Services Obtained",
+      "Profile Status", "Engagement Letter Signed", "Engagement Letter Valid Until",
+      "AML Classification", "EDD Reason", "CDD Completion Date", "Next AML Review Date", "Is PEP",
+      "Date of Birth", "Nationality", "Passport Number", "Passport Expiry", "Occupation",
+      "Source of Funds", "Source of Wealth", "Country of Residence",
+      ...ADDRESS_COLS.map((c) => `Residential Address ${c}`),
+      "Individual Mobile", "Individual Email", "UAE Visa Number", "UAE Visa Expiry",
+      "Total Cases", "Total Invoiced Amount", "Created At", "Updated At",
+    ];
+    const rows = accounts.map((a) => [
+      a.account_uid, a.account_type, a.company_name, a.industry, a.country, a.website, a.key_contacts,
+      a.strategic_priority, a.existing_relationship, a.tags, a.registration_number, a.license_number,
+      a.risk_rating, a.kyc_status, users.find((u) => u.id === a.spoc_id)?.name || "",
+      a.licensing_authority, a.license_activities, a.license_start_date, a.license_expiry_date,
+      a.is_regulated, a.regulator_name, a.regulator_other, a.license_category,
+      ...addrRow(a.registered_address),
+      ...addrRow(a.operating_address),
+      a.trn_vat_number, a.corp_tax_registered, a.corp_tax_registration_number, a.financial_year_end,
+      a.has_introducer, a.introducer_name, (a.services_obtained || []).join("; "),
+      a.profile_status, a.engagement_letter_signed, a.engagement_letter_valid_until,
+      a.aml_classification, a.edd_reason, a.cdd_completion_date, a.next_aml_review_date, a.is_pep,
+      a.date_of_birth, a.nationality, a.passport_number, a.passport_expiry_date, a.occupation,
+      a.source_of_funds, a.source_of_wealth, a.country_of_residence,
+      ...addrRow(a.residential_address),
+      a.individual_mobile, a.individual_email, a.uae_visa_number, a.uae_visa_expiry,
+      a.total_cases, a.total_invoiced_amount, a.created_at, a.updated_at,
+    ]);
     const csv = [headers, ...rows].map((r) => r.map((v) => `"${(v ?? "").toString().replace(/"/g, '""')}"`).join(",")).join("\n");
     const a = document.createElement("a");
     a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
