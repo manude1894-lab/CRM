@@ -15,12 +15,22 @@ const KYC_STATUS_OPTIONS = ["Not Started", "Submitted", "Under Review", "Approve
 
 const BLANK_ADDRESS = { line1: "", line2: "", landmark: "", zip: "", po_box: "", city: "", country: "" };
 
-const Section = ({ title, children }) => (
-  <div className="mb-1">
-    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">{title}</p>
-    {children}
-  </div>
-);
+const Section = ({ title, children, hasData }) => {
+  const [open, setOpen] = useState(!!hasData);
+  return (
+    <div className="mb-2 border border-gray-100 rounded-lg overflow-hidden">
+      <button type="button" onClick={() => setOpen((o) => !o)}
+        className="w-full flex items-center justify-between px-3 py-2 bg-gray-50 hover:bg-gray-100 transition-colors text-left">
+        <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide flex items-center gap-1.5">
+          {title}
+          {hasData && <span className="w-1.5 h-1.5 rounded-full bg-brand-500 flex-shrink-0" />}
+        </span>
+        <Icon name="chevronRight" size={14} className={`text-gray-400 transition-transform flex-shrink-0 ${open ? "rotate-90" : ""}`} />
+      </button>
+      {open && <div className="px-3 py-3">{children}</div>}
+    </div>
+  );
+};
 
 const AddressFields = ({ value, onChange }) => {
   const v = value || BLANK_ADDRESS;
@@ -551,7 +561,7 @@ export default function AccountsPage({ initialAccountId } = {}) {
 
             {form.account_type !== "Individual" && (
               <>
-                <Section title="Licensing & Regulatory">
+                <Section title="Licensing & Regulatory" hasData={!!(form.licensing_authority || form.license_activities || form.license_start_date || form.license_expiry_date || form.is_regulated || form.license_category)}>
                   <div className="grid grid-cols-2 gap-3">
                     <Field label="Licensing Authority">
                       <Input value={form.licensing_authority} onChange={(e) => setForm({ ...form, licensing_authority: e.target.value })} placeholder="e.g. DIFC, ADGM, DED" />
@@ -581,15 +591,15 @@ export default function AccountsPage({ initialAccountId } = {}) {
                   )}
                 </Section>
 
-                <Section title="Registered Address">
+                <Section title="Registered Address" hasData={Object.values(form.registered_address || {}).some(Boolean)}>
                   <AddressFields value={form.registered_address} onChange={(v) => setForm({ ...form, registered_address: v })} />
                 </Section>
 
-                <Section title="Operating Address">
+                <Section title="Operating Address" hasData={Object.values(form.operating_address || {}).some(Boolean)}>
                   <AddressFields value={form.operating_address} onChange={(v) => setForm({ ...form, operating_address: v })} />
                 </Section>
 
-                <Section title="Tax">
+                <Section title="Tax" hasData={!!(form.trn_vat_number || form.financial_year_end || form.corp_tax_registered)}>
                   <div className="grid grid-cols-2 gap-3">
                     <Field label="TRN / VAT Registration No."><Input value={form.trn_vat_number} onChange={(e) => setForm({ ...form, trn_vat_number: e.target.value })} /></Field>
                     <Field label="Financial Year End (MM-DD)"><Input value={form.financial_year_end} onChange={(e) => setForm({ ...form, financial_year_end: e.target.value })} placeholder="12-31" /></Field>
@@ -605,7 +615,7 @@ export default function AccountsPage({ initialAccountId } = {}) {
             )}
 
             {form.account_type === "Individual" && (
-              <Section title="Individual Details">
+              <Section title="Individual Details" hasData={!!(form.date_of_birth || form.nationality || form.passport_number || form.occupation || form.individual_mobile || form.individual_email || form.country_of_residence || form.source_of_funds || form.source_of_wealth || form.is_pep)}>
                 <div className="grid grid-cols-2 gap-3">
                   <Field label="Date of Birth"><Input type="date" value={form.date_of_birth || ""} onChange={(e) => setForm({ ...form, date_of_birth: e.target.value })} /></Field>
                   <Field label="Nationality"><CountrySelect value={form.nationality} onChange={(e) => setForm({ ...form, nationality: e.target.value })} countries={countries} /></Field>
@@ -635,7 +645,7 @@ export default function AccountsPage({ initialAccountId } = {}) {
               </Section>
             )}
 
-            <Section title="Introducer">
+            <Section title="Introducer" hasData={!!form.has_introducer}>
               <label className="flex items-center gap-2 text-xs text-gray-700 mb-3">
                 <input type="checkbox" checked={!!form.has_introducer} onChange={(e) => setForm({ ...form, has_introducer: e.target.checked })} /> Introduced by a third party
               </label>
@@ -644,11 +654,11 @@ export default function AccountsPage({ initialAccountId } = {}) {
               )}
             </Section>
 
-            <Section title="Services Obtained">
+            <Section title="Services Obtained" hasData={(form.services_obtained || []).length > 0}>
               <MultiSelect options={SERVICES_OBTAINED_OPTIONS} value={form.services_obtained} onChange={(v) => setForm({ ...form, services_obtained: v })} />
             </Section>
 
-            <Section title="Profile Status & Engagement">
+            <Section title="Profile Status & Engagement" hasData={form.profile_status !== "New" || !!form.engagement_letter_signed || !!form.engagement_letter_valid_until}>
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Profile Status">
                   <Select value={form.profile_status} onChange={(e) => setForm({ ...form, profile_status: e.target.value })}>
@@ -662,7 +672,7 @@ export default function AccountsPage({ initialAccountId } = {}) {
               </label>
             </Section>
 
-            <Section title="AML Classification">
+            <Section title="AML Classification" hasData={!!(form.aml_classification || form.cdd_completion_date)}>
               <div className="grid grid-cols-2 gap-3">
                 <Field label="AML Classification">
                   <Select value={form.aml_classification || ""} onChange={(e) => setForm({ ...form, aml_classification: e.target.value })}>
