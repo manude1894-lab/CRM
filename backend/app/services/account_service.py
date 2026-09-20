@@ -5,10 +5,11 @@ from fastapi import HTTPException
 from typing import Optional
 from dateutil.relativedelta import relativedelta
 
-from app.models import Account, Priority, User, UserRole
+from app.models import Account, Priority, User, UserRole, Case, CaseStatus, Invoice, InvoiceLedgerStatus
 from app.schemas.account import AccountCreate, AccountUpdate, AccountImportRow, AccountImportRowResult, AccountBulkUpdateRequest, BulkUpdateResult
 from app.utils.uid import next_uid
 from app.utils.fuzzy_match import top_matches
+from app.services import compliance_service
 
 # Client-database spec §24.6 — review cadence by risk rating.
 _AML_REVIEW_CADENCE_YEARS = {"High": 1, "Medium": 2, "Low": 3}
@@ -119,6 +120,64 @@ def bulk_update_accounts(db: Session, user: User, data: AccountBulkUpdateRequest
         except HTTPException as e:
             results.append(BulkUpdateResult(id=account_id, status="error", message=e.detail))
     return results
+
+
+def build_track_record(db: Session, account: Account) -> dict:
+    """Client-facing summary of an account's relationship history — cases, compliance, invoicing, parties."""
+    excluded_statuses = compliance_service.DORMANT_CASE_STATUSES | {CaseStatus.REJECTED.value}
+    cases = account.cases
+    case_ids = [c.id for c in cases]
+
+    ledger = db.query(Invoice).filter(Invoice.case_id.in_(case_ids)).all() if case_ids else []
+    ledger_paid = sum((inv.amount for inv in ledger if inv.status == InvoiceLedgerStatus.PAID.value), start=0)
+    ledger_outstanding = sum((inv.amount for inv in ledger if inv.status != InvoiceLedgerStatus.PAID.value), start=0)
+
+    case_rows = []
+    for c in cases:
+        schedule = c.compliance_schedule
+        case_rows.append({
+            "case_uid": c.case_uid,
+            "company_name": c.company_name,
+            "jurisdiction": c.jurisdiction,
+            "service_type": c.service_type,
+            "stage": c.stage.value if hasattr(c.stage, "value") else c.stage,
+            "status": c.status,
+            "onboarding_date": c.onboarding_date,
+            "invoice_status": c.invoice_status.value if hasattr(c.invoice_status, "value") else c.invoice_status,
+            "invoice_amount": c.invoice_amount,
+            "next_renewal_due": schedule.renewal_due_date if schedule else None,
+            "next_esr_due": schedule.esr_filing_due_date if schedule else None,
+            "next_ar_due": schedule.ar_filing_due_date if schedule else None,
+            "next_bo_due": schedule.bo_filing_due_date if schedule else None,
+        })
+
+    party_rows = [
+        {
+            "full_name": p.full_name,
+            "party_role": p.party_role,
+            "constitution": p.constitution,
+            "effective_ownership_percent": p.effective_ownership_percent,
+        }
+        for p in account.parties
+    ]
+
+    return {
+        "account_uid": account.account_uid,
+        "company_name": account.company_name,
+        "account_type": account.account_type,
+        "industry": account.industry,
+        "country": account.country,
+        "risk_rating": account.risk_rating,
+        "kyc_status": account.kyc_status,
+        "client_since": account.created_at,
+        "total_cases": account.total_cases,
+        "active_cases": sum(1 for c in cases if c.status not in excluded_statuses),
+        "total_onboarding_invoiced": account.total_invoiced_amount,
+        "ledger_invoices_paid": ledger_paid,
+        "ledger_invoices_outstanding": ledger_outstanding,
+        "cases": case_rows,
+        "parties": party_rows,
+    }
 
 
 def delete_account(db: Session, account_id: int, user: User) -> None:

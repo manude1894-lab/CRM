@@ -209,6 +209,18 @@ export const accountsApi = {
   import: (rows, dryRun) => api.post("/accounts/import", { rows, dry_run: dryRun }).then((r) => r.data),
   checkDuplicate: (name, excludeId) => api.get("/accounts/check-duplicate", { params: { name, exclude_id: excludeId || undefined } }).then((r) => r.data),
   bulkUpdate: (payload) => api.patch("/accounts/bulk", payload).then((r) => r.data),
+  trackRecord: (id) => api.get(`/accounts/${id}/track-record`).then((r) => r.data),
+  downloadTrackRecordPdf: async (id, filename) => {
+    const res = await api.get(`/accounts/${id}/track-record/pdf`, { responseType: "blob" });
+    const url = window.URL.createObjectURL(new Blob([res.data], { type: "application/pdf" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename || `track-record-${id}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
+  },
 };
 
 // ─── Activities ────────────────────────────────────────────────────────

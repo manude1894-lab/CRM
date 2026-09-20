@@ -18,8 +18,8 @@ from reportlab.lib.enums import TA_CENTER
 
 from app.models import Case
 
-# EZEETECH brand color
-PRIMARY = colors.HexColor("#2B6D9A")
+# TRIAM brand color
+PRIMARY = colors.HexColor("#1a3a5c")
 ACCENT = colors.HexColor("#10B981")
 MUTED = colors.HexColor("#6B7280")
 LIGHT = colors.HexColor("#F3F4F6")
@@ -245,5 +245,83 @@ def rm_ops_performance_pdf(dashboard: dict) -> bytes:
         headers, rows,
         col_widths=[6 * cm, 3 * cm, 4 * cm, 4 * cm],
     ))
+    doc.build(elements, onFirstPage=_header_footer, onLaterPages=_header_footer)
+    return buf.getvalue()
+
+
+def account_track_record_pdf(record: dict) -> bytes:
+    buf = BytesIO()
+    doc = _new_doc(buf)
+    styles = _styles()
+    elements = []
+    elements += _brand_header(
+        styles, "Client Track Record",
+        f"{record['company_name']} ({record['account_uid']}) · Generated {date.today().isoformat()}",
+    )
+
+    elements.append(_kpi_row([
+        ("Total Cases", str(record["total_cases"])),
+        ("Active Cases", str(record["active_cases"])),
+        ("Onboarding Invoiced", _fmt_money(record["total_onboarding_invoiced"])),
+        ("Invoices Paid", _fmt_money(record["ledger_invoices_paid"])),
+        ("Invoices Outstanding", _fmt_money(record["ledger_invoices_outstanding"])),
+    ]))
+    elements.append(Spacer(1, 0.6 * cm))
+
+    elements.append(Paragraph("Client Profile", styles["H2"]))
+    profile_rows = [
+        ["Account Type", record["account_type"] or "—", "Industry", record["industry"] or "—"],
+        ["Country", record["country"] or "—", "Risk Rating", record["risk_rating"] or "—"],
+        ["KYC Status", record["kyc_status"] or "—", "Client Since", record["client_since"].date().isoformat()],
+    ]
+    elements.append(_data_table(["", "", "", ""], profile_rows, col_widths=[3.5 * cm, 5.5 * cm, 3.5 * cm, 4.5 * cm]))
+    elements.append(Spacer(1, 0.6 * cm))
+
+    elements.append(Paragraph("Cases", styles["H2"]))
+    case_rows = [
+        [
+            c["case_uid"], Paragraph(c["company_name"][:30], styles["Body"]), c["jurisdiction"] or "—",
+            c["stage"], c["status"], c["invoice_status"], _fmt_money(c["invoice_amount"]),
+        ]
+        for c in record["cases"]
+    ]
+    elements.append(_data_table(
+        ["Case", "Company", "Jurisdiction", "Stage", "Status", "Invoice", "Amount"],
+        case_rows,
+        col_widths=[2.2 * cm, 4 * cm, 2.3 * cm, 3 * cm, 2 * cm, 2 * cm, 1.5 * cm],
+    ))
+    elements.append(Spacer(1, 0.6 * cm))
+
+    compliance_rows = [
+        [
+            c["case_uid"],
+            c["next_renewal_due"].isoformat() if c["next_renewal_due"] else "—",
+            c["next_esr_due"].isoformat() if c["next_esr_due"] else "—",
+            c["next_ar_due"].isoformat() if c["next_ar_due"] else "—",
+            c["next_bo_due"].isoformat() if c["next_bo_due"] else "—",
+        ]
+        for c in record["cases"]
+    ]
+    if compliance_rows:
+        elements.append(Paragraph("Compliance Schedule", styles["H2"]))
+        elements.append(_data_table(
+            ["Case", "Renewal Due", "ESR Due", "AR Due", "BO Due"],
+            compliance_rows,
+            col_widths=[3 * cm, 3.5 * cm, 3.5 * cm, 3.5 * cm, 3.5 * cm],
+        ))
+        elements.append(Spacer(1, 0.6 * cm))
+
+    if record["parties"]:
+        elements.append(Paragraph("Parties on File", styles["H2"]))
+        party_rows = [
+            [p["full_name"], p["party_role"], p["constitution"], f"{p['effective_ownership_percent']}%" if p["effective_ownership_percent"] is not None else "—"]
+            for p in record["parties"]
+        ]
+        elements.append(_data_table(
+            ["Name", "Role", "Constitution", "Ownership %"],
+            party_rows,
+            col_widths=[5 * cm, 4 * cm, 3.5 * cm, 4 * cm],
+        ))
+
     doc.build(elements, onFirstPage=_header_footer, onLaterPages=_header_footer)
     return buf.getvalue()

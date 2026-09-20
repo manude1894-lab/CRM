@@ -3,6 +3,7 @@ from app.reports.pdf import (
     case_details_pdf,
     compliance_calendar_pdf,
     rm_ops_performance_pdf,
+    account_track_record_pdf,
 )
 from app.reports.documents import letter_pdf, resolution_pdf
 
@@ -11,6 +12,7 @@ __all__ = [
     "case_details_pdf",
     "compliance_calendar_pdf",
     "rm_ops_performance_pdf",
+    "account_track_record_pdf",
     "letter_pdf",
     "resolution_pdf",
 ]

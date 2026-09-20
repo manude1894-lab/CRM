@@ -8,7 +8,9 @@ from app.auth.dependencies import get_current_user, require_admin
 from app.models import User
 from app.schemas import AccountCreate, AccountRead, AccountUpdate, AccountImportRequest, AccountImportResponse
 from app.schemas.account import DuplicateMatch, AccountBulkUpdateRequest, BulkUpdateResult
+from app.schemas.account_report import TrackRecordRead
 from app.services import account_service
+from app.reports import account_track_record_pdf
 
 router = APIRouter(prefix="/accounts", tags=["Accounts"])
 
@@ -48,6 +50,24 @@ def bulk_update_accounts(data: AccountBulkUpdateRequest, db: Session = Depends(g
 @router.get("/{account_id}", response_model=AccountRead)
 def get_account(account_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     return account_service.get_account(db, account_id, user)
+
+
+@router.get("/{account_id}/track-record", response_model=TrackRecordRead, summary="Client track record — in-app summary")
+def get_track_record(account_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    account = account_service.get_account(db, account_id, user)
+    return account_service.build_track_record(db, account)
+
+
+@router.get("/{account_id}/track-record/pdf", summary="Client track record — PDF download")
+def download_track_record(account_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    account = account_service.get_account(db, account_id, user)
+    record = account_service.build_track_record(db, account)
+    pdf = account_track_record_pdf(record)
+    filename = f"track_record_{account.account_uid}.pdf"
+    return Response(
+        content=pdf, media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @router.post("", response_model=AccountRead, status_code=status.HTTP_201_CREATED)
