@@ -398,7 +398,7 @@ export default function CasesPage() {
             </Field>
             <Field label="Relationship Manager">
               <Select value={form.rm_id || ""} onChange={(e) => setForm((p) => ({ ...p, rm_id: e.target.value ? +e.target.value : null }))}>
-                <option value="">— Unassigned —</option>
+                <option value="">— Auto-assign (least loaded RM) —</option>
                 {users.filter((u) => u.role === "rm").map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
               </Select>
             </Field>

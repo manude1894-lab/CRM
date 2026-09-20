@@ -80,8 +80,21 @@ STANDARD_CDD_DOCUMENTS = [
 ]
 
 
+def _least_loaded_rm(db: Session) -> Optional[int]:
+    """Active RM with the fewest open (non-dormant, non-rejected) cases. None if no RMs exist."""
+    excluded = compliance_service.DORMANT_CASE_STATUSES | {CaseStatus.REJECTED.value}
+    rms = db.query(User).filter(User.role == UserRole.RM, User.is_active == True).all()  # noqa: E712
+    if not rms:
+        return None
+    counts = {
+        rm.id: db.query(Case).filter(Case.rm_id == rm.id, ~Case.status.in_(excluded)).count()
+        for rm in rms
+    }
+    return min(counts, key=counts.get)
+
+
 def create_case(db: Session, data: CaseCreate, user: User) -> Case:
-    rm_id = data.rm_id or (user.id if user.role == UserRole.RM else None)
+    rm_id = data.rm_id or (user.id if user.role == UserRole.RM else None) or _least_loaded_rm(db)
 
     payload = data.model_dump(exclude={"rm_id"})
     case = Case(
