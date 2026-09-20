@@ -24,7 +24,7 @@ export const STAGE_COLORS = {
   "Ops Assigned": "#34d399",
   "Application Submitted": "#22c55e",
   "License Received": "#10b981",
-  "Active": "#2B6D9A",
+  "Active": "#1a3a5c",
 };
 
 export const CASE_STATUS_COLORS = {
@@ -241,7 +241,7 @@ export const INSTRUCTION_TYPE_OPTIONS = [
 ];
 
 export const PIE_COLORS = [
-  "#2B6D9A", "#34d399", "#fb923c", "#a78bfa",
+  "#1a3a5c", "#34d399", "#fb923c", "#a78bfa",
   "#60a5fa", "#f59e0b", "#ef4444", "#ec4899",
 ];
 

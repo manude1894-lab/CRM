@@ -120,7 +120,7 @@ export default function InstructionsPage() {
           <h1 className="text-xl font-bold text-gray-900">Instruction Tracker</h1>
           <p className="text-sm text-gray-500">{filtered.length} of {instructions.length} service requests</p>
         </div>
-        <button onClick={openNew} className="px-3 py-1.5 text-xs text-white rounded-lg flex items-center gap-1" style={{ background: "#2B6D9A" }}>
+        <button onClick={openNew} className="px-3 py-1.5 text-xs text-white rounded-lg flex items-center gap-1" style={{ background: "#1a3a5c" }}>
           <Icon name="plus" size={14} /> New Instruction
         </button>
       </div>
@@ -129,12 +129,12 @@ export default function InstructionsPage() {
         <div className="relative flex-1 min-w-48">
           <Icon name="search" size={15} className="absolute left-3 top-2.5 text-gray-400" />
           <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search company, type, invoice ref..."
-            className="w-full pl-8 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400" />
+            className="w-full pl-8 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-brand-400" />
         </div>
         {["All", ...INSTRUCTION_STATUS_OPTIONS].map((s) => (
           <button key={s} onClick={() => setStatusFilter(s)}
             className={`px-3 py-1.5 text-xs rounded-lg border transition-colors ${statusFilter === s ? "text-white border-transparent" : "border-gray-200 text-gray-600 hover:bg-gray-50"}`}
-            style={statusFilter === s ? { background: "#2B6D9A" } : {}}>
+            style={statusFilter === s ? { background: "#1a3a5c" } : {}}>
             {s} {s !== "All" && `(${counts[s] || 0})`}
           </button>
         ))}
@@ -200,7 +200,7 @@ export default function InstructionsPage() {
                 <td className="py-3 px-4 text-xs text-gray-500">{i.invoice_reference || "—"}</td>
                 <td className="py-3 px-4">
                   <div className="flex gap-1">
-                    <button onClick={() => openEdit(i)} className="p-1.5 rounded hover:bg-blue-50 text-gray-400 hover:text-blue-600">
+                    <button onClick={() => openEdit(i)} className="p-1.5 rounded hover:bg-brand-50 text-gray-400 hover:text-brand-600">
                       <Icon name="edit" size={14} />
                     </button>
                     <button onClick={() => remove(i.id)} className="p-1.5 rounded hover:bg-red-50 text-gray-400 hover:text-red-500">
@@ -281,7 +281,7 @@ export default function InstructionsPage() {
 
           <div className="flex justify-end gap-3 mt-4">
             <button onClick={() => setModal(null)} className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
-            <button onClick={save} className="px-4 py-2 text-sm text-white rounded-lg" style={{ background: "#2B6D9A" }}>Save</button>
+            <button onClick={save} className="px-4 py-2 text-sm text-white rounded-lg" style={{ background: "#1a3a5c" }}>Save</button>
           </div>
         </Modal>
       )}

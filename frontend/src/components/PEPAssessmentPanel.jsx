@@ -87,7 +87,7 @@ export default function PEPAssessmentPanel({ caseId, parties = [] }) {
         <div className="space-y-1.5">
           {items.map((a) => (
             <div key={a.id} className="flex items-center justify-between gap-2 p-2 bg-gray-50 rounded-lg">
-              <button onClick={() => openEdit(a)} className="text-xs text-left hover:text-blue-600">
+              <button onClick={() => openEdit(a)} className="text-xs text-left hover:text-brand-600">
                 <span className="font-medium text-gray-700">{a.subject_name}</span>
                 <span className="text-gray-400"> · {a.pep_type || "PEP"}</span>
               </button>
@@ -148,7 +148,7 @@ export default function PEPAssessmentPanel({ caseId, parties = [] }) {
           <Field label="Notes"><Textarea value={form.notes || ""} onChange={set("notes")} /></Field>
           <div className="flex justify-end gap-3 mt-4">
             <button onClick={() => setModal(false)} className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
-            <button onClick={save} className="px-4 py-2 text-sm text-white rounded-lg" style={{ background: "#2B6D9A" }}>Save</button>
+            <button onClick={save} className="px-4 py-2 text-sm text-white rounded-lg" style={{ background: "#1a3a5c" }}>Save</button>
           </div>
         </Modal>
       )}

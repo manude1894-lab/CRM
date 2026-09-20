@@ -117,7 +117,7 @@ export const Badge = ({ text }) => {
 };
 
 // ─── MetricCard ─────────────────────────────────────────────────────────
-export const MetricCard = ({ label, value, sub, color = "#2B6D9A", icon }) => (
+export const MetricCard = ({ label, value, sub, color = "#1a3a5c", icon }) => (
   <div className="bg-white rounded-xl border border-gray-100 p-5 shadow-sm">
     <div className="flex items-start justify-between">
       <div>
@@ -162,14 +162,14 @@ export const Field = ({ label, children, required }) => (
 export const Input = ({ className = "", ...props }) => (
   <input
     {...props}
-    className={`w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-100 ${className}`}
+    className={`w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-400 focus:ring-1 focus:ring-brand-100 ${className}`}
   />
 );
 
 export const Select = ({ children, ...props }) => (
   <select
     {...props}
-    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-400"
+    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-400"
   >
     {children}
   </select>
@@ -179,7 +179,7 @@ export const Textarea = (props) => (
   <textarea
     {...props}
     rows={3}
-    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-400 resize-none"
+    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-400 resize-none"
   />
 );
 
@@ -235,7 +235,7 @@ export const Spinner = ({ size = 40 }) => (
   <div className="flex items-center justify-center p-8">
     <div
       className="animate-spin rounded-full border-4 border-gray-200"
-      style={{ width: size, height: size, borderTopColor: "#2B6D9A" }}
+      style={{ width: size, height: size, borderTopColor: "#1a3a5c" }}
     />
   </div>
 );

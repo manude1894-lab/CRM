@@ -83,7 +83,7 @@ export default function NotificationBell() {
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
             <span className="text-sm font-semibold text-gray-800">Notifications</span>
             {unreadCount > 0 && (
-              <button onClick={markAllRead} className="text-xs text-blue-600 hover:underline">Mark all read</button>
+              <button onClick={markAllRead} className="text-xs text-brand-600 hover:underline">Mark all read</button>
             )}
           </div>
           {notifications.length === 0 && (
@@ -91,7 +91,7 @@ export default function NotificationBell() {
           )}
           {notifications.map((n) => (
             <button key={n.id} onClick={() => markRead(n)}
-              className={`w-full text-left px-4 py-3 border-b border-gray-50 hover:bg-gray-50 ${!n.read_at ? "bg-blue-50/40" : ""}`}>
+              className={`w-full text-left px-4 py-3 border-b border-gray-50 hover:bg-gray-50 ${!n.read_at ? "bg-brand-50/40" : ""}`}>
               <p className="text-xs text-gray-700 leading-snug">{n.message}</p>
               <p className="text-[10px] text-gray-400 mt-1">{new Date(n.created_at).toLocaleString()}</p>
             </button>

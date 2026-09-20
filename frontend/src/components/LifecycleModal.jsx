@@ -129,11 +129,11 @@ export default function LifecycleModal({ caseItem, onClose }) {
                 <div key={row.key} className="grid grid-cols-[1fr_110px_1fr] gap-2 items-center">
                   <span className="text-xs text-gray-700">{row.label}</span>
                   <select value={row.status || "Pending"} onChange={setChecklist(idx, "status")}
-                    className="border border-gray-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-blue-400">
+                    className="border border-gray-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-brand-400">
                     {LIFECYCLE_CHECKLIST_STATUS_OPTIONS.map((s) => <option key={s}>{s}</option>)}
                   </select>
                   <input value={row.note || ""} onChange={setChecklist(idx, "note")} placeholder="Note"
-                    className="border border-gray-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-blue-400" />
+                    className="border border-gray-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-brand-400" />
                 </div>
               ))}
             </div>
@@ -168,7 +168,7 @@ export default function LifecycleModal({ caseItem, onClose }) {
 
           <div className="flex justify-end gap-3 pt-1">
             <button onClick={() => onClose(false)} className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
-            <button onClick={save} disabled={saving} className="px-4 py-2 text-sm text-white rounded-lg disabled:opacity-60" style={{ background: "#2B6D9A" }}>
+            <button onClick={save} disabled={saving} className="px-4 py-2 text-sm text-white rounded-lg disabled:opacity-60" style={{ background: "#1a3a5c" }}>
               {saving ? "Saving…" : "Save"}
             </button>
           </div>

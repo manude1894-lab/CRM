@@ -103,7 +103,7 @@ export default function ProspectsPage() {
           <h1 className="text-xl font-bold text-gray-900">Prospects</h1>
           <p className="text-sm text-gray-500">{items.length} tracked leads / proposals — not yet onboarded clients</p>
         </div>
-        <button onClick={openNew} className="px-3 py-1.5 text-xs text-white rounded-lg flex items-center gap-1" style={{ background: "#2B6D9A" }}>
+        <button onClick={openNew} className="px-3 py-1.5 text-xs text-white rounded-lg flex items-center gap-1" style={{ background: "#1a3a5c" }}>
           <Icon name="plus" size={14} /> Add Prospect
         </button>
       </div>
@@ -121,7 +121,7 @@ export default function ProspectsPage() {
                 {colItems.map((p) => (
                   <div key={p.id} className="bg-white border border-gray-100 rounded-xl p-3 shadow-sm">
                     <div className="flex items-start justify-between gap-2">
-                      <button onClick={() => openEdit(p)} className="text-xs font-semibold text-gray-800 text-left hover:text-blue-600">{p.company_name}</button>
+                      <button onClick={() => openEdit(p)} className="text-xs font-semibold text-gray-800 text-left hover:text-brand-600">{p.company_name}</button>
                     </div>
                     <div className="text-[11px] text-gray-400 mt-1">{p.prospect_uid}</div>
                     {p.contact_name && <div className="text-xs text-gray-500 mt-1">{p.contact_name}</div>}
@@ -187,7 +187,7 @@ export default function ProspectsPage() {
           <Field label="Notes"><Textarea value={form.notes || ""} onChange={(e) => setForm((p) => ({ ...p, notes: e.target.value }))} /></Field>
           <div className="flex justify-end gap-3 mt-4">
             <button onClick={() => setModal(false)} className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
-            <button onClick={save} className="px-4 py-2 text-sm text-white rounded-lg" style={{ background: "#2B6D9A" }}>Save</button>
+            <button onClick={save} className="px-4 py-2 text-sm text-white rounded-lg" style={{ background: "#1a3a5c" }}>Save</button>
           </div>
         </Modal>
       )}
@@ -215,7 +215,7 @@ export default function ProspectsPage() {
           </div>
           <div className="flex justify-end gap-3 mt-4">
             <button onClick={() => setConvertProspect(null)} className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
-            <button onClick={doConvert} className="px-4 py-2 text-sm text-white rounded-lg" style={{ background: "#2B6D9A" }}>Convert</button>
+            <button onClick={doConvert} className="px-4 py-2 text-sm text-white rounded-lg" style={{ background: "#1a3a5c" }}>Convert</button>
           </div>
         </Modal>
       )}

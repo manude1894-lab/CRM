@@ -130,7 +130,7 @@ export default function PartyRegisterModal({ caseItem, onClose }) {
       <div className="flex border-b border-gray-100 mb-4 -mt-2">
         {TABS.map(([t, label]) => (
           <button key={t} onClick={() => switchTab(t)}
-            className={`px-3 py-2 text-sm font-medium border-b-2 -mb-px ${tab === t ? "border-blue-500 text-blue-600" : "border-transparent text-gray-400 hover:text-gray-600"}`}>
+            className={`px-3 py-2 text-sm font-medium border-b-2 -mb-px ${tab === t ? "border-brand-500 text-brand-600" : "border-transparent text-gray-400 hover:text-gray-600"}`}>
             {label}
           </button>
         ))}
@@ -201,7 +201,7 @@ export default function PartyRegisterModal({ caseItem, onClose }) {
                     </div>
                   )))}
               </div>
-              <button onClick={startNew} className="w-full px-3 py-2 text-xs border border-dashed border-gray-300 rounded-lg hover:border-blue-300 hover:text-blue-600 text-gray-500 flex items-center justify-center gap-1">
+              <button onClick={startNew} className="w-full px-3 py-2 text-xs border border-dashed border-gray-300 rounded-lg hover:border-brand-300 hover:text-brand-600 text-gray-500 flex items-center justify-center gap-1">
                 <Icon name="plus" size={13} /> Add {tab === "directors" ? "Director" : tab === "shareholders" ? "Shareholder" : "UBO"}
               </button>
             </>
@@ -225,7 +225,7 @@ export default function PartyRegisterModal({ caseItem, onClose }) {
 
 const RowActions = ({ onEdit, onDelete }) => (
   <div className="flex gap-1">
-    <button onClick={onEdit} className="p-1.5 rounded hover:bg-blue-50 text-gray-400 hover:text-blue-600"><Icon name="edit" size={14} /></button>
+    <button onClick={onEdit} className="p-1.5 rounded hover:bg-brand-50 text-gray-400 hover:text-brand-600"><Icon name="edit" size={14} /></button>
     <button onClick={onDelete} className="p-1.5 rounded hover:bg-red-50 text-gray-400 hover:text-red-500"><Icon name="del" size={14} /></button>
   </div>
 );
@@ -233,7 +233,7 @@ const RowActions = ({ onEdit, onDelete }) => (
 const FormButtons = ({ onCancel, onSave }) => (
   <div className="flex justify-end gap-3 mt-2">
     <button onClick={onCancel} className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
-    <button onClick={onSave} className="px-4 py-2 text-sm text-white rounded-lg" style={{ background: "#2B6D9A" }}>Save</button>
+    <button onClick={onSave} className="px-4 py-2 text-sm text-white rounded-lg" style={{ background: "#1a3a5c" }}>Save</button>
   </div>
 );
 

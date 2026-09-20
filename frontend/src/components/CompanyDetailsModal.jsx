@@ -165,7 +165,7 @@ export default function CompanyDetailsModal({ caseItem, onClose }) {
 
           <div className="flex justify-end gap-3 pt-1">
             <button onClick={() => onClose(false)} className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
-            <button onClick={save} disabled={saving} className="px-4 py-2 text-sm text-white rounded-lg disabled:opacity-60" style={{ background: "#2B6D9A" }}>
+            <button onClick={save} disabled={saving} className="px-4 py-2 text-sm text-white rounded-lg disabled:opacity-60" style={{ background: "#1a3a5c" }}>
               {saving ? "Saving…" : "Save"}
             </button>
           </div>

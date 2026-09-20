@@ -90,18 +90,18 @@ export default function DocumentsPanel({ caseId, scope = null, compact = false, 
           {filtered.map((d) => (
             <div key={d.id} className="flex items-center justify-between gap-2 p-1.5 bg-gray-50 rounded-lg">
               <button onClick={() => documentsApi.download(d.id, d.filename)}
-                className="flex items-center gap-1.5 min-w-0 text-xs text-blue-600 hover:underline">
+                className="flex items-center gap-1.5 min-w-0 text-xs text-brand-600 hover:underline">
                 <Icon name="download" size={12} className="flex-shrink-0" />
                 <span className="truncate">{d.filename}</span>
               </button>
               <div className="flex items-center gap-2 flex-shrink-0 text-[11px] text-gray-400">
                 {isViewable(d.content_type) && (
                   <button onClick={() => documentsApi.view(d.id)} title="View"
-                    className="p-0.5 rounded hover:bg-blue-50 text-gray-400 hover:text-blue-600">
+                    className="p-0.5 rounded hover:bg-brand-50 text-gray-400 hover:text-brand-600">
                     <Icon name="view" size={12} />
                   </button>
                 )}
-                {d.generated_from && <span className="px-1.5 py-0.5 rounded bg-blue-50 text-blue-600">generated</span>}
+                {d.generated_from && <span className="px-1.5 py-0.5 rounded bg-brand-50 text-brand-600">generated</span>}
                 {!compact && !scope?.category && <span className="px-1.5 py-0.5 rounded bg-gray-100">{d.category}</span>}
                 <span>{fmtBytes(d.size_bytes)}</span>
                 <span>{(d.created_at || "").slice(0, 10)}</span>
@@ -120,16 +120,16 @@ export default function DocumentsPanel({ caseId, scope = null, compact = false, 
         <input ref={fileRef} type="file" className="text-xs file:mr-2 file:py-1 file:px-2 file:rounded file:border file:border-gray-200 file:text-xs file:bg-white" />
         {!scope?.case_document_id && !scope?.category && (
           <select value={category} onChange={(e) => setCategory(e.target.value)}
-            className="border border-gray-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-blue-400">
+            className="border border-gray-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-brand-400">
             {DOCUMENT_CATEGORY_OPTIONS.map((c) => <option key={c}>{c}</option>)}
           </select>
         )}
         {!compact && (
           <input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Note (e.g. certified by…)"
-            className="flex-1 min-w-40 border border-gray-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-blue-400" />
+            className="flex-1 min-w-40 border border-gray-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-brand-400" />
         )}
         <button onClick={doUpload} disabled={busy}
-          className="px-2.5 py-1 text-xs text-white rounded-lg disabled:opacity-60" style={{ background: "#2B6D9A" }}>
+          className="px-2.5 py-1 text-xs text-white rounded-lg disabled:opacity-60" style={{ background: "#1a3a5c" }}>
           {busy ? "Uploading…" : "Upload"}
         </button>
         {!compact && !scope?.case_document_id && (

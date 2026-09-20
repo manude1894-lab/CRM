@@ -76,7 +76,7 @@ export default function ServiceSubscriptionsModal({ caseItem, onClose }) {
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
                 <Badge text={s.status} />
-                <button onClick={() => setForm(s)} className="text-xs px-2 py-0.5 rounded border border-gray-200 hover:border-blue-300 hover:text-blue-600 text-gray-500">Edit</button>
+                <button onClick={() => setForm(s)} className="text-xs px-2 py-0.5 rounded border border-gray-200 hover:border-brand-300 hover:text-brand-600 text-gray-500">Edit</button>
                 <button onClick={() => remove(s.id)} className="text-xs px-2 py-0.5 rounded border border-gray-200 hover:border-red-300 hover:text-red-500 text-gray-500">Remove</button>
               </div>
             </div>
@@ -108,7 +108,7 @@ export default function ServiceSubscriptionsModal({ caseItem, onClose }) {
               <Field label="Notes"><Textarea value={form.notes || ""} onChange={set("notes")} /></Field>
               <div className="flex justify-end gap-2">
                 <button onClick={() => setForm(null)} className="px-3 py-1.5 text-xs border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
-                <button onClick={save} disabled={saving || !form.service_name} className="px-3 py-1.5 text-xs text-white rounded-lg disabled:opacity-60" style={{ background: "#2B6D9A" }}>
+                <button onClick={save} disabled={saving || !form.service_name} className="px-3 py-1.5 text-xs text-white rounded-lg disabled:opacity-60" style={{ background: "#1a3a5c" }}>
                   {saving ? "Saving…" : "Save"}
                 </button>
               </div>

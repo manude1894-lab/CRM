@@ -185,7 +185,7 @@ export default function CDDPage() {
             const cdd = cddByCase[c.id];
             return (
               <button key={c.id} onClick={() => setSelected(c)}
-                className={`w-full text-left bg-white border rounded-xl p-4 shadow-sm hover:shadow-md transition-all ${selected?.id === c.id ? "border-blue-400 ring-1 ring-blue-200" : "border-gray-100"}`}>
+                className={`w-full text-left bg-white border rounded-xl p-4 shadow-sm hover:shadow-md transition-all ${selected?.id === c.id ? "border-brand-400 ring-1 ring-brand-200" : "border-gray-100"}`}>
                 <div className="font-semibold text-sm text-gray-800">{c.company_name}</div>
                 <div className="text-xs text-gray-400 mb-2">{c.case_uid}</div>
                 <div className="flex gap-1 flex-wrap">
@@ -228,7 +228,7 @@ export default function CDDPage() {
                       Apply introducer exemption
                     </button>
                     <button onClick={() => setReviewModal(true)}
-                      className="px-3 py-1.5 text-xs text-white rounded-lg" style={{ background: "#2B6D9A" }}>
+                      className="px-3 py-1.5 text-xs text-white rounded-lg" style={{ background: "#1a3a5c" }}>
                       Review CDD/KYC
                     </button>
                   </div>
@@ -325,7 +325,7 @@ export default function CDDPage() {
                                       {doc.waived && <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-200 text-gray-500" title={doc.waived_reason || ""}>waived</span>}
                                       {canReview && !doc.received && (doc.director_id || doc.shareholder_id || doc.ubo_id) && (
                                         <button onClick={() => toggleWaived(doc)}
-                                          className="text-[10px] text-gray-400 hover:text-blue-600 underline">
+                                          className="text-[10px] text-gray-400 hover:text-brand-600 underline">
                                           {doc.waived ? "un-waive" : "waive"}
                                         </button>
                                       )}
@@ -344,7 +344,7 @@ export default function CDDPage() {
                                         );
                                       })()}
                                       <button onClick={() => setOpenAttach(openAttach === doc.id ? null : doc.id)}
-                                        className={`flex items-center gap-1 text-xs ${(doc.attachments?.length || 0) > 0 ? "text-blue-600" : "text-gray-400"} hover:text-blue-600`}>
+                                        className={`flex items-center gap-1 text-xs ${(doc.attachments?.length || 0) > 0 ? "text-brand-600" : "text-gray-400"} hover:text-brand-600`}>
                                         <Icon name="download" size={12} /> {doc.attachments?.length || 0}
                                       </button>
                                       <span className="text-xs text-gray-400 whitespace-nowrap">{doc.received_date || "Pending"}</span>
@@ -421,7 +421,7 @@ export default function CDDPage() {
           <div className="flex justify-end gap-3 mt-4">
             <button onClick={() => setExceptionModal(false)} className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
             <button onClick={grantException} disabled={!exceptionReason.trim()}
-              className="px-4 py-2 text-sm text-white rounded-lg disabled:opacity-50" style={{ background: "#2B6D9A" }}>
+              className="px-4 py-2 text-sm text-white rounded-lg disabled:opacity-50" style={{ background: "#1a3a5c" }}>
               Grant Exception
             </button>
           </div>

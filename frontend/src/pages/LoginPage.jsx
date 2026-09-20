@@ -40,7 +40,7 @@ export default function LoginPage() {
         />
         <div
           className="absolute -bottom-32 -left-16 w-80 h-80 rounded-full opacity-10"
-          style={{ background: "#2B6D9A" }}
+          style={{ background: "#1a3a5c" }}
         />
         <div className="relative">
           <div className="inline-flex items-center justify-center bg-white rounded-2xl p-3 shadow-xl">
@@ -51,11 +51,11 @@ export default function LoginPage() {
           <h1 className="text-3xl font-bold text-white leading-tight mb-3">
             Entity Servicing &amp;<br />Compliance Platform
           </h1>
-          <p className="text-blue-200 text-sm max-w-sm">
+          <p className="text-brand-200 text-sm max-w-sm">
             Formation, CDD/KYC, AML risk assessment and compliance tracking for BVI and offshore entities — end to end, in one place.
           </p>
         </div>
-        <div className="relative flex items-center gap-6 text-blue-200 text-xs">
+        <div className="relative flex items-center gap-6 text-brand-200 text-xs">
           <span>© {new Date().getFullYear()} Triam Management Services</span>
         </div>
       </div>
@@ -96,7 +96,7 @@ export default function LoginPage() {
               onClick={submit}
               disabled={loading}
               className="w-full text-white font-semibold py-2.5 rounded-lg transition-opacity hover:opacity-90 disabled:opacity-60 shadow-sm"
-              style={{ background: "#2B6D9A" }}
+              style={{ background: "#1a3a5c" }}
             >
               {loading ? "Signing in..." : "Sign In"}
             </button>
@@ -110,7 +110,7 @@ export default function LoginPage() {
                   setEmail(u.email);
                   setPassword(u.password);
                 }}
-                className="w-full text-left text-xs text-gray-600 hover:text-blue-600 py-1.5 px-2 rounded hover:bg-white border border-transparent hover:border-gray-200 transition-colors mb-0.5"
+                className="w-full text-left text-xs text-gray-600 hover:text-brand-600 py-1.5 px-2 rounded hover:bg-white border border-transparent hover:border-gray-200 transition-colors mb-0.5"
               >
                 <span className="font-medium">{u.name}</span>{" "}
                 <span className="text-gray-400">({u.role})</span> — {u.email}

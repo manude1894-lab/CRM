@@ -3,7 +3,7 @@ import { activitiesApi, casesApi, usersApi } from "../api/endpoints";
 import { Icon, Badge, Modal, Field, Input, Select, Textarea, Spinner, ErrorBanner } from "../components/ui";
 
 const TYPE_COLORS = {
-  Meeting: "#2B6D9A", Demo: "#8b5cf6", Call: "#10b981",
+  Meeting: "#1a3a5c", Demo: "#8b5cf6", Call: "#10b981",
   Email: "#94a3b8", "Follow-up": "#f59e0b", Note: "#64748b",
 };
 
@@ -78,7 +78,7 @@ export default function ActivitiesPage() {
           <h1 className="text-xl font-bold text-gray-900">Activities</h1>
           <p className="text-sm text-gray-500">{activities.length} total activities</p>
         </div>
-        <button onClick={openNew} className="px-3 py-1.5 text-xs text-white rounded-lg flex items-center gap-1" style={{ background: "#2B6D9A" }}>
+        <button onClick={openNew} className="px-3 py-1.5 text-xs text-white rounded-lg flex items-center gap-1" style={{ background: "#1a3a5c" }}>
           <Icon name="plus" size={14} /> Log Activity
         </button>
       </div>
@@ -87,7 +87,7 @@ export default function ActivitiesPage() {
         {["All", "Meeting", "Demo", "Call", "Email", "Follow-up"].map((t) => (
           <button key={t} onClick={() => setTypeFilter(t)}
             className={`px-3 py-1.5 text-xs rounded-lg border transition-colors ${typeFilter === t ? "text-white border-transparent" : "border-gray-200 text-gray-600 hover:bg-gray-50"}`}
-            style={typeFilter === t ? { background: "#2B6D9A" } : {}}>
+            style={typeFilter === t ? { background: "#1a3a5c" } : {}}>
             {t}
           </button>
         ))}
@@ -113,7 +113,7 @@ export default function ActivitiesPage() {
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-gray-400 whitespace-nowrap">{a.activity_date}</span>
                   <button onClick={() => { setForm(a); setModal("edit"); }}
-                    className="p-1 rounded hover:bg-blue-50 text-gray-400 hover:text-blue-600">
+                    className="p-1 rounded hover:bg-brand-50 text-gray-400 hover:text-brand-600">
                     <Icon name="edit" size={13} />
                   </button>
                   <button onClick={() => remove(a.id)}
@@ -159,7 +159,7 @@ export default function ActivitiesPage() {
           <Field label="Next Action"><Input value={form.next_action || ""} onChange={(e) => setForm((p) => ({ ...p, next_action: e.target.value }))} /></Field>
           <div className="flex justify-end gap-3 mt-4">
             <button onClick={() => setModal(null)} className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
-            <button onClick={save} className="px-4 py-2 text-sm text-white rounded-lg" style={{ background: "#2B6D9A" }}>Save</button>
+            <button onClick={save} className="px-4 py-2 text-sm text-white rounded-lg" style={{ background: "#1a3a5c" }}>Save</button>
           </div>
         </Modal>
       )}

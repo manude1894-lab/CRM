@@ -104,7 +104,7 @@ export default function AdminPage() {
           <p className="text-sm text-gray-500">User management · System settings</p>
         </div>
         <button onClick={() => { setForm({ name: "", email: "", password: "", role: "rm", is_active: true, department_id: "", title: "", supervisor_id: "" }); setModal("new"); }}
-          className="px-3 py-1.5 text-xs text-white rounded-lg flex items-center gap-1" style={{ background: "#2B6D9A" }}>
+          className="px-3 py-1.5 text-xs text-white rounded-lg flex items-center gap-1" style={{ background: "#1a3a5c" }}>
           <Icon name="plus" size={14} /> Add User
         </button>
       </div>
@@ -126,7 +126,7 @@ export default function AdminPage() {
               <tr key={u.id} className="border-b border-gray-50 hover:bg-gray-50">
                 <td className="py-3 px-4">
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full text-white text-xs font-bold flex items-center justify-center" style={{ background: "#2B6D9A" }}>
+                    <div className="w-8 h-8 rounded-full text-white text-xs font-bold flex items-center justify-center" style={{ background: "#1a3a5c" }}>
                       {u.name.split(" ").map((n) => n[0]).slice(0, 2).join("")}
                     </div>
                     <div>
@@ -145,7 +145,7 @@ export default function AdminPage() {
                 </td>
                 <td className="py-3 px-4">
                   <button onClick={() => { setForm({ ...u, password: "" }); setModal("edit"); }}
-                    className="p-1.5 rounded hover:bg-blue-50 text-gray-400 hover:text-blue-600 mr-1">
+                    className="p-1.5 rounded hover:bg-brand-50 text-gray-400 hover:text-brand-600 mr-1">
                     <Icon name="edit" size={14} />
                   </button>
                   <button onClick={() => remove(u.id)}
@@ -175,7 +175,7 @@ export default function AdminPage() {
                   <span className="text-xs text-gray-700">{d.name}</span>
                 )}
                 <div className="flex gap-1">
-                  <button onClick={() => { setEditingDeptId(d.id); setEditingDeptName(d.name); }} className="p-1 rounded hover:bg-blue-50 text-gray-400 hover:text-blue-600">
+                  <button onClick={() => { setEditingDeptId(d.id); setEditingDeptName(d.name); }} className="p-1 rounded hover:bg-brand-50 text-gray-400 hover:text-brand-600">
                     <Icon name="edit" size={12} />
                   </button>
                   <button onClick={() => removeDepartment(d.id)} className="p-1 rounded hover:bg-red-50 text-gray-400 hover:text-red-500">
@@ -189,7 +189,7 @@ export default function AdminPage() {
             <input value={deptName} onChange={(e) => setDeptName(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && addDepartment()}
               placeholder="New department name" className="flex-1 text-xs border border-gray-200 rounded-lg px-2 py-1.5" />
-            <button onClick={addDepartment} className="px-2.5 py-1.5 text-xs text-white rounded-lg" style={{ background: "#2B6D9A" }}>Add</button>
+            <button onClick={addDepartment} className="px-2.5 py-1.5 text-xs text-white rounded-lg" style={{ background: "#1a3a5c" }}>Add</button>
           </div>
         </div>
         <div className="bg-white rounded-xl border border-gray-100 p-5 shadow-sm">
@@ -253,7 +253,7 @@ export default function AdminPage() {
           </Field>
           <div className="flex justify-end gap-3 mt-4">
             <button onClick={() => setModal(null)} className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
-            <button onClick={save} className="px-4 py-2 text-sm text-white rounded-lg" style={{ background: "#2B6D9A" }}>Save User</button>
+            <button onClick={save} className="px-4 py-2 text-sm text-white rounded-lg" style={{ background: "#1a3a5c" }}>Save User</button>
           </div>
         </Modal>
       )}

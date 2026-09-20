@@ -69,8 +69,8 @@ export default function App() {
           {navItems.map((item) => (
             <button key={item.key} onClick={() => { setJumpTo(null); setPage(item.key); }}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-colors text-left ${page === item.key ? "text-white" : "text-gray-600 hover:bg-gray-50 hover:text-gray-800"}`}
-              style={page === item.key ? { background: "#2B6D9A" } : {}}>
-              <Icon name={item.icon} size={18} className="flex-shrink-0" />
+              style={page === item.key ? { background: "#1a3a5c" } : {}}>
+              <Icon name={item.icon} size={18} className={`flex-shrink-0 ${page === item.key ? "text-gold" : ""}`} />
               {sidebarOpen && <span className="flex-1 font-medium">{item.label}</span>}
             </button>
           ))}
@@ -78,7 +78,7 @@ export default function App() {
 
         <div className="border-t border-gray-100 p-3">
           <div className={`flex items-center gap-3 ${sidebarOpen ? "" : "justify-center"}`}>
-            <div className="w-8 h-8 rounded-full text-white text-xs font-bold flex items-center justify-center flex-shrink-0" style={{ background: "#2B6D9A" }}>
+            <div className="w-8 h-8 rounded-full text-white text-xs font-bold flex items-center justify-center flex-shrink-0" style={{ background: "#1a3a5c" }}>
               {avatar}
             </div>
             {sidebarOpen && (

@@ -198,7 +198,7 @@ export default function CasesPage({ initialCaseId } = {}) {
             </button>
           </div>
           <button onClick={exportCSV} className="px-3 py-1.5 text-xs border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600">Export CSV</button>
-          <button onClick={openNew} className="px-3 py-1.5 text-xs text-white rounded-lg flex items-center gap-1" style={{ background: "#2B6D9A" }}>
+          <button onClick={openNew} className="px-3 py-1.5 text-xs text-white rounded-lg flex items-center gap-1" style={{ background: "#1a3a5c" }}>
             <Icon name="plus" size={14} /> New Case
           </button>
         </div>
@@ -208,7 +208,7 @@ export default function CasesPage({ initialCaseId } = {}) {
         <div className="relative flex-1 min-w-48">
           <Icon name="search" size={15} className="absolute left-3 top-2.5 text-gray-400" />
           <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search cases..."
-            className="w-full pl-8 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400" />
+            className="w-full pl-8 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-brand-400" />
         </div>
         <select value={stageFilter} onChange={(e) => setStageFilter(e.target.value)}
           className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none">
@@ -221,8 +221,8 @@ export default function CasesPage({ initialCaseId } = {}) {
       </div>
 
       {view === "table" && selectedIds.size > 0 && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 flex items-center flex-wrap gap-3">
-          <span className="text-xs font-medium text-blue-700">{selectedIds.size} selected</span>
+        <div className="bg-brand-50 border border-brand-200 rounded-lg px-4 py-3 flex items-center flex-wrap gap-3">
+          <span className="text-xs font-medium text-brand-700">{selectedIds.size} selected</span>
           <div className="flex items-center gap-1.5">
             <select value={bulkValues.rm_id} onChange={(e) => setBulkValues((p) => ({ ...p, rm_id: e.target.value }))}
               className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none">
@@ -230,7 +230,7 @@ export default function CasesPage({ initialCaseId } = {}) {
               {users.filter((u) => u.role === "rm").map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
             </select>
             <button disabled={!bulkValues.rm_id || bulkApplying} onClick={() => applyBulkField("rm_id")}
-              className="px-2.5 py-1.5 text-xs border border-blue-300 rounded-lg bg-white hover:bg-blue-100 disabled:opacity-40">Apply</button>
+              className="px-2.5 py-1.5 text-xs border border-brand-300 rounded-lg bg-white hover:bg-brand-100 disabled:opacity-40">Apply</button>
           </div>
           <div className="flex items-center gap-1.5">
             <select value={bulkValues.status} onChange={(e) => setBulkValues((p) => ({ ...p, status: e.target.value }))}
@@ -239,9 +239,9 @@ export default function CasesPage({ initialCaseId } = {}) {
               {CASE_STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
             </select>
             <button disabled={!bulkValues.status || bulkApplying} onClick={() => applyBulkField("status")}
-              className="px-2.5 py-1.5 text-xs border border-blue-300 rounded-lg bg-white hover:bg-blue-100 disabled:opacity-40">Apply</button>
+              className="px-2.5 py-1.5 text-xs border border-brand-300 rounded-lg bg-white hover:bg-brand-100 disabled:opacity-40">Apply</button>
           </div>
-          <button onClick={() => setSelectedIds(new Set())} className="text-xs text-blue-500 hover:underline ml-auto">Clear selection</button>
+          <button onClick={() => setSelectedIds(new Set())} className="text-xs text-brand-500 hover:underline ml-auto">Clear selection</button>
         </div>
       )}
 
@@ -274,28 +274,28 @@ export default function CasesPage({ initialCaseId } = {}) {
                       </div>
                       <div className="mt-2 flex flex-wrap gap-1" onClick={(e) => e.stopPropagation()}>
                         <button onClick={() => setRegisterCase(c)}
-                          className="text-xs px-2 py-0.5 rounded border border-gray-200 hover:border-blue-300 hover:text-blue-600 text-gray-500">
+                          className="text-xs px-2 py-0.5 rounded border border-gray-200 hover:border-brand-300 hover:text-brand-600 text-gray-500">
                           Register
                         </button>
                         <button onClick={() => setDetailsCase(c)}
-                          className="text-xs px-2 py-0.5 rounded border border-gray-200 hover:border-blue-300 hover:text-blue-600 text-gray-500">
+                          className="text-xs px-2 py-0.5 rounded border border-gray-200 hover:border-brand-300 hover:text-brand-600 text-gray-500">
                           Details
                         </button>
                         <button onClick={() => setFormationCase(c)}
-                          className="text-xs px-2 py-0.5 rounded border border-gray-200 hover:border-blue-300 hover:text-blue-600 text-gray-500">
+                          className="text-xs px-2 py-0.5 rounded border border-gray-200 hover:border-brand-300 hover:text-brand-600 text-gray-500">
                           Formation
                         </button>
                         <button onClick={() => setLifecycleCase(c)}
-                          className="text-xs px-2 py-0.5 rounded border border-gray-200 hover:border-blue-300 hover:text-blue-600 text-gray-500">
+                          className="text-xs px-2 py-0.5 rounded border border-gray-200 hover:border-brand-300 hover:text-brand-600 text-gray-500">
                           Lifecycle
                         </button>
                         <button onClick={() => setServicesCase(c)}
-                          className="text-xs px-2 py-0.5 rounded border border-gray-200 hover:border-blue-300 hover:text-blue-600 text-gray-500">
+                          className="text-xs px-2 py-0.5 rounded border border-gray-200 hover:border-brand-300 hover:text-brand-600 text-gray-500">
                           Services
                         </button>
                         {actionLabel(stage) && (
                           <button onClick={() => advance(c)}
-                            className="text-xs px-2 py-0.5 rounded border border-gray-200 hover:border-blue-300 hover:text-blue-600 text-gray-500">
+                            className="text-xs px-2 py-0.5 rounded border border-gray-200 hover:border-brand-300 hover:text-brand-600 text-gray-500">
                             {actionLabel(stage)}
                           </button>
                         )}
@@ -353,27 +353,27 @@ export default function CasesPage({ initialCaseId } = {}) {
                   <td className="py-3 px-4">
                     <div className="flex gap-1">
                       <button onClick={() => setRegisterCase(c)}
-                        className="p-1.5 rounded hover:bg-blue-50 text-gray-400 hover:text-blue-600" title="Directors, Shareholders & UBOs">
+                        className="p-1.5 rounded hover:bg-brand-50 text-gray-400 hover:text-brand-600" title="Directors, Shareholders & UBOs">
                         <Icon name="accounts" size={14} />
                       </button>
                       <button onClick={() => setDetailsCase(c)}
-                        className="p-1.5 rounded hover:bg-blue-50 text-gray-400 hover:text-blue-600" title="Company Details">
+                        className="p-1.5 rounded hover:bg-brand-50 text-gray-400 hover:text-brand-600" title="Company Details">
                         <Icon name="compliance" size={14} />
                       </button>
                       <button onClick={() => setFormationCase(c)}
-                        className="p-1.5 rounded hover:bg-blue-50 text-gray-400 hover:text-blue-600" title="Formation — screening / MLRO / Vistra loop">
+                        className="p-1.5 rounded hover:bg-brand-50 text-gray-400 hover:text-brand-600" title="Formation — screening / MLRO / Vistra loop">
                         <Icon name="cdd" size={14} />
                       </button>
                       <button onClick={() => setLifecycleCase(c)}
-                        className="p-1.5 rounded hover:bg-blue-50 text-gray-400 hover:text-blue-600" title="Entity Lifecycle — closure / restoration / transfer">
+                        className="p-1.5 rounded hover:bg-brand-50 text-gray-400 hover:text-brand-600" title="Entity Lifecycle — closure / restoration / transfer">
                         <Icon name="activities" size={14} />
                       </button>
                       <button onClick={() => setServicesCase(c)}
-                        className="p-1.5 rounded hover:bg-blue-50 text-gray-400 hover:text-blue-600" title="Service Subscriptions">
+                        className="p-1.5 rounded hover:bg-brand-50 text-gray-400 hover:text-brand-600" title="Service Subscriptions">
                         <Icon name="invoices" size={14} />
                       </button>
                       <button onClick={() => { setForm(c); setModal("edit"); }}
-                        className="p-1.5 rounded hover:bg-blue-50 text-gray-400 hover:text-blue-600">
+                        className="p-1.5 rounded hover:bg-brand-50 text-gray-400 hover:text-brand-600">
                         <Icon name="edit" size={14} />
                       </button>
                       <button onClick={() => remove(c.id)}
@@ -406,7 +406,7 @@ export default function CasesPage({ initialCaseId } = {}) {
           </Field>
           <div className="flex justify-end gap-3 mt-5">
             <button onClick={() => setInvoiceCase(null)} className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
-            <button onClick={confirmRaiseInvoice} className="px-4 py-2 text-sm text-white rounded-lg font-medium" style={{ background: "#2B6D9A" }}>
+            <button onClick={confirmRaiseInvoice} className="px-4 py-2 text-sm text-white rounded-lg font-medium" style={{ background: "#1a3a5c" }}>
               Raise Invoice
             </button>
           </div>
@@ -500,7 +500,7 @@ export default function CasesPage({ initialCaseId } = {}) {
           <Field label="Notes"><Textarea value={form.notes || ""} onChange={(e) => setForm((p) => ({ ...p, notes: e.target.value }))} /></Field>
           <div className="flex justify-end gap-3 mt-4">
             <button onClick={() => setModal(null)} className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
-            <button onClick={save} className="px-4 py-2 text-sm text-white rounded-lg" style={{ background: "#2B6D9A" }}>Save</button>
+            <button onClick={save} className="px-4 py-2 text-sm text-white rounded-lg" style={{ background: "#1a3a5c" }}>Save</button>
           </div>
         </Modal>
       )}

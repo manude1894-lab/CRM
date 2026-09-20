@@ -56,7 +56,7 @@ export default function ReportsPage() {
         {REPORT_TYPES.map((r) => (
           <div key={r.id} className="bg-white border border-gray-100 rounded-xl p-4 shadow-sm flex items-center justify-between gap-4">
             <div className="flex items-start gap-3 min-w-0">
-              <div className="p-2 rounded-lg text-white flex-shrink-0" style={{ background: "#2B6D9A" }}>
+              <div className="p-2 rounded-lg text-white flex-shrink-0" style={{ background: "#1a3a5c" }}>
                 <Icon name="reports" size={18} />
               </div>
               <div className="min-w-0">
@@ -75,7 +75,7 @@ export default function ReportsPage() {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <MetricCard label="Open Cases" value={kpis.open_cases} color="#2B6D9A" />
+        <MetricCard label="Open Cases" value={kpis.open_cases} color="#1a3a5c" />
         <MetricCard label="Docs Pending" value={kpis.docs_pending} color="#f59e0b" />
         <MetricCard label="CDD Awaiting Screening" value={kpis.cdd_awaiting_screening} color="#8b5cf6" />
         <MetricCard label="Invoices Unpaid" value={kpis.invoices_unpaid} color="#ef4444" />
@@ -113,7 +113,7 @@ export default function ReportsPage() {
             <XAxis dataKey="name" tick={{ fontSize: 11 }} />
             <YAxis tick={{ fontSize: 10 }} allowDecimals={false} />
             <Tooltip content={<CustomTooltip />} />
-            <Bar dataKey="total_cases" name="Total Cases" fill="#2B6D9A" radius={[4, 4, 0, 0]} />
+            <Bar dataKey="total_cases" name="Total Cases" fill="#1a3a5c" radius={[4, 4, 0, 0]} />
             <Bar dataKey="active_cases" name="Active Cases" fill="#10b981" radius={[4, 4, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
@@ -121,7 +121,7 @@ export default function ReportsPage() {
           {rmOps.map((r) => (
             <div key={r.user_id} className="bg-gray-50 rounded-xl p-4">
               <div className="flex items-center gap-2 mb-3">
-                <div className="w-8 h-8 rounded-full text-white text-xs font-bold flex items-center justify-center" style={{ background: "#2B6D9A" }}>
+                <div className="w-8 h-8 rounded-full text-white text-xs font-bold flex items-center justify-center" style={{ background: "#1a3a5c" }}>
                   {r.name.split(" ").map((n) => n[0]).slice(0, 2).join("")}
                 </div>
                 <span className="font-semibold text-sm text-gray-800">{r.name}</span>

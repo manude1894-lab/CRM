@@ -305,7 +305,7 @@ export default function AccountsPage({ initialAccountId } = {}) {
           )}
           <button onClick={openNew}
             className="flex items-center gap-2 px-4 py-2 text-sm text-white rounded-lg font-medium"
-            style={{ background: "#2B6D9A" }}>
+            style={{ background: "#1a3a5c" }}>
             <Icon name="plus" size={15} /> New Client
           </button>
         </div>
@@ -315,7 +315,7 @@ export default function AccountsPage({ initialAccountId } = {}) {
         <div className="relative max-w-md flex-1 min-w-[200px]">
           <Icon name="search" size={15} className="absolute left-3 top-2.5 text-gray-400" />
           <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search clients..."
-            className="w-full pl-8 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400" />
+            className="w-full pl-8 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-brand-400" />
         </div>
         {filtered.length > 0 && (
           <label className="flex items-center gap-1.5 text-xs text-gray-500">
@@ -327,15 +327,15 @@ export default function AccountsPage({ initialAccountId } = {}) {
       </div>
 
       {selectedIds.size > 0 && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 flex items-center flex-wrap gap-3">
-          <span className="text-xs font-medium text-blue-700">{selectedIds.size} selected</span>
+        <div className="bg-brand-50 border border-brand-200 rounded-lg px-4 py-3 flex items-center flex-wrap gap-3">
+          <span className="text-xs font-medium text-brand-700">{selectedIds.size} selected</span>
           <div className="flex items-center gap-1.5">
             <Select value={bulkValues.spoc_id} onChange={(e) => setBulkValues((p) => ({ ...p, spoc_id: e.target.value }))} className="text-xs">
               <option value="">SPOC…</option>
               {users.filter((u) => u.role === "rm").map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
             </Select>
             <button disabled={!bulkValues.spoc_id || bulkApplying} onClick={() => applyBulkField("spoc_id")}
-              className="px-2.5 py-1.5 text-xs border border-blue-300 rounded-lg bg-white hover:bg-blue-100 disabled:opacity-40">Apply</button>
+              className="px-2.5 py-1.5 text-xs border border-brand-300 rounded-lg bg-white hover:bg-brand-100 disabled:opacity-40">Apply</button>
           </div>
           <div className="flex items-center gap-1.5">
             <Select value={bulkValues.risk_rating} onChange={(e) => setBulkValues((p) => ({ ...p, risk_rating: e.target.value }))} className="text-xs">
@@ -343,7 +343,7 @@ export default function AccountsPage({ initialAccountId } = {}) {
               {RISK_OPTIONS.map((r) => <option key={r} value={r}>{r}</option>)}
             </Select>
             <button disabled={!bulkValues.risk_rating || bulkApplying} onClick={() => applyBulkField("risk_rating")}
-              className="px-2.5 py-1.5 text-xs border border-blue-300 rounded-lg bg-white hover:bg-blue-100 disabled:opacity-40">Apply</button>
+              className="px-2.5 py-1.5 text-xs border border-brand-300 rounded-lg bg-white hover:bg-brand-100 disabled:opacity-40">Apply</button>
           </div>
           <div className="flex items-center gap-1.5">
             <Select value={bulkValues.kyc_status} onChange={(e) => setBulkValues((p) => ({ ...p, kyc_status: e.target.value }))} className="text-xs">
@@ -351,9 +351,9 @@ export default function AccountsPage({ initialAccountId } = {}) {
               {KYC_STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
             </Select>
             <button disabled={!bulkValues.kyc_status || bulkApplying} onClick={() => applyBulkField("kyc_status")}
-              className="px-2.5 py-1.5 text-xs border border-blue-300 rounded-lg bg-white hover:bg-blue-100 disabled:opacity-40">Apply</button>
+              className="px-2.5 py-1.5 text-xs border border-brand-300 rounded-lg bg-white hover:bg-brand-100 disabled:opacity-40">Apply</button>
           </div>
-          <button onClick={() => setSelectedIds(new Set())} className="text-xs text-blue-500 hover:underline ml-auto">Clear selection</button>
+          <button onClick={() => setSelectedIds(new Set())} className="text-xs text-brand-500 hover:underline ml-auto">Clear selection</button>
         </div>
       )}
 
@@ -370,13 +370,13 @@ export default function AccountsPage({ initialAccountId } = {}) {
           return (
             <div key={a.id}
               onClick={() => setSelectedId(isOpen ? null : a.id)}
-              className={`bg-white border rounded-xl p-5 shadow-sm cursor-pointer hover:shadow-md transition-all ${isOpen ? "border-blue-400 ring-1 ring-blue-200" : "border-gray-100"}`}>
+              className={`bg-white border rounded-xl p-5 shadow-sm cursor-pointer hover:shadow-md transition-all ${isOpen ? "border-brand-400 ring-1 ring-brand-200" : "border-gray-100"}`}>
               <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center gap-3">
                   <input type="checkbox" checked={selectedIds.has(a.id)} onClick={(e) => e.stopPropagation()}
                     onChange={() => toggleSelected(a.id)} className="mt-1 flex-shrink-0" />
                   <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm"
-                    style={{ background: "#2B6D9A" }}>
+                    style={{ background: "#1a3a5c" }}>
                     {a.company_name.slice(0, 2).toUpperCase()}
                   </div>
                   <div>
@@ -394,7 +394,7 @@ export default function AccountsPage({ initialAccountId } = {}) {
                   {a.profile_status && a.profile_status !== "New" && <Badge text={a.profile_status} />}
                   <Badge text={a.strategic_priority} />
                   {a.risk_rating && <Badge text={`${a.risk_rating} Risk`} />}
-                  <button onClick={() => openEdit(a)} title="Edit" className="p-1.5 rounded hover:bg-blue-50 text-gray-400 hover:text-blue-600 ml-1">
+                  <button onClick={() => openEdit(a)} title="Edit" className="p-1.5 rounded hover:bg-brand-50 text-gray-400 hover:text-brand-600 ml-1">
                     <Icon name="edit" size={14} />
                   </button>
                   <button onClick={() => deleteAccount(a.id)} title="Delete" className="p-1.5 rounded hover:bg-red-50 text-gray-400 hover:text-red-500">
@@ -459,7 +459,7 @@ export default function AccountsPage({ initialAccountId } = {}) {
                           <div className="text-xs font-medium text-gray-700 truncate">{c.case_uid}</div>
                           <Badge text={c.stage} />
                         </div>
-                        <span className="text-xs font-bold" style={{ color: "#2B6D9A" }}>{fmt(c.invoice_amount)}</span>
+                        <span className="text-xs font-bold" style={{ color: "#1a3a5c" }}>{fmt(c.invoice_amount)}</span>
                       </div>
                     ))}
                     {accountCases.length === 0 && <p className="text-xs text-gray-400">No cases yet.</p>}
@@ -684,7 +684,7 @@ export default function AccountsPage({ initialAccountId } = {}) {
             <button onClick={() => setModal(null)} className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
             <button onClick={save} disabled={saving}
               className="px-4 py-2 text-sm text-white rounded-lg font-medium disabled:opacity-50"
-              style={{ background: "#2B6D9A" }}>
+              style={{ background: "#1a3a5c" }}>
               {saving ? "Saving..." : modal === "edit" ? "Save Changes" : "Create Client"}
             </button>
           </div>
@@ -728,7 +728,7 @@ export default function AccountsPage({ initialAccountId } = {}) {
             <button onClick={() => setImportPreview(null)} className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
             <button onClick={confirmImport} disabled={importing || !importPreview.results.some((r) => r.status === "ok")}
               className="px-4 py-2 text-sm text-white rounded-lg font-medium disabled:opacity-50"
-              style={{ background: "#2B6D9A" }}>
+              style={{ background: "#1a3a5c" }}>
               {importing ? "Importing..." : `Import ${importPreview.results.filter((r) => r.status === "ok").length} Client(s)`}
             </button>
           </div>

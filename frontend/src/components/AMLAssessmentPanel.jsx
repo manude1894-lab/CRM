@@ -218,7 +218,7 @@ export default function AMLAssessmentPanel({ caseId, entityName, parties = [] })
                 {a.amended_rating
                   ? <span className="flex items-center gap-1"><span className="text-[11px] text-gray-400 line-through">{a.calculated_rating}</span><RatingBadge rating={a.amended_rating} /></span>
                   : <RatingBadge rating={a.calculated_rating} />}
-                <button onClick={() => openEdit(a)} className="p-1 rounded hover:bg-blue-50 text-gray-400 hover:text-blue-600"><Icon name="edit" size={13} /></button>
+                <button onClick={() => openEdit(a)} className="p-1 rounded hover:bg-brand-50 text-gray-400 hover:text-brand-600"><Icon name="edit" size={13} /></button>
                 {canDelete && <button onClick={() => remove(a.id)} className="p-1 rounded hover:bg-red-50 text-gray-400 hover:text-red-500"><Icon name="del" size={13} /></button>}
               </div>
             </div>
@@ -283,7 +283,7 @@ export default function AMLAssessmentPanel({ caseId, entityName, parties = [] })
                       <select
                         value={form.selections[f.key] || ""}
                         onChange={(e) => setSel(f.key, e.target.value)}
-                        className="w-full border border-gray-200 rounded px-1.5 py-1 text-xs focus:outline-none focus:border-blue-400">
+                        className="w-full border border-gray-200 rounded px-1.5 py-1 text-xs focus:outline-none focus:border-brand-400">
                         <option value="">— select —</option>
                         {f.kind === "country"
                           ? countries.map((c) => <option key={c.name} value={c.name}>{c.name}</option>)
@@ -335,7 +335,7 @@ export default function AMLAssessmentPanel({ caseId, entityName, parties = [] })
 
           <div className="flex justify-end gap-3 mt-2">
             <button onClick={() => setModal(null)} className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
-            <button onClick={save} className="px-4 py-2 text-sm text-white rounded-lg" style={{ background: "#2B6D9A" }}>Save</button>
+            <button onClick={save} className="px-4 py-2 text-sm text-white rounded-lg" style={{ background: "#1a3a5c" }}>Save</button>
           </div>
         </Modal>
       )}

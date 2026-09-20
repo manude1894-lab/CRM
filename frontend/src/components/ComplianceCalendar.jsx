@@ -79,7 +79,7 @@ export default function ComplianceCalendar({ rows, itemLabel, onMarkDone, onSetA
                 key={key}
                 onClick={() => setSelectedDate(items.length ? key : null)}
                 className={`text-left min-h-[64px] rounded-lg border p-1.5 transition-colors ${
-                  isSelected ? "border-blue-300 bg-blue-50" : "border-gray-100 hover:bg-gray-50"
+                  isSelected ? "border-brand-300 bg-brand-50" : "border-gray-100 hover:bg-gray-50"
                 } ${inMonth ? "" : "opacity-40"}`}
               >
                 <div className="text-[11px] font-medium text-gray-500 mb-1">{date.getDate()}</div>

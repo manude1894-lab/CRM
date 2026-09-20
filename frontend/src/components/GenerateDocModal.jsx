@@ -79,7 +79,7 @@ export default function GenerateDocModal({ caseId, onClose }) {
           <div className="flex justify-end gap-3 pt-1">
             <button onClick={() => onClose(false)} className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
             <button onClick={generate} disabled={!code || busy || missing.length > 0}
-              className="px-4 py-2 text-sm text-white rounded-lg disabled:opacity-50" style={{ background: "#2B6D9A" }}>
+              className="px-4 py-2 text-sm text-white rounded-lg disabled:opacity-50" style={{ background: "#1a3a5c" }}>
               {busy ? "Generating…" : "Generate & Attach"}
             </button>
           </div>
