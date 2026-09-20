@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { complianceApi } from "../api/endpoints";
 import { Icon, Badge, Spinner, ErrorBanner } from "../components/ui";
 import { AR_FILING_STATUS_OPTIONS } from "../utils/constants";
+import ComplianceCalendar from "../components/ComplianceCalendar";
 
 const ITEM_LABEL = {
   renewal: "Annual Licence Fee",
@@ -13,6 +14,7 @@ const WINDOWS = [30, 60, 90];
 
 export default function CompliancePage() {
   const [days, setDays] = useState(60);
+  const [view, setView] = useState("table");
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -59,16 +61,31 @@ export default function CompliancePage() {
           <h1 className="text-xl font-bold text-gray-900">Compliance Calendar</h1>
           <p className="text-sm text-gray-500">{rows.length} renewals / filings due in the next {days} days</p>
         </div>
-        <div className="flex border border-gray-200 rounded-lg overflow-hidden">
-          {WINDOWS.map((w) => (
-            <button key={w} onClick={() => setDays(w)}
-              className={`px-3 py-1.5 text-xs ${days === w ? "bg-gray-100 text-gray-800" : "text-gray-500 hover:bg-gray-50"}`}>
-              {w}d
-            </button>
-          ))}
+        <div className="flex items-center gap-2">
+          <div className="flex border border-gray-200 rounded-lg overflow-hidden">
+            {WINDOWS.map((w) => (
+              <button key={w} onClick={() => setDays(w)}
+                className={`px-3 py-1.5 text-xs ${days === w ? "bg-gray-100 text-gray-800" : "text-gray-500 hover:bg-gray-50"}`}>
+                {w}d
+              </button>
+            ))}
+          </div>
+          <div className="flex border border-gray-200 rounded-lg overflow-hidden">
+            {[["table", "Table"], ["calendar", "Calendar"]].map(([v, label]) => (
+              <button key={v} onClick={() => setView(v)}
+                className={`px-3 py-1.5 text-xs ${view === v ? "bg-gray-100 text-gray-800" : "text-gray-500 hover:bg-gray-50"}`}>
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
+      {view === "calendar" && (
+        <ComplianceCalendar rows={rows} itemLabel={ITEM_LABEL} onMarkDone={markDone} onSetArStatus={setArStatus} />
+      )}
+
+      {view === "table" && (
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
@@ -117,6 +134,7 @@ export default function CompliancePage() {
           </tbody>
         </table>
       </div>
+      )}
     </div>
   );
 }
