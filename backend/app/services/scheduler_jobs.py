@@ -194,6 +194,13 @@ def check_recurring_service_billing():
                 amount=sub.fee_amount or 0,
                 status="Draft",
             ))
+            case = db.query(Case).filter(Case.id == sub.case_id).first()
+            if case:
+                msg = (f"Auto-generated Draft invoice ({sub.service_name}, {sub.fee_amount or 0}) "
+                       f"for case {case.case_uid} ({case.company_name}) — recurring billing due.")
+                if case.rm_id:
+                    notification_service.notify_user(db, case.rm_id, msg, "recurring_invoice_generated", link=f"/cases/{case.id}", case_id=case.id)
+                notification_service.notify_role(db, UserRole.ADMIN, msg, "recurring_invoice_generated", link=f"/cases/{case.id}", case_id=case.id)
             months = step.get(sub.billing_frequency)
             if months:
                 sub.next_billing_date = sub.next_billing_date + relativedelta(months=months)
