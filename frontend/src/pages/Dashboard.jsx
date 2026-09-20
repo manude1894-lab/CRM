@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import {
   Tooltip, ResponsiveContainer,
   Funnel, FunnelChart, LabelList,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid,
 } from "recharts";
 import { dashboardApi } from "../api/endpoints";
 import { MetricCard, CustomTooltip, Badge, Spinner, ErrorBanner } from "../components/ui";
@@ -73,7 +74,19 @@ export default function Dashboard() {
           <h3 className="text-sm font-semibold text-gray-700">Portfolio by RM / Ops</h3>
           <span className="text-xs text-gray-400">Click a name to expand their companies</span>
         </div>
-        <div className="space-y-2">
+        {(data.rm_ops_performance || []).length > 0 && (
+          <ResponsiveContainer width="100%" height={Math.max(160, (data.rm_ops_performance || []).length * 40)}>
+            <BarChart data={data.rm_ops_performance} layout="vertical" margin={{ left: 8, right: 16 }}>
+              <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+              <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
+              <YAxis type="category" dataKey="name" width={110} tick={{ fontSize: 11 }} />
+              <Tooltip content={<CustomTooltip />} />
+              <Bar dataKey="total_cases" name="Total Cases" fill={PIE_COLORS[0]} radius={[0, 4, 4, 0]} />
+              <Bar dataKey="active_cases" name="Active Cases" fill={PIE_COLORS[1]} radius={[0, 4, 4, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        )}
+        <div className="space-y-2 mt-4">
           {(data.rm_ops_performance || []).length === 0 && (
             <p className="text-xs text-gray-400 text-center py-4">No RM/Ops users yet.</p>
           )}
