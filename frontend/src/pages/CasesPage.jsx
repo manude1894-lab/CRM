@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { casesApi, usersApi, accountsApi } from "../api/endpoints";
 import { Icon, Badge, Modal, Field, Input, Select, Textarea, Spinner, ErrorBanner } from "../components/ui";
 import PartyRegisterModal from "../components/PartyRegisterModal";
@@ -13,7 +13,8 @@ const NEXT_STAGE = STAGES.reduce((acc, s, i) => {
   return acc;
 }, {});
 
-export default function CasesPage() {
+export default function CasesPage({ initialCaseId } = {}) {
+  const appliedInitialCaseRef = useRef(false);
   const [cases, setCases] = useState([]);
   const [users, setUsers] = useState([]);
   const [accounts, setAccounts] = useState([]);
@@ -49,6 +50,16 @@ export default function CasesPage() {
     } finally { setLoading(false); }
   };
   useEffect(() => { load(); }, []);
+
+  useEffect(() => {
+    if (!appliedInitialCaseRef.current && initialCaseId) {
+      const match = cases.find((c) => c.id === initialCaseId);
+      if (match) {
+        setDetailsCase(match);
+        appliedInitialCaseRef.current = true;
+      }
+    }
+  }, [initialCaseId, cases]);
 
   const filtered = useMemo(() => cases.filter((c) => {
     const matchSearch = search === "" || [c.company_name, c.case_uid].some((v) => v?.toLowerCase().includes(search.toLowerCase()));

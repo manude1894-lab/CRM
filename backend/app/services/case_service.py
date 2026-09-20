@@ -47,7 +47,7 @@ def list_cases(
 
     if search:
         pattern = f"%{search}%"
-        query = query.filter(Case.company_name.ilike(pattern))
+        query = query.filter(or_(Case.company_name.ilike(pattern), Case.case_uid.ilike(pattern)))
     if stage:
         query = query.filter(Case.stage == stage)
     if status:

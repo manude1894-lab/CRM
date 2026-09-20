@@ -84,7 +84,8 @@ function parseCSV(text) {
   });
 }
 
-export default function AccountsPage() {
+export default function AccountsPage({ initialAccountId } = {}) {
+  const appliedInitialRef = useRef(false);
   const [accounts, setAccounts] = useState([]);
   const [cases, setCases] = useState([]);
   const [users, setUsers] = useState([]);
@@ -117,6 +118,13 @@ export default function AccountsPage() {
     } finally { setLoading(false); }
   };
   useEffect(() => { load(); }, []);
+
+  useEffect(() => {
+    if (!appliedInitialRef.current && initialAccountId && accounts.some((a) => a.id === initialAccountId)) {
+      setSelectedId(initialAccountId);
+      appliedInitialRef.current = true;
+    }
+  }, [initialAccountId, accounts]);
 
   const BLANK = {
     account_type: "Corporate",

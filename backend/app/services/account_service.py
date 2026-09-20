@@ -45,6 +45,7 @@ def list_accounts(
         query = query.filter(or_(
             Account.company_name.ilike(pattern),
             Account.key_contacts.ilike(pattern),
+            Account.account_uid.ilike(pattern),
         ))
     if industry:
         query = query.filter(Account.industry == industry)
