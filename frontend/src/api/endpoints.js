@@ -15,6 +15,13 @@ export const usersApi = {
   delete: (id) => api.delete(`/users/${id}`),
 };
 
+export const departmentsApi = {
+  list: () => api.get("/departments").then((r) => r.data),
+  create: (data) => api.post("/departments", data).then((r) => r.data),
+  update: (id, data) => api.patch(`/departments/${id}`, data).then((r) => r.data),
+  delete: (id) => api.delete(`/departments/${id}`),
+};
+
 // ─── Cases ─────────────────────────────────────────────────────────────
 export const casesApi = {
   list: (params = {}) => api.get("/cases", { params }).then((r) => r.data),

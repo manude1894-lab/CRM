@@ -11,6 +11,9 @@ class UserBase(BaseModel):
     email: EmailStr
     role: UserRole = UserRole.RM
     is_active: bool = True
+    department_id: Optional[int] = None
+    title: Optional[str] = None
+    supervisor_id: Optional[int] = None
 
 
 class UserCreate(UserBase):
@@ -23,6 +26,9 @@ class UserUpdate(BaseModel):
     role: Optional[UserRole] = None
     is_active: Optional[bool] = None
     password: Optional[str] = Field(None, min_length=6)
+    department_id: Optional[int] = None
+    title: Optional[str] = None
+    supervisor_id: Optional[int] = None
 
 
 class UserRead(UserBase):

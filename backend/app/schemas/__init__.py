@@ -2,6 +2,7 @@
 from app.schemas.user import (
     UserCreate, UserRead, UserUpdate, LoginRequest, Token, RefreshTokenRequest, TokenPayload
 )
+from app.schemas.department import DepartmentCreate, DepartmentRead, DepartmentUpdate
 from app.schemas.account import (
     AccountCreate, AccountRead, AccountUpdate,
     AccountImportRow, AccountImportRequest, AccountImportRowResult, AccountImportResponse,
@@ -50,6 +51,7 @@ from app.schemas.service_feedback import ServiceFeedbackCreate, ServiceFeedbackR
 
 __all__ = [
     "UserCreate", "UserRead", "UserUpdate", "LoginRequest", "Token", "RefreshTokenRequest", "TokenPayload",
+    "DepartmentCreate", "DepartmentRead", "DepartmentUpdate",
     "AccountCreate", "AccountRead", "AccountUpdate",
     "AccountImportRow", "AccountImportRequest", "AccountImportRowResult", "AccountImportResponse",
     "AccountPartyCreate", "AccountPartyRead", "AccountPartyUpdate",

@@ -1,5 +1,6 @@
 """SQLAlchemy models package."""
 from app.models.user import User, UserRole
+from app.models.department import Department
 from app.models.account import Account, Priority
 from app.models.case import (
     Case,
@@ -45,6 +46,7 @@ from app.models.service_feedback import ServiceFeedback
 
 __all__ = [
     "User", "UserRole",
+    "Department",
     "Account", "Priority",
     "Case", "CaseStage", "CaseStatus", "CaseSource", "InvoiceStatus", "CASE_STAGE_TRANSITIONS",
     "CaseAdditionalRM",

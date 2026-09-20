@@ -1,5 +1,5 @@
 """SQLAlchemy model: User (with RBAC role)."""
-from sqlalchemy import Column, Integer, String, DateTime, Enum as SAEnum, Boolean
+from sqlalchemy import Column, Integer, String, DateTime, Enum as SAEnum, Boolean, ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 import enum
@@ -23,6 +23,11 @@ class User(Base):
     hashed_password = Column(String(255), nullable=False)
     role = Column(SAEnum(UserRole, name="user_role", values_callable=lambda obj: [e.value for e in obj]), default=UserRole.RM, nullable=False)
     is_active = Column(Boolean, default=True, nullable=False)
+
+    department_id = Column(Integer, ForeignKey("departments.id", ondelete="SET NULL"), nullable=True)
+    title = Column(String(100), nullable=True)
+    supervisor_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 

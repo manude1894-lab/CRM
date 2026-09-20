@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { usersApi } from "../api/endpoints";
+import { usersApi, departmentsApi } from "../api/endpoints";
 import { useAuthStore } from "../store/auth";
 import { Icon, Badge, Modal, Field, Input, Select, Spinner, ErrorBanner } from "../components/ui";
 import { ROLE_LABEL } from "../utils/constants";
@@ -14,20 +14,46 @@ const ROLE_RESPONSIBILITIES = [
 export default function AdminPage() {
   const isAdmin = useAuthStore((s) => s.isAdmin());
   const [users, setUsers] = useState([]);
+  const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [modal, setModal] = useState(null);
   const [form, setForm] = useState({});
+  const [deptName, setDeptName] = useState("");
+  const [editingDeptId, setEditingDeptId] = useState(null);
+  const [editingDeptName, setEditingDeptName] = useState("");
 
   const load = async () => {
     try {
       setLoading(true); setError(null);
-      setUsers(await usersApi.list());
+      const [usersRes, deptRes] = await Promise.all([usersApi.list(), departmentsApi.list()]);
+      setUsers(usersRes);
+      setDepartments(deptRes);
     } catch (e) {
       setError(e.response?.data?.detail || "Failed to load users");
     } finally { setLoading(false); }
   };
   useEffect(() => { if (isAdmin) load(); else setLoading(false); }, [isAdmin]);
+
+  const departmentName = (id) => departments.find((d) => d.id === id)?.name || "—";
+
+  const addDepartment = async () => {
+    if (!deptName.trim()) return;
+    try { await departmentsApi.create({ name: deptName.trim() }); setDeptName(""); load(); }
+    catch (e) { alert(e.response?.data?.detail || "Failed to add department"); }
+  };
+
+  const saveDepartmentRename = async (id) => {
+    if (!editingDeptName.trim()) return;
+    try { await departmentsApi.update(id, { name: editingDeptName.trim() }); setEditingDeptId(null); load(); }
+    catch (e) { alert(e.response?.data?.detail || "Failed to rename department"); }
+  };
+
+  const removeDepartment = async (id) => {
+    if (!confirm("Delete this department? Users assigned to it will become unassigned.")) return;
+    try { await departmentsApi.delete(id); load(); }
+    catch (e) { alert(e.response?.data?.detail || "Failed to delete department"); }
+  };
 
   if (!isAdmin) {
     return (
@@ -42,10 +68,16 @@ export default function AdminPage() {
 
   const save = async () => {
     try {
+      const payload = {
+        ...form,
+        department_id: form.department_id ? +form.department_id : null,
+        supervisor_id: form.supervisor_id ? +form.supervisor_id : null,
+        title: form.title || null,
+      };
       if (modal === "new") {
-        await usersApi.create(form);
+        await usersApi.create(payload);
       } else {
-        const { id, created_at, updated_at, ...patch } = form;
+        const { id, created_at, updated_at, ...patch } = payload;
         if (!patch.password) delete patch.password;
         await usersApi.update(form.id, patch);
       }
@@ -71,7 +103,7 @@ export default function AdminPage() {
           <h1 className="text-xl font-bold text-gray-900">Admin Panel</h1>
           <p className="text-sm text-gray-500">User management · System settings</p>
         </div>
-        <button onClick={() => { setForm({ name: "", email: "", password: "", role: "rm", is_active: true }); setModal("new"); }}
+        <button onClick={() => { setForm({ name: "", email: "", password: "", role: "rm", is_active: true, department_id: "", title: "", supervisor_id: "" }); setModal("new"); }}
           className="px-3 py-1.5 text-xs text-white rounded-lg flex items-center gap-1" style={{ background: "#2B6D9A" }}>
           <Icon name="plus" size={14} /> Add User
         </button>
@@ -83,6 +115,7 @@ export default function AdminPage() {
             <tr className="border-b border-gray-100 bg-gray-50">
               <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500">User</th>
               <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500">Email</th>
+              <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500">Department</th>
               <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500">Role</th>
               <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500">Status</th>
               <th className="py-3 px-4 text-xs font-semibold text-gray-500">Actions</th>
@@ -96,10 +129,14 @@ export default function AdminPage() {
                     <div className="w-8 h-8 rounded-full text-white text-xs font-bold flex items-center justify-center" style={{ background: "#2B6D9A" }}>
                       {u.name.split(" ").map((n) => n[0]).slice(0, 2).join("")}
                     </div>
-                    <span className="text-sm font-medium text-gray-800">{u.name}</span>
+                    <div>
+                      <div className="text-sm font-medium text-gray-800">{u.name}</div>
+                      {u.title && <div className="text-xs text-gray-400">{u.title}</div>}
+                    </div>
                   </div>
                 </td>
                 <td className="py-3 px-4 text-sm text-gray-600">{u.email}</td>
+                <td className="py-3 px-4 text-sm text-gray-600">{departmentName(u.department_id)}</td>
                 <td className="py-3 px-4"><Badge text={u.role} /></td>
                 <td className="py-3 px-4">
                   <span className={`text-xs font-medium ${u.is_active ? "text-green-600" : "text-gray-400"}`}>
@@ -122,7 +159,39 @@ export default function AdminPage() {
         </table>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="bg-white rounded-xl border border-gray-100 p-5 shadow-sm">
+          <h3 className="text-sm font-semibold text-gray-700 mb-3">Departments</h3>
+          <div className="space-y-1.5 mb-3">
+            {departments.length === 0 && <p className="text-xs text-gray-400">No departments yet.</p>}
+            {departments.map((d) => (
+              <div key={d.id} className="flex items-center justify-between p-1.5 bg-gray-50 rounded-lg">
+                {editingDeptId === d.id ? (
+                  <input autoFocus value={editingDeptName} onChange={(e) => setEditingDeptName(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && saveDepartmentRename(d.id)}
+                    onBlur={() => saveDepartmentRename(d.id)}
+                    className="text-xs border border-gray-200 rounded px-1.5 py-1 flex-1 mr-2" />
+                ) : (
+                  <span className="text-xs text-gray-700">{d.name}</span>
+                )}
+                <div className="flex gap-1">
+                  <button onClick={() => { setEditingDeptId(d.id); setEditingDeptName(d.name); }} className="p-1 rounded hover:bg-blue-50 text-gray-400 hover:text-blue-600">
+                    <Icon name="edit" size={12} />
+                  </button>
+                  <button onClick={() => removeDepartment(d.id)} className="p-1 rounded hover:bg-red-50 text-gray-400 hover:text-red-500">
+                    <Icon name="del" size={12} />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="flex gap-2">
+            <input value={deptName} onChange={(e) => setDeptName(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && addDepartment()}
+              placeholder="New department name" className="flex-1 text-xs border border-gray-200 rounded-lg px-2 py-1.5" />
+            <button onClick={addDepartment} className="px-2.5 py-1.5 text-xs text-white rounded-lg" style={{ background: "#2B6D9A" }}>Add</button>
+          </div>
+        </div>
         <div className="bg-white rounded-xl border border-gray-100 p-5 shadow-sm">
           <h3 className="text-sm font-semibold text-gray-700 mb-3">System Information</h3>
           <div className="space-y-2 text-xs text-gray-600">
@@ -159,6 +228,21 @@ export default function AdminPage() {
               <option value="rm">Relationship Manager</option>
               <option value="ops">Ops</option>
               <option value="screening">Screening</option>
+            </Select>
+          </Field>
+          <Field label="Department">
+            <Select value={form.department_id || ""} onChange={(e) => setForm((p) => ({ ...p, department_id: e.target.value }))}>
+              <option value="">— None —</option>
+              {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+            </Select>
+          </Field>
+          <Field label="Title">
+            <Input value={form.title || ""} onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))} placeholder="e.g. Senior Associate" />
+          </Field>
+          <Field label="Reports To">
+            <Select value={form.supervisor_id || ""} onChange={(e) => setForm((p) => ({ ...p, supervisor_id: e.target.value }))}>
+              <option value="">— None —</option>
+              {users.filter((u) => u.id !== form.id).map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
             </Select>
           </Field>
           <Field label="Status">
