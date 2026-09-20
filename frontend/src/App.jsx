@@ -52,8 +52,8 @@ export default function App() {
       {/* Sidebar */}
       <aside className={`flex-shrink-0 flex flex-col border-r border-gray-100 bg-white transition-all duration-200 ${sidebarOpen ? "w-56" : "w-16"}`}>
         <div className="flex items-center gap-3 px-4 py-5 border-b border-gray-100">
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "#2B6D9A" }}>
-            <span className="text-white font-bold text-sm">T</span>
+          <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 bg-white border border-gray-100 p-1">
+            <img src="/triam-logo.png" alt="TRIAM" className="w-full h-full object-contain" />
           </div>
           {sidebarOpen && (
             <div>
