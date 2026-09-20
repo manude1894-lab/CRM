@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { accountPartiesApi, amlApi } from "../api/endpoints";
-import { Icon, Modal, Field, Input, Select, Spinner, ErrorBanner } from "./ui";
+import { Icon, Modal, Field, Input, Select, CountrySelect, Spinner, ErrorBanner } from "./ui";
 
 const ROLES = ["Shareholder", "Director", "Authorised Signatory"];
 
@@ -156,14 +156,6 @@ function PartyForm({ form, setForm, countries, onCancel, onSave }) {
   const isDirector = form.party_role === "Director";
   const isEntity = form.constitution === "Entity";
   const isUAEResident = form.country_of_residence === "UAE";
-  const countryOptions = countries.length ? countries.map((c) => c.name) : null;
-
-  const CountrySelect = ({ value, onChange }) => countryOptions ? (
-    <Select value={value || ""} onChange={onChange}>
-      <option value="">— select —</option>
-      {countryOptions.map((c) => <option key={c}>{c}</option>)}
-    </Select>
-  ) : <Input value={value || ""} onChange={onChange} placeholder="e.g. UAE" />;
 
   return (
     <div>
@@ -187,7 +179,7 @@ function PartyForm({ form, setForm, countries, onCancel, onSave }) {
         </Field>
       </div>
       <Field label={isEntity ? "Country of Incorporation" : "Country of Birth"}>
-        <CountrySelect value={form.country_of_incorp_or_birth} onChange={set(setForm, "country_of_incorp_or_birth")} />
+        <CountrySelect value={form.country_of_incorp_or_birth} onChange={set(setForm, "country_of_incorp_or_birth")} countries={countries} />
       </Field>
 
       {isDirector && (
@@ -207,7 +199,7 @@ function PartyForm({ form, setForm, countries, onCancel, onSave }) {
       </div>
 
       <Field label="Country of Residence">
-        <CountrySelect value={form.country_of_residence} onChange={set(setForm, "country_of_residence")} />
+        <CountrySelect value={form.country_of_residence} onChange={set(setForm, "country_of_residence")} countries={countries} />
       </Field>
 
       {form.country_of_residence && (

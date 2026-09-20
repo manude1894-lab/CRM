@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
-import { accountsApi, casesApi, usersApi } from "../api/endpoints";
-import { Icon, Badge, Modal, Field, Input, Select, MultiSelect, Spinner, ErrorBanner } from "../components/ui";
+import { accountsApi, casesApi, usersApi, amlApi } from "../api/endpoints";
+import { Icon, Badge, Modal, Field, Input, Select, MultiSelect, CountrySelect, Spinner, ErrorBanner } from "../components/ui";
 import AccountPartyModal from "../components/AccountPartyModal";
 import {
   fmt, REGULATOR_OPTIONS, TAG_OPTIONS, SERVICES_OBTAINED_OPTIONS,
@@ -87,6 +87,7 @@ export default function AccountsPage() {
   const [accounts, setAccounts] = useState([]);
   const [cases, setCases] = useState([]);
   const [users, setUsers] = useState([]);
+  const [countries, setCountries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [search, setSearch] = useState("");
@@ -103,10 +104,13 @@ export default function AccountsPage() {
   const load = async () => {
     try {
       setLoading(true); setError(null);
-      const [accRes, caseRes, usersRes] = await Promise.all([accountsApi.list({ limit: 200 }), casesApi.list({ limit: 500 }), usersApi.list()]);
+      const [accRes, caseRes, usersRes, countriesRes] = await Promise.all([
+        accountsApi.list({ limit: 200 }), casesApi.list({ limit: 500 }), usersApi.list(), amlApi.countryRisk().catch(() => []),
+      ]);
       setAccounts(accRes.items || []);
       setCases(caseRes.items || []);
       setUsers(usersRes || []);
+      setCountries(countriesRes || []);
     } catch (e) {
       setError(e.response?.data?.detail || "Failed to load clients");
     } finally { setLoading(false); }
@@ -114,6 +118,7 @@ export default function AccountsPage() {
   useEffect(() => { load(); }, []);
 
   const BLANK = {
+    account_type: "Corporate",
     company_name: "", industry: "", country: "", strategic_priority: "Medium", existing_relationship: "No",
     key_contacts: "", website: "", spoc_id: "", registration_number: "", license_number: "", risk_rating: "", kyc_status: "Not Started",
     licensing_authority: "", license_start_date: "", license_expiry_date: "", is_regulated: false, regulator_name: "", regulator_other: "",
@@ -125,12 +130,18 @@ export default function AccountsPage() {
     profile_status: "New",
     engagement_letter_signed: false, engagement_letter_valid_until: "",
     aml_classification: "", edd_reason: "", cdd_completion_date: "",
+    is_pep: false,
+    date_of_birth: "", nationality: "", passport_number: "", passport_expiry_date: "", occupation: "",
+    source_of_funds: "", source_of_wealth: "", country_of_residence: "",
+    residential_address: { ...BLANK_ADDRESS },
+    individual_mobile: "", individual_email: "", uae_visa_number: "", uae_visa_expiry: "",
   };
 
   const openNew = () => { setForm(BLANK); setModal("new"); };
 
   const openEdit = (a) => {
     setForm({
+      account_type: a.account_type || "Corporate",
       company_name: a.company_name, industry: a.industry || "", country: a.country || "", strategic_priority: a.strategic_priority,
       existing_relationship: a.existing_relationship, key_contacts: a.key_contacts || "", website: a.website || "", spoc_id: a.spoc_id || "",
       registration_number: a.registration_number || "", license_number: a.license_number || "", risk_rating: a.risk_rating || "", kyc_status: a.kyc_status || "Not Started",
@@ -145,6 +156,13 @@ export default function AccountsPage() {
       engagement_letter_signed: !!a.engagement_letter_signed, engagement_letter_valid_until: a.engagement_letter_valid_until || "",
       aml_classification: a.aml_classification || "", edd_reason: a.edd_reason || "", cdd_completion_date: a.cdd_completion_date || "",
       next_aml_review_date: a.next_aml_review_date || null,
+      is_pep: !!a.is_pep,
+      date_of_birth: a.date_of_birth || "", nationality: a.nationality || "", passport_number: a.passport_number || "",
+      passport_expiry_date: a.passport_expiry_date || "", occupation: a.occupation || "",
+      source_of_funds: a.source_of_funds || "", source_of_wealth: a.source_of_wealth || "", country_of_residence: a.country_of_residence || "",
+      residential_address: { ...BLANK_ADDRESS, ...(a.residential_address || {}) },
+      individual_mobile: a.individual_mobile || "", individual_email: a.individual_email || "",
+      uae_visa_number: a.uae_visa_number || "", uae_visa_expiry: a.uae_visa_expiry || "",
       _id: a.id,
     });
     setModal("edit");
@@ -279,10 +297,15 @@ export default function AccountsPage() {
                   </div>
                   <div>
                     <h3 className="text-sm font-bold text-gray-800">{a.company_name}</h3>
-                    <p className="text-xs text-gray-500">{a.industry || "—"} · {a.country || "—"}</p>
+                    <p className="text-xs text-gray-500">
+                      {a.account_type === "Individual"
+                        ? `${a.nationality || "—"} · ${a.occupation || "Individual"}`
+                        : `${a.industry || "—"} · ${a.country || "—"}`}
+                    </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                  {a.account_type === "Individual" && <Badge text="Individual" />}
                   {a.is_pep && <Badge text="PEP" />}
                   {a.profile_status && a.profile_status !== "New" && <Badge text={a.profile_status} />}
                   <Badge text={a.strategic_priority} />
@@ -367,20 +390,30 @@ export default function AccountsPage() {
       {modal && (
         <Modal title={modal === "edit" ? `Edit Client` : "New Client"} onClose={() => setModal(null)}>
           <div className="space-y-3">
-            <Field label="Company Name *">
-              <Input value={form.company_name} onChange={(e) => setForm({ ...form, company_name: e.target.value })} placeholder="e.g. Al Futtaim Group" />
+            <Field label="Client Type">
+              <Select value={form.account_type} onChange={(e) => setForm({ ...form, account_type: e.target.value })}>
+                <option>Corporate</option>
+                <option>Individual</option>
+              </Select>
             </Field>
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="Industry">
-                <Input value={form.industry} onChange={(e) => setForm({ ...form, industry: e.target.value })} placeholder="e.g. Fintech" />
-              </Field>
-              <Field label="Country">
-                <Input value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })} placeholder="e.g. UAE" />
-              </Field>
-            </div>
-            <Field label="Website">
-              <Input value={form.website} onChange={(e) => setForm({ ...form, website: e.target.value })} placeholder="e.g. https://company.com" />
+            <Field label={form.account_type === "Individual" ? "Full Name (as per passport) *" : "Company Name *"}>
+              <Input value={form.company_name} onChange={(e) => setForm({ ...form, company_name: e.target.value })} placeholder={form.account_type === "Individual" ? "e.g. John Smith" : "e.g. Al Futtaim Group"} />
             </Field>
+            {form.account_type !== "Individual" && (
+              <>
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="Industry">
+                    <Input value={form.industry} onChange={(e) => setForm({ ...form, industry: e.target.value })} placeholder="e.g. Fintech" />
+                  </Field>
+                  <Field label="Country">
+                    <Input value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })} placeholder="e.g. UAE" />
+                  </Field>
+                </div>
+                <Field label="Website">
+                  <Input value={form.website} onChange={(e) => setForm({ ...form, website: e.target.value })} placeholder="e.g. https://company.com" />
+                </Field>
+              </>
+            )}
             <Field label="Key Contacts">
               <Input value={form.key_contacts} onChange={(e) => setForm({ ...form, key_contacts: e.target.value })} placeholder="e.g. John Smith - CEO" />
             </Field>
@@ -403,14 +436,16 @@ export default function AccountsPage() {
                 {users.filter((u) => u.role === "rm").map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
               </Select>
             </Field>
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="Registration Number">
-                <Input value={form.registration_number} onChange={(e) => setForm({ ...form, registration_number: e.target.value })} placeholder="e.g. 123456" />
-              </Field>
-              <Field label="License Number">
-                <Input value={form.license_number} onChange={(e) => setForm({ ...form, license_number: e.target.value })} placeholder="e.g. DIFC-LIC-9012" />
-              </Field>
-            </div>
+            {form.account_type !== "Individual" && (
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Registration Number">
+                  <Input value={form.registration_number} onChange={(e) => setForm({ ...form, registration_number: e.target.value })} placeholder="e.g. 123456" />
+                </Field>
+                <Field label="License Number">
+                  <Input value={form.license_number} onChange={(e) => setForm({ ...form, license_number: e.target.value })} placeholder="e.g. DIFC-LIC-9012" />
+                </Field>
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-3">
               <Field label="Risk Rating">
                 <Select value={form.risk_rating || ""} onChange={(e) => setForm({ ...form, risk_rating: e.target.value })}>
@@ -425,59 +460,95 @@ export default function AccountsPage() {
               </Field>
             </div>
 
-            <Section title="Licensing & Regulatory">
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="Licensing Authority">
-                  <Input value={form.licensing_authority} onChange={(e) => setForm({ ...form, licensing_authority: e.target.value })} placeholder="e.g. DIFC, ADGM, DED" />
-                </Field>
-                <Field label="License Activities">
-                  <Input value={form.license_activities} onChange={(e) => setForm({ ...form, license_activities: e.target.value })} />
-                </Field>
-                <Field label="License Start Date"><Input type="date" value={form.license_start_date || ""} onChange={(e) => setForm({ ...form, license_start_date: e.target.value })} /></Field>
-                <Field label="License Expiry Date"><Input type="date" value={form.license_expiry_date || ""} onChange={(e) => setForm({ ...form, license_expiry_date: e.target.value })} /></Field>
-              </div>
-              <label className="flex items-center gap-2 text-xs text-gray-700 mb-3">
-                <input type="checkbox" checked={!!form.is_regulated} onChange={(e) => setForm({ ...form, is_regulated: e.target.checked })} /> Is entity regulated
-              </label>
-              {form.is_regulated && (
-                <div className="grid grid-cols-2 gap-3">
-                  <Field label="Regulator">
-                    <Select value={form.regulator_name || ""} onChange={(e) => setForm({ ...form, regulator_name: e.target.value })}>
-                      <option value="">— select —</option>
-                      {REGULATOR_OPTIONS.map((o) => <option key={o}>{o}</option>)}
-                    </Select>
-                  </Field>
-                  {form.regulator_name === "Other" && (
-                    <Field label="Other Regulator"><Input value={form.regulator_other} onChange={(e) => setForm({ ...form, regulator_other: e.target.value })} /></Field>
+            <Field label="Tags">
+              <MultiSelect options={TAG_OPTIONS} value={form.tags} onChange={(v) => setForm({ ...form, tags: v })} />
+            </Field>
+
+            {form.account_type !== "Individual" && (
+              <>
+                <Section title="Licensing & Regulatory">
+                  <div className="grid grid-cols-2 gap-3">
+                    <Field label="Licensing Authority">
+                      <Input value={form.licensing_authority} onChange={(e) => setForm({ ...form, licensing_authority: e.target.value })} placeholder="e.g. DIFC, ADGM, DED" />
+                    </Field>
+                    <Field label="License Activities">
+                      <Input value={form.license_activities} onChange={(e) => setForm({ ...form, license_activities: e.target.value })} />
+                    </Field>
+                    <Field label="License Start Date"><Input type="date" value={form.license_start_date || ""} onChange={(e) => setForm({ ...form, license_start_date: e.target.value })} /></Field>
+                    <Field label="License Expiry Date"><Input type="date" value={form.license_expiry_date || ""} onChange={(e) => setForm({ ...form, license_expiry_date: e.target.value })} /></Field>
+                  </div>
+                  <label className="flex items-center gap-2 text-xs text-gray-700 mb-3">
+                    <input type="checkbox" checked={!!form.is_regulated} onChange={(e) => setForm({ ...form, is_regulated: e.target.checked })} /> Is entity regulated
+                  </label>
+                  {form.is_regulated && (
+                    <div className="grid grid-cols-2 gap-3">
+                      <Field label="Regulator">
+                        <Select value={form.regulator_name || ""} onChange={(e) => setForm({ ...form, regulator_name: e.target.value })}>
+                          <option value="">— select —</option>
+                          {REGULATOR_OPTIONS.map((o) => <option key={o}>{o}</option>)}
+                        </Select>
+                      </Field>
+                      {form.regulator_name === "Other" && (
+                        <Field label="Other Regulator"><Input value={form.regulator_other} onChange={(e) => setForm({ ...form, regulator_other: e.target.value })} /></Field>
+                      )}
+                      <Field label="License Category"><Input value={form.license_category} onChange={(e) => setForm({ ...form, license_category: e.target.value })} /></Field>
+                    </div>
                   )}
-                  <Field label="License Category"><Input value={form.license_category} onChange={(e) => setForm({ ...form, license_category: e.target.value })} /></Field>
+                </Section>
+
+                <Section title="Registered Address">
+                  <AddressFields value={form.registered_address} onChange={(v) => setForm({ ...form, registered_address: v })} />
+                </Section>
+
+                <Section title="Operating Address">
+                  <AddressFields value={form.operating_address} onChange={(v) => setForm({ ...form, operating_address: v })} />
+                </Section>
+
+                <Section title="Tax">
+                  <div className="grid grid-cols-2 gap-3">
+                    <Field label="TRN / VAT Registration No."><Input value={form.trn_vat_number} onChange={(e) => setForm({ ...form, trn_vat_number: e.target.value })} /></Field>
+                    <Field label="Financial Year End (MM-DD)"><Input value={form.financial_year_end} onChange={(e) => setForm({ ...form, financial_year_end: e.target.value })} placeholder="12-31" /></Field>
+                  </div>
+                  <label className="flex items-center gap-2 text-xs text-gray-700 mb-3">
+                    <input type="checkbox" checked={!!form.corp_tax_registered} onChange={(e) => setForm({ ...form, corp_tax_registered: e.target.checked })} /> Corporate Tax Registered
+                  </label>
+                  {form.corp_tax_registered && (
+                    <Field label="Corp Tax Registration No. / TAN"><Input value={form.corp_tax_registration_number} onChange={(e) => setForm({ ...form, corp_tax_registration_number: e.target.value })} /></Field>
+                  )}
+                </Section>
+              </>
+            )}
+
+            {form.account_type === "Individual" && (
+              <Section title="Individual Details">
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="Date of Birth"><Input type="date" value={form.date_of_birth || ""} onChange={(e) => setForm({ ...form, date_of_birth: e.target.value })} /></Field>
+                  <Field label="Nationality"><CountrySelect value={form.nationality} onChange={(e) => setForm({ ...form, nationality: e.target.value })} countries={countries} /></Field>
+                  <Field label="Passport Number"><Input value={form.passport_number} onChange={(e) => setForm({ ...form, passport_number: e.target.value })} /></Field>
+                  <Field label="Passport Expiry"><Input type="date" value={form.passport_expiry_date || ""} onChange={(e) => setForm({ ...form, passport_expiry_date: e.target.value })} /></Field>
+                  <Field label="Occupation"><Input value={form.occupation} onChange={(e) => setForm({ ...form, occupation: e.target.value })} /></Field>
+                  <Field label="Mobile"><Input value={form.individual_mobile} onChange={(e) => setForm({ ...form, individual_mobile: e.target.value })} /></Field>
+                  <Field label="Email"><Input type="email" value={form.individual_email} onChange={(e) => setForm({ ...form, individual_email: e.target.value })} /></Field>
+                  <Field label="Country of Residence"><CountrySelect value={form.country_of_residence} onChange={(e) => setForm({ ...form, country_of_residence: e.target.value })} countries={countries} /></Field>
                 </div>
-              )}
-              <Field label="Tags">
-                <MultiSelect options={TAG_OPTIONS} value={form.tags} onChange={(v) => setForm({ ...form, tags: v })} />
-              </Field>
-            </Section>
+                <Field label="Source of Funds"><Input value={form.source_of_funds} onChange={(e) => setForm({ ...form, source_of_funds: e.target.value })} placeholder="e.g. Salary, business income" /></Field>
+                <Field label="Source of Wealth"><Input value={form.source_of_wealth} onChange={(e) => setForm({ ...form, source_of_wealth: e.target.value })} placeholder="e.g. Accumulated savings, inheritance" /></Field>
 
-            <Section title="Registered Address">
-              <AddressFields value={form.registered_address} onChange={(v) => setForm({ ...form, registered_address: v })} />
-            </Section>
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mt-3 mb-1.5">Residential Address</p>
+                <AddressFields value={form.residential_address} onChange={(v) => setForm({ ...form, residential_address: v })} />
 
-            <Section title="Operating Address">
-              <AddressFields value={form.operating_address} onChange={(v) => setForm({ ...form, operating_address: v })} />
-            </Section>
+                {form.country_of_residence === "UAE" && (
+                  <div className="grid grid-cols-2 gap-3 mt-3">
+                    <Field label="UAE Visa No."><Input value={form.uae_visa_number} onChange={(e) => setForm({ ...form, uae_visa_number: e.target.value })} /></Field>
+                    <Field label="UAE Visa Expiry"><Input type="date" value={form.uae_visa_expiry || ""} onChange={(e) => setForm({ ...form, uae_visa_expiry: e.target.value })} /></Field>
+                  </div>
+                )}
 
-            <Section title="Tax">
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="TRN / VAT Registration No."><Input value={form.trn_vat_number} onChange={(e) => setForm({ ...form, trn_vat_number: e.target.value })} /></Field>
-                <Field label="Financial Year End (MM-DD)"><Input value={form.financial_year_end} onChange={(e) => setForm({ ...form, financial_year_end: e.target.value })} placeholder="12-31" /></Field>
-              </div>
-              <label className="flex items-center gap-2 text-xs text-gray-700 mb-3">
-                <input type="checkbox" checked={!!form.corp_tax_registered} onChange={(e) => setForm({ ...form, corp_tax_registered: e.target.checked })} /> Corporate Tax Registered
-              </label>
-              {form.corp_tax_registered && (
-                <Field label="Corp Tax Registration No. / TAN"><Input value={form.corp_tax_registration_number} onChange={(e) => setForm({ ...form, corp_tax_registration_number: e.target.value })} /></Field>
-              )}
-            </Section>
+                <label className="flex items-center gap-2 text-xs text-gray-700 mt-3">
+                  <input type="checkbox" checked={!!form.is_pep} onChange={(e) => setForm({ ...form, is_pep: e.target.checked })} /> Politically Exposed Person (PEP)
+                </label>
+              </Section>
+            )}
 
             <Section title="Introducer">
               <label className="flex items-center gap-2 text-xs text-gray-700 mb-3">

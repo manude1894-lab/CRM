@@ -19,7 +19,9 @@ class Account(Base):
     id = Column(Integer, primary_key=True, index=True)
     account_uid = Column(String(20), unique=True, index=True, nullable=False)  # ACC-0001
 
-    company_name = Column(String(255), unique=True, nullable=False, index=True)
+    account_type = Column(String(20), default="Corporate", nullable=False)  # Corporate / Individual
+
+    company_name = Column(String(255), unique=True, nullable=False, index=True)  # full legal name, for Individuals too
     industry = Column(String(100), nullable=True)
     country = Column(String(100), nullable=True)
     company_size = Column(String(100), nullable=True)
@@ -76,8 +78,24 @@ class Account(Base):
     cdd_completion_date = Column(Date, nullable=True)
     next_aml_review_date = Column(Date, nullable=True)  # server-computed from risk_rating + cdd_completion_date
 
-    # server-computed (§24.2) — true if any account_parties row has is_pep=True
+    # For Corporate accounts this is a server-computed rollup (any account_parties row is_pep=True).
+    # For Individual accounts (no parties) it is directly user-editable — see account_service.
     is_pep = Column(Boolean, default=False, nullable=False)
+
+    # Individual Details (Phase C) — populated only when account_type == "Individual"
+    date_of_birth = Column(Date, nullable=True)
+    nationality = Column(String(120), nullable=True)
+    passport_number = Column(String(50), nullable=True)
+    passport_expiry_date = Column(Date, nullable=True)
+    occupation = Column(String(150), nullable=True)
+    source_of_funds = Column(String(255), nullable=True)
+    source_of_wealth = Column(String(255), nullable=True)
+    country_of_residence = Column(String(120), nullable=True)
+    residential_address = Column(JSON, nullable=True)  # AddressBlock shape, reused from Phase A
+    individual_mobile = Column(String(50), nullable=True)
+    individual_email = Column(String(255), nullable=True)
+    uae_visa_number = Column(String(50), nullable=True)
+    uae_visa_expiry = Column(Date, nullable=True)
 
     # Computed / denormalized
     total_cases = Column(Integer, default=0, nullable=False)

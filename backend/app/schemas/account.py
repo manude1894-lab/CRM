@@ -54,6 +54,7 @@ class AccountImportResponse(BaseModel):
 
 
 class AccountBase(BaseModel):
+    account_type: str = "Corporate"  # Corporate / Individual
     company_name: str = Field(..., min_length=1, max_length=255)
     industry: Optional[str] = None
     country: Optional[str] = None
@@ -102,12 +103,30 @@ class AccountBase(BaseModel):
     edd_reason: Optional[str] = None
     cdd_completion_date: Optional[date] = None
 
+    is_pep: Optional[bool] = None  # direct-editable only for Individual accounts (no parties to roll up from)
+
+    # Individual Details (Phase C)
+    date_of_birth: Optional[date] = None
+    nationality: Optional[str] = None
+    passport_number: Optional[str] = None
+    passport_expiry_date: Optional[date] = None
+    occupation: Optional[str] = None
+    source_of_funds: Optional[str] = None
+    source_of_wealth: Optional[str] = None
+    country_of_residence: Optional[str] = None
+    residential_address: Optional[AddressBlock] = None
+    individual_mobile: Optional[str] = None
+    individual_email: Optional[str] = None
+    uae_visa_number: Optional[str] = None
+    uae_visa_expiry: Optional[date] = None
+
 
 class AccountCreate(AccountBase):
     pass
 
 
 class AccountUpdate(BaseModel):
+    account_type: Optional[str] = None
     company_name: Optional[str] = None
     industry: Optional[str] = None
     country: Optional[str] = None
@@ -155,6 +174,22 @@ class AccountUpdate(BaseModel):
     aml_classification: Optional[str] = None
     edd_reason: Optional[str] = None
     cdd_completion_date: Optional[date] = None
+
+    is_pep: Optional[bool] = None
+
+    date_of_birth: Optional[date] = None
+    nationality: Optional[str] = None
+    passport_number: Optional[str] = None
+    passport_expiry_date: Optional[date] = None
+    occupation: Optional[str] = None
+    source_of_funds: Optional[str] = None
+    source_of_wealth: Optional[str] = None
+    country_of_residence: Optional[str] = None
+    residential_address: Optional[AddressBlock] = None
+    individual_mobile: Optional[str] = None
+    individual_email: Optional[str] = None
+    uae_visa_number: Optional[str] = None
+    uae_visa_expiry: Optional[date] = None
 
 
 class AccountRead(AccountBase):
