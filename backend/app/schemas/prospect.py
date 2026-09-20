@@ -49,6 +49,13 @@ class ProspectConvertRequest(BaseModel):
     rm_id: Optional[int] = None
 
 
+class DuplicateMatch(BaseModel):
+    id: int
+    company_name: str
+    score: int
+    source: Optional[str] = None  # "prospect" | "client"
+
+
 class ProspectRead(ProspectBase):
     id: int
     prospect_uid: str

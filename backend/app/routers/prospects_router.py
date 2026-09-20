@@ -9,6 +9,7 @@ from app.models import User
 from app.schemas import (
     ProspectCreate, ProspectUpdate, ProspectRead, ProspectConvertRequest, CaseRead,
 )
+from app.schemas.prospect import DuplicateMatch
 from app.services import prospect_service
 
 router = APIRouter(prefix="/prospects", tags=["Prospects"])
@@ -17,6 +18,11 @@ router = APIRouter(prefix="/prospects", tags=["Prospects"])
 @router.get("", response_model=List[ProspectRead])
 def list_prospects(status: Optional[str] = None, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     return prospect_service.list_prospects(db, user, status)
+
+
+@router.get("/check-duplicate", response_model=List[DuplicateMatch], summary="Fuzzy-match an in-progress name against existing prospects and clients")
+def check_duplicate_prospect(name: str, exclude_id: Optional[int] = None, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    return prospect_service.find_similar(db, name, exclude_id)
 
 
 @router.get("/{prospect_id}", response_model=ProspectRead)

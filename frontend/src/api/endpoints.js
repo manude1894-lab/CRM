@@ -206,6 +206,7 @@ export const accountsApi = {
   update: (id, data) => api.patch(`/accounts/${id}`, data).then((r) => r.data),
   delete: (id) => api.delete(`/accounts/${id}`),
   import: (rows, dryRun) => api.post("/accounts/import", { rows, dry_run: dryRun }).then((r) => r.data),
+  checkDuplicate: (name, excludeId) => api.get("/accounts/check-duplicate", { params: { name, exclude_id: excludeId || undefined } }).then((r) => r.data),
 };
 
 // ─── Activities ────────────────────────────────────────────────────────
@@ -230,6 +231,7 @@ export const prospectsApi = {
   update: (id, data) => api.patch(`/prospects/${id}`, data).then((r) => r.data),
   delete: (id) => api.delete(`/prospects/${id}`),
   convert: (id, data = {}) => api.post(`/prospects/${id}/convert`, data).then((r) => r.data),
+  checkDuplicate: (name, excludeId) => api.get("/prospects/check-duplicate", { params: { name, exclude_id: excludeId || undefined } }).then((r) => r.data),
 };
 
 // ─── Service subscriptions (recurring services per entity) ────────────

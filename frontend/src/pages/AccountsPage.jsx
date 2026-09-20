@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { accountsApi, casesApi, usersApi, amlApi } from "../api/endpoints";
 import { Icon, Badge, Modal, Field, Input, Select, MultiSelect, CountrySelect, Spinner, ErrorBanner } from "../components/ui";
 import AccountPartyModal from "../components/AccountPartyModal";
+import DuplicateWarning from "../components/DuplicateWarning";
 import {
   fmt, REGULATOR_OPTIONS, TAG_OPTIONS, SERVICES_OBTAINED_OPTIONS,
   PROFILE_STATUS_OPTIONS, AML_CLASSIFICATION_OPTIONS,
@@ -399,6 +400,7 @@ export default function AccountsPage() {
             <Field label={form.account_type === "Individual" ? "Full Name (as per passport) *" : "Company Name *"}>
               <Input value={form.company_name} onChange={(e) => setForm({ ...form, company_name: e.target.value })} placeholder={form.account_type === "Individual" ? "e.g. John Smith" : "e.g. Al Futtaim Group"} />
             </Field>
+            <DuplicateWarning name={form.company_name} excludeId={form._id} checkFn={accountsApi.checkDuplicate} active={modal === "new"} />
             {form.account_type !== "Individual" && (
               <>
                 <div className="grid grid-cols-2 gap-3">

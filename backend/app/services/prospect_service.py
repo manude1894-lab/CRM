@@ -4,10 +4,11 @@ from typing import Optional
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
 
-from app.models import Prospect, ProspectStatus, User, UserRole
-from app.schemas.prospect import ProspectCreate, ProspectUpdate, ProspectConvertRequest
+from app.models import Prospect, ProspectStatus, User, UserRole, Account
+from app.schemas.prospect import ProspectCreate, ProspectUpdate, ProspectConvertRequest, DuplicateMatch
 from app.schemas.case import CaseCreate
 from app.utils.uid import next_uid
+from app.utils.fuzzy_match import top_matches
 from app.services import case_service
 
 
@@ -31,6 +32,22 @@ def get_prospect(db: Session, prospect_id: int, user: User) -> Prospect:
     if user.role == UserRole.RM and p.owner_id != user.id:
         raise HTTPException(status_code=403, detail="Access denied")
     return p
+
+
+def find_similar(db: Session, name: str, exclude_id: Optional[int] = None) -> list[DuplicateMatch]:
+    prospect_candidates = db.query(Prospect.id, Prospect.company_name)
+    if exclude_id:
+        prospect_candidates = prospect_candidates.filter(Prospect.id != exclude_id)
+    matches = [
+        DuplicateMatch(id=cid, company_name=cname, score=score, source="prospect")
+        for cid, cname, score in top_matches(name, prospect_candidates.all())
+    ]
+    matches += [
+        DuplicateMatch(id=cid, company_name=cname, score=score, source="client")
+        for cid, cname, score in top_matches(name, db.query(Account.id, Account.company_name).all())
+    ]
+    matches.sort(key=lambda m: m.score, reverse=True)
+    return matches[:5]
 
 
 def create_prospect(db: Session, data: ProspectCreate, user: User) -> Prospect:

@@ -33,6 +33,12 @@ class AccountImportRow(BaseModel):
     kyc_status: Optional[str] = None
 
 
+class DuplicateMatch(BaseModel):
+    id: int
+    company_name: str
+    score: int
+
+
 class AccountImportRequest(BaseModel):
     rows: list[AccountImportRow]
     dry_run: bool = True

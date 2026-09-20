@@ -7,6 +7,7 @@ from app.database import get_db
 from app.auth.dependencies import get_current_user, require_admin
 from app.models import User
 from app.schemas import AccountCreate, AccountRead, AccountUpdate, AccountImportRequest, AccountImportResponse
+from app.schemas.account import DuplicateMatch
 from app.services import account_service
 
 router = APIRouter(prefix="/accounts", tags=["Accounts"])
@@ -29,6 +30,14 @@ def list_accounts(
     if response is not None:
         response.headers["X-Total-Count"] = str(total)
     return {"items": [AccountRead.model_validate(i) for i in items], "total": total}
+
+
+@router.get("/check-duplicate", response_model=list[DuplicateMatch], summary="Fuzzy-match an in-progress name against existing clients")
+def check_duplicate_account(name: str, exclude_id: Optional[int] = None, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    return [
+        DuplicateMatch(id=cid, company_name=cname, score=score)
+        for cid, cname, score in account_service.find_similar_accounts(db, name, exclude_id)
+    ]
 
 
 @router.get("/{account_id}", response_model=AccountRead)

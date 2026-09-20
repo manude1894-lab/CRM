@@ -8,6 +8,7 @@ from dateutil.relativedelta import relativedelta
 from app.models import Account, Priority, User, UserRole
 from app.schemas.account import AccountCreate, AccountUpdate, AccountImportRow, AccountImportRowResult
 from app.utils.uid import next_uid
+from app.utils.fuzzy_match import top_matches
 
 # Client-database spec §24.6 — review cadence by risk rating.
 _AML_REVIEW_CADENCE_YEARS = {"High": 1, "Medium": 2, "Low": 3}
@@ -55,6 +56,13 @@ def list_accounts(
     total = query.count()
     items = query.order_by(Account.total_invoiced_amount.desc()).offset(skip).limit(limit).all()
     return items, total
+
+
+def find_similar_accounts(db: Session, name: str, exclude_id: Optional[int] = None) -> list[tuple[int, str, int]]:
+    query = db.query(Account.id, Account.company_name)
+    if exclude_id:
+        query = query.filter(Account.id != exclude_id)
+    return top_matches(name, query.all())
 
 
 def get_account(db: Session, account_id: int, user: User) -> Account:
