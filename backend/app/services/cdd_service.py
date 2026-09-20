@@ -4,7 +4,7 @@ from datetime import date, datetime, timedelta, timezone
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
 
-from app.models import CDDRecord, CaseDocument, Case, CaseStatus, DocumentStatus, User, UserRole, Director, Shareholder, UBO
+from app.models import CDDRecord, CaseDocument, Case, CaseStage, CaseStatus, DocumentStatus, User, UserRole, Director, Shareholder, UBO
 from app.schemas.cdd import CDDRecordUpdate, CDDReviewRequest, CaseDocumentCreate, CaseDocumentUpdate
 from app.services import notification_service
 
@@ -57,6 +57,15 @@ def review_cdd(db: Session, case_id: int, data: CDDReviewRequest, user: User) ->
         cdd.rejection_reason = None
         if case:
             case.status = CaseStatus.ACTIVE.value
+            if case.stage == CaseStage.CDD_KYC_IN_REVIEW:
+                case.stage = CaseStage.CDD_APPROVED
+                notification_service.notify_role(
+                    db, UserRole.ADMIN,
+                    message=f"CDD approved for case {case.case_uid} ({case.company_name}) — ready to raise invoice.",
+                    link=f"/cases/{case.id}",
+                    notification_type="cdd_approved",
+                    case_id=case.id,
+                )
     else:
         if not data.rejection_reason:
             raise HTTPException(status_code=400, detail="rejection_reason is required when rejecting CDD")
