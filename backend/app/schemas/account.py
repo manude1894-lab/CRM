@@ -18,6 +18,7 @@ class AddressBlock(BaseModel):
 
 
 class AccountImportRow(BaseModel):
+    account_type: Optional[str] = None
     company_name: str = Field(..., min_length=1, max_length=255)
     industry: Optional[str] = None
     country: Optional[str] = None
@@ -31,6 +32,53 @@ class AccountImportRow(BaseModel):
     license_number: Optional[str] = None
     risk_rating: Optional[str] = None
     kyc_status: Optional[str] = None
+    spoc_id: Optional[int] = None
+
+    licensing_authority: Optional[str] = None
+    license_start_date: Optional[date] = None
+    license_expiry_date: Optional[date] = None
+    is_regulated: Optional[bool] = None
+    regulator_name: Optional[str] = None
+    regulator_other: Optional[str] = None
+    license_category: Optional[str] = None
+    license_activities: Optional[str] = None
+
+    registered_address: Optional[AddressBlock] = None
+    operating_address: Optional[AddressBlock] = None
+
+    trn_vat_number: Optional[str] = None
+    corp_tax_registered: Optional[bool] = None
+    corp_tax_registration_number: Optional[str] = None
+
+    financial_year_end: Optional[str] = None
+
+    has_introducer: Optional[bool] = None
+    introducer_name: Optional[str] = None
+
+    services_obtained: Optional[list[str]] = None
+
+    profile_status: Optional[str] = None
+
+    engagement_letter_signed: Optional[bool] = None
+    engagement_letter_valid_until: Optional[date] = None
+
+    aml_classification: Optional[str] = None
+    edd_reason: Optional[str] = None
+    cdd_completion_date: Optional[date] = None
+
+    date_of_birth: Optional[date] = None
+    nationality: Optional[str] = None
+    passport_number: Optional[str] = None
+    passport_expiry_date: Optional[date] = None
+    occupation: Optional[str] = None
+    source_of_funds: Optional[str] = None
+    source_of_wealth: Optional[str] = None
+    country_of_residence: Optional[str] = None
+    residential_address: Optional[AddressBlock] = None
+    individual_mobile: Optional[str] = None
+    individual_email: Optional[str] = None
+    uae_visa_number: Optional[str] = None
+    uae_visa_expiry: Optional[date] = None
 
 
 class DuplicateMatch(BaseModel):

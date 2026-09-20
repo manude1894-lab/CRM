@@ -48,7 +48,12 @@ const AddressFields = ({ value, onChange }) => {
   );
 };
 
+const IMPORT_ADDRESS_COL_KEYS = { "line 1": "line1", "line 2": "line2", "landmark": "landmark", "city": "city", "zip": "zip", "p.o. box": "po_box", "country": "country" };
+const IMPORT_BOOLEAN_FIELDS = new Set(["is_regulated", "corp_tax_registered", "has_introducer", "engagement_letter_signed"]);
+const IMPORT_TRUTHY = new Set(["true", "yes", "1"]);
+
 const IMPORT_HEADER_MAP = {
+  "client type": "account_type",
   "company name": "company_name",
   "industry": "industry",
   "country": "country",
@@ -56,11 +61,51 @@ const IMPORT_HEADER_MAP = {
   "key contacts": "key_contacts",
   "strategic priority": "strategic_priority",
   "existing relationship": "existing_relationship",
+  "tags": "tags",
   "registration number": "registration_number",
   "license number": "license_number",
   "risk rating": "risk_rating",
   "kyc status": "kyc_status",
+  "spoc": "__spoc_name",
+  "licensing authority": "licensing_authority",
+  "license activities": "license_activities",
+  "license start date": "license_start_date",
+  "license expiry date": "license_expiry_date",
+  "is regulated": "is_regulated",
+  "regulator": "regulator_name",
+  "other regulator": "regulator_other",
+  "license category": "license_category",
+  "trn/vat number": "trn_vat_number",
+  "corp tax registered": "corp_tax_registered",
+  "corp tax registration no.": "corp_tax_registration_number",
+  "financial year end": "financial_year_end",
+  "has introducer": "has_introducer",
+  "introducer name": "introducer_name",
+  "services obtained": "__services_obtained",
+  "profile status": "profile_status",
+  "engagement letter signed": "engagement_letter_signed",
+  "engagement letter valid until": "engagement_letter_valid_until",
+  "aml classification": "aml_classification",
+  "edd reason": "edd_reason",
+  "cdd completion date": "cdd_completion_date",
+  "date of birth": "date_of_birth",
+  "nationality": "nationality",
+  "passport number": "passport_number",
+  "passport expiry": "passport_expiry_date",
+  "occupation": "occupation",
+  "source of funds": "source_of_funds",
+  "source of wealth": "source_of_wealth",
+  "country of residence": "country_of_residence",
+  "individual mobile": "individual_mobile",
+  "individual email": "individual_email",
+  "uae visa number": "uae_visa_number",
+  "uae visa expiry": "uae_visa_expiry",
 };
+for (const [prefix, target] of [["registered address", "registered_address"], ["operating address", "operating_address"], ["residential address", "residential_address"]]) {
+  for (const [col, subKey] of Object.entries(IMPORT_ADDRESS_COL_KEYS)) {
+    IMPORT_HEADER_MAP[`${prefix} ${col}`] = `${target}.${subKey}`;
+  }
+}
 
 // Minimal RFC-4180-ish CSV parser: handles quoted fields, escaped "" quotes, commas/newlines inside quotes.
 function parseCSV(text) {
@@ -88,7 +133,20 @@ function parseCSV(text) {
     const obj = {};
     headers.forEach((h, i) => {
       const key = IMPORT_HEADER_MAP[h];
-      if (key) obj[key] = (r[i] || "").trim();
+      const value = (r[i] || "").trim();
+      if (!key || !value) return;
+      if (key.includes(".")) {
+        const [parent, child] = key.split(".");
+        obj[parent] = { ...(obj[parent] || {}), [child]: value };
+      } else if (key === "__services_obtained") {
+        obj.services_obtained = value.split(";").map((s) => s.trim()).filter(Boolean);
+      } else if (key === "__spoc_name") {
+        obj.__spoc_name = value;
+      } else if (IMPORT_BOOLEAN_FIELDS.has(key)) {
+        obj[key] = IMPORT_TRUTHY.has(value.toLowerCase());
+      } else {
+        obj[key] = value;
+      }
     });
     return obj;
   });
@@ -303,7 +361,14 @@ export default function AccountsPage({ initialAccountId } = {}) {
 
   const handleImportFile = async (file) => {
     const text = await file.text();
-    const parsed = parseCSV(text).filter((r) => r.company_name);
+    const parsed = parseCSV(text).filter((r) => r.company_name).map((row) => {
+      const { __spoc_name, ...rest } = row;
+      if (__spoc_name) {
+        const match = users.find((u) => u.name.toLowerCase() === __spoc_name.toLowerCase());
+        if (match) rest.spoc_id = match.id;
+      }
+      return rest;
+    });
     if (parsed.length === 0) { alert("No rows with a Company Name found in that CSV."); return; }
     try {
       setImporting(true);
