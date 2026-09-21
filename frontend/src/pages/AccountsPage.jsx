@@ -85,6 +85,7 @@ const IMPORT_HEADER_MAP = {
   "has introducer": "has_introducer",
   "introducer name": "introducer_name",
   "services obtained": "__services_obtained",
+  "nature of services sought": "__nature_of_services_sought",
   "profile status": "profile_status",
   "engagement letter signed": "engagement_letter_signed",
   "engagement letter valid until": "engagement_letter_valid_until",
@@ -146,6 +147,8 @@ function parseCSV(text) {
         obj[parent] = { ...(obj[parent] || {}), [child]: value };
       } else if (key === "__services_obtained") {
         obj.services_obtained = value.split(";").map((s) => s.trim()).filter(Boolean);
+      } else if (key === "__nature_of_services_sought") {
+        obj.nature_of_services_sought = value.split(";").map((s) => s.trim()).filter(Boolean);
       } else if (key === "__spoc_name") {
         obj.__spoc_name = value;
       } else if (IMPORT_BOOLEAN_FIELDS.has(key)) {
@@ -222,7 +225,7 @@ export default function AccountsPage({ initialAccountId } = {}) {
     source_of_funds: "", source_of_wealth: "", country_of_residence: "",
     residential_address: { ...BLANK_ADDRESS },
     individual_mobile: "", individual_mobile_country_code: "+971", individual_mobile_number: "",
-    individual_email: "", uae_visa_number: "", uae_visa_expiry: "",
+    individual_email: "", uae_visa_number: "", uae_visa_expiry: "", nature_of_services_sought: [],
   };
 
   const openNew = () => { setForm(BLANK); setModal("new"); };
@@ -252,6 +255,7 @@ export default function AccountsPage({ initialAccountId } = {}) {
       individual_mobile: a.individual_mobile || "", individual_mobile_country_code: a.individual_mobile_country_code || "",
       individual_mobile_number: a.individual_mobile_number || "", individual_email: a.individual_email || "",
       uae_visa_number: a.uae_visa_number || "", uae_visa_expiry: a.uae_visa_expiry || "",
+      nature_of_services_sought: a.nature_of_services_sought || [],
       _id: a.id,
     });
     setModal("edit");
@@ -341,7 +345,7 @@ export default function AccountsPage({ initialAccountId } = {}) {
       "Date of Birth", "Country of Birth", "Nationality", "Passport Number", "Passport Expiry", "Occupation",
       "Source of Funds", "Source of Wealth", "Country of Residence",
       ...ADDRESS_COLS.map((c) => `Residential Address ${c}`),
-      "Individual Mobile Country Code", "Individual Mobile Number", "Individual Email", "UAE Visa Number", "UAE Visa Expiry",
+      "Individual Mobile Country Code", "Individual Mobile Number", "Individual Email", "UAE Visa Number", "UAE Visa Expiry", "Nature of Services Sought",
       "Total Cases", "Total Invoiced Amount", "Created At", "Updated At",
     ];
     const rows = accounts.map((a) => [
@@ -360,6 +364,7 @@ export default function AccountsPage({ initialAccountId } = {}) {
       a.source_of_funds, a.source_of_wealth, a.country_of_residence,
       ...addrRow(a.residential_address),
       a.individual_mobile_country_code, a.individual_mobile_number, a.individual_email, a.uae_visa_number, a.uae_visa_expiry,
+      (a.nature_of_services_sought || []).join("; "),
       a.total_cases, a.total_invoiced_amount, a.created_at, a.updated_at,
     ]);
     const csv = [headers, ...rows].map((r) => r.map((v) => `"${(v ?? "").toString().replace(/"/g, '""')}"`).join(",")).join("\n");
@@ -733,7 +738,7 @@ export default function AccountsPage({ initialAccountId } = {}) {
             )}
 
             {form.account_type === "Individual" && (
-              <Section title="Individual Details" hasData={!!(form.date_of_birth || form.country_of_birth || form.nationality || form.passport_number || form.occupation || form.individual_mobile_number || form.individual_email || form.country_of_residence || form.source_of_funds || form.source_of_wealth || form.is_pep)}>
+              <Section title="Individual Details" hasData={!!(form.date_of_birth || form.country_of_birth || form.nationality || form.passport_number || form.occupation || form.individual_mobile_number || form.individual_email || form.country_of_residence || form.source_of_funds || form.source_of_wealth || form.is_pep || (form.nature_of_services_sought || []).length > 0)}>
                 <div className="grid grid-cols-2 gap-3">
                   <Field label="Date of Birth"><Input type="date" value={form.date_of_birth || ""} onChange={(e) => setForm({ ...form, date_of_birth: e.target.value })} /></Field>
                   <Field label="Country of Birth"><CountrySelect value={form.country_of_birth} onChange={(e) => setForm({ ...form, country_of_birth: e.target.value })} countries={countries} /></Field>
@@ -755,6 +760,9 @@ export default function AccountsPage({ initialAccountId } = {}) {
                 </Field>
                 <Field label="Source of Funds"><Input value={form.source_of_funds} onChange={(e) => setForm({ ...form, source_of_funds: e.target.value })} placeholder="e.g. Salary, business income" /></Field>
                 <Field label="Source of Wealth"><Input value={form.source_of_wealth} onChange={(e) => setForm({ ...form, source_of_wealth: e.target.value })} placeholder="e.g. Accumulated savings, inheritance" /></Field>
+                <Field label="Nature of Services Sought">
+                  <MultiSelect options={SERVICES_OBTAINED_OPTIONS} value={form.nature_of_services_sought} onChange={(v) => setForm({ ...form, nature_of_services_sought: v })} />
+                </Field>
 
                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mt-3 mb-1.5">Residential Address</p>
                 <AddressFields value={form.residential_address} onChange={(v) => setForm({ ...form, residential_address: v })} />

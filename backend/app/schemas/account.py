@@ -83,6 +83,7 @@ class AccountImportRow(BaseModel):
     individual_email: Optional[str] = None
     uae_visa_number: Optional[str] = None
     uae_visa_expiry: Optional[date] = None
+    nature_of_services_sought: Optional[list[str]] = None
 
 
 class DuplicateMatch(BaseModel):
@@ -194,6 +195,7 @@ class AccountBase(BaseModel):
     individual_email: Optional[str] = None
     uae_visa_number: Optional[str] = None
     uae_visa_expiry: Optional[date] = None
+    nature_of_services_sought: Optional[list[str]] = None
 
 
 class AccountCreate(AccountBase):
@@ -269,6 +271,7 @@ class AccountUpdate(BaseModel):
     individual_email: Optional[str] = None
     uae_visa_number: Optional[str] = None
     uae_visa_expiry: Optional[date] = None
+    nature_of_services_sought: Optional[list[str]] = None
 
 
 class AccountRead(AccountBase):

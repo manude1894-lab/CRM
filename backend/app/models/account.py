@@ -100,6 +100,7 @@ class Account(Base):
     individual_email = Column(String(255), nullable=True)
     uae_visa_number = Column(String(50), nullable=True)
     uae_visa_expiry = Column(Date, nullable=True)
+    nature_of_services_sought = Column(JSON, nullable=True)  # list[str] — client spec §23.13
 
     # Computed / denormalized
     total_cases = Column(Integer, default=0, nullable=False)
