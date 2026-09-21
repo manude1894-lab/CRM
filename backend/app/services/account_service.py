@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import or_
 from fastapi import HTTPException
 from typing import Optional
+from decimal import Decimal
 from dateutil.relativedelta import relativedelta
 
 from app.models import Account, Priority, User, UserRole, Case, CaseStatus, Invoice, InvoiceLedgerStatus
@@ -76,10 +77,31 @@ def get_account(db: Session, account_id: int, user: User) -> Account:
     return acc
 
 
+def _assert_shareholder_ownership_complete(account: Account) -> None:
+    """Client spec §20 — Shareholder effective ownership must total 100% before a Corporate
+    profile can be finalized (moved to Approved/Active). Individual accounts are exempt —
+    there's no Shareholder concept for a person."""
+    if account.account_type != "Corporate":
+        return
+    total = sum((p.effective_ownership_percent or Decimal("0")) for p in account.parties if p.party_role == "Shareholder")
+    if abs(total - Decimal("100")) > Decimal("0.01"):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Shareholder effective ownership must total 100% before the profile can be Approved/Active (currently {total}%).",
+        )
+
+
 def create_account(db: Session, data: AccountCreate, user: User) -> Account:
     existing = db.query(Account).filter(Account.company_name == data.company_name).first()
     if existing:
         raise HTTPException(status_code=400, detail="Account with this company name already exists")
+
+    if data.account_type == "Corporate" and data.profile_status in ("Approved", "Active"):
+        # A brand-new account has no parties yet, so ownership can never be complete at creation time.
+        raise HTTPException(
+            status_code=400,
+            detail="Shareholder effective ownership must total 100% before the profile can be Approved/Active (currently 0%).",
+        )
 
     owner_id = data.owner_id or user.id
     payload = data.model_dump(exclude={"owner_id"})
@@ -100,6 +122,8 @@ def update_account(db: Session, account_id: int, data: AccountUpdate, user: User
     update_data = data.model_dump(exclude_unset=True)
     if user.role == UserRole.RM:
         update_data.pop("owner_id", None)
+    if update_data.get("profile_status") in ("Approved", "Active"):
+        _assert_shareholder_ownership_complete(acc)
     for field, value in update_data.items():
         setattr(acc, field, value)
     if "risk_rating" in update_data or "cdd_completion_date" in update_data:
