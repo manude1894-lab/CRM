@@ -6,7 +6,7 @@ import TrackRecordModal from "../components/TrackRecordModal";
 import DuplicateWarning from "../components/DuplicateWarning";
 import {
   fmt, REGULATOR_OPTIONS, TAG_OPTIONS, SERVICES_OBTAINED_OPTIONS,
-  PROFILE_STATUS_OPTIONS, AML_CLASSIFICATION_OPTIONS,
+  PROFILE_STATUS_OPTIONS, AML_CLASSIFICATION_OPTIONS, COUNTRY_CALLING_CODES,
 } from "../utils/constants";
 import { useAuthStore } from "../store/auth";
 
@@ -100,7 +100,9 @@ const IMPORT_HEADER_MAP = {
   "source of funds": "source_of_funds",
   "source of wealth": "source_of_wealth",
   "country of residence": "country_of_residence",
-  "individual mobile": "individual_mobile",
+  "individual mobile": "individual_mobile", // legacy header, kept for older exported files
+  "individual mobile country code": "individual_mobile_country_code",
+  "individual mobile number": "individual_mobile_number",
   "individual email": "individual_email",
   "uae visa number": "uae_visa_number",
   "uae visa expiry": "uae_visa_expiry",
@@ -219,7 +221,8 @@ export default function AccountsPage({ initialAccountId } = {}) {
     date_of_birth: "", country_of_birth: "", nationality: "", passport_number: "", passport_expiry_date: "", occupation: "",
     source_of_funds: "", source_of_wealth: "", country_of_residence: "",
     residential_address: { ...BLANK_ADDRESS },
-    individual_mobile: "", individual_email: "", uae_visa_number: "", uae_visa_expiry: "",
+    individual_mobile: "", individual_mobile_country_code: "+971", individual_mobile_number: "",
+    individual_email: "", uae_visa_number: "", uae_visa_expiry: "",
   };
 
   const openNew = () => { setForm(BLANK); setModal("new"); };
@@ -246,7 +249,8 @@ export default function AccountsPage({ initialAccountId } = {}) {
       passport_expiry_date: a.passport_expiry_date || "", occupation: a.occupation || "",
       source_of_funds: a.source_of_funds || "", source_of_wealth: a.source_of_wealth || "", country_of_residence: a.country_of_residence || "",
       residential_address: { ...BLANK_ADDRESS, ...(a.residential_address || {}) },
-      individual_mobile: a.individual_mobile || "", individual_email: a.individual_email || "",
+      individual_mobile: a.individual_mobile || "", individual_mobile_country_code: a.individual_mobile_country_code || "",
+      individual_mobile_number: a.individual_mobile_number || "", individual_email: a.individual_email || "",
       uae_visa_number: a.uae_visa_number || "", uae_visa_expiry: a.uae_visa_expiry || "",
       _id: a.id,
     });
@@ -337,7 +341,7 @@ export default function AccountsPage({ initialAccountId } = {}) {
       "Date of Birth", "Country of Birth", "Nationality", "Passport Number", "Passport Expiry", "Occupation",
       "Source of Funds", "Source of Wealth", "Country of Residence",
       ...ADDRESS_COLS.map((c) => `Residential Address ${c}`),
-      "Individual Mobile", "Individual Email", "UAE Visa Number", "UAE Visa Expiry",
+      "Individual Mobile Country Code", "Individual Mobile Number", "Individual Email", "UAE Visa Number", "UAE Visa Expiry",
       "Total Cases", "Total Invoiced Amount", "Created At", "Updated At",
     ];
     const rows = accounts.map((a) => [
@@ -355,7 +359,7 @@ export default function AccountsPage({ initialAccountId } = {}) {
       a.date_of_birth, a.country_of_birth, a.nationality, a.passport_number, a.passport_expiry_date, a.occupation,
       a.source_of_funds, a.source_of_wealth, a.country_of_residence,
       ...addrRow(a.residential_address),
-      a.individual_mobile, a.individual_email, a.uae_visa_number, a.uae_visa_expiry,
+      a.individual_mobile_country_code, a.individual_mobile_number, a.individual_email, a.uae_visa_number, a.uae_visa_expiry,
       a.total_cases, a.total_invoiced_amount, a.created_at, a.updated_at,
     ]);
     const csv = [headers, ...rows].map((r) => r.map((v) => `"${(v ?? "").toString().replace(/"/g, '""')}"`).join(",")).join("\n");
@@ -729,7 +733,7 @@ export default function AccountsPage({ initialAccountId } = {}) {
             )}
 
             {form.account_type === "Individual" && (
-              <Section title="Individual Details" hasData={!!(form.date_of_birth || form.country_of_birth || form.nationality || form.passport_number || form.occupation || form.individual_mobile || form.individual_email || form.country_of_residence || form.source_of_funds || form.source_of_wealth || form.is_pep)}>
+              <Section title="Individual Details" hasData={!!(form.date_of_birth || form.country_of_birth || form.nationality || form.passport_number || form.occupation || form.individual_mobile_number || form.individual_email || form.country_of_residence || form.source_of_funds || form.source_of_wealth || form.is_pep)}>
                 <div className="grid grid-cols-2 gap-3">
                   <Field label="Date of Birth"><Input type="date" value={form.date_of_birth || ""} onChange={(e) => setForm({ ...form, date_of_birth: e.target.value })} /></Field>
                   <Field label="Country of Birth"><CountrySelect value={form.country_of_birth} onChange={(e) => setForm({ ...form, country_of_birth: e.target.value })} countries={countries} /></Field>
@@ -737,10 +741,18 @@ export default function AccountsPage({ initialAccountId } = {}) {
                   <Field label="Passport Number"><Input value={form.passport_number} onChange={(e) => setForm({ ...form, passport_number: e.target.value })} /></Field>
                   <Field label="Passport Expiry"><Input type="date" value={form.passport_expiry_date || ""} onChange={(e) => setForm({ ...form, passport_expiry_date: e.target.value })} /></Field>
                   <Field label="Occupation"><Input value={form.occupation} onChange={(e) => setForm({ ...form, occupation: e.target.value })} /></Field>
-                  <Field label="Mobile"><Input value={form.individual_mobile} onChange={(e) => setForm({ ...form, individual_mobile: e.target.value })} /></Field>
                   <Field label="Email"><Input type="email" value={form.individual_email} onChange={(e) => setForm({ ...form, individual_email: e.target.value })} /></Field>
                   <Field label="Country of Residence"><CountrySelect value={form.country_of_residence} onChange={(e) => setForm({ ...form, country_of_residence: e.target.value })} countries={countries} /></Field>
                 </div>
+                <Field label="Mobile">
+                  <div className="flex gap-2">
+                    <Select value={form.individual_mobile_country_code || ""} onChange={(e) => setForm({ ...form, individual_mobile_country_code: e.target.value })} className="w-40 flex-shrink-0">
+                      <option value="">Code</option>
+                      {COUNTRY_CALLING_CODES.map((c) => <option key={c.code} value={c.code}>{c.label}</option>)}
+                    </Select>
+                    <Input value={form.individual_mobile_number || ""} onChange={(e) => setForm({ ...form, individual_mobile_number: e.target.value })} maxLength={12} placeholder="e.g. 501234567" />
+                  </div>
+                </Field>
                 <Field label="Source of Funds"><Input value={form.source_of_funds} onChange={(e) => setForm({ ...form, source_of_funds: e.target.value })} placeholder="e.g. Salary, business income" /></Field>
                 <Field label="Source of Wealth"><Input value={form.source_of_wealth} onChange={(e) => setForm({ ...form, source_of_wealth: e.target.value })} placeholder="e.g. Accumulated savings, inheritance" /></Field>
 

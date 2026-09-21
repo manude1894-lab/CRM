@@ -302,3 +302,48 @@ export const PROFILE_STATUS_OPTIONS = [
 ];
 
 export const AML_CLASSIFICATION_OPTIONS = ["Standard", "SDD", "EDD"];
+
+// Curated (not globally exhaustive) list of country calling codes for the split
+// Contact Mobile field (client spec §15) — UAE first, then GCC, the offshore
+// jurisdictions this CRM services, and major world markets.
+export const COUNTRY_CALLING_CODES = [
+  { code: "+971", label: "+971 (UAE)" },
+  { code: "+966", label: "+966 (Saudi Arabia)" },
+  { code: "+974", label: "+974 (Qatar)" },
+  { code: "+973", label: "+973 (Bahrain)" },
+  { code: "+968", label: "+968 (Oman)" },
+  { code: "+965", label: "+965 (Kuwait)" },
+  { code: "+1284", label: "+1284 (BVI)" },
+  { code: "+1345", label: "+1345 (Cayman Islands)" },
+  { code: "+248", label: "+248 (Seychelles)" },
+  { code: "+44", label: "+44 (UK / Jersey / Guernsey / Isle of Man)" },
+  { code: "+230", label: "+230 (Mauritius)" },
+  { code: "+1", label: "+1 (US / Canada)" },
+  { code: "+91", label: "+91 (India)" },
+  { code: "+65", label: "+65 (Singapore)" },
+  { code: "+86", label: "+86 (China)" },
+  { code: "+81", label: "+81 (Japan)" },
+  { code: "+852", label: "+852 (Hong Kong)" },
+  { code: "+27", label: "+27 (South Africa)" },
+  { code: "+20", label: "+20 (Egypt)" },
+  { code: "+961", label: "+961 (Lebanon)" },
+  { code: "+962", label: "+962 (Jordan)" },
+  { code: "+90", label: "+90 (Turkey)" },
+  { code: "+33", label: "+33 (France)" },
+  { code: "+49", label: "+49 (Germany)" },
+  { code: "+41", label: "+41 (Switzerland)" },
+  { code: "+39", label: "+39 (Italy)" },
+  { code: "+34", label: "+34 (Spain)" },
+  { code: "+31", label: "+31 (Netherlands)" },
+  { code: "+353", label: "+353 (Ireland)" },
+  { code: "+61", label: "+61 (Australia)" },
+  { code: "+64", label: "+64 (New Zealand)" },
+  { code: "+92", label: "+92 (Pakistan)" },
+  { code: "+880", label: "+880 (Bangladesh)" },
+  { code: "+94", label: "+94 (Sri Lanka)" },
+  { code: "+63", label: "+63 (Philippines)" },
+  { code: "+60", label: "+60 (Malaysia)" },
+  { code: "+62", label: "+62 (Indonesia)" },
+  { code: "+7", label: "+7 (Russia)" },
+  { code: "+55", label: "+55 (Brazil)" },
+];

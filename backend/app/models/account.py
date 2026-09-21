@@ -94,7 +94,9 @@ class Account(Base):
     source_of_wealth = Column(String(255), nullable=True)
     country_of_residence = Column(String(120), nullable=True)
     residential_address = Column(JSON, nullable=True)  # AddressBlock shape, reused from Phase A
-    individual_mobile = Column(String(50), nullable=True)
+    individual_mobile = Column(String(50), nullable=True)  # superseded by the split fields below (client spec §15)
+    individual_mobile_country_code = Column(String(6), nullable=True)
+    individual_mobile_number = Column(String(12), nullable=True)
     individual_email = Column(String(255), nullable=True)
     uae_visa_number = Column(String(50), nullable=True)
     uae_visa_expiry = Column(Date, nullable=True)

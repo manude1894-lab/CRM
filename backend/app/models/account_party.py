@@ -42,7 +42,9 @@ class AccountParty(Base):
     id_or_license_expiry = Column(Date, nullable=True)
     country_of_incorp_or_birth = Column(String(120), nullable=True)
 
-    mobile = Column(String(50), nullable=True)
+    mobile = Column(String(50), nullable=True)  # superseded by mobile_country_code/mobile_number below (client spec §15)
+    mobile_country_code = Column(String(6), nullable=True)
+    mobile_number = Column(String(12), nullable=True)
     email = Column(String(255), nullable=True)
 
     country_of_residence = Column(String(120), nullable=True)

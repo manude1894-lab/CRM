@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { accountPartiesApi, amlApi } from "../api/endpoints";
 import { Icon, Modal, Field, Input, Select, CountrySelect, Spinner, ErrorBanner } from "./ui";
+import { COUNTRY_CALLING_CODES } from "../utils/constants";
 
 const ROLES = ["Shareholder", "Director", "Authorised Signatory"];
 
@@ -13,7 +14,8 @@ const emptyParty = (role) => ({
   dob_or_incorp_date: "",
   id_or_license_expiry: "",
   country_of_incorp_or_birth: "",
-  mobile: "",
+  mobile_country_code: "+971",
+  mobile_number: "",
   email: "",
   country_of_residence: "",
   residential_address: { ...BLANK_ADDRESS },
@@ -193,10 +195,16 @@ function PartyForm({ form, setForm, countries, onCancel, onSave }) {
         </Field>
       )}
 
-      <div className="grid grid-cols-2 gap-3">
-        <Field label="Contact Mobile"><Input value={form.mobile || ""} onChange={set(setForm, "mobile")} /></Field>
-        <Field label="Contact Email"><Input type="email" value={form.email || ""} onChange={set(setForm, "email")} /></Field>
-      </div>
+      <Field label="Contact Mobile">
+        <div className="flex gap-2">
+          <Select value={form.mobile_country_code || ""} onChange={set(setForm, "mobile_country_code")} className="w-40 flex-shrink-0">
+            <option value="">Code</option>
+            {COUNTRY_CALLING_CODES.map((c) => <option key={c.code} value={c.code}>{c.label}</option>)}
+          </Select>
+          <Input value={form.mobile_number || ""} onChange={set(setForm, "mobile_number")} maxLength={12} placeholder="e.g. 501234567" />
+        </div>
+      </Field>
+      <Field label="Contact Email"><Input type="email" value={form.email || ""} onChange={set(setForm, "email")} /></Field>
 
       <Field label="Country of Residence">
         <CountrySelect value={form.country_of_residence} onChange={set(setForm, "country_of_residence")} countries={countries} />

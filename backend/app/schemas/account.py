@@ -78,6 +78,8 @@ class AccountImportRow(BaseModel):
     country_of_residence: Optional[str] = None
     residential_address: Optional[AddressBlock] = None
     individual_mobile: Optional[str] = None
+    individual_mobile_country_code: Optional[str] = None
+    individual_mobile_number: Optional[str] = Field(None, max_length=12)
     individual_email: Optional[str] = None
     uae_visa_number: Optional[str] = None
     uae_visa_expiry: Optional[date] = None
@@ -187,6 +189,8 @@ class AccountBase(BaseModel):
     country_of_residence: Optional[str] = None
     residential_address: Optional[AddressBlock] = None
     individual_mobile: Optional[str] = None
+    individual_mobile_country_code: Optional[str] = None
+    individual_mobile_number: Optional[str] = Field(None, max_length=12)
     individual_email: Optional[str] = None
     uae_visa_number: Optional[str] = None
     uae_visa_expiry: Optional[date] = None
@@ -260,6 +264,8 @@ class AccountUpdate(BaseModel):
     country_of_residence: Optional[str] = None
     residential_address: Optional[AddressBlock] = None
     individual_mobile: Optional[str] = None
+    individual_mobile_country_code: Optional[str] = None
+    individual_mobile_number: Optional[str] = Field(None, max_length=12)
     individual_email: Optional[str] = None
     uae_visa_number: Optional[str] = None
     uae_visa_expiry: Optional[date] = None
