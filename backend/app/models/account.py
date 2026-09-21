@@ -84,6 +84,7 @@ class Account(Base):
 
     # Individual Details (Phase C) — populated only when account_type == "Individual"
     date_of_birth = Column(Date, nullable=True)
+    country_of_birth = Column(String(120), nullable=True)
     nationality = Column(String(120), nullable=True)
     passport_number = Column(String(50), nullable=True)
     passport_expiry_date = Column(Date, nullable=True)

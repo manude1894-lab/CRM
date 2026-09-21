@@ -55,6 +55,11 @@ export default function AdminPage() {
     catch (e) { alert(e.response?.data?.detail || "Failed to delete department"); }
   };
 
+  const toggleDepartmentActive = async (d) => {
+    try { await departmentsApi.update(d.id, { is_active: !d.is_active }); load(); }
+    catch (e) { alert(e.response?.data?.detail || "Failed to update department status"); }
+  };
+
   if (!isAdmin) {
     return (
       <div className="flex items-center justify-center h-48 text-gray-500">
@@ -165,16 +170,23 @@ export default function AdminPage() {
           <div className="space-y-1.5 mb-3">
             {departments.length === 0 && <p className="text-xs text-gray-400">No departments yet.</p>}
             {departments.map((d) => (
-              <div key={d.id} className="flex items-center justify-between p-1.5 bg-gray-50 rounded-lg">
+              <div key={d.id} className={`flex items-center justify-between p-1.5 rounded-lg ${d.is_active ? "bg-gray-50" : "bg-gray-50 opacity-60"}`}>
                 {editingDeptId === d.id ? (
                   <input autoFocus value={editingDeptName} onChange={(e) => setEditingDeptName(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && saveDepartmentRename(d.id)}
                     onBlur={() => saveDepartmentRename(d.id)}
                     className="text-xs border border-gray-200 rounded px-1.5 py-1 flex-1 mr-2" />
                 ) : (
-                  <span className="text-xs text-gray-700">{d.name}</span>
+                  <span className="text-xs text-gray-700 flex items-center gap-1.5">
+                    {d.name}
+                    {!d.is_active && <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-200 text-gray-500">Inactive</span>}
+                  </span>
                 )}
                 <div className="flex gap-1">
+                  <button onClick={() => toggleDepartmentActive(d)} title={d.is_active ? "Deactivate" : "Activate"}
+                    className={`p-1 rounded hover:bg-gray-100 ${d.is_active ? "text-green-500" : "text-gray-400"}`}>
+                    <Icon name="check" size={12} />
+                  </button>
                   <button onClick={() => { setEditingDeptId(d.id); setEditingDeptName(d.name); }} className="p-1 rounded hover:bg-brand-50 text-gray-400 hover:text-brand-600">
                     <Icon name="edit" size={12} />
                   </button>
@@ -233,7 +245,9 @@ export default function AdminPage() {
           <Field label="Department">
             <Select value={form.department_id || ""} onChange={(e) => setForm((p) => ({ ...p, department_id: e.target.value }))}>
               <option value="">— None —</option>
-              {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+              {departments.filter((d) => d.is_active || d.id === form.department_id).map((d) => (
+                <option key={d.id} value={d.id}>{d.name}{!d.is_active ? " (Inactive)" : ""}</option>
+              ))}
             </Select>
           </Field>
           <Field label="Title">

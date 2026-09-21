@@ -63,10 +63,11 @@ class AccountImportRow(BaseModel):
     engagement_letter_valid_until: Optional[date] = None
 
     aml_classification: Optional[str] = None
-    edd_reason: Optional[str] = None
+    edd_reason: Optional[str] = Field(None, max_length=25)
     cdd_completion_date: Optional[date] = None
 
     date_of_birth: Optional[date] = None
+    country_of_birth: Optional[str] = None
     nationality: Optional[str] = None
     passport_number: Optional[str] = None
     passport_expiry_date: Optional[date] = None
@@ -167,13 +168,14 @@ class AccountBase(BaseModel):
     engagement_letter_valid_until: Optional[date] = None
 
     aml_classification: Optional[str] = None
-    edd_reason: Optional[str] = None
+    edd_reason: Optional[str] = Field(None, max_length=25)
     cdd_completion_date: Optional[date] = None
 
     is_pep: Optional[bool] = None  # direct-editable only for Individual accounts (no parties to roll up from)
 
     # Individual Details (Phase C)
     date_of_birth: Optional[date] = None
+    country_of_birth: Optional[str] = None
     nationality: Optional[str] = None
     passport_number: Optional[str] = None
     passport_expiry_date: Optional[date] = None
@@ -239,12 +241,13 @@ class AccountUpdate(BaseModel):
     engagement_letter_valid_until: Optional[date] = None
 
     aml_classification: Optional[str] = None
-    edd_reason: Optional[str] = None
+    edd_reason: Optional[str] = Field(None, max_length=25)
     cdd_completion_date: Optional[date] = None
 
     is_pep: Optional[bool] = None
 
     date_of_birth: Optional[date] = None
+    country_of_birth: Optional[str] = None
     nationality: Optional[str] = None
     passport_number: Optional[str] = None
     passport_expiry_date: Optional[date] = None

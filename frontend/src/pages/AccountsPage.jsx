@@ -90,6 +90,7 @@ const IMPORT_HEADER_MAP = {
   "edd reason": "edd_reason",
   "cdd completion date": "cdd_completion_date",
   "date of birth": "date_of_birth",
+  "country of birth": "country_of_birth",
   "nationality": "nationality",
   "passport number": "passport_number",
   "passport expiry": "passport_expiry_date",
@@ -213,7 +214,7 @@ export default function AccountsPage({ initialAccountId } = {}) {
     engagement_letter_signed: false, engagement_letter_valid_until: "",
     aml_classification: "", edd_reason: "", cdd_completion_date: "",
     is_pep: false,
-    date_of_birth: "", nationality: "", passport_number: "", passport_expiry_date: "", occupation: "",
+    date_of_birth: "", country_of_birth: "", nationality: "", passport_number: "", passport_expiry_date: "", occupation: "",
     source_of_funds: "", source_of_wealth: "", country_of_residence: "",
     residential_address: { ...BLANK_ADDRESS },
     individual_mobile: "", individual_email: "", uae_visa_number: "", uae_visa_expiry: "",
@@ -239,7 +240,7 @@ export default function AccountsPage({ initialAccountId } = {}) {
       aml_classification: a.aml_classification || "", edd_reason: a.edd_reason || "", cdd_completion_date: a.cdd_completion_date || "",
       next_aml_review_date: a.next_aml_review_date || null,
       is_pep: !!a.is_pep,
-      date_of_birth: a.date_of_birth || "", nationality: a.nationality || "", passport_number: a.passport_number || "",
+      date_of_birth: a.date_of_birth || "", country_of_birth: a.country_of_birth || "", nationality: a.nationality || "", passport_number: a.passport_number || "",
       passport_expiry_date: a.passport_expiry_date || "", occupation: a.occupation || "",
       source_of_funds: a.source_of_funds || "", source_of_wealth: a.source_of_wealth || "", country_of_residence: a.country_of_residence || "",
       residential_address: { ...BLANK_ADDRESS, ...(a.residential_address || {}) },
@@ -331,7 +332,7 @@ export default function AccountsPage({ initialAccountId } = {}) {
       "Has Introducer", "Introducer Name", "Services Obtained",
       "Profile Status", "Engagement Letter Signed", "Engagement Letter Valid Until",
       "AML Classification", "EDD Reason", "CDD Completion Date", "Next AML Review Date", "Is PEP",
-      "Date of Birth", "Nationality", "Passport Number", "Passport Expiry", "Occupation",
+      "Date of Birth", "Country of Birth", "Nationality", "Passport Number", "Passport Expiry", "Occupation",
       "Source of Funds", "Source of Wealth", "Country of Residence",
       ...ADDRESS_COLS.map((c) => `Residential Address ${c}`),
       "Individual Mobile", "Individual Email", "UAE Visa Number", "UAE Visa Expiry",
@@ -349,7 +350,7 @@ export default function AccountsPage({ initialAccountId } = {}) {
       a.has_introducer, a.introducer_name, (a.services_obtained || []).join("; "),
       a.profile_status, a.engagement_letter_signed, a.engagement_letter_valid_until,
       a.aml_classification, a.edd_reason, a.cdd_completion_date, a.next_aml_review_date, a.is_pep,
-      a.date_of_birth, a.nationality, a.passport_number, a.passport_expiry_date, a.occupation,
+      a.date_of_birth, a.country_of_birth, a.nationality, a.passport_number, a.passport_expiry_date, a.occupation,
       a.source_of_funds, a.source_of_wealth, a.country_of_residence,
       ...addrRow(a.residential_address),
       a.individual_mobile, a.individual_email, a.uae_visa_number, a.uae_visa_expiry,
@@ -723,9 +724,10 @@ export default function AccountsPage({ initialAccountId } = {}) {
             )}
 
             {form.account_type === "Individual" && (
-              <Section title="Individual Details" hasData={!!(form.date_of_birth || form.nationality || form.passport_number || form.occupation || form.individual_mobile || form.individual_email || form.country_of_residence || form.source_of_funds || form.source_of_wealth || form.is_pep)}>
+              <Section title="Individual Details" hasData={!!(form.date_of_birth || form.country_of_birth || form.nationality || form.passport_number || form.occupation || form.individual_mobile || form.individual_email || form.country_of_residence || form.source_of_funds || form.source_of_wealth || form.is_pep)}>
                 <div className="grid grid-cols-2 gap-3">
                   <Field label="Date of Birth"><Input type="date" value={form.date_of_birth || ""} onChange={(e) => setForm({ ...form, date_of_birth: e.target.value })} /></Field>
+                  <Field label="Country of Birth"><CountrySelect value={form.country_of_birth} onChange={(e) => setForm({ ...form, country_of_birth: e.target.value })} countries={countries} /></Field>
                   <Field label="Nationality"><CountrySelect value={form.nationality} onChange={(e) => setForm({ ...form, nationality: e.target.value })} countries={countries} /></Field>
                   <Field label="Passport Number"><Input value={form.passport_number} onChange={(e) => setForm({ ...form, passport_number: e.target.value })} /></Field>
                   <Field label="Passport Expiry"><Input type="date" value={form.passport_expiry_date || ""} onChange={(e) => setForm({ ...form, passport_expiry_date: e.target.value })} /></Field>
@@ -791,7 +793,7 @@ export default function AccountsPage({ initialAccountId } = {}) {
                 <Field label="CDD Completion Date"><Input type="date" value={form.cdd_completion_date || ""} onChange={(e) => setForm({ ...form, cdd_completion_date: e.target.value })} /></Field>
               </div>
               {form.aml_classification === "EDD" && (
-                <Field label="Reason for EDD"><Input value={form.edd_reason} onChange={(e) => setForm({ ...form, edd_reason: e.target.value })} maxLength={255} /></Field>
+                <Field label="Reason for EDD"><Input value={form.edd_reason} onChange={(e) => setForm({ ...form, edd_reason: e.target.value })} maxLength={25} /></Field>
               )}
               {form.next_aml_review_date && (
                 <p className="text-xs text-gray-400">Next AML Review Date: <span className="font-medium text-gray-600">{form.next_aml_review_date}</span> (auto-calculated from Risk Rating + CDD Completion Date)</p>

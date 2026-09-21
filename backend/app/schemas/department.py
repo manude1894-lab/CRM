@@ -6,6 +6,7 @@ from datetime import datetime
 
 class DepartmentBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
+    is_active: bool = True
 
 
 class DepartmentCreate(DepartmentBase):
@@ -14,6 +15,7 @@ class DepartmentCreate(DepartmentBase):
 
 class DepartmentUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=100)
+    is_active: Optional[bool] = None
 
 
 class DepartmentRead(DepartmentBase):
