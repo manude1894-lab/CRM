@@ -117,3 +117,4 @@ class Account(Base):
     spoc = relationship("User", foreign_keys=[spoc_id])
     cases = relationship("Case", back_populates="account")
     parties = relationship("AccountParty", back_populates="account", cascade="all, delete-orphan")
+    documents = relationship("Document", back_populates="account", cascade="all, delete-orphan")

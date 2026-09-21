@@ -3,6 +3,7 @@ import { accountsApi, casesApi, usersApi, amlApi } from "../api/endpoints";
 import { Icon, Badge, Modal, Field, Input, Select, MultiSelect, CountrySelect, Spinner, ErrorBanner } from "../components/ui";
 import AccountPartyModal from "../components/AccountPartyModal";
 import TrackRecordModal from "../components/TrackRecordModal";
+import DocumentsPanel from "../components/DocumentsPanel";
 import DuplicateWarning from "../components/DuplicateWarning";
 import {
   fmt, REGULATOR_OPTIONS, TAG_OPTIONS, SERVICES_OBTAINED_OPTIONS,
@@ -178,6 +179,7 @@ export default function AccountsPage({ initialAccountId } = {}) {
   const [importing, setImporting] = useState(false);
   const [partiesAccount, setPartiesAccount] = useState(null); // Account being edited in AccountPartyModal
   const [trackRecordAccount, setTrackRecordAccount] = useState(null); // Account being viewed in TrackRecordModal
+  const [attachmentsAccount, setAttachmentsAccount] = useState(null); // Account whose Attachments modal is open
   const [selectedIds, setSelectedIds] = useState(() => new Set());
   const [bulkValues, setBulkValues] = useState({ spoc_id: "", risk_rating: "", kyc_status: "" });
   const [bulkApplying, setBulkApplying] = useState(false);
@@ -578,8 +580,12 @@ export default function AccountsPage({ initialAccountId } = {}) {
                     <Icon name="accounts" size={13} /> Manage Shareholders / Directors / Signatories
                   </button>
                   <button onClick={(e) => { e.stopPropagation(); setTrackRecordAccount(a); }}
-                    className="w-full mb-3 px-3 py-1.5 text-xs border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600 flex items-center justify-center gap-1">
+                    className="w-full mb-2 px-3 py-1.5 text-xs border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600 flex items-center justify-center gap-1">
                     <Icon name="download" size={13} /> Track Record
+                  </button>
+                  <button onClick={(e) => { e.stopPropagation(); setAttachmentsAccount(a); }}
+                    className="w-full mb-3 px-3 py-1.5 text-xs border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600 flex items-center justify-center gap-1">
+                    <Icon name="instructions" size={13} /> Attachments
                   </button>
                   <p className="text-xs font-semibold text-gray-600 mb-2">Cases ({accountCases.length})</p>
                   <div className="space-y-1.5">
@@ -886,6 +892,12 @@ export default function AccountsPage({ initialAccountId } = {}) {
 
       {trackRecordAccount && (
         <TrackRecordModal account={trackRecordAccount} onClose={() => setTrackRecordAccount(null)} />
+      )}
+
+      {attachmentsAccount && (
+        <Modal title={`Attachments — ${attachmentsAccount.company_name}`} onClose={() => setAttachmentsAccount(null)}>
+          <DocumentsPanel accountId={attachmentsAccount.id} />
+        </Modal>
       )}
     </div>
   );

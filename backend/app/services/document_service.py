@@ -50,6 +50,11 @@ def _case_for_read(db: Session, case_id: int, user: User) -> Case:
     return case
 
 
+def _account_for_read(db: Session, account_id: int, user: User):
+    from app.services import account_service  # local import avoids a circular import at module load
+    return account_service.get_account(db, account_id, user)
+
+
 def list_for_case(db: Session, case_id: int, user: User) -> list[Document]:
     _case_for_read(db, case_id, user)
     return (
@@ -123,11 +128,66 @@ def create(
     return doc
 
 
+def list_for_account(db: Session, account_id: int, user: User) -> list[Document]:
+    _account_for_read(db, account_id, user)
+    return (
+        db.query(Document)
+        .filter(Document.account_id == account_id)
+        .order_by(Document.id.desc())
+        .all()
+    )
+
+
+def create_for_account(
+    db: Session,
+    account_id: int,
+    upload: UploadFile,
+    category: str,
+    user: User,
+    notes: str | None = None,
+) -> Document:
+    _account_for_read(db, account_id, user)
+
+    if category not in _VALID_CATEGORIES:
+        category = DocumentCategory.OTHER.value
+
+    filename = _safe_filename(upload.filename)
+    if _ext(filename) not in _ALLOWED_EXT:
+        raise HTTPException(status_code=400, detail=f"File type not allowed: {filename}")
+    if upload.content_type and upload.content_type not in ALLOWED_CONTENT_TYPES:
+        raise HTTPException(status_code=400, detail=f"Content type not allowed: {upload.content_type}")
+
+    data = upload.file.read()
+    limit = settings.MAX_UPLOAD_MB * 1024 * 1024
+    if len(data) == 0:
+        raise HTTPException(status_code=400, detail="Empty file")
+    if len(data) > limit:
+        raise HTTPException(status_code=413, detail=f"File exceeds the {settings.MAX_UPLOAD_MB} MB limit")
+
+    doc = Document(
+        account_id=account_id,
+        category=category,
+        filename=filename,
+        content_type=upload.content_type,
+        size_bytes=len(data),
+        content=data,
+        uploaded_by_id=user.id,
+        notes=(notes or None),
+    )
+    db.add(doc)
+    db.commit()
+    db.refresh(doc)
+    return doc
+
+
 def get(db: Session, document_id: int, user: User) -> Document:
     doc = db.query(Document).filter(Document.id == document_id).first()
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
-    _case_for_read(db, doc.case_id, user)
+    if doc.case_id is not None:
+        _case_for_read(db, doc.case_id, user)
+    else:
+        _account_for_read(db, doc.account_id, user)
     return doc
 
 

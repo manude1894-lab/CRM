@@ -17,12 +17,13 @@ const isViewable = (ct) => {
  * Reusable attachments list + uploader.
  *
  * props:
- *   caseId   — required
- *   scope    — { case_document_id } | { instruction_id } | { category } | null (all case docs)
- *   compact  — tighter layout for inline use under a checklist row
- *   onChange — called after a successful upload/delete (e.g. to refresh a checklist)
+ *   caseId    — Case-scoped mode; provide exactly one of caseId/accountId
+ *   accountId — Client-scoped mode (no checklist/instruction linkage, no "Generate")
+ *   scope     — { case_document_id } | { instruction_id } | { category } | null (all docs) — caseId mode only
+ *   compact   — tighter layout for inline use under a checklist row
+ *   onChange  — called after a successful upload/delete (e.g. to refresh a checklist)
  */
-export default function DocumentsPanel({ caseId, scope = null, compact = false, defaultCategory, onChange }) {
+export default function DocumentsPanel({ caseId, accountId, scope = null, compact = false, defaultCategory, onChange }) {
   const user = useAuthStore((s) => s.user);
   const [docs, setDocs] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -36,11 +37,11 @@ export default function DocumentsPanel({ caseId, scope = null, compact = false, 
 
   const load = async () => {
     setLoading(true);
-    try { setDocs(await documentsApi.list(caseId)); }
+    try { setDocs(await (accountId ? documentsApi.listForAccount(accountId) : documentsApi.list(caseId))); }
     catch { setDocs([]); }
     finally { setLoading(false); }
   };
-  useEffect(() => { if (caseId) load(); }, [caseId]);
+  useEffect(() => { if (caseId || accountId) load(); }, [caseId, accountId]);
 
   const filtered = useMemo(() => docs.filter((d) => {
     if (scope?.case_document_id) return d.case_document_id === scope.case_document_id;
@@ -63,7 +64,8 @@ export default function DocumentsPanel({ caseId, scope = null, compact = false, 
       if (scope?.case_document_id) fd.append("case_document_id", scope.case_document_id);
       if (scope?.instruction_id) fd.append("instruction_id", scope.instruction_id);
       if (notes.trim()) fd.append("notes", notes.trim());
-      await documentsApi.upload(caseId, fd);
+      if (accountId) await documentsApi.uploadForAccount(accountId, fd);
+      else await documentsApi.upload(caseId, fd);
       fileRef.current.value = "";
       setNotes("");
       await load();
@@ -132,7 +134,7 @@ export default function DocumentsPanel({ caseId, scope = null, compact = false, 
           className="px-2.5 py-1 text-xs text-white rounded-lg disabled:opacity-60" style={{ background: "#1a3a5c" }}>
           {busy ? "Uploading…" : "Upload"}
         </button>
-        {!compact && !scope?.case_document_id && (
+        {!compact && !scope?.case_document_id && !accountId && (
           <button onClick={() => setGenOpen(true)}
             className="px-2.5 py-1 text-xs border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600">
             Generate
@@ -140,7 +142,7 @@ export default function DocumentsPanel({ caseId, scope = null, compact = false, 
         )}
       </div>
 
-      {genOpen && (
+      {genOpen && !accountId && (
         <GenerateDocModal caseId={caseId} onClose={(created) => { setGenOpen(false); if (created) { load(); onChange?.(); } }} />
       )}
     </div>

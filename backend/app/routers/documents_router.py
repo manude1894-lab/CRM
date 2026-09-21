@@ -37,6 +37,23 @@ def upload_document(
     )
 
 
+@router.get("/accounts/{account_id}/documents", response_model=List[DocumentRead])
+def list_account_documents(account_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    return document_service.list_for_account(db, account_id, user)
+
+
+@router.post("/accounts/{account_id}/documents", response_model=DocumentRead, status_code=status.HTTP_201_CREATED)
+def upload_account_document(
+    account_id: int,
+    file: UploadFile = File(...),
+    category: str = Form("Other"),
+    notes: Optional[str] = Form(None),
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    return document_service.create_for_account(db, account_id, file, category, user, notes=notes)
+
+
 @router.get("/documents/{document_id}/download")
 def download_document(document_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     data, filename, content_type = document_service.stream_content(db, document_id, user)

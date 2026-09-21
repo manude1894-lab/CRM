@@ -169,6 +169,9 @@ export const documentsApi = {
   list: (caseId) => api.get(`/cases/${caseId}/documents`).then((r) => r.data),
   upload: (caseId, formData) =>
     api.post(`/cases/${caseId}/documents`, formData, { headers: { "Content-Type": undefined } }).then((r) => r.data),
+  listForAccount: (accountId) => api.get(`/accounts/${accountId}/documents`).then((r) => r.data),
+  uploadForAccount: (accountId, formData) =>
+    api.post(`/accounts/${accountId}/documents`, formData, { headers: { "Content-Type": undefined } }).then((r) => r.data),
   remove: (id) => api.delete(`/documents/${id}`),
   download: async (id, filename) => {
     const res = await api.get(`/documents/${id}/download`, { responseType: "blob" });

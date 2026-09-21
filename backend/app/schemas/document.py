@@ -6,7 +6,8 @@ from datetime import datetime
 
 class DocumentRead(BaseModel):
     id: int
-    case_id: int
+    case_id: Optional[int] = None
+    account_id: Optional[int] = None
     case_document_id: Optional[int] = None
     instruction_id: Optional[int] = None
     category: str

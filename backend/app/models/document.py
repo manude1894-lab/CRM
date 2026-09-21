@@ -32,7 +32,9 @@ class Document(Base):
     __tablename__ = "documents"
 
     id = Column(Integer, primary_key=True, index=True)
-    case_id = Column(Integer, ForeignKey("cases.id", ondelete="CASCADE"), nullable=False, index=True)
+    # Exactly one of case_id/account_id is set — a document belongs to a Case or to a Client directly.
+    case_id = Column(Integer, ForeignKey("cases.id", ondelete="CASCADE"), nullable=True, index=True)
+    account_id = Column(Integer, ForeignKey("accounts.id", ondelete="CASCADE"), nullable=True, index=True)
     case_document_id = Column(Integer, ForeignKey("case_documents.id", ondelete="SET NULL"), nullable=True)
     instruction_id = Column(Integer, ForeignKey("instructions.id", ondelete="SET NULL"), nullable=True)
 
@@ -51,6 +53,7 @@ class Document(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     case = relationship("Case", back_populates="documents")
+    account = relationship("Account", back_populates="documents")
     case_document = relationship("CaseDocument", back_populates="attachments")
     instruction = relationship("Instruction", back_populates="attachments")
     uploaded_by = relationship("User")
