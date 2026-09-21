@@ -28,7 +28,8 @@ class AccountImportRow(BaseModel):
     existing_relationship: Optional[str] = None
     key_contacts: Optional[str] = None
     tags: Optional[str] = None
-    registration_number: Optional[str] = None
+    registration_number: Optional[str] = Field(None, max_length=30)
+    incorporation_date: Optional[date] = None
     license_number: Optional[str] = None
     risk_rating: Optional[str] = None
     kyc_status: Optional[str] = None
@@ -132,7 +133,8 @@ class AccountBase(BaseModel):
     existing_relationship: str = "No"
     key_contacts: Optional[str] = None
     tags: Optional[str] = None
-    registration_number: Optional[str] = None
+    registration_number: Optional[str] = Field(None, max_length=30)
+    incorporation_date: Optional[date] = None
     license_number: Optional[str] = None
     risk_rating: Optional[str] = None
     kyc_status: str = "Not Started"
@@ -205,7 +207,8 @@ class AccountUpdate(BaseModel):
     existing_relationship: Optional[str] = None
     key_contacts: Optional[str] = None
     tags: Optional[str] = None
-    registration_number: Optional[str] = None
+    registration_number: Optional[str] = Field(None, max_length=30)
+    incorporation_date: Optional[date] = None
     license_number: Optional[str] = None
     risk_rating: Optional[str] = None
     kyc_status: Optional[str] = None

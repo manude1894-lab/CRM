@@ -33,7 +33,8 @@ class Account(Base):
     tags = Column(String(500), nullable=True)
 
     # Compliance & risk — client-level (distinct from the per-case CDDRecord.aml_risk_rating)
-    registration_number = Column(String(100), nullable=True)
+    registration_number = Column(String(100), nullable=True)  # "Incorporation Certificate No." per client spec §5.1
+    incorporation_date = Column(Date, nullable=True)  # client spec §5.2 — distinct from per-Case CompanyProfile.incorporation_date
     license_number = Column(String(100), nullable=True)
     risk_rating = Column(String(20), nullable=True)  # Low / Medium / High
     kyc_status = Column(String(30), default="Not Started", nullable=False)  # Not Started / Submitted / Under Review / Approved / Rejected

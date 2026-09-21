@@ -63,7 +63,9 @@ const IMPORT_HEADER_MAP = {
   "strategic priority": "strategic_priority",
   "existing relationship": "existing_relationship",
   "tags": "tags",
-  "registration number": "registration_number",
+  "incorporation certificate no.": "registration_number",
+  "registration number": "registration_number", // legacy header, kept for older exported files
+  "incorporation date": "incorporation_date",
   "license number": "license_number",
   "risk rating": "risk_rating",
   "kyc status": "kyc_status",
@@ -203,7 +205,7 @@ export default function AccountsPage({ initialAccountId } = {}) {
   const BLANK = {
     account_type: "Corporate",
     company_name: "", industry: "", country: "", strategic_priority: "Medium", existing_relationship: "No",
-    key_contacts: "", website: "", spoc_id: "", registration_number: "", license_number: "", risk_rating: "", kyc_status: "Not Started",
+    key_contacts: "", website: "", spoc_id: "", registration_number: "", incorporation_date: "", license_number: "", risk_rating: "", kyc_status: "Not Started",
     licensing_authority: "", license_start_date: "", license_expiry_date: "", is_regulated: false, regulator_name: "", regulator_other: "",
     license_category: "", license_activities: "",
     registered_address: { ...BLANK_ADDRESS }, operating_address: { ...BLANK_ADDRESS },
@@ -227,7 +229,7 @@ export default function AccountsPage({ initialAccountId } = {}) {
       account_type: a.account_type || "Corporate",
       company_name: a.company_name, industry: a.industry || "", country: a.country || "", strategic_priority: a.strategic_priority,
       existing_relationship: a.existing_relationship, key_contacts: a.key_contacts || "", website: a.website || "", spoc_id: a.spoc_id || "",
-      registration_number: a.registration_number || "", license_number: a.license_number || "", risk_rating: a.risk_rating || "", kyc_status: a.kyc_status || "Not Started",
+      registration_number: a.registration_number || "", incorporation_date: a.incorporation_date || "", license_number: a.license_number || "", risk_rating: a.risk_rating || "", kyc_status: a.kyc_status || "Not Started",
       licensing_authority: a.licensing_authority || "", license_start_date: a.license_start_date || "", license_expiry_date: a.license_expiry_date || "",
       is_regulated: !!a.is_regulated, regulator_name: a.regulator_name || "", regulator_other: a.regulator_other || "",
       license_category: a.license_category || "", license_activities: a.license_activities || "",
@@ -322,7 +324,7 @@ export default function AccountsPage({ initialAccountId } = {}) {
   const exportCSV = () => {
     const headers = [
       "Account UID", "Client Type", "Company Name", "Industry", "Country", "Website", "Key Contacts",
-      "Strategic Priority", "Existing Relationship", "Tags", "Registration Number", "License Number",
+      "Strategic Priority", "Existing Relationship", "Tags", "Incorporation Certificate No.", "Incorporation Date", "License Number",
       "Risk Rating", "KYC Status", "SPOC",
       "Licensing Authority", "License Activities", "License Start Date", "License Expiry Date",
       "Is Regulated", "Regulator", "Other Regulator", "License Category",
@@ -340,7 +342,7 @@ export default function AccountsPage({ initialAccountId } = {}) {
     ];
     const rows = accounts.map((a) => [
       a.account_uid, a.account_type, a.company_name, a.industry, a.country, a.website, a.key_contacts,
-      a.strategic_priority, a.existing_relationship, a.tags, a.registration_number, a.license_number,
+      a.strategic_priority, a.existing_relationship, a.tags, a.registration_number, a.incorporation_date, a.license_number,
       a.risk_rating, a.kyc_status, users.find((u) => u.id === a.spoc_id)?.name || "",
       a.licensing_authority, a.license_activities, a.license_start_date, a.license_expiry_date,
       a.is_regulated, a.regulator_name, a.regulator_other, a.license_category,
@@ -609,8 +611,8 @@ export default function AccountsPage({ initialAccountId } = {}) {
                   <Field label="Industry">
                     <Input value={form.industry} onChange={(e) => setForm({ ...form, industry: e.target.value })} placeholder="e.g. Fintech" />
                   </Field>
-                  <Field label="Country">
-                    <Input value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })} placeholder="e.g. UAE" />
+                  <Field label="Country of Incorporation / Registration">
+                    <CountrySelect value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })} countries={countries} />
                   </Field>
                 </div>
                 <Field label="Website">
@@ -642,11 +644,14 @@ export default function AccountsPage({ initialAccountId } = {}) {
             </Field>
             {form.account_type !== "Individual" && (
               <div className="grid grid-cols-2 gap-3">
-                <Field label="Registration Number">
-                  <Input value={form.registration_number} onChange={(e) => setForm({ ...form, registration_number: e.target.value })} placeholder="e.g. 123456" />
+                <Field label="Incorporation Certificate No.">
+                  <Input value={form.registration_number} onChange={(e) => setForm({ ...form, registration_number: e.target.value })} placeholder="e.g. 123456" maxLength={30} />
                 </Field>
                 <Field label="License Number">
                   <Input value={form.license_number} onChange={(e) => setForm({ ...form, license_number: e.target.value })} placeholder="e.g. DIFC-LIC-9012" />
+                </Field>
+                <Field label="Incorporation Date">
+                  <Input type="date" value={form.incorporation_date || ""} onChange={(e) => setForm({ ...form, incorporation_date: e.target.value })} />
                 </Field>
               </div>
             )}
