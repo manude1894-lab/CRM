@@ -29,6 +29,8 @@ class AccountImportRow(BaseModel):
     key_contacts: Optional[str] = None
     tags: Optional[str] = None
     single_point_of_contact: Optional[str] = None
+    anchor_entity: Optional[str] = None
+    non_anchor_entities: Optional[list[str]] = None
     registration_number: Optional[str] = Field(None, max_length=30)
     incorporation_date: Optional[date] = None
     license_number: Optional[str] = None
@@ -138,6 +140,8 @@ class AccountBase(BaseModel):
     key_contacts: Optional[str] = None
     tags: Optional[str] = None
     single_point_of_contact: Optional[str] = None
+    anchor_entity: Optional[str] = None
+    non_anchor_entities: Optional[list[str]] = None
     registration_number: Optional[str] = Field(None, max_length=30)
     incorporation_date: Optional[date] = None
     license_number: Optional[str] = None
@@ -216,6 +220,8 @@ class AccountUpdate(BaseModel):
     key_contacts: Optional[str] = None
     tags: Optional[str] = None
     single_point_of_contact: Optional[str] = None
+    anchor_entity: Optional[str] = None
+    non_anchor_entities: Optional[list[str]] = None
     registration_number: Optional[str] = Field(None, max_length=30)
     incorporation_date: Optional[date] = None
     license_number: Optional[str] = None

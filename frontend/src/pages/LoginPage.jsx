@@ -43,8 +43,8 @@ export default function LoginPage() {
           style={{ background: "#1a3a5c" }}
         />
         <div className="relative">
-          <div className="inline-flex items-center justify-center bg-white rounded-2xl p-3 shadow-xl">
-            <img src="/triam-logo.png" alt="TRIAM" className="h-10 w-auto" />
+          <div className="inline-flex items-center justify-center bg-white rounded-2xl p-4 shadow-xl">
+            <img src="/triam-logo.png" alt="TRIAM" className="h-16 w-auto" />
           </div>
         </div>
         <div className="relative">
@@ -65,7 +65,7 @@ export default function LoginPage() {
         <div className="w-full max-w-sm">
           <div className="lg:hidden flex flex-col items-center mb-8">
             <div className="inline-flex items-center justify-center bg-white rounded-2xl p-3 shadow-md border border-gray-100 mb-3">
-              <img src="/triam-logo.png" alt="TRIAM" className="h-9 w-auto" />
+              <img src="/triam-logo.png" alt="TRIAM" className="h-14 w-auto" />
             </div>
             <p className="text-gray-500 text-sm">Entity Servicing &amp; Compliance Platform</p>
           </div>

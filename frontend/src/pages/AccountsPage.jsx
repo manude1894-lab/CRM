@@ -7,7 +7,7 @@ import DocumentsPanel from "../components/DocumentsPanel";
 import DuplicateWarning from "../components/DuplicateWarning";
 import {
   fmt, REGULATOR_OPTIONS, TAG_OPTIONS, SERVICES_OBTAINED_OPTIONS,
-  PROFILE_STATUS_OPTIONS, AML_CLASSIFICATION_OPTIONS, COUNTRY_CALLING_CODES,
+  PROFILE_STATUS_OPTIONS, AML_CLASSIFICATION_OPTIONS, COUNTRY_CALLING_CODES, TRIAM_ENTITY_OPTIONS,
 } from "../utils/constants";
 import { useAuthStore } from "../store/auth";
 
@@ -62,6 +62,8 @@ const IMPORT_HEADER_MAP = {
   "website": "website",
   "key contacts": "key_contacts",
   "single point of contact": "single_point_of_contact",
+  "anchor entity": "anchor_entity",
+  "non-anchor entities": "__non_anchor_entities",
   "strategic priority": "strategic_priority",
   "existing relationship": "existing_relationship",
   "tags": "tags",
@@ -151,6 +153,8 @@ function parseCSV(text) {
         obj.services_obtained = value.split(";").map((s) => s.trim()).filter(Boolean);
       } else if (key === "__nature_of_services_sought") {
         obj.nature_of_services_sought = value.split(";").map((s) => s.trim()).filter(Boolean);
+      } else if (key === "__non_anchor_entities") {
+        obj.non_anchor_entities = value.split(";").map((s) => s.trim()).filter(Boolean);
       } else if (key === "__spoc_name") {
         obj.__spoc_name = value;
       } else if (IMPORT_BOOLEAN_FIELDS.has(key)) {
@@ -213,7 +217,7 @@ export default function AccountsPage({ initialAccountId } = {}) {
   const BLANK = {
     account_type: "Corporate",
     company_name: "", industry: "", country: "", strategic_priority: "Medium", existing_relationship: "No",
-    key_contacts: "", single_point_of_contact: "", website: "", spoc_id: "", registration_number: "", incorporation_date: "", license_number: "", risk_rating: "", kyc_status: "Not Started",
+    key_contacts: "", single_point_of_contact: "", website: "", spoc_id: "", anchor_entity: "", non_anchor_entities: [], registration_number: "", incorporation_date: "", license_number: "", risk_rating: "", kyc_status: "Not Started",
     licensing_authority: "", license_start_date: "", license_expiry_date: "", is_regulated: false, regulator_name: "", regulator_other: "",
     license_category: "", license_activities: "",
     registered_address: { ...BLANK_ADDRESS }, operating_address: { ...BLANK_ADDRESS },
@@ -238,6 +242,7 @@ export default function AccountsPage({ initialAccountId } = {}) {
       account_type: a.account_type || "Corporate",
       company_name: a.company_name, industry: a.industry || "", country: a.country || "", strategic_priority: a.strategic_priority,
       existing_relationship: a.existing_relationship, key_contacts: a.key_contacts || "", single_point_of_contact: a.single_point_of_contact || "", website: a.website || "", spoc_id: a.spoc_id || "",
+      anchor_entity: a.anchor_entity || "", non_anchor_entities: a.non_anchor_entities || [],
       registration_number: a.registration_number || "", incorporation_date: a.incorporation_date || "", license_number: a.license_number || "", risk_rating: a.risk_rating || "", kyc_status: a.kyc_status || "Not Started",
       licensing_authority: a.licensing_authority || "", license_start_date: a.license_start_date || "", license_expiry_date: a.license_expiry_date || "",
       is_regulated: !!a.is_regulated, regulator_name: a.regulator_name || "", regulator_other: a.regulator_other || "",
@@ -336,6 +341,7 @@ export default function AccountsPage({ initialAccountId } = {}) {
   const exportCSV = () => {
     const headers = [
       "Account UID", "Client Type", "Company Name", "Industry", "Country", "Website", "Key Contacts", "Single Point of Contact",
+      "Anchor Entity", "Non-anchor Entities",
       "Strategic Priority", "Existing Relationship", "Tags", "Incorporation Certificate No.", "Incorporation Date", "License Number",
       "Risk Rating", "KYC Status", "SPOC",
       "Licensing Authority", "License Activities", "License Start Date", "License Expiry Date",
@@ -354,6 +360,7 @@ export default function AccountsPage({ initialAccountId } = {}) {
     ];
     const rows = accounts.map((a) => [
       a.account_uid, a.account_type, a.company_name, a.industry, a.country, a.website, a.key_contacts, a.single_point_of_contact,
+      a.anchor_entity, (a.non_anchor_entities || []).join("; "),
       a.strategic_priority, a.existing_relationship, a.tags, a.registration_number, a.incorporation_date, a.license_number,
       a.risk_rating, a.kyc_status, users.find((u) => u.id === a.spoc_id)?.name || "",
       a.licensing_authority, a.license_activities, a.license_start_date, a.license_expiry_date,
@@ -621,7 +628,13 @@ export default function AccountsPage({ initialAccountId } = {}) {
             <Field label={form.account_type === "Individual" ? "Full Name (as per passport) *" : "Company Name *"}>
               <Input value={form.company_name} onChange={(e) => setForm({ ...form, company_name: e.target.value })} placeholder={form.account_type === "Individual" ? "e.g. John Smith" : "e.g. Al Futtaim Group"} />
             </Field>
-            <DuplicateWarning name={form.company_name} excludeId={form._id} checkFn={accountsApi.checkDuplicate} active={modal === "new"} />
+            <DuplicateWarning
+              name={form.company_name}
+              excludeId={form._id}
+              checkFn={accountsApi.checkDuplicate}
+              active={modal === "new"}
+              onSelect={async (id) => { const existing = await accountsApi.get(id); openEdit(existing); }}
+            />
             {form.account_type !== "Individual" && (
               <>
                 <div className="grid grid-cols-2 gap-3">
@@ -662,6 +675,17 @@ export default function AccountsPage({ initialAccountId } = {}) {
                 {users.filter((u) => u.role === "rm").map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
               </Select>
             </Field>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Anchor Entity">
+                <Select value={form.anchor_entity || ""} onChange={(e) => setForm({ ...form, anchor_entity: e.target.value, non_anchor_entities: (form.non_anchor_entities || []).filter((x) => x !== e.target.value) })}>
+                  <option value="">— select —</option>
+                  {TRIAM_ENTITY_OPTIONS.map((t) => <option key={t}>{t}</option>)}
+                </Select>
+              </Field>
+              <Field label="Non-anchor Entities">
+                <MultiSelect options={TRIAM_ENTITY_OPTIONS.filter((t) => t !== form.anchor_entity)} value={form.non_anchor_entities} onChange={(v) => setForm({ ...form, non_anchor_entities: v })} />
+              </Field>
+            </div>
             {form.account_type !== "Individual" && (
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Incorporation Certificate No.">

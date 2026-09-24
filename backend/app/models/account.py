@@ -33,6 +33,10 @@ class Account(Base):
     tags = Column(String(500), nullable=True)
     single_point_of_contact = Column(String(255), nullable=True)  # client-side primary contact name, free text
 
+    # Triam's own internal legal entities (client CRM-change-request item 3).
+    anchor_entity = Column(String(10), nullable=True)  # one of TRIAM_ENTITY_OPTIONS
+    non_anchor_entities = Column(JSON, nullable=True)  # list[str], subset of TRIAM_ENTITY_OPTIONS
+
     # Compliance & risk — client-level (distinct from the per-case CDDRecord.aml_risk_rating)
     registration_number = Column(String(100), nullable=True)  # "Incorporation Certificate No." per client spec §5.1
     incorporation_date = Column(Date, nullable=True)  # client spec §5.2 — distinct from per-Case CompanyProfile.incorporation_date
