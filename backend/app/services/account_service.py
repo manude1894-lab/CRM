@@ -110,7 +110,7 @@ def create_account(db: Session, data: AccountCreate, user: User) -> Account:
     if existing:
         raise HTTPException(status_code=400, detail="Account with this company name already exists")
 
-    if not (data.industry or "").strip():
+    if data.account_type != "Individual" and not (data.industry or "").strip():
         raise HTTPException(status_code=400, detail="Industry is required")
 
     _assert_date_sanity(data)
