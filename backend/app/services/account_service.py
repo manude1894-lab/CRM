@@ -4,6 +4,7 @@ from sqlalchemy import or_
 from fastapi import HTTPException
 from typing import Optional
 from decimal import Decimal
+from datetime import date
 from dateutil.relativedelta import relativedelta
 
 from app.models import Account, Priority, User, UserRole, Case, CaseStatus, Invoice, InvoiceLedgerStatus
@@ -91,10 +92,28 @@ def _assert_shareholder_ownership_complete(account: Account) -> None:
         )
 
 
+def _assert_date_sanity(data) -> None:
+    """Client spec CRM-change-request items 7 & 11 — Incorporation Date can't be in the
+    future; License Expiry Date can't be in the past. Interactive create/update only —
+    CSV import of historical data is exempt, since expired licenses are legitimate there."""
+    today = date.today()
+    incorporation_date = getattr(data, "incorporation_date", None)
+    if incorporation_date and incorporation_date > today:
+        raise HTTPException(status_code=400, detail="Incorporation Date cannot be in the future")
+    license_expiry_date = getattr(data, "license_expiry_date", None)
+    if license_expiry_date and license_expiry_date < today:
+        raise HTTPException(status_code=400, detail="License Expiry Date cannot be before today")
+
+
 def create_account(db: Session, data: AccountCreate, user: User) -> Account:
     existing = db.query(Account).filter(Account.company_name == data.company_name).first()
     if existing:
         raise HTTPException(status_code=400, detail="Account with this company name already exists")
+
+    if not (data.industry or "").strip():
+        raise HTTPException(status_code=400, detail="Industry is required")
+
+    _assert_date_sanity(data)
 
     if data.account_type == "Corporate" and data.profile_status in ("Approved", "Active"):
         # A brand-new account has no parties yet, so ownership can never be complete at creation time.
@@ -119,6 +138,7 @@ def create_account(db: Session, data: AccountCreate, user: User) -> Account:
 
 def update_account(db: Session, account_id: int, data: AccountUpdate, user: User) -> Account:
     acc = get_account(db, account_id, user)
+    _assert_date_sanity(data)
     update_data = data.model_dump(exclude_unset=True)
     if user.role == UserRole.RM:
         update_data.pop("owner_id", None)

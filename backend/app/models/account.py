@@ -31,6 +31,7 @@ class Account(Base):
     existing_relationship = Column(String(10), default="No", nullable=False)
     key_contacts = Column(Text, nullable=True)
     tags = Column(String(500), nullable=True)
+    single_point_of_contact = Column(String(255), nullable=True)  # client-side primary contact name, free text
 
     # Compliance & risk — client-level (distinct from the per-case CDDRecord.aml_risk_rating)
     registration_number = Column(String(100), nullable=True)  # "Incorporation Certificate No." per client spec §5.1

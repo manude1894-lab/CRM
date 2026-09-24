@@ -28,6 +28,7 @@ class AccountImportRow(BaseModel):
     existing_relationship: Optional[str] = None
     key_contacts: Optional[str] = None
     tags: Optional[str] = None
+    single_point_of_contact: Optional[str] = None
     registration_number: Optional[str] = Field(None, max_length=30)
     incorporation_date: Optional[date] = None
     license_number: Optional[str] = None
@@ -47,9 +48,9 @@ class AccountImportRow(BaseModel):
     registered_address: Optional[AddressBlock] = None
     operating_address: Optional[AddressBlock] = None
 
-    trn_vat_number: Optional[str] = None
+    trn_vat_number: Optional[str] = Field(None, max_length=15)
     corp_tax_registered: Optional[bool] = None
-    corp_tax_registration_number: Optional[str] = None
+    corp_tax_registration_number: Optional[str] = Field(None, max_length=15)
 
     financial_year_end: Optional[str] = None
 
@@ -136,6 +137,7 @@ class AccountBase(BaseModel):
     existing_relationship: str = "No"
     key_contacts: Optional[str] = None
     tags: Optional[str] = None
+    single_point_of_contact: Optional[str] = None
     registration_number: Optional[str] = Field(None, max_length=30)
     incorporation_date: Optional[date] = None
     license_number: Optional[str] = None
@@ -156,9 +158,9 @@ class AccountBase(BaseModel):
     registered_address: Optional[AddressBlock] = None
     operating_address: Optional[AddressBlock] = None
 
-    trn_vat_number: Optional[str] = None
+    trn_vat_number: Optional[str] = Field(None, max_length=15)
     corp_tax_registered: bool = False
-    corp_tax_registration_number: Optional[str] = None
+    corp_tax_registration_number: Optional[str] = Field(None, max_length=15)
 
     financial_year_end: Optional[str] = None
 
@@ -213,6 +215,7 @@ class AccountUpdate(BaseModel):
     existing_relationship: Optional[str] = None
     key_contacts: Optional[str] = None
     tags: Optional[str] = None
+    single_point_of_contact: Optional[str] = None
     registration_number: Optional[str] = Field(None, max_length=30)
     incorporation_date: Optional[date] = None
     license_number: Optional[str] = None
@@ -233,9 +236,9 @@ class AccountUpdate(BaseModel):
     registered_address: Optional[AddressBlock] = None
     operating_address: Optional[AddressBlock] = None
 
-    trn_vat_number: Optional[str] = None
+    trn_vat_number: Optional[str] = Field(None, max_length=15)
     corp_tax_registered: Optional[bool] = None
-    corp_tax_registration_number: Optional[str] = None
+    corp_tax_registration_number: Optional[str] = Field(None, max_length=15)
 
     financial_year_end: Optional[str] = None
 

@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { accountsApi, casesApi, usersApi, amlApi } from "../api/endpoints";
-import { Icon, Badge, Modal, Field, Input, Select, MultiSelect, CountrySelect, Spinner, ErrorBanner } from "../components/ui";
+import { Icon, Badge, Modal, Field, Input, Select, MultiSelect, CountrySelect, Spinner, ErrorBanner, Textarea } from "../components/ui";
 import AccountPartyModal from "../components/AccountPartyModal";
 import TrackRecordModal from "../components/TrackRecordModal";
 import DocumentsPanel from "../components/DocumentsPanel";
@@ -61,6 +61,7 @@ const IMPORT_HEADER_MAP = {
   "country": "country",
   "website": "website",
   "key contacts": "key_contacts",
+  "single point of contact": "single_point_of_contact",
   "strategic priority": "strategic_priority",
   "existing relationship": "existing_relationship",
   "tags": "tags",
@@ -212,7 +213,7 @@ export default function AccountsPage({ initialAccountId } = {}) {
   const BLANK = {
     account_type: "Corporate",
     company_name: "", industry: "", country: "", strategic_priority: "Medium", existing_relationship: "No",
-    key_contacts: "", website: "", spoc_id: "", registration_number: "", incorporation_date: "", license_number: "", risk_rating: "", kyc_status: "Not Started",
+    key_contacts: "", single_point_of_contact: "", website: "", spoc_id: "", registration_number: "", incorporation_date: "", license_number: "", risk_rating: "", kyc_status: "Not Started",
     licensing_authority: "", license_start_date: "", license_expiry_date: "", is_regulated: false, regulator_name: "", regulator_other: "",
     license_category: "", license_activities: "",
     registered_address: { ...BLANK_ADDRESS }, operating_address: { ...BLANK_ADDRESS },
@@ -236,7 +237,7 @@ export default function AccountsPage({ initialAccountId } = {}) {
     setForm({
       account_type: a.account_type || "Corporate",
       company_name: a.company_name, industry: a.industry || "", country: a.country || "", strategic_priority: a.strategic_priority,
-      existing_relationship: a.existing_relationship, key_contacts: a.key_contacts || "", website: a.website || "", spoc_id: a.spoc_id || "",
+      existing_relationship: a.existing_relationship, key_contacts: a.key_contacts || "", single_point_of_contact: a.single_point_of_contact || "", website: a.website || "", spoc_id: a.spoc_id || "",
       registration_number: a.registration_number || "", incorporation_date: a.incorporation_date || "", license_number: a.license_number || "", risk_rating: a.risk_rating || "", kyc_status: a.kyc_status || "Not Started",
       licensing_authority: a.licensing_authority || "", license_start_date: a.license_start_date || "", license_expiry_date: a.license_expiry_date || "",
       is_regulated: !!a.is_regulated, regulator_name: a.regulator_name || "", regulator_other: a.regulator_other || "",
@@ -311,6 +312,7 @@ export default function AccountsPage({ initialAccountId } = {}) {
 
   const save = async () => {
     if (!form.company_name?.trim()) return alert("Company name is required");
+    if (modal === "new" && form.account_type !== "Individual" && !form.industry?.trim()) return alert("Industry is required");
     try {
       setSaving(true);
       const { next_aml_review_date, tags, ...rest } = form;
@@ -333,7 +335,7 @@ export default function AccountsPage({ initialAccountId } = {}) {
 
   const exportCSV = () => {
     const headers = [
-      "Account UID", "Client Type", "Company Name", "Industry", "Country", "Website", "Key Contacts",
+      "Account UID", "Client Type", "Company Name", "Industry", "Country", "Website", "Key Contacts", "Single Point of Contact",
       "Strategic Priority", "Existing Relationship", "Tags", "Incorporation Certificate No.", "Incorporation Date", "License Number",
       "Risk Rating", "KYC Status", "SPOC",
       "Licensing Authority", "License Activities", "License Start Date", "License Expiry Date",
@@ -351,7 +353,7 @@ export default function AccountsPage({ initialAccountId } = {}) {
       "Total Cases", "Total Invoiced Amount", "Created At", "Updated At",
     ];
     const rows = accounts.map((a) => [
-      a.account_uid, a.account_type, a.company_name, a.industry, a.country, a.website, a.key_contacts,
+      a.account_uid, a.account_type, a.company_name, a.industry, a.country, a.website, a.key_contacts, a.single_point_of_contact,
       a.strategic_priority, a.existing_relationship, a.tags, a.registration_number, a.incorporation_date, a.license_number,
       a.risk_rating, a.kyc_status, users.find((u) => u.id === a.spoc_id)?.name || "",
       a.licensing_authority, a.license_activities, a.license_start_date, a.license_expiry_date,
@@ -623,7 +625,7 @@ export default function AccountsPage({ initialAccountId } = {}) {
             {form.account_type !== "Individual" && (
               <>
                 <div className="grid grid-cols-2 gap-3">
-                  <Field label="Industry">
+                  <Field label="Industry *">
                     <Input value={form.industry} onChange={(e) => setForm({ ...form, industry: e.target.value })} placeholder="e.g. Fintech" />
                   </Field>
                   <Field label="Country of Incorporation / Registration">
@@ -637,6 +639,9 @@ export default function AccountsPage({ initialAccountId } = {}) {
             )}
             <Field label="Key Contacts">
               <Input value={form.key_contacts} onChange={(e) => setForm({ ...form, key_contacts: e.target.value })} placeholder="e.g. John Smith - CEO" />
+            </Field>
+            <Field label="Single Point of Contact (Client Contact Name)">
+              <Input value={form.single_point_of_contact} onChange={(e) => setForm({ ...form, single_point_of_contact: e.target.value })} placeholder="e.g. Jane Doe" />
             </Field>
             <div className="grid grid-cols-2 gap-3">
               <Field label="Strategic Priority">
@@ -666,7 +671,7 @@ export default function AccountsPage({ initialAccountId } = {}) {
                   <Input value={form.license_number} onChange={(e) => setForm({ ...form, license_number: e.target.value })} placeholder="e.g. DIFC-LIC-9012" />
                 </Field>
                 <Field label="Incorporation Date">
-                  <Input type="date" value={form.incorporation_date || ""} onChange={(e) => setForm({ ...form, incorporation_date: e.target.value })} />
+                  <Input type="date" max={new Date().toISOString().slice(0, 10)} value={form.incorporation_date || ""} onChange={(e) => setForm({ ...form, incorporation_date: e.target.value })} />
                 </Field>
               </div>
             )}
@@ -695,11 +700,13 @@ export default function AccountsPage({ initialAccountId } = {}) {
                     <Field label="Licensing Authority">
                       <Input value={form.licensing_authority} onChange={(e) => setForm({ ...form, licensing_authority: e.target.value })} placeholder="e.g. DIFC, ADGM, DED" />
                     </Field>
-                    <Field label="License Activities">
-                      <Input value={form.license_activities} onChange={(e) => setForm({ ...form, license_activities: e.target.value })} />
-                    </Field>
                     <Field label="License Start Date"><Input type="date" value={form.license_start_date || ""} onChange={(e) => setForm({ ...form, license_start_date: e.target.value })} /></Field>
-                    <Field label="License Expiry Date"><Input type="date" value={form.license_expiry_date || ""} onChange={(e) => setForm({ ...form, license_expiry_date: e.target.value })} /></Field>
+                    <Field label="License Expiry Date"><Input type="date" min={new Date().toISOString().slice(0, 10)} value={form.license_expiry_date || ""} onChange={(e) => setForm({ ...form, license_expiry_date: e.target.value })} /></Field>
+                  </div>
+                  <div className="mb-3">
+                    <Field label="License Activities">
+                      <Textarea rows={3} value={form.license_activities} onChange={(e) => setForm({ ...form, license_activities: e.target.value })} />
+                    </Field>
                   </div>
                   <label className="flex items-center gap-2 text-xs text-gray-700 mb-3">
                     <input type="checkbox" checked={!!form.is_regulated} onChange={(e) => setForm({ ...form, is_regulated: e.target.checked })} /> Is entity regulated
@@ -730,14 +737,14 @@ export default function AccountsPage({ initialAccountId } = {}) {
 
                 <Section title="Tax" hasData={!!(form.trn_vat_number || form.financial_year_end || form.corp_tax_registered)}>
                   <div className="grid grid-cols-2 gap-3">
-                    <Field label="TRN / VAT Registration No."><Input value={form.trn_vat_number} onChange={(e) => setForm({ ...form, trn_vat_number: e.target.value })} /></Field>
+                    <Field label="TRN / VAT Registration No."><Input value={form.trn_vat_number} onChange={(e) => setForm({ ...form, trn_vat_number: e.target.value })} maxLength={15} /></Field>
                     <Field label="Financial Year End (MM-DD)"><Input value={form.financial_year_end} onChange={(e) => setForm({ ...form, financial_year_end: e.target.value })} placeholder="12-31" /></Field>
                   </div>
                   <label className="flex items-center gap-2 text-xs text-gray-700 mb-3">
                     <input type="checkbox" checked={!!form.corp_tax_registered} onChange={(e) => setForm({ ...form, corp_tax_registered: e.target.checked })} /> Corporate Tax Registered
                   </label>
                   {form.corp_tax_registered && (
-                    <Field label="Corp Tax Registration No. / TAN"><Input value={form.corp_tax_registration_number} onChange={(e) => setForm({ ...form, corp_tax_registration_number: e.target.value })} /></Field>
+                    <Field label="Corp Tax Registration No. / TAN"><Input value={form.corp_tax_registration_number} onChange={(e) => setForm({ ...form, corp_tax_registration_number: e.target.value })} maxLength={15} /></Field>
                   )}
                 </Section>
               </>
