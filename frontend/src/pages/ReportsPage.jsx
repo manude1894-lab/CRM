@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { dashboardApi, reportsApi } from "../api/endpoints";
 import { MetricCard, CustomTooltip, Badge, Icon, Spinner, ErrorBanner } from "../components/ui";
+import { fmtDate } from "../utils/constants";
 
 const REPORT_TYPES = [
   { id: "case-stage-summary", title: "Case Stage Summary", desc: "Pipeline overview + stage breakdown + upcoming compliance" },
@@ -154,7 +155,7 @@ export default function ReportsPage() {
                 <tr key={`${c.case_id}-${c.item}-${i}`} className="border-b border-gray-50 hover:bg-gray-50">
                   <td className="py-2 px-3 text-xs font-medium text-gray-800">{c.company_name}</td>
                   <td className="py-2 px-3 text-xs text-gray-600">{c.item.replace("_", " ")}</td>
-                  <td className="py-2 px-3 text-xs text-gray-600">{c.due_date}</td>
+                  <td className="py-2 px-3 text-xs text-gray-600">{fmtDate(c.due_date)}</td>
                   <td className="py-2 px-3 text-xs text-right text-gray-600">{c.days_remaining}</td>
                 </tr>
               ))}

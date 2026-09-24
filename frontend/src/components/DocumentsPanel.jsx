@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { documentsApi } from "../api/endpoints";
 import { useAuthStore } from "../store/auth";
 import { Icon } from "./ui";
-import { DOCUMENT_CATEGORY_OPTIONS } from "../utils/constants";
+import { DOCUMENT_CATEGORY_OPTIONS, fmtDate } from "../utils/constants";
 import GenerateDocModal from "./GenerateDocModal";
 
 const fmtBytes = (b) =>
@@ -106,7 +106,7 @@ export default function DocumentsPanel({ caseId, accountId, scope = null, compac
                 {d.generated_from && <span className="px-1.5 py-0.5 rounded bg-brand-50 text-brand-600">generated</span>}
                 {!compact && !scope?.category && <span className="px-1.5 py-0.5 rounded bg-gray-100">{d.category}</span>}
                 <span>{fmtBytes(d.size_bytes)}</span>
-                <span>{(d.created_at || "").slice(0, 10)}</span>
+                <span>{fmtDate(d.created_at)}</span>
                 {canDelete(d) && (
                   <button onClick={() => doDelete(d)} className="p-0.5 rounded hover:bg-red-50 text-gray-400 hover:text-red-500">
                     <Icon name="del" size={12} />

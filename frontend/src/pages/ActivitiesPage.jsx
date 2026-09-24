@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { activitiesApi, casesApi, usersApi } from "../api/endpoints";
 import { Icon, Badge, Modal, Field, Input, Select, Textarea, Spinner, ErrorBanner } from "../components/ui";
+import { fmtDate } from "../utils/constants";
 
 const TYPE_COLORS = {
   Meeting: "#1a3a5c", Demo: "#8b5cf6", Call: "#10b981",
@@ -111,7 +112,7 @@ export default function ActivitiesPage() {
                   <span className="text-xs text-gray-400">{a.activity_uid}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-gray-400 whitespace-nowrap">{a.activity_date}</span>
+                  <span className="text-xs text-gray-400 whitespace-nowrap">{fmtDate(a.activity_date)}</span>
                   <button onClick={() => { setForm(a); setModal("edit"); }}
                     className="p-1 rounded hover:bg-brand-50 text-gray-400 hover:text-brand-600">
                     <Icon name="edit" size={13} />

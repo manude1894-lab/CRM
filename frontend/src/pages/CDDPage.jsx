@@ -5,7 +5,7 @@ import { Icon, Badge, Modal, Field, Input, Select, Spinner, ErrorBanner } from "
 import AMLAssessmentPanel from "../components/AMLAssessmentPanel";
 import PEPAssessmentPanel from "../components/PEPAssessmentPanel";
 import DocumentsPanel from "../components/DocumentsPanel";
-import { DOCUMENT_STATUS_OPTIONS, AML_RISK_OPTIONS } from "../utils/constants";
+import { DOCUMENT_STATUS_OPTIONS, AML_RISK_OPTIONS, fmtDate } from "../utils/constants";
 
 const directorName = (d) => d.director_type === "Corporate"
   ? (d.corporate_name || "Corporate Director")
@@ -314,7 +314,7 @@ export default function CDDPage() {
                           ) : (
                             <div className="space-y-1.5">
                               {g.docs.map((doc) => (
-                                <div key={doc.id} className={`rounded-lg ${doc.waived ? "bg-gray-100" : "bg-gray-50"}`}>
+                                <div key={doc.id} className={`rounded-lg ${doc.waived ? "bg-gray-100" : !doc.received ? "bg-amber-50" : "bg-gray-50"}`}>
                                   <div className="flex items-center justify-between p-2">
                                     <div className="flex items-center gap-2">
                                       <button onClick={() => toggleReceived(doc)} disabled={doc.waived}
@@ -344,10 +344,10 @@ export default function CDDPage() {
                                         );
                                       })()}
                                       <button onClick={() => setOpenAttach(openAttach === doc.id ? null : doc.id)}
-                                        className={`flex items-center gap-1 text-xs ${(doc.attachments?.length || 0) > 0 ? "text-brand-600" : "text-gray-400"} hover:text-brand-600`}>
+                                        className={`flex items-center gap-1 text-xs ${(doc.attachments?.length || 0) > 0 ? "text-brand-600" : !doc.received && !doc.waived ? "text-amber-600" : "text-gray-400"} hover:text-brand-600`}>
                                         <Icon name="download" size={12} /> {doc.attachments?.length || 0}
                                       </button>
-                                      <span className="text-xs text-gray-400 whitespace-nowrap">{doc.received_date || "Pending"}</span>
+                                      <span className="text-xs text-gray-400 whitespace-nowrap">{fmtDate(doc.received_date) || "Pending"}</span>
                                     </div>
                                   </div>
                                   {openAttach === doc.id && (

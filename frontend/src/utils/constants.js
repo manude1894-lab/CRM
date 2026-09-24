@@ -254,6 +254,16 @@ export const fmt = (n) => {
 
 export const fmtFull = (n) => `$${Number(n || 0).toLocaleString()}`;
 
+// Client CRM-change-request items 8/14 — display dates as DD-MM-YYYY everywhere.
+// Native <input type="date"> fields are left alone (browser-controlled, ISO value).
+export const fmtDate = (d) => {
+  if (!d) return "";
+  const s = String(d).slice(0, 10);
+  const [y, m, day] = s.split("-");
+  if (!y || !m || !day) return s;
+  return `${day}-${m}-${y}`;
+};
+
 export const ROLE_LABEL = {
   admin: "Admin",
   rm: "Relationship Manager",

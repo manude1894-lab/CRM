@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { accountsApi } from "../api/endpoints";
 import { Icon, Badge, Modal, Spinner, ErrorBanner } from "./ui";
-import { fmt } from "../utils/constants";
+import { fmt, fmtDate } from "../utils/constants";
 
 export default function TrackRecordModal({ account, onClose }) {
   const [record, setRecord] = useState(null);
@@ -55,7 +55,7 @@ export default function TrackRecordModal({ account, onClose }) {
               <div><span className="text-gray-400">Country:</span> {record.country || "—"}</div>
               <div><span className="text-gray-400">Risk Rating:</span> {record.risk_rating || "—"}</div>
               <div><span className="text-gray-400">KYC Status:</span> {record.kyc_status}</div>
-              <div><span className="text-gray-400">Client Since:</span> {new Date(record.client_since).toLocaleDateString()}</div>
+              <div><span className="text-gray-400">Client Since:</span> {fmtDate(record.client_since)}</div>
             </div>
           </div>
 

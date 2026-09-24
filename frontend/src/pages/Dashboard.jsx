@@ -6,7 +6,7 @@ import {
 } from "recharts";
 import { dashboardApi } from "../api/endpoints";
 import { MetricCard, CustomTooltip, Badge, Spinner, ErrorBanner } from "../components/ui";
-import { PIE_COLORS, fmt } from "../utils/constants";
+import { PIE_COLORS, fmt, fmtDate } from "../utils/constants";
 
 export default function Dashboard() {
   const [data, setData] = useState(null);
@@ -192,7 +192,7 @@ export default function Dashboard() {
                 <tr key={`${c.case_id}-${c.item}-${i}`} className="border-b border-gray-50 hover:bg-gray-50">
                   <td className="py-2 px-3 text-xs font-medium text-gray-800">{c.company_name}</td>
                   <td className="py-2 px-3 text-xs text-gray-600">{c.item.replace("_", " ")}</td>
-                  <td className="py-2 px-3 text-xs text-gray-600">{c.due_date}</td>
+                  <td className="py-2 px-3 text-xs text-gray-600">{fmtDate(c.due_date)}</td>
                   <td className="py-2 px-3 text-xs text-right text-gray-600">{c.days_remaining}</td>
                 </tr>
               ))}

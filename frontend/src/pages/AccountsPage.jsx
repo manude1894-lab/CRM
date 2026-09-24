@@ -6,7 +6,7 @@ import TrackRecordModal from "../components/TrackRecordModal";
 import DocumentsPanel from "../components/DocumentsPanel";
 import DuplicateWarning from "../components/DuplicateWarning";
 import {
-  fmt, REGULATOR_OPTIONS, TAG_OPTIONS, SERVICES_OBTAINED_OPTIONS,
+  fmt, fmtDate, REGULATOR_OPTIONS, TAG_OPTIONS, SERVICES_OBTAINED_OPTIONS,
   PROFILE_STATUS_OPTIONS, AML_CLASSIFICATION_OPTIONS, COUNTRY_CALLING_CODES, TRIAM_ENTITY_OPTIONS,
 } from "../utils/constants";
 import { useAuthStore } from "../store/auth";
@@ -577,7 +577,7 @@ export default function AccountsPage({ initialAccountId } = {}) {
                     </div>
                     <div className="bg-gray-50 rounded-lg p-2">
                       <p className="text-xs text-gray-500">Next AML Review</p>
-                      <p className="text-xs font-bold text-gray-800 truncate">{a.next_aml_review_date || "—"}</p>
+                      <p className="text-xs font-bold text-gray-800 truncate">{fmtDate(a.next_aml_review_date) || "—"}</p>
                     </div>
                     <div className="bg-gray-50 rounded-lg p-2">
                       <p className="text-xs text-gray-500">TRN/VAT</p>
@@ -858,7 +858,7 @@ export default function AccountsPage({ initialAccountId } = {}) {
                 <Field label="Reason for EDD"><Input value={form.edd_reason} onChange={(e) => setForm({ ...form, edd_reason: e.target.value })} maxLength={25} /></Field>
               )}
               {form.next_aml_review_date && (
-                <p className="text-xs text-gray-400">Next AML Review Date: <span className="font-medium text-gray-600">{form.next_aml_review_date}</span> (auto-calculated from Risk Rating + CDD Completion Date)</p>
+                <p className="text-xs text-gray-400">Next AML Review Date: <span className="font-medium text-gray-600">{fmtDate(form.next_aml_review_date)}</span> (auto-calculated from Risk Rating + CDD Completion Date)</p>
               )}
             </Section>
           </div>

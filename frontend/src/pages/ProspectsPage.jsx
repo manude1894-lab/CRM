@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { prospectsApi, usersApi } from "../api/endpoints";
 import { Icon, Badge, Modal, Field, Input, Select, Textarea, Spinner, ErrorBanner } from "../components/ui";
 import DuplicateWarning from "../components/DuplicateWarning";
-import { PROSPECT_STATUS_OPTIONS, CASE_SOURCE_OPTIONS, JURISDICTION_OPTIONS, SERVICE_TYPE_OPTIONS, fmtFull } from "../utils/constants";
+import { PROSPECT_STATUS_OPTIONS, CASE_SOURCE_OPTIONS, JURISDICTION_OPTIONS, SERVICE_TYPE_OPTIONS, fmtFull, fmtDate } from "../utils/constants";
 
 const empty = {
   company_name: "", contact_name: "", contact_email: "", contact_phone: "",
@@ -128,7 +128,7 @@ export default function ProspectsPage() {
                     <div className="text-[11px] text-gray-400 mt-1 space-y-0.5">
                       {p.owner_id && <div>{userById[p.owner_id]?.name || `User #${p.owner_id}`}</div>}
                       {p.proposal_amount && <div>{fmtFull(p.proposal_amount)}</div>}
-                      {p.next_follow_up_date && <div>Follow up {p.next_follow_up_date}</div>}
+                      {p.next_follow_up_date && <div>Follow up {fmtDate(p.next_follow_up_date)}</div>}
                     </div>
                     {p.converted_case_id && (
                       <div className="mt-1"><Badge text="Converted" /></div>

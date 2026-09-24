@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { invoicesApi, instructionsApi, casesApi } from "../api/endpoints";
 import { Icon, Badge, Modal, Field, Input, Select, Textarea, Spinner, ErrorBanner } from "../components/ui";
-import { INVOICE_LEDGER_STATUS_OPTIONS, fmtFull } from "../utils/constants";
+import { INVOICE_LEDGER_STATUS_OPTIONS, fmtFull, fmtDate } from "../utils/constants";
 
 const emptyForm = (cases) => ({
   case_id: cases[0]?.id,
@@ -175,8 +175,8 @@ export default function InvoicesPage() {
                   </select>
                 </td>
                 <td className="py-3 px-4 text-xs text-right text-gray-600">{fmtFull(inv.amount)}</td>
-                <td className="py-3 px-4 text-xs text-gray-500">{inv.raised_date || "—"}</td>
-                <td className="py-3 px-4 text-xs text-gray-500">{inv.paid_date || "—"}</td>
+                <td className="py-3 px-4 text-xs text-gray-500">{fmtDate(inv.raised_date) || "—"}</td>
+                <td className="py-3 px-4 text-xs text-gray-500">{fmtDate(inv.paid_date) || "—"}</td>
                 <td className="py-3 px-4">
                   <div className="flex gap-1">
                     <button onClick={() => openEdit(inv)} className="p-1.5 rounded hover:bg-brand-50 text-gray-400 hover:text-brand-600">

@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { amlApi } from "../api/endpoints";
 import { useAuthStore } from "../store/auth";
 import { Icon, Badge, Modal, Field, Input, Select, Textarea } from "./ui";
+import { fmtDate } from "../utils/constants";
 
 // ─── Client-side mirror of backend app/services/aml_matrix.calculate ──────────
 // Keep in sync with that module. Gives instant preview; server recomputes on save.
@@ -206,7 +207,7 @@ export default function AMLAssessmentPanel({ caseId, entityName, parties = [] })
                 <div className="text-xs text-gray-700 truncate">
                   <span className="font-medium">{a.subject_name}</span>
                   <span className="text-gray-400"> · {a.subject_type}</span>
-                  {a.assessment_date && <span className="text-gray-400"> · {a.assessment_date}</span>}
+                  {a.assessment_date && <span className="text-gray-400"> · {fmtDate(a.assessment_date)}</span>}
                 </div>
                 <div className="text-[11px] text-gray-400">
                   score {a.total_weighted_score ?? "—"}

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { serviceSubscriptionsApi } from "../api/endpoints";
 import { Modal, Field, Input, Select, Textarea, Spinner, ErrorBanner, Badge } from "./ui";
-import { SERVICE_NAME_SUGGESTIONS, SERVICE_BILLING_FREQUENCY_OPTIONS, SERVICE_SUBSCRIPTION_STATUS_OPTIONS, fmtFull } from "../utils/constants";
+import { SERVICE_NAME_SUGGESTIONS, SERVICE_BILLING_FREQUENCY_OPTIONS, SERVICE_SUBSCRIPTION_STATUS_OPTIONS, fmtFull, fmtDate } from "../utils/constants";
 
 const empty = {
   service_name: "", billing_frequency: "Monthly", fee_amount: "",
@@ -70,7 +70,7 @@ export default function ServiceSubscriptionsModal({ caseItem, onClose }) {
                 <div className="text-sm font-medium text-gray-800">{s.service_name}</div>
                 <div className="text-xs text-gray-400 mt-0.5">
                   {s.billing_frequency} · {s.fee_amount ? fmtFull(s.fee_amount) : "no fee set"}
-                  {s.next_billing_date && <> · next billing {s.next_billing_date}</>}
+                  {s.next_billing_date && <> · next billing {fmtDate(s.next_billing_date)}</>}
                 </div>
                 {s.notes && <div className="text-xs text-gray-400 mt-1">{s.notes}</div>}
               </div>

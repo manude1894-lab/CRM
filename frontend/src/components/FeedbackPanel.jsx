@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { feedbackApi } from "../api/endpoints";
 import { Select, Textarea } from "./ui";
-import { FEEDBACK_CHANNEL_OPTIONS } from "../utils/constants";
+import { FEEDBACK_CHANNEL_OPTIONS, fmtDate } from "../utils/constants";
 
 /**
  * Staff-logged client feedback for a single instruction — not a client-facing form.
@@ -56,7 +56,7 @@ export default function FeedbackPanel({ caseId, instructionId }) {
           <div>
             <div className="text-xs font-medium text-gray-700">
               {"★".repeat(f.rating || 0)}{"☆".repeat(5 - (f.rating || 0))}
-              <span className="text-gray-400 font-normal ml-2">{f.received_via} · {f.feedback_date}</span>
+              <span className="text-gray-400 font-normal ml-2">{f.received_via} · {fmtDate(f.feedback_date)}</span>
             </div>
             {f.comments && <div className="text-xs text-gray-600 mt-0.5">{f.comments}</div>}
           </div>

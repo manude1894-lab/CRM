@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { complianceApi } from "../api/endpoints";
 import { Icon, Badge, Spinner, ErrorBanner } from "../components/ui";
-import { AR_FILING_STATUS_OPTIONS } from "../utils/constants";
+import { AR_FILING_STATUS_OPTIONS, fmtDate } from "../utils/constants";
 import ComplianceCalendar from "../components/ComplianceCalendar";
 
 const ITEM_LABEL = {
@@ -119,7 +119,7 @@ export default function CompliancePage() {
                     </div>
                   )}
                 </td>
-                <td className="py-3 px-4 text-xs text-gray-600">{r.due_date}</td>
+                <td className="py-3 px-4 text-xs text-gray-600">{fmtDate(r.due_date)}</td>
                 <td className={`py-3 px-4 text-xs text-right font-medium ${r.days_remaining <= (r.item === "bo_filing" ? 14 : 7) ? "text-red-600" : r.days_remaining <= 30 ? "text-amber-600" : "text-gray-600"}`}>
                   {r.days_remaining}
                 </td>

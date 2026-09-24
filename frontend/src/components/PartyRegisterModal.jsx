@@ -3,7 +3,7 @@ import { directorsApi, shareholdersApi, ubosApi, amlApi } from "../api/endpoints
 import { Icon, Modal, Field, Input, Select, Textarea, Spinner, ErrorBanner } from "./ui";
 import {
   PARTY_TYPE_OPTIONS, SHAREHOLDER_TYPE_OPTIONS, OWNERSHIP_NATURE_OPTIONS, SOURCE_OF_WEALTH_OPTIONS,
-  ENTITY_DETAIL_TYPE_OPTIONS, CHARGE_STATUS_OPTIONS, DIRECTOR_ROLE_OPTIONS,
+  ENTITY_DETAIL_TYPE_OPTIONS, CHARGE_STATUS_OPTIONS, DIRECTOR_ROLE_OPTIONS, fmtDate,
 } from "../utils/constants";
 
 const emptyAppendixA = {
@@ -151,8 +151,8 @@ export default function PartyRegisterModal({ caseItem, onClose }) {
                           {d.director_type}
                           {d.director_type === "Individual" && d.nationality && ` · ${d.nationality}`}
                           {d.director_type === "Corporate" && d.country_of_incorporation && ` · ${d.country_of_incorporation}`}
-                          {d.appointment_date && ` · Appointed ${d.appointment_date}`}
-                          {d.cessation_date && ` · Ceased ${d.cessation_date}`}
+                          {d.appointment_date && ` · Appointed ${fmtDate(d.appointment_date)}`}
+                          {d.cessation_date && ` · Ceased ${fmtDate(d.cessation_date)}`}
                         </div>
                       </div>
                       <RowActions onEdit={() => startEdit(d)} onDelete={() => remove(d)} />
@@ -194,7 +194,7 @@ export default function PartyRegisterModal({ caseItem, onClose }) {
                           {u.percentage_interest != null && `${u.percentage_interest}% · `}{u.ownership_nature}
                           {u.nationality && ` · ${u.nationality}`}
                           {u.source_of_wealth_category && ` · SoW: ${u.source_of_wealth_category}`}
-                          {u.cessation_date && ` · Ceased ${u.cessation_date}`}
+                          {u.cessation_date && ` · Ceased ${fmtDate(u.cessation_date)}`}
                         </div>
                       </div>
                       <RowActions onEdit={() => startEdit(u)} onDelete={() => remove(u)} />

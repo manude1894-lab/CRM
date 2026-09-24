@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { actionPointsApi, casesApi, usersApi } from "../api/endpoints";
 import { useAuthStore } from "../store/auth";
 import { Icon, Badge, Modal, Field, Input, Select, Textarea, Spinner, ErrorBanner } from "../components/ui";
-import { ACTION_POINT_STATUS_OPTIONS, ACTION_POINT_PRIORITY_OPTIONS } from "../utils/constants";
+import { ACTION_POINT_STATUS_OPTIONS, ACTION_POINT_PRIORITY_OPTIONS, fmtDate } from "../utils/constants";
 
 const NEXT = { Open: "In Progress", "In Progress": "Done", Done: null };
 const PREV = { Done: "In Progress", "In Progress": "Open", Open: null };
@@ -101,7 +101,7 @@ export default function ActionPointsPage() {
                       {ap.case_id && <div>{caseById[ap.case_id]?.company_name || `Case #${ap.case_id}`}</div>}
                       <div className="flex gap-2">
                         {ap.owner_id && <span>{userById[ap.owner_id]?.name || `User #${ap.owner_id}`}</span>}
-                        {ap.due_date && <span>· due {ap.due_date}</span>}
+                        {ap.due_date && <span>· due {fmtDate(ap.due_date)}</span>}
                       </div>
                     </div>
                     <div className="flex items-center gap-1 mt-2" onClick={(e) => e.stopPropagation()}>

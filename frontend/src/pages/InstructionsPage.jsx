@@ -3,7 +3,7 @@ import { instructionsApi, casesApi, invoicesApi } from "../api/endpoints";
 import { Icon, Badge, Modal, Field, Input, Select, Textarea, Spinner, ErrorBanner } from "../components/ui";
 import DocumentsPanel from "../components/DocumentsPanel";
 import FeedbackPanel from "../components/FeedbackPanel";
-import { INSTRUCTION_STATUS_OPTIONS, INSTRUCTION_TYPE_OPTIONS, fmtFull } from "../utils/constants";
+import { INSTRUCTION_STATUS_OPTIONS, INSTRUCTION_TYPE_OPTIONS, fmtFull, fmtDate } from "../utils/constants";
 
 const emptyForm = (cases) => ({
   case_id: cases[0]?.id,
@@ -188,8 +188,8 @@ export default function InstructionsPage() {
                     {INSTRUCTION_STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
                   </select>
                 </td>
-                <td className="py-3 px-4 text-xs text-gray-500">{i.date_received || "—"}</td>
-                <td className="py-3 px-4 text-xs text-gray-500">{i.date_completed || "—"}</td>
+                <td className="py-3 px-4 text-xs text-gray-500">{fmtDate(i.date_received) || "—"}</td>
+                <td className="py-3 px-4 text-xs text-gray-500">{fmtDate(i.date_completed) || "—"}</td>
                 <td className="py-3 px-4 text-xs text-right text-gray-500">{i.cost_amount != null ? fmtFull(i.cost_amount) : "—"}</td>
                 <td className="py-3 px-4 text-xs text-right text-gray-600">{i.charge_amount != null ? fmtFull(i.charge_amount) : "—"}</td>
                 <td className="py-3 px-4 text-xs text-right text-gray-500">

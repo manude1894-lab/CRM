@@ -4,7 +4,7 @@ import { useAuthStore } from "../store/auth";
 import { Modal, Field, Input, Select, Textarea, Spinner, ErrorBanner } from "./ui";
 import {
   SCREENING_STATUS_OPTIONS, MLRO_SIGNOFF_STATUS_OPTIONS, VISTRA_STATUS_OPTIONS,
-  SCREENING_TOOL_OPTIONS,
+  SCREENING_TOOL_OPTIONS, fmtDate,
 } from "../utils/constants";
 
 const cleanPayload = (obj) => Object.fromEntries(
@@ -106,7 +106,7 @@ export default function FormationModal({ caseItem, users = [], onClose }) {
             <Field label="MLRO Notes"><Textarea value={form.mlro_signoff_notes || ""} onChange={set("mlro_signoff_notes")} /></Field>
             {form.mlro_signoff_at && (
               <p className="text-[11px] text-gray-400">
-                {form.mlro_signoff_status} by {nameOf(form.mlro_signoff_by_id)} on {(form.mlro_signoff_at || "").slice(0, 10)}
+                {form.mlro_signoff_status} by {nameOf(form.mlro_signoff_by_id)} on {fmtDate(form.mlro_signoff_at)}
               </p>
             )}
             {!canSignOff && <p className="text-[11px] text-gray-400">Only the MLRO (Screening / Admin) can change the sign-off status.</p>}

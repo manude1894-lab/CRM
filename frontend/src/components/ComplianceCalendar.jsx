@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { Icon, Badge } from "./ui";
-import { AR_FILING_STATUS_OPTIONS } from "../utils/constants";
+import { AR_FILING_STATUS_OPTIONS, fmtDate } from "../utils/constants";
 
 const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -101,7 +101,7 @@ export default function ComplianceCalendar({ rows, itemLabel, onMarkDone, onSetA
 
       {selectedDate && (
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
-          <p className="text-sm font-semibold text-gray-800 mb-3">{selectedDate} — {selectedRows.length} item{selectedRows.length !== 1 ? "s" : ""}</p>
+          <p className="text-sm font-semibold text-gray-800 mb-3">{fmtDate(selectedDate)} — {selectedRows.length} item{selectedRows.length !== 1 ? "s" : ""}</p>
           <div className="space-y-2">
             {selectedRows.map((r, i) => (
               <div key={i} className="flex items-center justify-between p-2.5 bg-gray-50 rounded-lg">
