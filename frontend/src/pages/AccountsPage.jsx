@@ -17,7 +17,7 @@ const KYC_STATUS_OPTIONS = ["Not Started", "Submitted", "Under Review", "Approve
 
 const BLANK_ADDRESS = { line1: "", line2: "", landmark: "", zip: "", po_box: "", city: "", country: "" };
 
-const Section = ({ title, children, hasData }) => {
+const Section = ({ title, children, hasData, onSave, status, error }) => {
   const [open, setOpen] = useState(!!hasData);
   return (
     <div className="mb-2 border border-gray-100 rounded-lg overflow-hidden">
@@ -29,7 +29,21 @@ const Section = ({ title, children, hasData }) => {
         </span>
         <Icon name="chevronRight" size={14} className={`text-gray-400 transition-transform flex-shrink-0 ${open ? "rotate-90" : ""}`} />
       </button>
-      {open && <div className="px-3 py-3">{children}</div>}
+      {open && (
+        <div className="px-3 py-3">
+          {children}
+          {onSave && (
+            <div className="flex items-center gap-2 mt-3 pt-3 border-t border-gray-100">
+              <button type="button" onClick={onSave} disabled={status === "saving"}
+                className="px-3 py-1.5 text-xs border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600 disabled:opacity-50">
+                {status === "saving" ? "Saving…" : `Save ${title}`}
+              </button>
+              {status === "saved" && <span className="text-xs text-emerald-600">Saved</span>}
+              {status === "error" && <span className="text-xs text-red-600">{error || "Save failed"}</span>}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };
@@ -235,7 +249,7 @@ export default function AccountsPage({ initialAccountId } = {}) {
     individual_email: "", uae_visa_number: "", uae_visa_expiry: "", nature_of_services_sought: [],
   };
 
-  const openNew = () => { setForm(BLANK); setModal("new"); };
+  const openNew = () => { setForm(BLANK); setModal("new"); setSectionStatus({}); setSectionError({}); };
 
   const openEdit = (a) => {
     setForm({
@@ -267,6 +281,8 @@ export default function AccountsPage({ initialAccountId } = {}) {
       _id: a.id,
     });
     setModal("edit");
+    setSectionStatus({});
+    setSectionError({});
   };
 
   const deleteAccount = async (id) => {
@@ -334,6 +350,66 @@ export default function AccountsPage({ initialAccountId } = {}) {
       alert(e.response?.data?.detail || (modal === "edit" ? "Failed to update client" : "Failed to create client"));
     } finally { setSaving(false); }
   };
+
+  // Client CRM-change-request item 19 — per-section Save, so each section validates and
+  // persists independently instead of only surfacing errors at the very bottom of the form.
+  const [sectionStatus, setSectionStatus] = useState({});
+  const [sectionError, setSectionError] = useState({});
+
+  const buildSectionPatch = (fieldKeys) => {
+    const picked = {};
+    for (const k of fieldKeys) picked[k] = form[k];
+    if ("tags" in picked) picked.tags = (picked.tags || []).join(", ") || null;
+    const clean = cleanPayload(picked);
+    if ("spoc_id" in clean) clean.spoc_id = clean.spoc_id ? +clean.spoc_id : null;
+    return clean;
+  };
+
+  const saveSection = async (key, fieldKeys, isCore = false) => {
+    setSectionStatus((s) => ({ ...s, [key]: "saving" }));
+    setSectionError((s) => ({ ...s, [key]: null }));
+    try {
+      const patch = buildSectionPatch(fieldKeys);
+      if (form._id) {
+        const updated = await accountsApi.update(form._id, patch);
+        setForm((f) => ({ ...f, next_aml_review_date: updated.next_aml_review_date }));
+      } else {
+        if (!isCore) throw { response: { data: { detail: "Save Client Info first." } } };
+        if (!form.company_name?.trim()) throw { response: { data: { detail: "Company name is required" } } };
+        if (form.account_type !== "Individual" && !form.industry?.trim()) throw { response: { data: { detail: "Industry is required" } } };
+        const created = await accountsApi.create(patch);
+        setForm((f) => ({ ...f, _id: created.id }));
+        setModal("edit");
+      }
+      setSectionStatus((s) => ({ ...s, [key]: "saved" }));
+      load();
+      setTimeout(() => setSectionStatus((s) => (s[key] === "saved" ? { ...s, [key]: "idle" } : s)), 2500);
+    } catch (e) {
+      setSectionStatus((s) => ({ ...s, [key]: "error" }));
+      setSectionError((s) => ({ ...s, [key]: e.response?.data?.detail || "Save failed" }));
+    }
+  };
+
+  const CORE_FIELDS = [
+    "account_type", "company_name", "industry", "country", "website", "key_contacts",
+    "single_point_of_contact", "strategic_priority", "existing_relationship", "spoc_id",
+    "anchor_entity", "non_anchor_entities", "registration_number", "license_number", "incorporation_date",
+    "risk_rating", "kyc_status", "tags",
+  ];
+  const LICENSING_FIELDS = ["licensing_authority", "license_start_date", "license_expiry_date", "license_activities", "is_regulated", "regulator_name", "regulator_other", "license_category"];
+  const REGISTERED_ADDRESS_FIELDS = ["registered_address"];
+  const OPERATING_ADDRESS_FIELDS = ["operating_address"];
+  const TAX_FIELDS = ["trn_vat_number", "financial_year_end", "corp_tax_registered", "corp_tax_registration_number"];
+  const INDIVIDUAL_FIELDS = [
+    "date_of_birth", "country_of_birth", "nationality", "passport_number", "passport_expiry_date", "occupation",
+    "source_of_funds", "source_of_wealth", "country_of_residence", "residential_address",
+    "individual_mobile_country_code", "individual_mobile_number", "individual_email",
+    "uae_visa_number", "uae_visa_expiry", "nature_of_services_sought", "is_pep",
+  ];
+  const INTRODUCER_FIELDS = ["has_introducer", "introducer_name"];
+  const SERVICES_FIELDS = ["services_obtained"];
+  const PROFILE_STATUS_FIELDS = ["profile_status", "engagement_letter_valid_until", "engagement_letter_signed"];
+  const AML_FIELDS = ["aml_classification", "cdd_completion_date", "edd_reason"];
 
   const ADDRESS_COLS = ["Line 1", "Line 2", "Landmark", "City", "ZIP", "P.O. Box", "Country"];
   const addrRow = (v) => { const a = v || {}; return [a.line1, a.line2, a.landmark, a.city, a.zip, a.po_box, a.country]; };
@@ -717,9 +793,20 @@ export default function AccountsPage({ initialAccountId } = {}) {
               <MultiSelect options={TAG_OPTIONS} value={form.tags} onChange={(v) => setForm({ ...form, tags: v })} />
             </Field>
 
+            <div className="flex items-center gap-2 mb-3 pb-3 border-b border-gray-100">
+              <button type="button" onClick={() => saveSection("core", CORE_FIELDS, true)} disabled={sectionStatus.core === "saving"}
+                className="px-3 py-1.5 text-xs border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600 disabled:opacity-50">
+                {sectionStatus.core === "saving" ? "Saving…" : "Save Client Info"}
+              </button>
+              {sectionStatus.core === "saved" && <span className="text-xs text-emerald-600">Saved</span>}
+              {sectionStatus.core === "error" && <span className="text-xs text-red-600">{sectionError.core || "Save failed"}</span>}
+              {!form._id && <span className="text-xs text-gray-400">Save this first to unlock the sections below</span>}
+            </div>
+
             {form.account_type !== "Individual" && (
               <>
-                <Section title="Licensing & Regulatory" hasData={!!(form.licensing_authority || form.license_activities || form.license_start_date || form.license_expiry_date || form.is_regulated || form.license_category)}>
+                <Section title="Licensing & Regulatory" hasData={!!(form.licensing_authority || form.license_activities || form.license_start_date || form.license_expiry_date || form.is_regulated || form.license_category)}
+                  onSave={() => saveSection("licensing", LICENSING_FIELDS)} status={sectionStatus.licensing} error={sectionError.licensing}>
                   <div className="grid grid-cols-2 gap-3">
                     <Field label="Licensing Authority">
                       <Input value={form.licensing_authority} onChange={(e) => setForm({ ...form, licensing_authority: e.target.value })} placeholder="e.g. DIFC, ADGM, DED" />
@@ -751,15 +838,18 @@ export default function AccountsPage({ initialAccountId } = {}) {
                   )}
                 </Section>
 
-                <Section title="Registered Address" hasData={Object.values(form.registered_address || {}).some(Boolean)}>
+                <Section title="Registered Address" hasData={Object.values(form.registered_address || {}).some(Boolean)}
+                  onSave={() => saveSection("registeredAddress", REGISTERED_ADDRESS_FIELDS)} status={sectionStatus.registeredAddress} error={sectionError.registeredAddress}>
                   <AddressFields value={form.registered_address} onChange={(v) => setForm({ ...form, registered_address: v })} />
                 </Section>
 
-                <Section title="Operating Address" hasData={Object.values(form.operating_address || {}).some(Boolean)}>
+                <Section title="Operating Address" hasData={Object.values(form.operating_address || {}).some(Boolean)}
+                  onSave={() => saveSection("operatingAddress", OPERATING_ADDRESS_FIELDS)} status={sectionStatus.operatingAddress} error={sectionError.operatingAddress}>
                   <AddressFields value={form.operating_address} onChange={(v) => setForm({ ...form, operating_address: v })} />
                 </Section>
 
-                <Section title="Tax" hasData={!!(form.trn_vat_number || form.financial_year_end || form.corp_tax_registered)}>
+                <Section title="Tax" hasData={!!(form.trn_vat_number || form.financial_year_end || form.corp_tax_registered)}
+                  onSave={() => saveSection("tax", TAX_FIELDS)} status={sectionStatus.tax} error={sectionError.tax}>
                   <div className="grid grid-cols-2 gap-3">
                     <Field label="TRN / VAT Registration No."><Input value={form.trn_vat_number} onChange={(e) => setForm({ ...form, trn_vat_number: e.target.value })} maxLength={15} /></Field>
                     <Field label="Financial Year End (MM-DD)"><Input value={form.financial_year_end} onChange={(e) => setForm({ ...form, financial_year_end: e.target.value })} placeholder="12-31" /></Field>
@@ -775,7 +865,8 @@ export default function AccountsPage({ initialAccountId } = {}) {
             )}
 
             {form.account_type === "Individual" && (
-              <Section title="Individual Details" hasData={!!(form.date_of_birth || form.country_of_birth || form.nationality || form.passport_number || form.occupation || form.individual_mobile_number || form.individual_email || form.country_of_residence || form.source_of_funds || form.source_of_wealth || form.is_pep || (form.nature_of_services_sought || []).length > 0)}>
+              <Section title="Individual Details" hasData={!!(form.date_of_birth || form.country_of_birth || form.nationality || form.passport_number || form.occupation || form.individual_mobile_number || form.individual_email || form.country_of_residence || form.source_of_funds || form.source_of_wealth || form.is_pep || (form.nature_of_services_sought || []).length > 0)}
+                onSave={() => saveSection("individual", INDIVIDUAL_FIELDS)} status={sectionStatus.individual} error={sectionError.individual}>
                 <div className="grid grid-cols-2 gap-3">
                   <Field label="Date of Birth"><Input type="date" value={form.date_of_birth || ""} onChange={(e) => setForm({ ...form, date_of_birth: e.target.value })} /></Field>
                   <Field label="Country of Birth"><CountrySelect value={form.country_of_birth} onChange={(e) => setForm({ ...form, country_of_birth: e.target.value })} countries={countries} /></Field>
@@ -817,7 +908,8 @@ export default function AccountsPage({ initialAccountId } = {}) {
               </Section>
             )}
 
-            <Section title="Introducer" hasData={!!form.has_introducer}>
+            <Section title="Introducer" hasData={!!form.has_introducer}
+              onSave={() => saveSection("introducer", INTRODUCER_FIELDS)} status={sectionStatus.introducer} error={sectionError.introducer}>
               <label className="flex items-center gap-2 text-xs text-gray-700 mb-3">
                 <input type="checkbox" checked={!!form.has_introducer} onChange={(e) => setForm({ ...form, has_introducer: e.target.checked })} /> Introduced by a third party
               </label>
@@ -826,11 +918,13 @@ export default function AccountsPage({ initialAccountId } = {}) {
               )}
             </Section>
 
-            <Section title="Services Obtained" hasData={(form.services_obtained || []).length > 0}>
+            <Section title="Services Obtained" hasData={(form.services_obtained || []).length > 0}
+              onSave={() => saveSection("services", SERVICES_FIELDS)} status={sectionStatus.services} error={sectionError.services}>
               <MultiSelect options={SERVICES_OBTAINED_OPTIONS} value={form.services_obtained} onChange={(v) => setForm({ ...form, services_obtained: v })} />
             </Section>
 
-            <Section title="Profile Status & Engagement" hasData={form.profile_status !== "New" || !!form.engagement_letter_signed || !!form.engagement_letter_valid_until}>
+            <Section title="Profile Status & Engagement" hasData={form.profile_status !== "New" || !!form.engagement_letter_signed || !!form.engagement_letter_valid_until}
+              onSave={() => saveSection("profileStatus", PROFILE_STATUS_FIELDS)} status={sectionStatus.profileStatus} error={sectionError.profileStatus}>
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Profile Status">
                   <Select value={form.profile_status} onChange={(e) => setForm({ ...form, profile_status: e.target.value })}>
@@ -844,7 +938,8 @@ export default function AccountsPage({ initialAccountId } = {}) {
               </label>
             </Section>
 
-            <Section title="AML Classification" hasData={!!(form.aml_classification || form.cdd_completion_date)}>
+            <Section title="AML Classification" hasData={!!(form.aml_classification || form.cdd_completion_date)}
+              onSave={() => saveSection("aml", AML_FIELDS)} status={sectionStatus.aml} error={sectionError.aml}>
               <div className="grid grid-cols-2 gap-3">
                 <Field label="AML Classification">
                   <Select value={form.aml_classification || ""} onChange={(e) => setForm({ ...form, aml_classification: e.target.value })}>
