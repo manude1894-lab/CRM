@@ -3,6 +3,8 @@ import { amlApi } from "../api/endpoints";
 import { useAuthStore } from "../store/auth";
 import { Icon, Badge, Modal, Field, Input, Select, Textarea } from "./ui";
 import { fmtDate } from "../utils/constants";
+import { toast } from "../store/toast";
+import { confirmDialog } from "../store/confirm";
 
 // ─── Client-side mirror of backend app/services/aml_matrix.calculate ──────────
 // Keep in sync with that module. Gives instant preview; server recomputes on save.
@@ -170,14 +172,14 @@ export default function AMLAssessmentPanel({ caseId, entityName, parties = [] })
       setModal(null);
       load();
     } catch (e) {
-      alert(e.response?.data?.detail || "Save failed");
+      toast.error(e.response?.data?.detail || "Save failed");
     }
   };
 
   const remove = async (id) => {
-    if (!confirm("Delete this AML assessment?")) return;
+    if (!(await confirmDialog("Delete this AML assessment?"))) return;
     try { await amlApi.deleteAssessment(id); load(); }
-    catch (e) { alert(e.response?.data?.detail || "Delete failed"); }
+    catch (e) { toast.error(e.response?.data?.detail || "Delete failed"); }
   };
 
   if (loading || !catalog) return null;

@@ -3,6 +3,8 @@ import { actionPointsApi, casesApi, usersApi } from "../api/endpoints";
 import { useAuthStore } from "../store/auth";
 import { Icon, Badge, Modal, Field, Input, Select, Textarea, Spinner, ErrorBanner } from "../components/ui";
 import { ACTION_POINT_STATUS_OPTIONS, ACTION_POINT_PRIORITY_OPTIONS, fmtDate } from "../utils/constants";
+import { toast } from "../store/toast";
+import { confirmDialog } from "../store/confirm";
 
 const NEXT = { Open: "In Progress", "In Progress": "Done", Done: null };
 const PREV = { Done: "In Progress", "In Progress": "Open", Open: null };
@@ -51,18 +53,18 @@ export default function ActionPointsPage() {
       if (form.id) await actionPointsApi.update(form.id, payload);
       else await actionPointsApi.create(payload);
       setModal(false); load();
-    } catch (e) { alert(e.response?.data?.detail || "Save failed"); }
+    } catch (e) { toast.error(e.response?.data?.detail || "Save failed"); }
   };
 
   const move = async (ap, status) => {
     try { await actionPointsApi.update(ap.id, { status }); load(); }
-    catch (e) { alert(e.response?.data?.detail || "Update failed"); }
+    catch (e) { toast.error(e.response?.data?.detail || "Update failed"); }
   };
 
   const remove = async (ap) => {
-    if (!confirm(`Delete "${ap.title}"?`)) return;
+    if (!(await confirmDialog(`Delete "${ap.title}"?`))) return;
     try { await actionPointsApi.remove(ap.id); load(); }
-    catch (e) { alert(e.response?.data?.detail || "Delete failed"); }
+    catch (e) { toast.error(e.response?.data?.detail || "Delete failed"); }
   };
 
   if (loading) return <Spinner />;

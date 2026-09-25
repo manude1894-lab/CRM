@@ -3,6 +3,8 @@ import { prospectsApi, usersApi } from "../api/endpoints";
 import { Icon, Badge, Modal, Field, Input, Select, Textarea, Spinner, ErrorBanner } from "../components/ui";
 import DuplicateWarning from "../components/DuplicateWarning";
 import { PROSPECT_STATUS_OPTIONS, CASE_SOURCE_OPTIONS, JURISDICTION_OPTIONS, SERVICE_TYPE_OPTIONS, fmtFull, fmtDate } from "../utils/constants";
+import { toast } from "../store/toast";
+import { confirmDialog } from "../store/confirm";
 
 const empty = {
   company_name: "", contact_name: "", contact_email: "", contact_phone: "",
@@ -63,18 +65,18 @@ export default function ProspectsPage() {
         await prospectsApi.create(payload);
       }
       setModal(false); load();
-    } catch (e) { alert(e.response?.data?.detail || "Save failed"); }
+    } catch (e) { toast.error(e.response?.data?.detail || "Save failed"); }
   };
 
   const move = async (p, status) => {
     try { await prospectsApi.update(p.id, { status }); load(); }
-    catch (e) { alert(e.response?.data?.detail || "Update failed"); }
+    catch (e) { toast.error(e.response?.data?.detail || "Update failed"); }
   };
 
   const remove = async (p) => {
-    if (!confirm(`Delete prospect "${p.company_name}"?`)) return;
+    if (!(await confirmDialog(`Delete prospect "${p.company_name}"?`))) return;
     try { await prospectsApi.delete(p.id); load(); }
-    catch (e) { alert(e.response?.data?.detail || "Delete failed"); }
+    catch (e) { toast.error(e.response?.data?.detail || "Delete failed"); }
   };
 
   const openConvert = (p) => {
@@ -90,7 +92,7 @@ export default function ProspectsPage() {
         rm_id: convertForm.rm_id ? Number(convertForm.rm_id) : null,
       });
       setConvertProspect(null); load();
-    } catch (e) { alert(e.response?.data?.detail || "Convert failed"); }
+    } catch (e) { toast.error(e.response?.data?.detail || "Convert failed"); }
   };
 
   if (loading) return <Spinner />;

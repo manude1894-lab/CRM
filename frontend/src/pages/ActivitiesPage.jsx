@@ -2,6 +2,8 @@ import React, { useEffect, useState } from "react";
 import { activitiesApi, casesApi, usersApi } from "../api/endpoints";
 import { Icon, Badge, Modal, Field, Input, Select, Textarea, Spinner, ErrorBanner } from "../components/ui";
 import { fmtDate } from "../utils/constants";
+import { toast } from "../store/toast";
+import { confirmDialog } from "../store/confirm";
 
 const TYPE_COLORS = {
   Meeting: "#1a3a5c", Demo: "#8b5cf6", Call: "#10b981",
@@ -59,14 +61,14 @@ export default function ActivitiesPage() {
       }
       setModal(null); load();
     } catch (e) {
-      alert(e.response?.data?.detail || "Save failed");
+      toast.error(e.response?.data?.detail || "Save failed");
     }
   };
 
   const remove = async (id) => {
-    if (!confirm("Delete this activity?")) return;
+    if (!(await confirmDialog("Delete this activity?"))) return;
     try { await activitiesApi.delete(id); load(); }
-    catch (e) { alert(e.response?.data?.detail || "Delete failed"); }
+    catch (e) { toast.error(e.response?.data?.detail || "Delete failed"); }
   };
 
   if (loading) return <Spinner />;

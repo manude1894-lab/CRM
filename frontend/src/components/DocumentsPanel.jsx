@@ -4,6 +4,8 @@ import { useAuthStore } from "../store/auth";
 import { Icon } from "./ui";
 import { DOCUMENT_CATEGORY_OPTIONS, fmtDate } from "../utils/constants";
 import GenerateDocModal from "./GenerateDocModal";
+import { toast } from "../store/toast";
+import { confirmDialog } from "../store/confirm";
 
 const fmtBytes = (b) =>
   b == null ? "" : b < 1024 ? `${b} B` : b < 1048576 ? `${(b / 1024).toFixed(0)} KB` : `${(b / 1048576).toFixed(1)} MB`;
@@ -71,14 +73,14 @@ export default function DocumentsPanel({ caseId, accountId, scope = null, compac
       await load();
       onChange?.();
     } catch (e) {
-      alert(e.response?.data?.detail || "Upload failed");
+      toast.error(e.response?.data?.detail || "Upload failed");
     } finally { setBusy(false); }
   };
 
   const doDelete = async (d) => {
-    if (!confirm(`Delete "${d.filename}"?`)) return;
+    if (!(await confirmDialog(`Delete "${d.filename}"?`))) return;
     try { await documentsApi.remove(d.id); await load(); onChange?.(); }
-    catch (e) { alert(e.response?.data?.detail || "Delete failed"); }
+    catch (e) { toast.error(e.response?.data?.detail || "Delete failed"); }
   };
 
   return (

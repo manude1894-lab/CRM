@@ -6,6 +6,8 @@ import AMLAssessmentPanel from "../components/AMLAssessmentPanel";
 import PEPAssessmentPanel from "../components/PEPAssessmentPanel";
 import DocumentsPanel from "../components/DocumentsPanel";
 import { DOCUMENT_STATUS_OPTIONS, AML_RISK_OPTIONS, fmtDate } from "../utils/constants";
+import { toast } from "../store/toast";
+import { confirmDialog } from "../store/confirm";
 
 const directorName = (d) => d.director_type === "Corporate"
   ? (d.corporate_name || "Corporate Director")
@@ -78,7 +80,7 @@ export default function CDDPage() {
       await cddApi.update(caseId, { [field]: value });
       load();
     } catch (e) {
-      alert(e.response?.data?.detail || "Update failed");
+      toast.error(e.response?.data?.detail || "Update failed");
     }
   };
 
@@ -89,7 +91,7 @@ export default function CDDPage() {
       setNewDocType("");
       load();
     } catch (e) {
-      alert(e.response?.data?.detail || "Failed to add document");
+      toast.error(e.response?.data?.detail || "Failed to add document");
     }
   };
 
@@ -98,7 +100,7 @@ export default function CDDPage() {
       await cddApi.updateDocument(doc.id, { received: !doc.received, received_date: !doc.received ? new Date().toISOString().split("T")[0] : null });
       load();
     } catch (e) {
-      alert(e.response?.data?.detail || "Update failed");
+      toast.error(e.response?.data?.detail || "Update failed");
     }
   };
 
@@ -107,7 +109,7 @@ export default function CDDPage() {
       await cddApi.updateDocument(doc.id, { expiry_date: value || null });
       load();
     } catch (e) {
-      alert(e.response?.data?.detail || "Update failed");
+      toast.error(e.response?.data?.detail || "Update failed");
     }
   };
 
@@ -119,18 +121,18 @@ export default function CDDPage() {
       });
       load();
     } catch (e) {
-      alert(e.response?.data?.detail || "Update failed");
+      toast.error(e.response?.data?.detail || "Update failed");
     }
   };
 
   const applyIntroducerExemption = async () => {
     if (!selected) return;
-    if (!confirm("Waive the per-party CDD evidence (passport / address proof) under the professional-introducer exemption? Appendix A forms and company documents stay required.")) return;
+    if (!(await confirmDialog("Waive the per-party CDD evidence (passport / address proof) under the professional-introducer exemption? Appendix A forms and company documents stay required."))) return;
     try {
       await cddApi.applyIntroducerExemption(selected.id);
       load();
     } catch (e) {
-      alert(e.response?.data?.detail || "Failed to apply exemption");
+      toast.error(e.response?.data?.detail || "Failed to apply exemption");
     }
   };
 
@@ -141,18 +143,18 @@ export default function CDDPage() {
       setExceptionModal(false); setExceptionReason(""); setExceptionDays(30);
       load();
     } catch (e) {
-      alert(e.response?.data?.detail || "Failed to grant exception");
+      toast.error(e.response?.data?.detail || "Failed to grant exception");
     }
   };
 
   const revokeException = async () => {
     if (!selected) return;
-    if (!confirm("Revoke the CDD exception on this case?")) return;
+    if (!(await confirmDialog("Revoke the CDD exception on this case?"))) return;
     try {
       await cddApi.revokeException(selected.id);
       load();
     } catch (e) {
-      alert(e.response?.data?.detail || "Failed to revoke exception");
+      toast.error(e.response?.data?.detail || "Failed to revoke exception");
     }
   };
 
@@ -162,7 +164,7 @@ export default function CDDPage() {
       setReviewModal(false); setRejectionReason(""); setSelected(null);
       load();
     } catch (e) {
-      alert(e.response?.data?.detail || "Review failed");
+      toast.error(e.response?.data?.detail || "Review failed");
     }
   };
 

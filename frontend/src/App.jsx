@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useAuthStore } from "./store/auth";
-import { Icon, Badge } from "./components/ui";
+import { Icon, Badge, ToastHost, ConfirmDialogHost } from "./components/ui";
 import NotificationBell from "./components/NotificationBell";
 import CommandPalette from "./components/CommandPalette";
 import LoginPage from "./pages/LoginPage";
@@ -119,6 +119,9 @@ export default function App() {
           />
         </main>
       </div>
+
+      <ToastHost />
+      <ConfirmDialogHost />
     </div>
   );
 }

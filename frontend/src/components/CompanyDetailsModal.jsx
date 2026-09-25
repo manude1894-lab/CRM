@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { companyProfileApi, casesApi } from "../api/endpoints";
 import { Modal, Field, Input, Select, Textarea, Spinner, ErrorBanner } from "./ui";
 import DocumentsPanel from "./DocumentsPanel";
+import { toast } from "../store/toast";
 import {
   REGISTERED_AGENT_OPTIONS, NAME_CHECK_STATUS_OPTIONS, SOURCE_OF_FUNDS_OPTIONS,
   NATURE_OF_BUSINESS_OPTIONS, COMPANY_SECRETARY_OPTIONS, ENTITY_CATEGORY_OPTIONS,
@@ -51,7 +52,7 @@ export default function CompanyDetailsModal({ caseItem, onClose }) {
       await casesApi.update(caseItem.id, cleanPayload(el));
       onClose(true);
     } catch (e) {
-      alert(e.response?.data?.detail || "Save failed");
+      toast.error(e.response?.data?.detail || "Save failed");
     } finally { setSaving(false); }
   };
 

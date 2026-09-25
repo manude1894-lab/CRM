@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { accountsApi } from "../api/endpoints";
 import { Icon, Badge, Modal, Spinner, ErrorBanner } from "./ui";
 import { fmt, fmtDate } from "../utils/constants";
+import { toast } from "../store/toast";
 
 export default function TrackRecordModal({ account, onClose }) {
   const [record, setRecord] = useState(null);
@@ -24,7 +25,7 @@ export default function TrackRecordModal({ account, onClose }) {
       setDownloading(true);
       await accountsApi.downloadTrackRecordPdf(account.id, `track-record-${account.account_uid}.pdf`);
     } catch (e) {
-      alert(e.response?.data?.detail || "Failed to download PDF");
+      toast.error(e.response?.data?.detail || "Failed to download PDF");
     } finally { setDownloading(false); }
   };
 

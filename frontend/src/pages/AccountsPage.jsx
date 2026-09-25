@@ -5,6 +5,8 @@ import AccountPartyModal from "../components/AccountPartyModal";
 import TrackRecordModal from "../components/TrackRecordModal";
 import DocumentsPanel from "../components/DocumentsPanel";
 import DuplicateWarning from "../components/DuplicateWarning";
+import { toast } from "../store/toast";
+import { confirmDialog } from "../store/confirm";
 import {
   fmt, fmtDate, REGULATOR_OPTIONS, TAG_OPTIONS, SERVICES_OBTAINED_OPTIONS,
   PROFILE_STATUS_OPTIONS, AML_CLASSIFICATION_OPTIONS, COUNTRY_CALLING_CODES, TRIAM_ENTITY_OPTIONS,
@@ -286,13 +288,13 @@ export default function AccountsPage({ initialAccountId } = {}) {
   };
 
   const deleteAccount = async (id) => {
-    if (!confirm("Delete this client? This cannot be undone.")) return;
+    if (!(await confirmDialog("Delete this client? This cannot be undone."))) return;
     try {
       await accountsApi.delete(id);
       setSelectedId(null);
       load();
     } catch (e) {
-      alert(e.response?.data?.detail || "Failed to delete client");
+      toast.error(e.response?.data?.detail || "Failed to delete client");
     }
   };
 
@@ -313,14 +315,14 @@ export default function AccountsPage({ initialAccountId } = {}) {
     try {
       const results = await accountsApi.bulkUpdate({ ids: [...selectedIds], [field]: field === "spoc_id" ? +value : value });
       const failed = results.filter((r) => r.status === "error");
-      alert(failed.length === 0
+      toast[failed.length === 0 ? "success" : "error"](failed.length === 0
         ? `Updated ${results.length} client${results.length !== 1 ? "s" : ""}.`
         : `Updated ${results.length - failed.length}/${results.length}. ${failed.length} failed (e.g. access denied).`);
       setSelectedIds(new Set());
       setBulkValues({ spoc_id: "", risk_rating: "", kyc_status: "" });
       load();
     } catch (e) {
-      alert(e.response?.data?.detail || "Bulk update failed");
+      toast.error(e.response?.data?.detail || "Bulk update failed");
     } finally {
       setBulkApplying(false);
     }
@@ -332,8 +334,8 @@ export default function AccountsPage({ initialAccountId } = {}) {
   );
 
   const save = async () => {
-    if (!form.company_name?.trim()) return alert("Company name is required");
-    if (modal === "new" && form.account_type !== "Individual" && !form.industry?.trim()) return alert("Industry is required");
+    if (!form.company_name?.trim()) return toast.error("Company name is required");
+    if (modal === "new" && form.account_type !== "Individual" && !form.industry?.trim()) return toast.error("Industry is required");
     try {
       setSaving(true);
       const { next_aml_review_date, tags, ...rest } = form;
@@ -347,7 +349,7 @@ export default function AccountsPage({ initialAccountId } = {}) {
       setModal(null);
       load();
     } catch (e) {
-      alert(e.response?.data?.detail || (modal === "edit" ? "Failed to update client" : "Failed to create client"));
+      toast.error(e.response?.data?.detail || (modal === "edit" ? "Failed to update client" : "Failed to create client"));
     } finally { setSaving(false); }
   };
 
@@ -470,13 +472,13 @@ export default function AccountsPage({ initialAccountId } = {}) {
       }
       return rest;
     });
-    if (parsed.length === 0) { alert("No rows with a Company Name found in that CSV."); return; }
+    if (parsed.length === 0) { toast.error("No rows with a Company Name found in that CSV."); return; }
     try {
       setImporting(true);
       const res = await accountsApi.import(parsed, true);
       setImportPreview({ rows: parsed, ...res });
     } catch (e) {
-      alert(e.response?.data?.detail || "Failed to preview import");
+      toast.error(e.response?.data?.detail || "Failed to preview import");
     } finally { setImporting(false); }
   };
 
@@ -488,7 +490,7 @@ export default function AccountsPage({ initialAccountId } = {}) {
       setImportPreview(null);
       load();
     } catch (e) {
-      alert(e.response?.data?.detail || "Import failed");
+      toast.error(e.response?.data?.detail || "Import failed");
     } finally { setImporting(false); }
   };
 

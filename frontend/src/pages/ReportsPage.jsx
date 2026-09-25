@@ -3,6 +3,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { dashboardApi, reportsApi } from "../api/endpoints";
 import { MetricCard, CustomTooltip, Badge, Icon, Spinner, ErrorBanner } from "../components/ui";
 import { fmtDate } from "../utils/constants";
+import { toast } from "../store/toast";
 
 const REPORT_TYPES = [
   { id: "case-stage-summary", title: "Case Stage Summary", desc: "Pipeline overview + stage breakdown + upcoming compliance" },
@@ -32,7 +33,7 @@ export default function ReportsPage() {
     try {
       await reportsApi.download(type);
     } catch (e) {
-      alert(e.response?.data?.detail || "Download failed");
+      toast.error(e.response?.data?.detail || "Download failed");
     } finally {
       setDownloading(null);
     }

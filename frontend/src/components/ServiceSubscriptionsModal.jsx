@@ -2,6 +2,8 @@ import React, { useEffect, useState } from "react";
 import { serviceSubscriptionsApi } from "../api/endpoints";
 import { Modal, Field, Input, Select, Textarea, Spinner, ErrorBanner, Badge } from "./ui";
 import { SERVICE_NAME_SUGGESTIONS, SERVICE_BILLING_FREQUENCY_OPTIONS, SERVICE_SUBSCRIPTION_STATUS_OPTIONS, fmtFull, fmtDate } from "../utils/constants";
+import { toast } from "../store/toast";
+import { confirmDialog } from "../store/confirm";
 
 const empty = {
   service_name: "", billing_frequency: "Monthly", fee_amount: "",
@@ -39,17 +41,17 @@ export default function ServiceSubscriptionsModal({ caseItem, onClose }) {
       setForm(null);
       load();
     } catch (e) {
-      alert(e.response?.data?.detail || "Save failed");
+      toast.error(e.response?.data?.detail || "Save failed");
     } finally { setSaving(false); }
   };
 
   const remove = async (id) => {
-    if (!confirm("Remove this service subscription?")) return;
+    if (!(await confirmDialog("Remove this service subscription?"))) return;
     try {
       await serviceSubscriptionsApi.remove(id);
       load();
     } catch (e) {
-      alert(e.response?.data?.detail || "Delete failed");
+      toast.error(e.response?.data?.detail || "Delete failed");
     }
   };
 

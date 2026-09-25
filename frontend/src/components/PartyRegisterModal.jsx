@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { directorsApi, shareholdersApi, ubosApi, amlApi } from "../api/endpoints";
 import { Icon, Modal, Field, Input, Select, Textarea, Spinner, ErrorBanner } from "./ui";
+import { toast } from "../store/toast";
+import { confirmDialog } from "../store/confirm";
 import {
   PARTY_TYPE_OPTIONS, SHAREHOLDER_TYPE_OPTIONS, OWNERSHIP_NATURE_OPTIONS, SOURCE_OF_WEALTH_OPTIONS,
   ENTITY_DETAIL_TYPE_OPTIONS, CHARGE_STATUS_OPTIONS, DIRECTOR_ROLE_OPTIONS, fmtDate,
@@ -106,15 +108,15 @@ export default function PartyRegisterModal({ caseItem, onClose }) {
       cancelForm();
       load();
     } catch (e) {
-      alert(e.response?.data?.detail || "Save failed");
+      toast.error(e.response?.data?.detail || "Save failed");
     }
   };
 
   const remove = async (row) => {
     const label = tab === "directors" ? directorName(row) : tab === "ubos" ? uboName(row) : row.name;
-    if (!confirm(`Remove ${label}?`)) return;
+    if (!(await confirmDialog(`Remove ${label}?`))) return;
     try { await api.delete(row.id); load(); }
-    catch (e) { alert(e.response?.data?.detail || "Delete failed"); }
+    catch (e) { toast.error(e.response?.data?.detail || "Delete failed"); }
   };
 
   const switchTab = (t) => { setTab(t); cancelForm(); };

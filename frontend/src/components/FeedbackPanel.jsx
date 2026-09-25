@@ -2,6 +2,8 @@ import React, { useEffect, useState } from "react";
 import { feedbackApi } from "../api/endpoints";
 import { Select, Textarea } from "./ui";
 import { FEEDBACK_CHANNEL_OPTIONS, fmtDate } from "../utils/constants";
+import { toast } from "../store/toast";
+import { confirmDialog } from "../store/confirm";
 
 /**
  * Staff-logged client feedback for a single instruction — not a client-facing form.
@@ -38,14 +40,14 @@ export default function FeedbackPanel({ caseId, instructionId }) {
       setComments("");
       load();
     } catch (e) {
-      alert(e.response?.data?.detail || "Failed to save feedback");
+      toast.error(e.response?.data?.detail || "Failed to save feedback");
     } finally { setBusy(false); }
   };
 
   const remove = async (id) => {
-    if (!confirm("Remove this feedback entry?")) return;
+    if (!(await confirmDialog("Remove this feedback entry?"))) return;
     try { await feedbackApi.remove(id); load(); }
-    catch (e) { alert(e.response?.data?.detail || "Delete failed"); }
+    catch (e) { toast.error(e.response?.data?.detail || "Delete failed"); }
   };
 
   return (

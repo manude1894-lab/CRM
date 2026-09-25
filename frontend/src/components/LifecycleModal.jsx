@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { lifecycleApi, jurisdictionsApi } from "../api/endpoints";
 import { Modal, Field, Input, Select, Textarea, Spinner, ErrorBanner } from "./ui";
 import DocumentsPanel from "./DocumentsPanel";
+import { toast } from "../store/toast";
 import {
   CLOSURE_METHOD_OPTIONS, RESTORATION_STATUS_OPTIONS, STRIKE_OFF_CAUSE_OPTIONS,
   LIFECYCLE_CHECKLIST_STATUS_OPTIONS, RESTORATION_CHECKLIST_ITEMS, REGISTERED_AGENT_OPTIONS,
@@ -58,7 +59,7 @@ export default function LifecycleModal({ caseItem, onClose }) {
       const updated = await lifecycleApi.update(caseItem.id, cleanPayload(patch));
       onClose(true, updated);
     } catch (e) {
-      alert(e.response?.data?.detail || "Save failed");
+      toast.error(e.response?.data?.detail || "Save failed");
     } finally { setSaving(false); }
   };
 

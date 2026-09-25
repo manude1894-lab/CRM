@@ -4,6 +4,8 @@ import { Icon, Badge, Modal, Field, Input, Select, Textarea, Spinner, ErrorBanne
 import DocumentsPanel from "../components/DocumentsPanel";
 import FeedbackPanel from "../components/FeedbackPanel";
 import { INSTRUCTION_STATUS_OPTIONS, INSTRUCTION_TYPE_OPTIONS, fmtFull, fmtDate } from "../utils/constants";
+import { toast } from "../store/toast";
+import { confirmDialog } from "../store/confirm";
 
 const emptyForm = (cases) => ({
   case_id: cases[0]?.id,
@@ -83,19 +85,19 @@ export default function InstructionsPage() {
       }
       setModal(null); load();
     } catch (e) {
-      alert(e.response?.data?.detail || "Save failed");
+      toast.error(e.response?.data?.detail || "Save failed");
     }
   };
 
   const quickSetStatus = async (i, status) => {
     try { await instructionsApi.update(i.id, { status }); load(); }
-    catch (e) { alert(e.response?.data?.detail || "Update failed"); }
+    catch (e) { toast.error(e.response?.data?.detail || "Update failed"); }
   };
 
   const remove = async (id) => {
-    if (!confirm("Delete this instruction?")) return;
+    if (!(await confirmDialog("Delete this instruction?"))) return;
     try { await instructionsApi.delete(id); load(); }
-    catch (e) { alert(e.response?.data?.detail || "Delete failed"); }
+    catch (e) { toast.error(e.response?.data?.detail || "Delete failed"); }
   };
 
   if (loading) return <Spinner />;

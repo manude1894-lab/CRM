@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { formationApi } from "../api/endpoints";
 import { useAuthStore } from "../store/auth";
 import { Modal, Field, Input, Select, Textarea, Spinner, ErrorBanner } from "./ui";
+import { toast } from "../store/toast";
 import {
   SCREENING_STATUS_OPTIONS, MLRO_SIGNOFF_STATUS_OPTIONS, VISTRA_STATUS_OPTIONS,
   SCREENING_TOOL_OPTIONS, fmtDate,
@@ -54,7 +55,7 @@ export default function FormationModal({ caseItem, users = [], onClose }) {
       const updated = await formationApi.update(caseItem.id, cleanPayload(patch));
       onClose(true, updated);
     } catch (e) {
-      alert(e.response?.data?.detail || "Save failed");
+      toast.error(e.response?.data?.detail || "Save failed");
     } finally { setSaving(false); }
   };
 

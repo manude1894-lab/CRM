@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useState } from "react";
 import { invoicesApi, instructionsApi, casesApi } from "../api/endpoints";
 import { Icon, Badge, Modal, Field, Input, Select, Textarea, Spinner, ErrorBanner } from "../components/ui";
 import { INVOICE_LEDGER_STATUS_OPTIONS, fmtFull, fmtDate } from "../utils/constants";
+import { toast } from "../store/toast";
+import { confirmDialog } from "../store/confirm";
 
 const emptyForm = (cases) => ({
   case_id: cases[0]?.id,
@@ -81,7 +83,7 @@ export default function InvoicesPage() {
       }
       setModal(null); load();
     } catch (e) {
-      alert(e.response?.data?.detail || "Save failed");
+      toast.error(e.response?.data?.detail || "Save failed");
     }
   };
 
@@ -91,13 +93,13 @@ export default function InvoicesPage() {
       if (status === "Paid" && !inv.paid_date) patch.paid_date = new Date().toISOString().split("T")[0];
       await invoicesApi.update(inv.id, patch);
       load();
-    } catch (e) { alert(e.response?.data?.detail || "Update failed"); }
+    } catch (e) { toast.error(e.response?.data?.detail || "Update failed"); }
   };
 
   const remove = async (id) => {
-    if (!confirm("Delete this invoice? Any linked instructions will be unlinked.")) return;
+    if (!(await confirmDialog("Delete this invoice? Any linked instructions will be unlinked."))) return;
     try { await invoicesApi.delete(id); load(); }
-    catch (e) { alert(e.response?.data?.detail || "Delete failed"); }
+    catch (e) { toast.error(e.response?.data?.detail || "Delete failed"); }
   };
 
   if (loading) return <Spinner />;

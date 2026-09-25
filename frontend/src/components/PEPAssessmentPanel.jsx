@@ -3,6 +3,8 @@ import { pepApi } from "../api/endpoints";
 import { useAuthStore } from "../store/auth";
 import { Badge, Modal, Field, Input, Select, Textarea } from "./ui";
 import { PEP_TYPE_OPTIONS, PEP_RISK_CONCLUSION_OPTIONS } from "../utils/constants";
+import { toast } from "../store/toast";
+import { confirmDialog } from "../store/confirm";
 
 const clean = (o) => Object.fromEntries(Object.entries(o).map(([k, v]) => [k, v === "" ? null : v]));
 
@@ -63,13 +65,13 @@ export default function PEPAssessmentPanel({ caseId, parties = [] }) {
       if (form.id) await pepApi.update(form.id, payload);
       else await pepApi.create(caseId, payload);
       setModal(false); load();
-    } catch (e) { alert(e.response?.data?.detail || "Save failed"); }
+    } catch (e) { toast.error(e.response?.data?.detail || "Save failed"); }
   };
 
   const remove = async (a) => {
-    if (!confirm(`Delete the PEP assessment for ${a.subject_name}?`)) return;
+    if (!(await confirmDialog(`Delete the PEP assessment for ${a.subject_name}?`))) return;
     try { await pepApi.remove(a.id); load(); }
-    catch (e) { alert(e.response?.data?.detail || "Delete failed"); }
+    catch (e) { toast.error(e.response?.data?.detail || "Delete failed"); }
   };
 
   return (

@@ -1,5 +1,7 @@
 import React from "react";
 import { ROLE_LABEL } from "../utils/constants";
+import { useToastStore } from "../store/toast";
+import { useConfirmStore } from "../store/confirm";
 
 // ─── Icon ───────────────────────────────────────────────────────────────
 export const Icon = ({ name, size = 18, className = "" }) => {
@@ -261,3 +263,66 @@ export const ErrorBanner = ({ message, onRetry }) => (
     )}
   </div>
 );
+
+// ─── Toast notifications ────────────────────────────────────────────────
+// Rendered once at the app root. Fire toasts from anywhere with:
+//   import { toast } from "../store/toast"; toast.success("Saved"); toast.error("Failed to save");
+const TOAST_STYLES = {
+  success: { icon: "check", bg: "bg-emerald-600", ring: "ring-emerald-500/20" },
+  error: { icon: "warn", bg: "bg-red-600", ring: "ring-red-500/20" },
+  info: { icon: "bell", bg: "bg-brand-600", ring: "ring-brand-500/20" },
+};
+
+export const ToastHost = () => {
+  const toasts = useToastStore((s) => s.toasts);
+  const dismiss = useToastStore((s) => s.dismiss);
+  if (toasts.length === 0) return null;
+  return (
+    <div className="fixed z-[100] bottom-5 right-5 flex flex-col gap-2 w-80 max-w-[calc(100vw-2.5rem)]">
+      {toasts.map((t) => {
+        const style = TOAST_STYLES[t.variant] || TOAST_STYLES.info;
+        return (
+          <div key={t.id}
+            className={`flex items-start gap-2.5 bg-white rounded-lg shadow-lg ring-1 ${style.ring} border border-gray-100 px-4 py-3 animate-[fadeIn_0.15s_ease-out]`}>
+            <span className={`flex-shrink-0 mt-0.5 w-5 h-5 rounded-full ${style.bg} text-white flex items-center justify-center`}>
+              <Icon name={style.icon} size={12} />
+            </span>
+            <p className="text-sm text-gray-700 flex-1 leading-snug">{t.message}</p>
+            <button onClick={() => dismiss(t.id)} className="text-gray-300 hover:text-gray-500 flex-shrink-0">
+              <Icon name="close" size={14} />
+            </button>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+// ─── Confirm dialog ─────────────────────────────────────────────────────
+// Rendered once at the app root. Trigger from anywhere with:
+//   import { confirmDialog } from "../store/confirm";
+//   if (!(await confirmDialog("Delete this document?"))) return;
+export const ConfirmDialogHost = () => {
+  const pending = useConfirmStore((s) => s.pending);
+  const resolve = useConfirmStore((s) => s.resolve);
+  if (!pending) return null;
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center" style={{ background: "rgba(0,0,0,0.4)" }}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm mx-4 p-6">
+        <h3 className="text-base font-semibold text-gray-800 mb-2">{pending.title}</h3>
+        <p className="text-sm text-gray-500 mb-6">{pending.message}</p>
+        <div className="flex justify-end gap-3">
+          <button onClick={() => resolve(false)}
+            className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600">
+            Cancel
+          </button>
+          <button onClick={() => resolve(true)}
+            className={`px-4 py-2 text-sm text-white rounded-lg font-medium ${pending.danger ? "bg-red-600 hover:bg-red-700" : ""}`}
+            style={pending.danger ? {} : { background: "#1a3a5c" }}>
+            {pending.danger ? "Delete" : "Confirm"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { generationApi, documentsApi } from "../api/endpoints";
 import { Modal, Field, Input, Select, Textarea, Spinner } from "./ui";
+import { toast } from "../store/toast";
 
 export default function GenerateDocModal({ caseId, onClose }) {
   const [templates, setTemplates] = useState([]);
@@ -40,7 +41,7 @@ export default function GenerateDocModal({ caseId, onClose }) {
       await documentsApi.download(doc.id, doc.filename);
       onClose(true);
     } catch (e) {
-      alert(e.response?.data?.detail || "Generation failed");
+      toast.error(e.response?.data?.detail || "Generation failed");
     } finally { setBusy(false); }
   };
 

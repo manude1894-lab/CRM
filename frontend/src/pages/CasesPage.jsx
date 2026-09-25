@@ -7,6 +7,8 @@ import LifecycleModal from "../components/LifecycleModal";
 import FormationModal from "../components/FormationModal";
 import ServiceSubscriptionsModal from "../components/ServiceSubscriptionsModal";
 import { STAGES, STAGE_COLORS, CASE_SOURCE_OPTIONS, JURISDICTION_OPTIONS, SERVICE_TYPE_OPTIONS, CASE_STATUS_OPTIONS, CLOSED_REL_STATUSES, fmt } from "../utils/constants";
+import { toast } from "../store/toast";
+import { confirmDialog } from "../store/confirm";
 
 const NEXT_STAGE = STAGES.reduce((acc, s, i) => {
   if (i < STAGES.length - 1) acc[s] = STAGES[i + 1];
@@ -91,7 +93,7 @@ export default function CasesPage({ initialCaseId } = {}) {
       }
       setModal(null); load();
     } catch (e) {
-      alert(e.response?.data?.detail || "Save failed");
+      toast.error(e.response?.data?.detail || "Save failed");
     }
   };
 
@@ -106,7 +108,7 @@ export default function CasesPage({ initialCaseId } = {}) {
       else await casesApi.changeStage(c.id, NEXT_STAGE[c.stage]);
       load();
     } catch (e) {
-      alert(e.response?.data?.detail || "Stage change failed");
+      toast.error(e.response?.data?.detail || "Stage change failed");
     }
   };
 
@@ -117,19 +119,19 @@ export default function CasesPage({ initialCaseId } = {}) {
       setInvoiceCase(null);
       load();
     } catch (e) {
-      alert(e.response?.data?.detail || "Failed to raise invoice");
+      toast.error(e.response?.data?.detail || "Failed to raise invoice");
     }
   };
 
   const setStatus = async (c, status) => {
     try { await casesApi.update(c.id, { status }); load(); }
-    catch (e) { alert(e.response?.data?.detail || "Update failed"); }
+    catch (e) { toast.error(e.response?.data?.detail || "Update failed"); }
   };
 
   const remove = async (id) => {
-    if (!confirm("Delete this case?")) return;
+    if (!(await confirmDialog("Delete this case?"))) return;
     try { await casesApi.delete(id); load(); }
-    catch (e) { alert(e.response?.data?.detail || "Delete failed"); }
+    catch (e) { toast.error(e.response?.data?.detail || "Delete failed"); }
   };
 
   const toggleSelected = (id) => setSelectedIds((prev) => {
@@ -149,14 +151,14 @@ export default function CasesPage({ initialCaseId } = {}) {
     try {
       const results = await casesApi.bulkUpdate({ ids: [...selectedIds], [field]: field === "rm_id" ? +value : value });
       const failed = results.filter((r) => r.status === "error");
-      alert(failed.length === 0
+      toast[failed.length === 0 ? "success" : "error"](failed.length === 0
         ? `Updated ${results.length} case${results.length !== 1 ? "s" : ""}.`
         : `Updated ${results.length - failed.length}/${results.length}. ${failed.length} failed (e.g. access denied).`);
       setSelectedIds(new Set());
       setBulkValues({ rm_id: "", status: "" });
       load();
     } catch (e) {
-      alert(e.response?.data?.detail || "Bulk update failed");
+      toast.error(e.response?.data?.detail || "Bulk update failed");
     } finally {
       setBulkApplying(false);
     }
@@ -523,7 +525,7 @@ function AdditionalRMsEditor({ caseId, rmIds, primaryRmId, users, onChange }) {
       onChange(updated.additional_rm_ids || []);
       setAdding(false);
     } catch (e) {
-      alert(e.response?.data?.detail || "Failed to add RM");
+      toast.error(e.response?.data?.detail || "Failed to add RM");
     } finally { setBusy(false); }
   };
 
@@ -533,7 +535,7 @@ function AdditionalRMsEditor({ caseId, rmIds, primaryRmId, users, onChange }) {
       const updated = await casesApi.removeRM(caseId, userId);
       onChange(updated.additional_rm_ids || []);
     } catch (e) {
-      alert(e.response?.data?.detail || "Failed to remove RM");
+      toast.error(e.response?.data?.detail || "Failed to remove RM");
     } finally { setBusy(false); }
   };
 

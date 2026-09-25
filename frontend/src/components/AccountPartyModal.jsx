@@ -2,6 +2,8 @@ import React, { useEffect, useState } from "react";
 import { accountPartiesApi, amlApi } from "../api/endpoints";
 import { Icon, Modal, Field, Input, Select, CountrySelect, Spinner, ErrorBanner } from "./ui";
 import { COUNTRY_CALLING_CODES } from "../utils/constants";
+import { toast } from "../store/toast";
+import { confirmDialog } from "../store/confirm";
 
 const ROLES = ["Shareholder", "Director", "Authorised Signatory"];
 
@@ -63,7 +65,7 @@ export default function AccountPartyModal({ account, onClose }) {
   const cancelForm = () => { setEditing(null); setForm(null); };
 
   const save = async () => {
-    if (!form.full_name?.trim()) return alert("Full Name is required");
+    if (!form.full_name?.trim()) return toast.error("Full Name is required");
     try {
       const payload = cleanPayload(form);
       if (editing === "new") await accountPartiesApi.create(account.id, payload);
@@ -71,14 +73,14 @@ export default function AccountPartyModal({ account, onClose }) {
       cancelForm();
       load();
     } catch (e) {
-      alert(e.response?.data?.detail || "Save failed");
+      toast.error(e.response?.data?.detail || "Save failed");
     }
   };
 
   const remove = async (row) => {
-    if (!confirm(`Remove ${row.full_name}?`)) return;
+    if (!(await confirmDialog(`Remove ${row.full_name}?`))) return;
     try { await accountPartiesApi.delete(row.id); load(); }
-    catch (e) { alert(e.response?.data?.detail || "Delete failed"); }
+    catch (e) { toast.error(e.response?.data?.detail || "Delete failed"); }
   };
 
   const switchTab = (t) => { setTab(t); cancelForm(); };

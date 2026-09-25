@@ -3,6 +3,8 @@ import { usersApi, departmentsApi } from "../api/endpoints";
 import { useAuthStore } from "../store/auth";
 import { Icon, Badge, Modal, Field, Input, Select, Spinner, ErrorBanner } from "../components/ui";
 import { ROLE_LABEL } from "../utils/constants";
+import { toast } from "../store/toast";
+import { confirmDialog } from "../store/confirm";
 
 const ROLE_RESPONSIBILITIES = [
   { role: "Admin", desc: "User management, invoicing (raise/mark paid), full case access" },
@@ -40,24 +42,24 @@ export default function AdminPage() {
   const addDepartment = async () => {
     if (!deptName.trim()) return;
     try { await departmentsApi.create({ name: deptName.trim() }); setDeptName(""); load(); }
-    catch (e) { alert(e.response?.data?.detail || "Failed to add department"); }
+    catch (e) { toast.error(e.response?.data?.detail || "Failed to add department"); }
   };
 
   const saveDepartmentRename = async (id) => {
     if (!editingDeptName.trim()) return;
     try { await departmentsApi.update(id, { name: editingDeptName.trim() }); setEditingDeptId(null); load(); }
-    catch (e) { alert(e.response?.data?.detail || "Failed to rename department"); }
+    catch (e) { toast.error(e.response?.data?.detail || "Failed to rename department"); }
   };
 
   const removeDepartment = async (id) => {
-    if (!confirm("Delete this department? Users assigned to it will become unassigned.")) return;
+    if (!(await confirmDialog("Delete this department? Users assigned to it will become unassigned."))) return;
     try { await departmentsApi.delete(id); load(); }
-    catch (e) { alert(e.response?.data?.detail || "Failed to delete department"); }
+    catch (e) { toast.error(e.response?.data?.detail || "Failed to delete department"); }
   };
 
   const toggleDepartmentActive = async (d) => {
     try { await departmentsApi.update(d.id, { is_active: !d.is_active }); load(); }
-    catch (e) { alert(e.response?.data?.detail || "Failed to update department status"); }
+    catch (e) { toast.error(e.response?.data?.detail || "Failed to update department status"); }
   };
 
   if (!isAdmin) {
@@ -88,14 +90,14 @@ export default function AdminPage() {
       }
       setModal(null); load();
     } catch (e) {
-      alert(e.response?.data?.detail || "Save failed");
+      toast.error(e.response?.data?.detail || "Save failed");
     }
   };
 
   const remove = async (id) => {
-    if (!confirm("Delete this user?")) return;
+    if (!(await confirmDialog("Delete this user?"))) return;
     try { await usersApi.delete(id); load(); }
-    catch (e) { alert(e.response?.data?.detail || "Delete failed"); }
+    catch (e) { toast.error(e.response?.data?.detail || "Delete failed"); }
   };
 
   if (loading) return <Spinner />;

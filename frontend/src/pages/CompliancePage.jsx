@@ -3,6 +3,8 @@ import { complianceApi } from "../api/endpoints";
 import { Icon, Badge, Spinner, ErrorBanner } from "../components/ui";
 import { AR_FILING_STATUS_OPTIONS, fmtDate } from "../utils/constants";
 import ComplianceCalendar from "../components/ComplianceCalendar";
+import { toast } from "../store/toast";
+import { confirmDialog } from "../store/confirm";
 
 const ITEM_LABEL = {
   renewal: "Annual Licence Fee",
@@ -33,12 +35,12 @@ export default function CompliancePage() {
     const msg = row.item === "bo_filing"
       ? `Mark the BO / ROM-RBO filing for ${row.company_name} as filed? This clears the deadline.`
       : `Mark ${ITEM_LABEL[row.item]} for ${row.company_name} as done? This rolls the due date forward.`;
-    if (!confirm(msg)) return;
+    if (!(await confirmDialog(msg))) return;
     try {
       await complianceApi.markDone(row.case_id, row.item);
       load();
     } catch (e) {
-      alert(e.response?.data?.detail || "Failed to mark done");
+      toast.error(e.response?.data?.detail || "Failed to mark done");
     }
   };
 
@@ -47,7 +49,7 @@ export default function CompliancePage() {
       await complianceApi.setArStatus(row.case_id, status);
       load();
     } catch (e) {
-      alert(e.response?.data?.detail || "Failed to update AR status");
+      toast.error(e.response?.data?.detail || "Failed to update AR status");
     }
   };
 
