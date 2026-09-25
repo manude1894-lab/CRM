@@ -120,15 +120,16 @@ export const Badge = ({ text }) => {
 
 // ─── MetricCard ─────────────────────────────────────────────────────────
 export const MetricCard = ({ label, value, sub, color = "#1a3a5c", icon }) => (
-  <div className="bg-white rounded-xl border border-gray-100 p-5 shadow-sm">
+  <div className="relative bg-white rounded-xl border border-gray-100 p-6 shadow-sm overflow-hidden">
+    <div className="absolute top-0 left-0 right-0 h-0.5" style={{ background: color }} />
     <div className="flex items-start justify-between">
       <div>
-        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">{label}</p>
-        <p className="text-2xl font-bold mt-1" style={{ color }}>{value}</p>
-        {sub && <p className="text-xs text-gray-400 mt-1">{sub}</p>}
+        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{label}</p>
+        <p className="text-3xl font-bold mt-1.5 tracking-tight" style={{ color }}>{value}</p>
+        {sub && <p className="text-xs text-gray-400 mt-1.5">{sub}</p>}
       </div>
       {icon && (
-        <div className="p-2 rounded-lg" style={{ background: color + "15", color }}>
+        <div className="p-2.5 rounded-lg" style={{ background: color + "15", color }}>
           <Icon name={icon} size={22} />
         </div>
       )}

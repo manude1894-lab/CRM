@@ -53,14 +53,15 @@ export default function App() {
     <div className="flex h-screen bg-gray-50 overflow-hidden">
       {/* Sidebar */}
       <aside className={`flex-shrink-0 flex flex-col border-r border-gray-100 bg-white transition-all duration-200 ${sidebarOpen ? "w-56" : "w-16"}`}>
-        <div className="flex items-center gap-3 px-4 py-5 border-b border-gray-100">
-          <div className="w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0 bg-white border border-gray-100 p-1">
+        <div className={`flex items-center gap-3 py-6 border-b border-gray-100 ${sidebarOpen ? "px-4" : "justify-center px-1"}`}>
+          <div className={`flex-shrink-0 flex items-center justify-center ${sidebarOpen ? "w-16 h-16" : "w-10 h-10"}`}>
             <img src="/triam-logo.png" alt="TRIAM" className="w-full h-full object-contain" />
           </div>
           {sidebarOpen && (
-            <div>
-              <div className="text-base font-bold text-gray-800">TRIAM</div>
-              <div className="text-xs text-gray-400">Entity Servicing Platform</div>
+            <div className="min-w-0">
+              <div className="text-xl font-bold text-gray-900 tracking-tight leading-tight">TRIAM</div>
+              <div className="w-6 h-0.5 my-1 rounded-full" style={{ background: "#E8B84B" }} />
+              <div className="text-[11px] text-gray-400 tracking-wide">Entity Servicing Platform</div>
             </div>
           )}
         </div>

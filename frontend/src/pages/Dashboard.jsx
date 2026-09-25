@@ -45,7 +45,7 @@ export default function Dashboard() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-bold text-gray-900">Onboarding Dashboard</h1>
+        <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Onboarding Dashboard</h1>
         <p className="text-sm text-gray-500">Entity servicing & compliance · real-time pipeline overview</p>
       </div>
 

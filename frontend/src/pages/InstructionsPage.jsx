@@ -119,7 +119,7 @@ export default function InstructionsPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
-          <h1 className="text-xl font-bold text-gray-900">Instruction Tracker</h1>
+          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Instruction Tracker</h1>
           <p className="text-sm text-gray-500">{filtered.length} of {instructions.length} service requests</p>
         </div>
         <button onClick={openNew} className="px-3 py-1.5 text-xs text-white rounded-lg flex items-center gap-1" style={{ background: "#1a3a5c" }}>

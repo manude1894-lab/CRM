@@ -176,7 +176,7 @@ export default function CDDPage() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-xl font-bold text-gray-900">CDD / KYC Screening</h1>
+        <h1 className="text-2xl font-bold text-gray-900 tracking-tight">CDD / KYC Screening</h1>
         <p className="text-sm text-gray-500">{queue.length} cases awaiting screening review</p>
       </div>
 

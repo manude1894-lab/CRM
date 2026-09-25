@@ -114,7 +114,7 @@ export default function InvoicesPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
-          <h1 className="text-xl font-bold text-gray-900">Invoices</h1>
+          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Invoices</h1>
           <p className="text-sm text-gray-500">
             {filtered.length} of {invoices.length} invoices · {fmtFull(totalOutstanding)} outstanding (Raised + Overdue)
           </p>

@@ -78,7 +78,7 @@ export default function ActivitiesPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-gray-900">Activities</h1>
+          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Activities</h1>
           <p className="text-sm text-gray-500">{activities.length} total activities</p>
         </div>
         <button onClick={openNew} className="px-3 py-1.5 text-xs text-white rounded-lg flex items-center gap-1" style={{ background: "#1a3a5c" }}>

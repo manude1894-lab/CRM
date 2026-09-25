@@ -187,7 +187,7 @@ export default function CasesPage({ initialCaseId } = {}) {
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
-          <h1 className="text-xl font-bold text-gray-900">Cases</h1>
+          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Cases</h1>
           <p className="text-sm text-gray-500">{filtered.length} onboarding cases</p>
         </div>
         <div className="flex gap-2 flex-wrap">

@@ -107,7 +107,7 @@ export default function AdminPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-gray-900">Admin Panel</h1>
+          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Admin Panel</h1>
           <p className="text-sm text-gray-500">User management · System settings</p>
         </div>
         <button onClick={() => { setForm({ name: "", email: "", password: "", role: "rm", is_active: true, department_id: "", title: "", supervisor_id: "" }); setModal("new"); }}
