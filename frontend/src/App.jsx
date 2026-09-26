@@ -3,6 +3,7 @@ import { useAuthStore } from "./store/auth";
 import { Icon, ToastHost, ConfirmDialogHost } from "./components/ui";
 import NotificationBell from "./components/NotificationBell";
 import CommandPalette from "./components/CommandPalette";
+import PageErrorBoundary from "./components/PageErrorBoundary";
 import LoginPage from "./pages/LoginPage";
 import Dashboard from "./pages/Dashboard";
 import CasesPage from "./pages/CasesPage";
@@ -116,12 +117,14 @@ export default function App() {
         </header>
 
         <main className="flex-1 overflow-y-auto p-6">
+          <PageErrorBoundary key={page}>
           <PageComponent
             onNavigate={(t) => { setJumpTo(t); setPage(t.page); }}
             initialStage={jumpTo?.page === "cases" ? jumpTo.stage : undefined}
             initialAccountId={jumpTo?.page === "accounts" ? jumpTo.accountId : undefined}
             initialCaseId={jumpTo?.page === "cases" ? jumpTo.caseId : undefined}
           />
+          </PageErrorBoundary>
         </main>
       </div>
 

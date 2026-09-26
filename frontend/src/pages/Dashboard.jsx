@@ -101,7 +101,7 @@ export default function Dashboard({ onNavigate = () => {} } = {}) {
       setError(null);
       const [dash, accs] = await Promise.all([dashboardApi.get(), accountsApi.list({ limit: 200 }).catch(() => [])]);
       setData(dash);
-      setAccounts(accs || []);
+      setAccounts(Array.isArray(accs?.items) ? accs.items : []); // paginated: { items, total }
       setUpdatedAt(new Date());
     } catch (e) {
       setError(e.response?.data?.detail || "Failed to load dashboard");
