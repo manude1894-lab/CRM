@@ -53,15 +53,15 @@ export default function App() {
     <div className="flex h-screen bg-gray-50 overflow-hidden">
       {/* Sidebar */}
       <aside className={`flex-shrink-0 flex flex-col border-r border-gray-100 bg-white transition-all duration-200 ${sidebarOpen ? "w-56" : "w-16"}`}>
-        <div className={`flex items-center gap-3 py-6 border-b border-gray-100 ${sidebarOpen ? "px-4" : "justify-center px-1"}`}>
-          <div className={`flex-shrink-0 flex items-center justify-center ${sidebarOpen ? "w-16 h-16" : "w-10 h-10"}`}>
-            <img src="/triam-logo.png" alt="TRIAM" className="w-full h-full object-contain" />
-          </div>
+        <div className={`flex flex-col items-center gap-2 py-6 border-b border-gray-100 ${sidebarOpen ? "px-4" : "px-2"}`}>
+          <img
+            src="/triam-logo.png"
+            alt="TRIAM"
+            className={`w-auto object-contain transition-all duration-200 ${sidebarOpen ? "h-14" : "h-8"}`}
+          />
           {sidebarOpen && (
-            <div className="min-w-0">
-              <div className="text-xl font-bold text-gray-900 tracking-tight leading-tight">TRIAM</div>
-              <div className="w-6 h-0.5 my-1 rounded-full" style={{ background: "#E8B84B" }} />
-              <div className="text-[11px] text-gray-400 tracking-wide">Entity Servicing Platform</div>
+            <div className="text-[11px] font-medium text-gray-400 tracking-[0.12em] uppercase text-center">
+              Entity Servicing Platform
             </div>
           )}
         </div>
