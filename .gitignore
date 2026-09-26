@@ -30,3 +30,6 @@ dist/
 
 # Claude Code metadata
 .claude/
+
+# Generated field screenshots (scripts/field-screenshots)
+screenshots/
