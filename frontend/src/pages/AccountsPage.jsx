@@ -8,7 +8,7 @@ import DuplicateWarning from "../components/DuplicateWarning";
 import { toast } from "../store/toast";
 import { confirmDialog } from "../store/confirm";
 import {
-  fmt, fmtDate, REGULATOR_OPTIONS, TAG_OPTIONS, SERVICES_OBTAINED_OPTIONS,
+  fmt, fmtDate, exportFilename, REGULATOR_OPTIONS, TAG_OPTIONS, SERVICES_OBTAINED_OPTIONS,
   PROFILE_STATUS_OPTIONS, AML_CLASSIFICATION_OPTIONS, COUNTRY_CALLING_CODES, TRIAM_ENTITY_OPTIONS,
 } from "../utils/constants";
 import { useAuthStore } from "../store/auth";
@@ -459,7 +459,7 @@ export default function AccountsPage({ initialAccountId } = {}) {
     const csv = [headers, ...rows].map((r) => r.map((v) => `"${(v ?? "").toString().replace(/"/g, '""')}"`).join(",")).join("\n");
     const a = document.createElement("a");
     a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
-    a.download = "clients.csv"; a.click();
+    a.download = exportFilename("clients"); a.click();
   };
 
   const handleImportFile = async (file) => {

@@ -6,7 +6,7 @@ import CompanyDetailsModal from "../components/CompanyDetailsModal";
 import LifecycleModal from "../components/LifecycleModal";
 import FormationModal from "../components/FormationModal";
 import ServiceSubscriptionsModal from "../components/ServiceSubscriptionsModal";
-import { STAGES, STAGE_COLORS, CASE_SOURCE_OPTIONS, JURISDICTION_OPTIONS, SERVICE_TYPE_OPTIONS, CASE_STATUS_OPTIONS, CLOSED_REL_STATUSES, fmt } from "../utils/constants";
+import { STAGES, STAGE_COLORS, CASE_SOURCE_OPTIONS, JURISDICTION_OPTIONS, SERVICE_TYPE_OPTIONS, CASE_STATUS_OPTIONS, CLOSED_REL_STATUSES, fmt, exportFilename } from "../utils/constants";
 import { toast } from "../store/toast";
 import { confirmDialog } from "../store/confirm";
 
@@ -170,7 +170,7 @@ export default function CasesPage({ initialCaseId } = {}) {
     const csv = [headers, ...rows].map((r) => r.map((v) => `"${v ?? ""}"`).join(",")).join("\n");
     const a = document.createElement("a");
     a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
-    a.download = "cases.csv"; a.click();
+    a.download = exportFilename("cases"); a.click();
   };
 
   if (loading) return <Spinner />;
@@ -442,7 +442,7 @@ export default function CasesPage({ initialCaseId } = {}) {
               <Select value={form.account_id || ""} onChange={(e) => {
                 const id = e.target.value ? +e.target.value : null;
                 const picked = accounts.find((a) => a.id === id);
-                setForm((p) => ({ ...p, account_id: id, company_name: picked ? picked.company_name : "" }));
+                setForm((p) => ({ ...p, account_id: id, company_name: picked ? picked.company_name : "", tags: picked ? (picked.tags || "") : p.tags }));
               }}>
                 <option value="">— New / not yet a client —</option>
                 {accounts.map((a) => <option key={a.id} value={a.id}>{a.company_name}</option>)}
@@ -497,7 +497,7 @@ export default function CasesPage({ initialCaseId } = {}) {
                 {users.filter((u) => u.role === "ops").map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
               </Select>
             </Field>
-            <Field label="Tags"><Input value={form.tags || ""} onChange={(e) => setForm((p) => ({ ...p, tags: e.target.value }))} /></Field>
+            <Field label="Tags"><Input value={form.tags || ""} onChange={(e) => setForm((p) => ({ ...p, tags: e.target.value }))} placeholder="Auto-filled from the selected Client — editable" /></Field>
           </div>
           <Field label="Notes"><Textarea value={form.notes || ""} onChange={(e) => setForm((p) => ({ ...p, notes: e.target.value }))} /></Field>
           <div className="flex justify-end gap-3 mt-4">

@@ -254,6 +254,16 @@ export const fmt = (n) => {
 
 export const fmtFull = (n) => `$${Number(n || 0).toLocaleString()}`;
 
+// CSV/export filenames: "<base>_YYYY-MM-DD_HH-mm-ss.csv" so every export is
+// timestamped and never silently overwrites the last one in the Downloads folder.
+export const exportFilename = (base, ext = "csv") => {
+  const d = new Date();
+  const pad = (n) => String(n).padStart(2, "0");
+  const date = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  const time = `${pad(d.getHours())}-${pad(d.getMinutes())}-${pad(d.getSeconds())}`;
+  return `${base}_${date}_${time}.${ext}`;
+};
+
 // Client CRM-change-request items 8/14 — display dates as DD-MM-YYYY everywhere.
 // Native <input type="date"> fields are left alone (browser-controlled, ISO value).
 export const fmtDate = (d) => {
