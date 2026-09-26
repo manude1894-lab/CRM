@@ -3,14 +3,10 @@ import { authApi } from "../api/endpoints";
 import { useAuthStore } from "../store/auth";
 import { Input } from "../components/ui";
 
-const DEMO_ACCOUNTS = [
-  { name: "Admin User", email: "admin@ezeetechgroup.com", password: "admin123", role: "Admin" },
-];
-
 export default function LoginPage() {
   const setTokens = useAuthStore((s) => s.setTokens);
-  const [email, setEmail] = useState("admin@ezeetechgroup.com");
-  const [password, setPassword] = useState("admin123");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -100,22 +96,6 @@ export default function LoginPage() {
             >
               {loading ? "Signing in..." : "Sign In"}
             </button>
-          </div>
-          <div className="mt-6 pt-5 border-t border-gray-200">
-            <p className="text-xs text-gray-500 font-medium mb-2">Demo accounts:</p>
-            {DEMO_ACCOUNTS.map((u) => (
-              <button
-                key={u.email}
-                onClick={() => {
-                  setEmail(u.email);
-                  setPassword(u.password);
-                }}
-                className="w-full text-left text-xs text-gray-600 hover:text-brand-600 py-1.5 px-2 rounded hover:bg-white border border-transparent hover:border-gray-200 transition-colors mb-0.5"
-              >
-                <span className="font-medium">{u.name}</span>{" "}
-                <span className="text-gray-400">({u.role})</span> — {u.email}
-              </button>
-            ))}
           </div>
         </div>
       </div>
