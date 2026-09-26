@@ -112,8 +112,11 @@ class Account(Base):
     total_invoiced_amount = Column(Numeric(14, 2), default=0, nullable=False)
 
     owner_id = Column(Integer, ForeignKey("users.id"), nullable=True)
-    # Single Point of Contact — the staff member who manages this client's section.
+    # Anchor RM (labelled "Anchor RM (SPOC)" in the UI) — the staff member who owns this client;
+    # drives RM-scoped access control (see access_control.py).
     spoc_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    # Non-anchor RMs — reference only, no access grant (client spec §I).
+    non_anchor_rm_ids = Column(JSON, nullable=True)  # list[int] of User ids, excludes spoc_id
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

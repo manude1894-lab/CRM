@@ -105,6 +105,13 @@ def _assert_date_sanity(data) -> None:
         raise HTTPException(status_code=400, detail="License Expiry Date cannot be before today")
 
 
+def _normalize_non_anchor_rms(acc: Account) -> None:
+    """Client spec §I — the Anchor RM (spoc_id) can't also be a Non-anchor RM. Enforced
+    server-side too, since bulk-update can change the anchor without touching the list."""
+    if acc.non_anchor_rm_ids:
+        acc.non_anchor_rm_ids = list(dict.fromkeys(i for i in acc.non_anchor_rm_ids if i != acc.spoc_id)) or None
+
+
 def create_account(db: Session, data: AccountCreate, user: User) -> Account:
     existing = db.query(Account).filter(Account.company_name == data.company_name).first()
     if existing:
@@ -130,6 +137,7 @@ def create_account(db: Session, data: AccountCreate, user: User) -> Account:
         owner_id=owner_id,
     )
     _compute_next_aml_review_date(acc)
+    _normalize_non_anchor_rms(acc)
     db.add(acc)
     db.commit()
     db.refresh(acc)
@@ -148,6 +156,7 @@ def update_account(db: Session, account_id: int, data: AccountUpdate, user: User
         setattr(acc, field, value)
     if "risk_rating" in update_data or "cdd_completion_date" in update_data:
         _compute_next_aml_review_date(acc)
+    _normalize_non_anchor_rms(acc)
     db.commit()
     db.refresh(acc)
     return acc
@@ -270,6 +279,7 @@ def import_accounts(
             owner_id=user.id,
             **payload,
         )
+        _normalize_non_anchor_rms(acc)
         db.add(acc)
         db.flush()
         results.append(AccountImportRowResult(row_index=idx, company_name=name, status="ok", account_id=acc.id))

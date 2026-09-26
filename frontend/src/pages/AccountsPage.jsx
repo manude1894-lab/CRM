@@ -9,7 +9,7 @@ import { toast } from "../store/toast";
 import { confirmDialog } from "../store/confirm";
 import {
   fmt, fmtDate, exportFilename, REGULATOR_OPTIONS, TAG_OPTIONS, SERVICES_OBTAINED_OPTIONS,
-  PROFILE_STATUS_OPTIONS, AML_CLASSIFICATION_OPTIONS, COUNTRY_CALLING_CODES, TRIAM_ENTITY_OPTIONS,
+  PROFILE_STATUS_OPTIONS, AML_CLASSIFICATION_OPTIONS, COUNTRY_CALLING_CODES, TRIAM_ENTITY_OPTIONS, isUAE,
 } from "../utils/constants";
 import { useAuthStore } from "../store/auth";
 
@@ -89,7 +89,9 @@ const IMPORT_HEADER_MAP = {
   "license number": "license_number",
   "risk rating": "risk_rating",
   "kyc status": "kyc_status",
-  "spoc": "__spoc_name",
+  "spoc": "__spoc_name", // legacy header, kept for older exported files
+  "anchor rm (spoc)": "__spoc_name",
+  "non-anchor rms": "__non_anchor_rm_names",
   "licensing authority": "licensing_authority",
   "license activities": "license_activities",
   "license start date": "license_start_date",
@@ -171,8 +173,8 @@ function parseCSV(text) {
         obj.nature_of_services_sought = value.split(";").map((s) => s.trim()).filter(Boolean);
       } else if (key === "__non_anchor_entities") {
         obj.non_anchor_entities = value.split(";").map((s) => s.trim()).filter(Boolean);
-      } else if (key === "__spoc_name") {
-        obj.__spoc_name = value;
+      } else if (key === "__spoc_name" || key === "__non_anchor_rm_names") {
+        obj[key] = value;
       } else if (IMPORT_BOOLEAN_FIELDS.has(key)) {
         obj[key] = IMPORT_TRUTHY.has(value.toLowerCase());
       } else {
@@ -233,7 +235,7 @@ export default function AccountsPage({ initialAccountId } = {}) {
   const BLANK = {
     account_type: "Corporate",
     company_name: "", industry: "", country: "", strategic_priority: "Medium", existing_relationship: "No",
-    key_contacts: "", single_point_of_contact: "", website: "", spoc_id: "", anchor_entity: "", non_anchor_entities: [], registration_number: "", incorporation_date: "", license_number: "", risk_rating: "", kyc_status: "Not Started",
+    key_contacts: "", single_point_of_contact: "", website: "", spoc_id: "", non_anchor_rm_ids: [], anchor_entity: "", non_anchor_entities: [], registration_number: "", incorporation_date: "", license_number: "", risk_rating: "", kyc_status: "Not Started",
     licensing_authority: "", license_start_date: "", license_expiry_date: "", is_regulated: false, regulator_name: "", regulator_other: "",
     license_category: "", license_activities: "",
     registered_address: { ...BLANK_ADDRESS }, operating_address: { ...BLANK_ADDRESS },
@@ -257,7 +259,7 @@ export default function AccountsPage({ initialAccountId } = {}) {
     setForm({
       account_type: a.account_type || "Corporate",
       company_name: a.company_name, industry: a.industry || "", country: a.country || "", strategic_priority: a.strategic_priority,
-      existing_relationship: a.existing_relationship, key_contacts: a.key_contacts || "", single_point_of_contact: a.single_point_of_contact || "", website: a.website || "", spoc_id: a.spoc_id || "",
+      existing_relationship: a.existing_relationship, key_contacts: a.key_contacts || "", single_point_of_contact: a.single_point_of_contact || "", website: a.website || "", spoc_id: a.spoc_id || "", non_anchor_rm_ids: a.non_anchor_rm_ids || [],
       anchor_entity: a.anchor_entity || "", non_anchor_entities: a.non_anchor_entities || [],
       registration_number: a.registration_number || "", incorporation_date: a.incorporation_date || "", license_number: a.license_number || "", risk_rating: a.risk_rating || "", kyc_status: a.kyc_status || "Not Started",
       licensing_authority: a.licensing_authority || "", license_start_date: a.license_start_date || "", license_expiry_date: a.license_expiry_date || "",
@@ -394,7 +396,7 @@ export default function AccountsPage({ initialAccountId } = {}) {
 
   const CORE_FIELDS = [
     "account_type", "company_name", "industry", "country", "website", "key_contacts",
-    "single_point_of_contact", "strategic_priority", "existing_relationship", "spoc_id",
+    "single_point_of_contact", "strategic_priority", "existing_relationship", "spoc_id", "non_anchor_rm_ids",
     "anchor_entity", "non_anchor_entities", "registration_number", "license_number", "incorporation_date",
     "risk_rating", "kyc_status", "tags",
   ];
@@ -421,7 +423,7 @@ export default function AccountsPage({ initialAccountId } = {}) {
       "Account UID", "Client Type", "Company Name", "Industry", "Country", "Website", "Key Contacts", "Single Point of Contact",
       "Anchor Entity", "Non-anchor Entities",
       "Strategic Priority", "Existing Relationship", "Tags", "Incorporation Certificate No.", "Incorporation Date", "License Number",
-      "Risk Rating", "KYC Status", "SPOC",
+      "Risk Rating", "KYC Status", "Anchor RM (SPOC)", "Non-anchor RMs",
       "Licensing Authority", "License Activities", "License Start Date", "License Expiry Date",
       "Is Regulated", "Regulator", "Other Regulator", "License Category",
       ...ADDRESS_COLS.map((c) => `Registered Address ${c}`),
@@ -441,6 +443,7 @@ export default function AccountsPage({ initialAccountId } = {}) {
       a.anchor_entity, (a.non_anchor_entities || []).join("; "),
       a.strategic_priority, a.existing_relationship, a.tags, a.registration_number, a.incorporation_date, a.license_number,
       a.risk_rating, a.kyc_status, users.find((u) => u.id === a.spoc_id)?.name || "",
+      (a.non_anchor_rm_ids || []).map((id) => users.find((u) => u.id === id)?.name).filter(Boolean).join("; "),
       a.licensing_authority, a.license_activities, a.license_start_date, a.license_expiry_date,
       a.is_regulated, a.regulator_name, a.regulator_other, a.license_category,
       ...addrRow(a.registered_address),
@@ -465,10 +468,14 @@ export default function AccountsPage({ initialAccountId } = {}) {
   const handleImportFile = async (file) => {
     const text = await file.text();
     const parsed = parseCSV(text).filter((r) => r.company_name).map((row) => {
-      const { __spoc_name, ...rest } = row;
+      const { __spoc_name, __non_anchor_rm_names, ...rest } = row;
+      const userByName = (name) => users.find((u) => u.name.toLowerCase() === name.toLowerCase());
       if (__spoc_name) {
-        const match = users.find((u) => u.name.toLowerCase() === __spoc_name.toLowerCase());
+        const match = userByName(__spoc_name);
         if (match) rest.spoc_id = match.id;
+      }
+      if (__non_anchor_rm_names) {
+        rest.non_anchor_rm_ids = __non_anchor_rm_names.split(";").map((s) => userByName(s.trim())?.id).filter(Boolean);
       }
       return rest;
     });
@@ -546,7 +553,7 @@ export default function AccountsPage({ initialAccountId } = {}) {
           <span className="text-xs font-medium text-brand-700">{selectedIds.size} selected</span>
           <div className="flex items-center gap-1.5">
             <Select value={bulkValues.spoc_id} onChange={(e) => setBulkValues((p) => ({ ...p, spoc_id: e.target.value }))} className="text-xs">
-              <option value="">SPOC…</option>
+              <option value="">Anchor RM…</option>
               {users.filter((u) => u.role === "rm").map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
             </Select>
             <button disabled={!bulkValues.spoc_id || bulkApplying} onClick={() => applyBulkField("spoc_id")}
@@ -747,12 +754,21 @@ export default function AccountsPage({ initialAccountId } = {}) {
                 </Select>
               </Field>
             </div>
-            <Field label="SPOC (Single Point of Contact)">
-              <Select value={form.spoc_id || ""} onChange={(e) => setForm({ ...form, spoc_id: e.target.value })}>
-                <option value="">— None —</option>
-                {users.filter((u) => u.role === "rm").map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
-              </Select>
-            </Field>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Anchor RM (SPOC)">
+                <Select value={form.spoc_id || ""} onChange={(e) => setForm({ ...form, spoc_id: e.target.value, non_anchor_rm_ids: (form.non_anchor_rm_ids || []).filter((id) => id !== +e.target.value) })}>
+                  <option value="">— None —</option>
+                  {users.filter((u) => u.role === "rm").map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+                </Select>
+              </Field>
+              <Field label="Non-anchor RMs">
+                <MultiSelect
+                  options={users.filter((u) => u.role === "rm" && u.id !== +form.spoc_id).map((u) => u.id)}
+                  getLabel={(id) => users.find((u) => u.id === id)?.name}
+                  value={form.non_anchor_rm_ids}
+                  onChange={(v) => setForm({ ...form, non_anchor_rm_ids: v })} />
+              </Field>
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <Field label="Anchor Entity">
                 <Select value={form.anchor_entity || ""} onChange={(e) => setForm({ ...form, anchor_entity: e.target.value, non_anchor_entities: (form.non_anchor_entities || []).filter((x) => x !== e.target.value) })}>
@@ -897,7 +913,7 @@ export default function AccountsPage({ initialAccountId } = {}) {
                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mt-3 mb-1.5">Residential Address</p>
                 <AddressFields value={form.residential_address} onChange={(v) => setForm({ ...form, residential_address: v })} />
 
-                {form.country_of_residence === "UAE" && (
+                {isUAE(form.country_of_residence) && (
                   <div className="grid grid-cols-2 gap-3 mt-3">
                     <Field label="UAE Visa No."><Input value={form.uae_visa_number} onChange={(e) => setForm({ ...form, uae_visa_number: e.target.value })} /></Field>
                     <Field label="UAE Visa Expiry"><Input type="date" value={form.uae_visa_expiry || ""} onChange={(e) => setForm({ ...form, uae_visa_expiry: e.target.value })} /></Field>

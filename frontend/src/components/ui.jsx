@@ -201,12 +201,14 @@ export const CountrySelect = ({ value, onChange, countries }) => {
   return options.length ? (
     <Select value={value || ""} onChange={onChange}>
       <option value="">— select —</option>
+      {/* Keep a stored value that isn't in the list (e.g. legacy "UAE") visible instead of blank. */}
+      {value && !options.includes(value) && <option>{value}</option>}
       {options.map((c) => <option key={c}>{c}</option>)}
     </Select>
   ) : <Input value={value || ""} onChange={onChange} placeholder="e.g. UAE" />;
 };
 
-export const MultiSelect = ({ options, value, onChange }) => {
+export const MultiSelect = ({ options, value, onChange, getLabel = (opt) => opt }) => {
   const selected = value || [];
   const toggle = (opt) => {
     onChange(selected.includes(opt) ? selected.filter((o) => o !== opt) : [...selected, opt]);
@@ -215,7 +217,7 @@ export const MultiSelect = ({ options, value, onChange }) => {
     <div className="w-full border border-gray-200 rounded-lg px-3 py-2 max-h-40 overflow-y-auto space-y-1">
       {options.map((opt) => (
         <label key={opt} className="flex items-center gap-2 text-xs text-gray-700">
-          <input type="checkbox" checked={selected.includes(opt)} onChange={() => toggle(opt)} /> {opt}
+          <input type="checkbox" checked={selected.includes(opt)} onChange={() => toggle(opt)} /> {getLabel(opt)}
         </label>
       ))}
     </div>

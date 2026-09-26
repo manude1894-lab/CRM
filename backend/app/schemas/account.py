@@ -37,6 +37,7 @@ class AccountImportRow(BaseModel):
     risk_rating: Optional[str] = None
     kyc_status: Optional[str] = None
     spoc_id: Optional[int] = None
+    non_anchor_rm_ids: Optional[list[int]] = None
 
     licensing_authority: Optional[str] = None
     license_start_date: Optional[date] = None
@@ -149,6 +150,7 @@ class AccountBase(BaseModel):
     kyc_status: str = "Not Started"
     owner_id: Optional[int] = None
     spoc_id: Optional[int] = None
+    non_anchor_rm_ids: Optional[list[int]] = None
 
     licensing_authority: Optional[str] = None
     license_start_date: Optional[date] = None
@@ -229,6 +231,7 @@ class AccountUpdate(BaseModel):
     kyc_status: Optional[str] = None
     owner_id: Optional[int] = None
     spoc_id: Optional[int] = None
+    non_anchor_rm_ids: Optional[list[int]] = None
 
     licensing_authority: Optional[str] = None
     license_start_date: Optional[date] = None

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { accountPartiesApi, amlApi } from "../api/endpoints";
 import { Icon, Modal, Field, Input, Select, CountrySelect, Spinner, ErrorBanner } from "./ui";
-import { COUNTRY_CALLING_CODES } from "../utils/constants";
+import { COUNTRY_CALLING_CODES, isUAE } from "../utils/constants";
 import { toast } from "../store/toast";
 import { confirmDialog } from "../store/confirm";
 
@@ -159,7 +159,7 @@ function PartyForm({ form, setForm, countries, onCancel, onSave }) {
   const isShareholder = form.party_role === "Shareholder";
   const isDirector = form.party_role === "Director";
   const isEntity = form.constitution === "Entity";
-  const isUAEResident = form.country_of_residence === "UAE";
+  const isUAEResident = isUAE(form.country_of_residence);
 
   return (
     <div>
