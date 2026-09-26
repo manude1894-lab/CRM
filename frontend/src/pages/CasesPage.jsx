@@ -15,7 +15,7 @@ const NEXT_STAGE = STAGES.reduce((acc, s, i) => {
   return acc;
 }, {});
 
-export default function CasesPage({ initialCaseId } = {}) {
+export default function CasesPage({ initialCaseId, initialStage } = {}) {
   const appliedInitialCaseRef = useRef(false);
   const [cases, setCases] = useState([]);
   const [users, setUsers] = useState([]);
@@ -24,7 +24,7 @@ export default function CasesPage({ initialCaseId } = {}) {
   const [error, setError] = useState(null);
   const [view, setView] = useState("kanban");
   const [search, setSearch] = useState("");
-  const [stageFilter, setStageFilter] = useState("All");
+  const [stageFilter, setStageFilter] = useState(initialStage || "All");
   const [statusFilter, setStatusFilter] = useState("All");
   const [modal, setModal] = useState(null);
   const [form, setForm] = useState({});

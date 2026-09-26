@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useAuthStore } from "./store/auth";
-import { Icon, Badge, ToastHost, ConfirmDialogHost } from "./components/ui";
+import { Icon, ToastHost, ConfirmDialogHost } from "./components/ui";
 import NotificationBell from "./components/NotificationBell";
 import CommandPalette from "./components/CommandPalette";
 import LoginPage from "./pages/LoginPage";
@@ -53,23 +53,23 @@ export default function App() {
     <div className="flex h-screen bg-gray-50 overflow-hidden">
       {/* Sidebar */}
       <aside className={`flex-shrink-0 flex flex-col border-r border-gray-100 bg-white transition-all duration-200 ${sidebarOpen ? "w-56" : "w-16"}`}>
-        <div className={`flex flex-col items-center gap-2 py-6 border-b border-gray-100 ${sidebarOpen ? "px-4" : "px-2"}`}>
-          <img
-            src="/triam-logo.png"
-            alt="TRIAM"
-            className={`w-auto object-contain transition-all duration-200 ${sidebarOpen ? "h-14" : "h-8"}`}
-          />
-          {sidebarOpen && (
-            <div className="text-[11px] font-medium text-gray-400 tracking-[0.12em] uppercase text-center">
-              Entity Servicing Platform
+        {/* Brand: cropped wordmark when open, gold trident mark when collapsed. */}
+        <div className={`flex items-center h-20 border-b border-gray-100 ${sidebarOpen ? "px-5" : "justify-center px-2"}`}>
+          {sidebarOpen ? (
+            <div>
+              <img src="/triam-wordmark.png" alt="TRIAM" className="h-9 w-auto" />
+              <div className="mt-1.5 text-[11px] text-gray-400">Entity Servicing &amp; Compliance</div>
             </div>
+          ) : (
+            <img src="/triam-trident.png" alt="TRIAM" className="h-9 w-auto" />
           )}
         </div>
 
-        <nav className="flex-1 py-3 space-y-0.5 overflow-y-auto px-2">
+        <nav className="flex-1 py-2 space-y-0.5 overflow-y-auto px-2">
           {navItems.map((item) => (
             <button key={item.key} onClick={() => { setJumpTo(null); setPage(item.key); }}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-colors text-left ${page === item.key ? "text-white" : "text-gray-600 hover:bg-gray-50 hover:text-gray-800"}`}
+              title={sidebarOpen ? undefined : item.label}
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors text-left ${sidebarOpen ? "" : "justify-center"} ${page === item.key ? "text-white" : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"}`}
               style={page === item.key ? { background: "#1a3a5c" } : {}}>
               <Icon name={item.icon} size={18} className={`flex-shrink-0 ${page === item.key ? "text-gold" : ""}`} />
               {sidebarOpen && <span className="flex-1 font-medium">{item.label}</span>}
@@ -109,12 +109,16 @@ export default function App() {
               {new Date().toLocaleDateString("en-US", { weekday: "short", year: "numeric", month: "short", day: "numeric" })}
             </div>
             <NotificationBell />
-            {user && <Badge text={user.role} />}
+            {user && (
+              <span className="text-xs font-medium text-gray-600 bg-gray-100 px-2.5 py-1.5 rounded-lg">{ROLE_LABEL[user.role] || user.role}</span>
+            )}
           </div>
         </header>
 
         <main className="flex-1 overflow-y-auto p-6">
           <PageComponent
+            onNavigate={(t) => { setJumpTo(t); setPage(t.page); }}
+            initialStage={jumpTo?.page === "cases" ? jumpTo.stage : undefined}
             initialAccountId={jumpTo?.page === "accounts" ? jumpTo.accountId : undefined}
             initialCaseId={jumpTo?.page === "cases" ? jumpTo.caseId : undefined}
           />
