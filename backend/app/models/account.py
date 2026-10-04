@@ -17,11 +17,18 @@ class Account(Base):
     __tablename__ = "accounts"
 
     id = Column(Integer, primary_key=True, index=True)
-    account_uid = Column(String(20), unique=True, index=True, nullable=False)  # ACC-0001
+    account_uid = Column(String(20), unique=True, index=True, nullable=False)  # ACC-0001 — internal key
+    # BRD §19 Unique Client ID — {ENTITY}/{00000}, per-entity counter, assigned on first save.
+    client_id = Column(String(20), unique=True, index=True, nullable=True)
+    # BRD §3 Unique Search Name — short, unique (case-insensitive), prefilled from the legal name.
+    search_name = Column(String(120), unique=True, index=True, nullable=True)
 
     account_type = Column(String(20), default="Corporate", nullable=False)  # Corporate / Individual
 
-    company_name = Column(String(255), unique=True, nullable=False, index=True)  # full legal name, for Individuals too
+    # Full legal name (also for Individuals). Not unique since BRD §3: duplicates are blocked in the
+    # service unless an approver records an exception (duplicate_override_reason).
+    company_name = Column(String(255), nullable=False, index=True)
+    duplicate_override_reason = Column(String(255), nullable=True)
     industry = Column(String(100), nullable=True)
     country = Column(String(100), nullable=True)
     company_size = Column(String(100), nullable=True)
@@ -46,6 +53,7 @@ class Account(Base):
 
     # Licensing & regulatory (client-database spec §6.1-7.6)
     licensing_authority = Column(String(150), nullable=True)
+    licensing_authority_other = Column(String(100), nullable=True)  # BRD §5 — free text when "Other"
     license_start_date = Column(Date, nullable=True)
     license_expiry_date = Column(Date, nullable=True)
     is_regulated = Column(Boolean, default=False, nullable=False)
@@ -73,6 +81,9 @@ class Account(Base):
 
     # Profile status workflow (§25)
     profile_status = Column(String(30), default="New", nullable=False)
+    # BRD §11 "status last updated on" — set by the service whenever profile_status changes.
+    status_updated_at = Column(DateTime(timezone=True), nullable=True)
+    status_updated_by_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
     # Engagement Letter — client-level (§26-27), distinct from Case's onboarding-pipeline dates
     engagement_letter_signed = Column(Boolean, default=False, nullable=False)
@@ -82,6 +93,7 @@ class Account(Base):
     aml_classification = Column(String(20), nullable=True)  # Standard / SDD / EDD
     edd_reason = Column(String(255), nullable=True)
     cdd_completion_date = Column(Date, nullable=True)
+    kyc_verified_by = Column(String(150), nullable=True)  # BRD §10 — full name of the RM who verified KYC
     next_aml_review_date = Column(Date, nullable=True)  # server-computed from risk_rating + cdd_completion_date
 
     # For Corporate accounts this is a server-computed rollup (any account_parties row is_pep=True).

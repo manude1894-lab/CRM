@@ -4,6 +4,7 @@ from app.models.department import Department
 from app.models.role import Role, PERMISSIONS
 from app.models.master import MasterItem, MASTER_LIST_TYPES
 from app.models.audit import AuditLog
+from app.models.client_id import ClientIdSequence
 from app.models.account import Account, Priority
 from app.models.case import (
     Case,
@@ -53,6 +54,7 @@ __all__ = [
     "Role", "PERMISSIONS",
     "MasterItem", "MASTER_LIST_TYPES",
     "AuditLog",
+    "ClientIdSequence",
     "Account", "Priority",
     "Case", "CaseStage", "CaseStatus", "CaseSource", "InvoiceStatus", "CASE_STAGE_TRANSITIONS",
     "CaseAdditionalRM",

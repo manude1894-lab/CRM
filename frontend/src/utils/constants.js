@@ -268,14 +268,14 @@ export const exportFilename = (base, ext = "csv") => {
 // Emirates (the)"; older/free-text records may hold "UAE". Accept both.
 export const isUAE = (country) => country === "UAE" || (country || "").startsWith("United Arab Emirates");
 
-// Client CRM-change-request items 8/14 — display dates as DD-MM-YYYY everywhere.
+// BRD §14 — display dates as DD MM YYYY everywhere (was DD-MM-YYYY, client CRM-change-request items 8/14).
 // Native <input type="date"> fields are left alone (browser-controlled, ISO value).
 export const fmtDate = (d) => {
   if (!d) return "";
   const s = String(d).slice(0, 10);
   const [y, m, day] = s.split("-");
   if (!y || !m || !day) return s;
-  return `${day}-${m}-${y}`;
+  return `${day} ${m} ${y}`;
 };
 
 export const ROLE_LABEL = {

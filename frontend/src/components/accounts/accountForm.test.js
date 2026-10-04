@@ -35,6 +35,24 @@ describe("cleanPayload", () => {
   });
 });
 
+describe("P1 fields", () => {
+  it("maps client ID and status timestamp as read-only header values and never sends them back", () => {
+    const form = accountToForm({ id: 1, company_name: "Acme", client_id: "TCPL/00001", status_updated_at: "2026-10-04T10:00:00Z", search_name: "Acme", kyc_verified_by: "Aisha" });
+    expect(form._client_id).toBe("TCPL/00001");
+    expect(form.search_name).toBe("Acme");
+    expect(form.kyc_verified_by).toBe("Aisha");
+    const payload = buildAccountPayload(form);
+    expect(payload).not.toHaveProperty("_client_id");
+    expect(payload).not.toHaveProperty("_status_updated_at");
+  });
+
+  it("saves the search name with core info and KYC-verified-by with AML", () => {
+    expect(SECTION_FIELDS.core).toContain("search_name");
+    expect(SECTION_FIELDS.aml).toContain("kyc_verified_by");
+    expect(SECTION_FIELDS.licensing).toContain("licensing_authority_other");
+  });
+});
+
 describe("buildAccountPayload", () => {
   it("strips client-only fields, joins tags and converts spoc_id to a number", () => {
     const payload = buildAccountPayload({ ...BLANK_ACCOUNT_FORM, _id: 3, next_aml_review_date: "2027-01-01", company_name: "Acme", tags: ["VIP", "New"], spoc_id: "5" });
@@ -68,7 +86,11 @@ describe("validateCoreFields", () => {
   });
 
   it("requires industry for corporate clients only", () => {
-    expect(validateCoreFields({ company_name: "Acme", account_type: "Corporate", industry: "" })).toBe("Industry is required");
-    expect(validateCoreFields({ company_name: "Jane", account_type: "Individual", industry: "" })).toBeNull();
+    expect(validateCoreFields({ company_name: "Acme", anchor_entity: "TCPL", account_type: "Corporate", industry: "" })).toBe("Industry is required");
+    expect(validateCoreFields({ company_name: "Jane", anchor_entity: "TCPL", account_type: "Individual", industry: "" })).toBeNull();
+  });
+
+  it("requires an Anchor Triam Entity (it builds the Client ID)", () => {
+    expect(validateCoreFields({ company_name: "Acme", industry: "Fintech" })).toMatch(/Anchor Triam Entity/);
   });
 });

@@ -146,7 +146,9 @@ export default function AccountsPage({ initialAccountId } = {}) {
   if (loading) return <Spinner />;
   if (error) return <ErrorBanner message={error} onRetry={load} />;
 
-  const filtered = accounts.filter((a) => search === "" || a.company_name.toLowerCase().includes(search.toLowerCase()));
+  // Matches legal name, Unique Search Name (BRD §3) or Client ID (BRD §19).
+  const filtered = accounts.filter((a) => search === "" || [a.company_name, a.search_name, a.client_id]
+    .some((v) => (v || "").toLowerCase().includes(search.toLowerCase())));
 
   return (
     <div className="space-y-4">

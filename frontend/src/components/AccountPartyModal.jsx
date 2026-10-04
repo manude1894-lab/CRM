@@ -114,10 +114,11 @@ export default function AccountPartyModal({ account, onClose }) {
               <div className="space-y-2 mb-3">
                 {rowsForTab.length === 0
                   ? <p className="text-sm text-gray-400 text-center py-6">No {partyLabel(tab).toLowerCase()}s on record.</p>
-                  : rowsForTab.map((p) => (
+                  : rowsForTab.map((p, i) => (
                     <div key={p.id} className="flex items-center justify-between p-2.5 bg-gray-50 rounded-lg">
                       <div>
                         <div className="text-sm font-medium text-gray-800">
+                          <span className="text-xs text-gray-400 mr-1.5">{partyLabel(tab)} {i + 1}</span>
                           {p.full_name}
                           {p.is_pep && <span className="ml-1.5 text-xs px-1.5 py-0.5 rounded bg-red-100 text-red-700">PEP</span>}
                           {p.nominee_director_name && <span className="ml-1.5 text-xs px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">Nominee: {p.nominee_director_name}</span>}
@@ -192,12 +193,12 @@ function PartyForm({ form, setForm, countries, onCancel, onSave }) {
         </Field>
       )}
       {isShareholder && (
-        <Field label="Effective Ownership Share (%)">
+        <Field label="Effective Ownership Share (%)" required>
           <Input type="number" min="0" max="100" step="0.01" value={form.effective_ownership_percent ?? ""} onChange={set(setForm, "effective_ownership_percent")} />
         </Field>
       )}
 
-      <Field label="Contact Mobile">
+      <Field label="Contact Mobile" required={isShareholder}>
         <div className="flex gap-2">
           <Select value={form.mobile_country_code || ""} onChange={set(setForm, "mobile_country_code")} className="w-40 flex-shrink-0">
             <option value="">Code</option>
@@ -206,7 +207,7 @@ function PartyForm({ form, setForm, countries, onCancel, onSave }) {
           <Input value={form.mobile_number || ""} onChange={set(setForm, "mobile_number")} maxLength={12} placeholder="e.g. 501234567" />
         </div>
       </Field>
-      <Field label="Contact Email"><Input type="email" value={form.email || ""} onChange={set(setForm, "email")} /></Field>
+      <Field label="Contact Email" required={isShareholder}><Input type="email" value={form.email || ""} onChange={set(setForm, "email")} /></Field>
 
       <Field label="Country of Residence">
         <CountrySelect value={form.country_of_residence} onChange={set(setForm, "country_of_residence")} countries={countries} />

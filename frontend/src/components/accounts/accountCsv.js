@@ -6,6 +6,7 @@ const IMPORT_TRUTHY = new Set(["true", "yes", "1"]);
 
 export const IMPORT_HEADER_MAP = {
   "client type": "account_type",
+  "unique search name": "search_name", // BRD §3. "Client ID" is export-only: IDs are always issued by the system.
   "company name": "company_name",
   "industry": "industry",
   "country": "country",
@@ -143,7 +144,7 @@ const ADDRESS_COLS = ["Line 1", "Line 2", "Landmark", "City", "ZIP", "P.O. Box",
 const addrRow = (v) => { const a = v || {}; return [a.line1, a.line2, a.landmark, a.city, a.zip, a.po_box, a.country]; };
 
 export const EXPORT_HEADERS = [
-  "Account UID", "Client Type", "Company Name", "Industry", "Country", "Website", "Key Contacts", "Single Point of Contact",
+  "Account UID", "Client ID", "Unique Search Name", "Client Type", "Company Name", "Industry", "Country", "Website", "Key Contacts", "Single Point of Contact",
   "Anchor Entity", "Non-anchor Entities",
   "Strategic Priority", "Existing Relationship", "Tags", "Incorporation Certificate No.", "Incorporation Date", "License Number",
   "Risk Rating", "KYC Status", "Anchor RM (SPOC)", "Non-anchor RMs",
@@ -166,7 +167,7 @@ export const EXPORT_HEADERS = [
 export function buildAccountsCsv(accounts, users) {
   const userName = (id) => users.find((u) => u.id === id)?.name;
   const rows = accounts.map((a) => [
-    a.account_uid, a.account_type, a.company_name, a.industry, a.country, a.website, a.key_contacts, a.single_point_of_contact,
+    a.account_uid, a.client_id, a.search_name, a.account_type, a.company_name, a.industry, a.country, a.website, a.key_contacts, a.single_point_of_contact,
     a.anchor_entity, (a.non_anchor_entities || []).join("; "),
     a.strategic_priority, a.existing_relationship, a.tags, a.registration_number, a.incorporation_date, a.license_number,
     a.risk_rating, a.kyc_status, userName(a.spoc_id) || "",

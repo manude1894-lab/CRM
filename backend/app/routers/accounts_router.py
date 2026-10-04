@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from typing import Optional
 
 from app.database import get_db
-from app.auth.dependencies import get_current_user, require_admin
+from app.auth.dependencies import get_current_user, require_admin, require_rm
 from app.models import User
 from app.schemas import AccountCreate, AccountRead, AccountUpdate, AccountImportRequest, AccountImportResponse
 from app.schemas.account import DuplicateMatch, AccountBulkUpdateRequest, BulkUpdateResult
@@ -42,6 +42,11 @@ def check_duplicate_account(name: str, exclude_id: Optional[int] = None, db: Ses
     ]
 
 
+@router.get("/lookup", summary="BRD §3 — existing clients matching the first 3+ letters of a name")
+def lookup_accounts(q: str, exclude_id: Optional[int] = None, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    return account_service.lookup_by_name(db, user, q, exclude_id)
+
+
 @router.patch("/bulk", response_model=list[BulkUpdateResult], summary="Bulk-update SPOC / Risk Rating / KYC Status across selected clients")
 def bulk_update_accounts(data: AccountBulkUpdateRequest, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     return account_service.bulk_update_accounts(db, user, data)
@@ -50,6 +55,13 @@ def bulk_update_accounts(data: AccountBulkUpdateRequest, db: Session = Depends(g
 @router.get("/{account_id}", response_model=AccountRead)
 def get_account(account_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     return account_service.get_account(db, account_id, user)
+
+
+@router.get("/{account_id}/completeness", summary="Mandatory fields still missing (BRD §5/§9/§10)")
+def account_completeness(account_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    account = account_service.get_account(db, account_id, user)
+    missing = account_service.missing_mandatory(account)
+    return {"complete": not missing, "missing": missing}
 
 
 @router.get("/{account_id}/track-record", response_model=TrackRecordRead, summary="Client track record — in-app summary")
@@ -71,7 +83,7 @@ def download_track_record(account_id: int, db: Session = Depends(get_db), user: 
 
 
 @router.post("", response_model=AccountRead, status_code=status.HTTP_201_CREATED)
-def create_account(data: AccountCreate, db: Session = Depends(get_db), user: User = Depends(require_admin)):
+def create_account(data: AccountCreate, db: Session = Depends(get_db), user: User = Depends(require_rm)):
     return account_service.create_account(db, data, user)
 
 

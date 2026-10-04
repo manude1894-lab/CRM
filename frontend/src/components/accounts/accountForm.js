@@ -9,9 +9,9 @@ export const BLANK_ADDRESS = { line1: "", line2: "", landmark: "", zip: "", po_b
 
 export const BLANK_ACCOUNT_FORM = {
   account_type: "Corporate",
-  company_name: "", industry: "", country: "", strategic_priority: "Medium", existing_relationship: "No",
+  company_name: "", search_name: "", industry: "", country: "", strategic_priority: "Medium", existing_relationship: "No",
   key_contacts: "", single_point_of_contact: "", website: "", spoc_id: "", non_anchor_rm_ids: [], anchor_entity: "", non_anchor_entities: [], registration_number: "", incorporation_date: "", license_number: "", risk_rating: "", kyc_status: "Not Started",
-  licensing_authority: "", license_start_date: "", license_expiry_date: "", is_regulated: false, regulator_name: "", regulator_other: "",
+  licensing_authority: "", licensing_authority_other: "", license_start_date: "", license_expiry_date: "", is_regulated: false, regulator_name: "", regulator_other: "",
   license_category: "", license_activities: "",
   registered_address: { ...BLANK_ADDRESS }, operating_address: { ...BLANK_ADDRESS },
   trn_vat_number: "", corp_tax_registered: false, corp_tax_registration_number: "",
@@ -19,7 +19,7 @@ export const BLANK_ACCOUNT_FORM = {
   services_obtained: [], tags: [],
   profile_status: "New",
   engagement_letter_signed: false, engagement_letter_valid_until: "",
-  aml_classification: "", edd_reason: "", cdd_completion_date: "",
+  aml_classification: "", edd_reason: "", cdd_completion_date: "", kyc_verified_by: "",
   is_pep: false,
   date_of_birth: "", country_of_birth: "", nationality: "", passport_number: "", passport_expiry_date: "", occupation: "",
   source_of_funds: "", source_of_wealth: "", country_of_residence: "",
@@ -31,12 +31,12 @@ export const BLANK_ACCOUNT_FORM = {
 // Field groups saved by each section's own Save button (client CRM-change-request item 19).
 export const SECTION_FIELDS = {
   core: [
-    "account_type", "company_name", "industry", "country", "website", "key_contacts",
+    "account_type", "company_name", "search_name", "industry", "country", "website", "key_contacts",
     "single_point_of_contact", "strategic_priority", "existing_relationship", "spoc_id", "non_anchor_rm_ids",
     "anchor_entity", "non_anchor_entities", "registration_number", "license_number", "incorporation_date",
     "risk_rating", "kyc_status", "tags",
   ],
-  licensing: ["licensing_authority", "license_start_date", "license_expiry_date", "license_activities", "is_regulated", "regulator_name", "regulator_other", "license_category"],
+  licensing: ["licensing_authority", "licensing_authority_other", "license_start_date", "license_expiry_date", "license_activities", "is_regulated", "regulator_name", "regulator_other", "license_category"],
   registeredAddress: ["registered_address"],
   operatingAddress: ["operating_address"],
   tax: ["trn_vat_number", "financial_year_end", "corp_tax_registered", "corp_tax_registration_number"],
@@ -49,18 +49,18 @@ export const SECTION_FIELDS = {
   introducer: ["has_introducer", "introducer_name"],
   services: ["services_obtained"],
   profileStatus: ["profile_status", "engagement_letter_valid_until", "engagement_letter_signed"],
-  aml: ["aml_classification", "cdd_completion_date", "edd_reason"],
+  aml: ["aml_classification", "cdd_completion_date", "edd_reason", "kyc_verified_by"],
 };
 
 // Maps an account from the API into editable form state (nulls → "", tags string → array).
 export function accountToForm(a) {
   return {
     account_type: a.account_type || "Corporate",
-    company_name: a.company_name, industry: a.industry || "", country: a.country || "", strategic_priority: a.strategic_priority,
+    company_name: a.company_name, search_name: a.search_name || "", industry: a.industry || "", country: a.country || "", strategic_priority: a.strategic_priority,
     existing_relationship: a.existing_relationship, key_contacts: a.key_contacts || "", single_point_of_contact: a.single_point_of_contact || "", website: a.website || "", spoc_id: a.spoc_id || "", non_anchor_rm_ids: a.non_anchor_rm_ids || [],
     anchor_entity: a.anchor_entity || "", non_anchor_entities: a.non_anchor_entities || [],
     registration_number: a.registration_number || "", incorporation_date: a.incorporation_date || "", license_number: a.license_number || "", risk_rating: a.risk_rating || "", kyc_status: a.kyc_status || "Not Started",
-    licensing_authority: a.licensing_authority || "", license_start_date: a.license_start_date || "", license_expiry_date: a.license_expiry_date || "",
+    licensing_authority: a.licensing_authority || "", licensing_authority_other: a.licensing_authority_other || "", license_start_date: a.license_start_date || "", license_expiry_date: a.license_expiry_date || "",
     is_regulated: !!a.is_regulated, regulator_name: a.regulator_name || "", regulator_other: a.regulator_other || "",
     license_category: a.license_category || "", license_activities: a.license_activities || "",
     registered_address: { ...BLANK_ADDRESS, ...(a.registered_address || {}) }, operating_address: { ...BLANK_ADDRESS, ...(a.operating_address || {}) },
@@ -70,6 +70,7 @@ export function accountToForm(a) {
     profile_status: a.profile_status || "New",
     engagement_letter_signed: !!a.engagement_letter_signed, engagement_letter_valid_until: a.engagement_letter_valid_until || "",
     aml_classification: a.aml_classification || "", edd_reason: a.edd_reason || "", cdd_completion_date: a.cdd_completion_date || "",
+    kyc_verified_by: a.kyc_verified_by || "",
     next_aml_review_date: a.next_aml_review_date || null,
     is_pep: !!a.is_pep,
     date_of_birth: a.date_of_birth || "", country_of_birth: a.country_of_birth || "", nationality: a.nationality || "", passport_number: a.passport_number || "",
@@ -81,6 +82,9 @@ export function accountToForm(a) {
     uae_visa_number: a.uae_visa_number || "", uae_visa_expiry: a.uae_visa_expiry || "",
     nature_of_services_sought: a.nature_of_services_sought || [],
     _id: a.id,
+    // Read-only, shown in the profile header (BRD §11 / §19).
+    _client_id: a.client_id || null,
+    _status_updated_at: a.status_updated_at || null,
   };
 }
 
@@ -93,7 +97,7 @@ const toSpocId = (v) => (v ? +v : null);
 
 // Full-form payload for create/update. `_id` and the server-computed next_aml_review_date are stripped.
 export function buildAccountPayload(form) {
-  const { next_aml_review_date, tags, _id, ...rest } = form;
+  const { next_aml_review_date, tags, _id, _client_id, _status_updated_at, ...rest } = form;
   const payload = cleanPayload({ ...rest, tags: (tags || []).join(", ") || null });
   return { ...payload, spoc_id: toSpocId(payload.spoc_id) };
 }
@@ -111,6 +115,8 @@ export function buildSectionPatch(form, fieldKeys) {
 // Returns an error message, or null when the core fields are valid for creating a client.
 export function validateCoreFields(form) {
   if (!form.company_name?.trim()) return "Company name is required";
+  // BRD §19 — the Client ID is built from the Anchor Triam Entity.
+  if (!form.anchor_entity) return "Anchor Triam Entity is required (it determines the Client ID)";
   if (form.account_type !== "Individual" && !form.industry?.trim()) return "Industry is required";
   return null;
 }

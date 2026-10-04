@@ -107,3 +107,13 @@ function parseRaw(text) {
   row.push(field); rows.push(row);
   return rows;
 }
+
+describe("P1 CSV columns", () => {
+  it("exports Client ID and Unique Search Name and imports the search name (not the ID)", () => {
+    const csv = buildAccountsCsv([{ company_name: "Acme", client_id: "TCPL/00001", search_name: "Acme" }], []);
+    expect(csv.split("\n")[0]).toContain('"Client ID","Unique Search Name"');
+    const [row] = parseImportRows(csv, []);
+    expect(row.search_name).toBe("Acme");
+    expect(row).not.toHaveProperty("client_id");
+  });
+});

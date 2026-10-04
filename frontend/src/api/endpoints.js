@@ -233,6 +233,10 @@ export const accountsApi = {
   update: (id, data) => api.patch(`/accounts/${id}`, data).then((r) => r.data),
   delete: (id) => api.delete(`/accounts/${id}`),
   import: (rows, dryRun) => api.post("/accounts/import", { rows, dry_run: dryRun }).then((r) => r.data),
+  // BRD §3 — names matching the first 3+ letters (all clients; can_open says whether the user may open it)
+  lookup: (q, excludeId) => api.get("/accounts/lookup", { params: { q, exclude_id: excludeId || undefined } }).then((r) => r.data),
+  // Mandatory fields still missing (enforced at Submit in P2)
+  completeness: (id) => api.get(`/accounts/${id}/completeness`).then((r) => r.data),
   checkDuplicate: (name, excludeId) => api.get("/accounts/check-duplicate", { params: { name, exclude_id: excludeId || undefined } }).then((r) => r.data),
   bulkUpdate: (payload) => api.patch("/accounts/bulk", payload).then((r) => r.data),
   trackRecord: (id) => api.get(`/accounts/${id}/track-record`).then((r) => r.data),

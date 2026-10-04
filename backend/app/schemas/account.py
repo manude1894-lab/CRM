@@ -1,10 +1,63 @@
 """Pydantic schemas: Account."""
-from pydantic import BaseModel, Field, ConfigDict
+import re
+
+from pydantic import BaseModel, Field, ConfigDict, field_validator
 from typing import Optional
 from datetime import date, datetime
 from decimal import Decimal
 
 from app.models.account import Priority
+
+
+_EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+_FYE_RE = re.compile(r"^(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$")
+
+
+class _ClientFieldRules(BaseModel):
+    """BRD §5/§9/§10 field formats, shared by create and update so they can't drift apart.
+
+    Formats only — whether a field is *mandatory* is checked by account_service.missing_mandatory()
+    at Submit (BRD §12 step 11), because each section is saved on its own before the profile is complete.
+    """
+
+    @field_validator("trn_vat_number", "corp_tax_registration_number", mode="before", check_fields=False)
+    @classmethod
+    def _numeric_15(cls, v):
+        if v in (None, ""):
+            return v
+        v = str(v).strip()
+        if not v.isdigit():
+            raise ValueError("must contain digits only")
+        return v
+
+    @field_validator("individual_email", mode="before", check_fields=False)
+    @classmethod
+    def _email(cls, v):
+        if v in (None, ""):
+            return v
+        v = str(v).strip()
+        if not _EMAIL_RE.match(v):
+            raise ValueError("is not a valid email address")
+        return v
+
+    @field_validator("financial_year_end", mode="before", check_fields=False)
+    @classmethod
+    def _fye(cls, v):
+        # Stored as MM-DD (sorts and compares cleanly); displayed as DD-MMM per BRD §14.
+        if v in (None, ""):
+            return v
+        v = str(v).strip()
+        if not _FYE_RE.match(v):
+            raise ValueError("must be a month and day (MM-DD)")
+        return v
+
+    @field_validator("search_name", mode="before", check_fields=False)
+    @classmethod
+    def _search_name(cls, v):
+        if v is None:
+            return v
+        v = " ".join(str(v).split())
+        return v or None
 
 
 class AddressBlock(BaseModel):
@@ -19,6 +72,7 @@ class AddressBlock(BaseModel):
 
 class AccountImportRow(BaseModel):
     account_type: Optional[str] = None
+    search_name: Optional[str] = Field(None, max_length=120)
     company_name: str = Field(..., min_length=1, max_length=255)
     industry: Optional[str] = None
     country: Optional[str] = None
@@ -129,8 +183,11 @@ class AccountImportResponse(BaseModel):
     results: list[AccountImportRowResult]
 
 
-class AccountBase(BaseModel):
+class AccountBase(_ClientFieldRules):
     account_type: str = "Corporate"  # Corporate / Individual
+    search_name: Optional[str] = Field(None, max_length=120)
+    licensing_authority_other: Optional[str] = Field(None, max_length=100)
+    kyc_verified_by: Optional[str] = Field(None, max_length=150)
     company_name: str = Field(..., min_length=1, max_length=255)
     industry: Optional[str] = None
     country: Optional[str] = None
@@ -145,7 +202,7 @@ class AccountBase(BaseModel):
     non_anchor_entities: Optional[list[str]] = None
     registration_number: Optional[str] = Field(None, max_length=30)
     incorporation_date: Optional[date] = None
-    license_number: Optional[str] = None
+    license_number: Optional[str] = Field(None, max_length=30)
     risk_rating: Optional[str] = None
     kyc_status: str = "Not Started"
     owner_id: Optional[int] = None
@@ -157,9 +214,9 @@ class AccountBase(BaseModel):
     license_expiry_date: Optional[date] = None
     is_regulated: bool = False
     regulator_name: Optional[str] = None
-    regulator_other: Optional[str] = None
-    license_category: Optional[str] = None
-    license_activities: Optional[str] = None
+    regulator_other: Optional[str] = Field(None, max_length=100)
+    license_category: Optional[str] = Field(None, max_length=25)
+    license_activities: Optional[str] = Field(None, max_length=250)
 
     registered_address: Optional[AddressBlock] = None
     operating_address: Optional[AddressBlock] = None
@@ -207,11 +264,16 @@ class AccountBase(BaseModel):
 
 
 class AccountCreate(AccountBase):
-    pass
+    # BRD §3 duplicate exception — only honoured for users with client.approve.
+    allow_duplicate: bool = False
+    duplicate_reason: Optional[str] = Field(None, max_length=255)
 
 
-class AccountUpdate(BaseModel):
+class AccountUpdate(_ClientFieldRules):
     account_type: Optional[str] = None
+    search_name: Optional[str] = Field(None, max_length=120)
+    licensing_authority_other: Optional[str] = Field(None, max_length=100)
+    kyc_verified_by: Optional[str] = Field(None, max_length=150)
     company_name: Optional[str] = None
     industry: Optional[str] = None
     country: Optional[str] = None
@@ -226,7 +288,7 @@ class AccountUpdate(BaseModel):
     non_anchor_entities: Optional[list[str]] = None
     registration_number: Optional[str] = Field(None, max_length=30)
     incorporation_date: Optional[date] = None
-    license_number: Optional[str] = None
+    license_number: Optional[str] = Field(None, max_length=30)
     risk_rating: Optional[str] = None
     kyc_status: Optional[str] = None
     owner_id: Optional[int] = None
@@ -238,9 +300,9 @@ class AccountUpdate(BaseModel):
     license_expiry_date: Optional[date] = None
     is_regulated: Optional[bool] = None
     regulator_name: Optional[str] = None
-    regulator_other: Optional[str] = None
-    license_category: Optional[str] = None
-    license_activities: Optional[str] = None
+    regulator_other: Optional[str] = Field(None, max_length=100)
+    license_category: Optional[str] = Field(None, max_length=25)
+    license_activities: Optional[str] = Field(None, max_length=250)
 
     registered_address: Optional[AddressBlock] = None
     operating_address: Optional[AddressBlock] = None
@@ -289,6 +351,10 @@ class AccountUpdate(BaseModel):
 class AccountRead(AccountBase):
     id: int
     account_uid: str
+    client_id: Optional[str] = None
+    status_updated_at: Optional[datetime] = None
+    status_updated_by_id: Optional[int] = None
+    duplicate_override_reason: Optional[str] = None
     total_cases: int
     total_invoiced_amount: Decimal
     next_aml_review_date: Optional[date] = None

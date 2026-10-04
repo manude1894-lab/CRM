@@ -34,6 +34,7 @@ export default function AccountCard({
           </div>
           <div>
             <h3 className="text-sm font-bold text-gray-800">{a.company_name}</h3>
+            {a.client_id && <p className="text-[11px] font-mono text-gray-400">{a.client_id}</p>}
             <p className="text-xs text-gray-500">
               {a.account_type === "Individual"
                 ? `${a.nationality || "—"} · ${a.occupation || "Individual"}`

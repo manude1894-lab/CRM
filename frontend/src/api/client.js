@@ -1,5 +1,6 @@
 import axios from "axios";
 import { useAuthStore } from "../store/auth";
+import { formatValidationDetail } from "../utils/apiErrors";
 
 // window.__API_URL__ is injected at container startup by docker-entrypoint.sh
 // so Railway can set API_URL env var without rebuilding the image.
@@ -29,6 +30,10 @@ const processQueue = (error, token = null) => {
 api.interceptors.response.use(
   (res) => res,
   async (error) => {
+    // Readable messages for field-format errors (422), everywhere the app shows `detail`.
+    if (Array.isArray(error.response?.data?.detail)) {
+      error.response.data.detail = formatValidationDetail(error.response.data.detail);
+    }
     const original = error.config;
     if (error.response?.status !== 401 || original._retry || original.url?.includes("/auth/")) {
       return Promise.reject(error);

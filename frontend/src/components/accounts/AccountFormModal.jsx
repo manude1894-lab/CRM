@@ -1,7 +1,10 @@
 import React, { useState } from "react";
 import { accountsApi } from "../../api/endpoints";
 import { Icon, Modal, Field, Input, Select, MultiSelect, CountrySelect, Textarea } from "../ui";
-import DuplicateWarning from "../DuplicateWarning";
+import NameLookup from "./NameLookup";
+import CompletenessChecklist from "./CompletenessChecklist";
+import { useAuthStore } from "../../store/auth";
+import { MONTHS, parseFYE, toFYE, fmtFYE, daysIn } from "../../utils/fye";
 import { toast } from "../../store/toast";
 import {
   fmtDate, REGULATOR_OPTIONS, TAG_OPTIONS, SERVICES_OBTAINED_OPTIONS,
@@ -72,6 +75,13 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
   const [saving, setSaving] = useState(false);
   const [sectionStatus, setSectionStatus] = useState({});
   const [sectionError, setSectionError] = useState({});
+  // BRD §3 — exact-name duplicate and the approver exception.
+  const [exactMatch, setExactMatch] = useState(false);
+  const [override, setOverride] = useState({ allow: false, reason: "" });
+  // The search name follows the legal name until the user edits it themselves.
+  const [searchTouched, setSearchTouched] = useState(!!initialForm.search_name);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const canApprove = useAuthStore((s) => s.can("client.approve"));
 
   const set = (key) => (e) => setForm({ ...form, [key]: e.target.value });
   const setChecked = (key) => (e) => setForm({ ...form, [key]: e.target.checked });
@@ -83,16 +93,33 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
   const services = useMasters("service", SERVICES_OBTAINED_OPTIONS);
   const tags = useMasters("tag", TAG_OPTIONS);
   const regulators = useMasters("regulator", REGULATOR_OPTIONS);
+  const authorities = useMasters("licensing_authority", []);
+
+  const setCompanyName = (e) => {
+    const value = e.target.value;
+    setForm((f) => ({ ...f, company_name: value, ...(searchTouched ? {} : { search_name: value.replace(/\s+/g, " ").trim().slice(0, 120) }) }));
+  };
+  const setSearchName = (e) => { setSearchTouched(true); setForm((f) => ({ ...f, search_name: e.target.value })); };
+
+  // Create payload extras + the duplicate gate (BRD §3).
+  const duplicateBlock = () => {
+    if (!exactMatch) return null;
+    if (!canApprove) return "A client with this exact name already exists — open it instead, or ask an approver to create a duplicate.";
+    if (!override.allow) return "A client with this exact name already exists — tick 'Create anyway' and give a reason to continue.";
+    if ((override.reason || "").trim().length < 10) return "Give a meaningful reason (at least 10 characters) for creating a duplicate client.";
+    return null;
+  };
+  const withOverride = (payload) => (exactMatch && override.allow ? { ...payload, allow_duplicate: true, duplicate_reason: override.reason.trim() } : payload);
 
   const save = async () => {
     // Industry is only enforced when creating a client, so older records without one can still be edited.
-    const invalid = mode === "new" ? validateCoreFields(form) : (!form.company_name?.trim() && "Company name is required");
+    const invalid = mode === "new" ? (validateCoreFields(form) || duplicateBlock()) : (!form.company_name?.trim() && "Company name is required");
     if (invalid) return toast.error(invalid);
     try {
       setSaving(true);
       const payload = buildAccountPayload(form);
       if (mode === "edit") await accountsApi.update(form._id, payload);
-      else await accountsApi.create(payload);
+      else await accountsApi.create(withOverride(payload));
       onChanged();
       onClose();
     } catch (e) {
@@ -109,16 +136,19 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
       const patch = buildSectionPatch(form, SECTION_FIELDS[key]);
       if (form._id) {
         const updated = await accountsApi.update(form._id, patch);
-        setForm((f) => ({ ...f, next_aml_review_date: updated.next_aml_review_date }));
+        setForm((f) => ({ ...f, next_aml_review_date: updated.next_aml_review_date, search_name: updated.search_name || f.search_name,
+          _client_id: updated.client_id || f._client_id, _status_updated_at: updated.status_updated_at }));
       } else {
         if (!isCore) throw new Error("Save Client Info first.");
-        const invalid = validateCoreFields(form);
+        const invalid = validateCoreFields(form) || duplicateBlock();
         if (invalid) throw new Error(invalid);
-        const created = await accountsApi.create(patch);
-        setForm((f) => ({ ...f, _id: created.id }));
+        const created = await accountsApi.create(withOverride(patch));
+        setSearchTouched(true);
+        setForm((f) => ({ ...f, _id: created.id, search_name: created.search_name, _client_id: created.client_id, _status_updated_at: created.status_updated_at }));
         setMode("edit");
       }
       setSectionStatus((s) => ({ ...s, [key]: "saved" }));
+      setRefreshKey((k) => k + 1);
       onChanged();
       setTimeout(() => setSectionStatus((s) => (s[key] === "saved" ? { ...s, [key]: "idle" } : s)), 2500);
     } catch (e) {
@@ -133,6 +163,15 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
   return (
     <Modal title={mode === "edit" ? "Edit Client" : "New Client"} onClose={onClose}>
       <div className="space-y-3">
+        {form._id && (
+          // BRD §11 "status visible on every client profile screen" + §19 Client ID
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 px-3 py-2 rounded-lg bg-gray-50 border border-gray-100 text-xs text-gray-600">
+            <span>Client ID <span className="font-mono font-semibold text-gray-800">{form._client_id || "—"}</span></span>
+            <span>Status <span className="font-semibold text-gray-800">{form.profile_status}</span></span>
+            {form._status_updated_at && <span>Status last updated {fmtDate(form._status_updated_at)}</span>}
+          </div>
+        )}
+        <CompletenessChecklist accountId={form._id} refreshKey={refreshKey} />
         <Field label="Client Type">
           <Select value={form.account_type} onChange={set("account_type")}>
             <option>Corporate</option>
@@ -140,15 +179,21 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
           </Select>
         </Field>
         <Field label={isIndividual ? "Full Name (as per passport) *" : "Company Name *"}>
-          <Input value={form.company_name} onChange={set("company_name")} placeholder={isIndividual ? "e.g. John Smith" : "e.g. Al Futtaim Group"} />
+          <Input value={form.company_name} onChange={setCompanyName} placeholder={isIndividual ? "e.g. John Smith" : "e.g. Al Futtaim Group"} />
         </Field>
-        <DuplicateWarning
+        <NameLookup
           name={form.company_name}
           excludeId={form._id}
-          checkFn={accountsApi.checkDuplicate}
           active={mode === "new"}
-          onSelect={async (id) => onOpenExisting(await accountsApi.get(id))}
+          canOverride={canApprove}
+          override={override}
+          onOverride={setOverride}
+          onExactMatch={setExactMatch}
+          onOpen={async (id) => onOpenExisting(await accountsApi.get(id))}
         />
+        <Field label="Unique Search Name *">
+          <Input value={form.search_name || ""} onChange={setSearchName} maxLength={120} placeholder="Short name used to find this client" />
+        </Field>
         {!isIndividual && (
           <>
             <div className="grid grid-cols-2 gap-3">
@@ -199,7 +244,7 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
           </Field>
         </div>
         <div className="grid grid-cols-2 gap-3">
-          <Field label="Anchor Entity">
+          <Field label="Anchor Triam Entity *">
             <Select value={form.anchor_entity || ""} onChange={(e) => setForm({ ...form, anchor_entity: e.target.value, non_anchor_entities: (form.non_anchor_entities || []).filter((x) => x !== e.target.value) })}>
               <option value="">— select —</option>
               {selectableCodes(entities.items, form.anchor_entity).map((t) => <option key={t} value={t}>{entities.labelOf(t)}</option>)}
@@ -215,7 +260,7 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
               <Input value={form.registration_number} onChange={set("registration_number")} placeholder="e.g. 123456" maxLength={30} />
             </Field>
             <Field label="License Number">
-              <Input value={form.license_number} onChange={set("license_number")} placeholder="e.g. DIFC-LIC-9012" />
+              <Input value={form.license_number} onChange={set("license_number")} placeholder="e.g. DIFC-LIC-9012" maxLength={30} />
             </Field>
             <Field label="Incorporation Date">
               <Input type="date" max={today} value={form.incorporation_date || ""} onChange={set("incorporation_date")} />
@@ -256,14 +301,27 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
               {...sectionProps("licensing")}>
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Licensing Authority">
-                  <Input value={form.licensing_authority} onChange={set("licensing_authority")} placeholder="e.g. DIFC, ADGM, DED" />
+                  {authorities.items.length ? (
+                    <Select value={form.licensing_authority || ""} onChange={set("licensing_authority")}>
+                      <option value="">— select —</option>
+                      {selectableCodes(authorities.items, form.licensing_authority).map((a) => <option key={a} value={a}>{authorities.labelOf(a)}</option>)}
+                    </Select>
+                  ) : (
+                    <Input value={form.licensing_authority} onChange={set("licensing_authority")} placeholder="e.g. DIFC, ADGM, DED" />
+                  )}
                 </Field>
+                {form.licensing_authority === "Other" && (
+                  <Field label="Licensing Authority (Other) *">
+                    <Input value={form.licensing_authority_other || ""} onChange={set("licensing_authority_other")} maxLength={100} />
+                  </Field>
+                )}
                 <Field label="License Start Date"><Input type="date" value={form.license_start_date || ""} onChange={set("license_start_date")} /></Field>
                 <Field label="License Expiry Date"><Input type="date" min={today} value={form.license_expiry_date || ""} onChange={set("license_expiry_date")} /></Field>
               </div>
               <div className="mb-3">
                 <Field label="License Activities">
-                  <Textarea rows={3} value={form.license_activities} onChange={set("license_activities")} />
+                  <Textarea rows={3} value={form.license_activities} onChange={set("license_activities")} maxLength={250} />
+                  <p className="text-[11px] text-gray-400 text-right">{(form.license_activities || "").length}/250</p>
                 </Field>
               </div>
               <label className="flex items-center gap-2 text-xs text-gray-700 mb-3">
@@ -280,7 +338,7 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
                   {form.regulator_name === "Other" && (
                     <Field label="Other Regulator"><Input value={form.regulator_other} onChange={set("regulator_other")} /></Field>
                   )}
-                  <Field label="License Category"><Input value={form.license_category} onChange={set("license_category")} /></Field>
+                  <Field label="License Category"><Input value={form.license_category} onChange={set("license_category")} maxLength={25} /></Field>
                 </div>
               )}
             </Section>
@@ -298,14 +356,25 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
             <Section title="Tax" hasData={!!(form.trn_vat_number || form.financial_year_end || form.corp_tax_registered)}
               {...sectionProps("tax")}>
               <div className="grid grid-cols-2 gap-3">
-                <Field label="TRN / VAT Registration No."><Input value={form.trn_vat_number} onChange={set("trn_vat_number")} maxLength={15} /></Field>
-                <Field label="Financial Year End (MM-DD)"><Input value={form.financial_year_end} onChange={set("financial_year_end")} placeholder="12-31" /></Field>
+                <Field label="TRN / VAT Registration No."><Input value={form.trn_vat_number} onChange={(e) => setForm({ ...form, trn_vat_number: e.target.value.replace(/\D/g, "") })} maxLength={15} inputMode="numeric" /></Field>
+                <Field label={`Financial Year End${form.financial_year_end ? ` — ${fmtFYE(form.financial_year_end)}` : ""}`}>
+                  <div className="flex gap-2">
+                    <Select value={parseFYE(form.financial_year_end).day} onChange={(e) => setForm({ ...form, financial_year_end: toFYE(parseFYE(form.financial_year_end).month || "12", e.target.value) })}>
+                      <option value="">Day</option>
+                      {Array.from({ length: daysIn(parseFYE(form.financial_year_end).month) }, (_, i) => <option key={i + 1} value={String(i + 1)}>{String(i + 1).padStart(2, "0")}</option>)}
+                    </Select>
+                    <Select value={parseFYE(form.financial_year_end).month} onChange={(e) => setForm({ ...form, financial_year_end: toFYE(e.target.value, parseFYE(form.financial_year_end).day || "1") })}>
+                      <option value="">Month</option>
+                      {MONTHS.map((m, i) => <option key={m} value={String(i + 1)}>{m}</option>)}
+                    </Select>
+                  </div>
+                </Field>
               </div>
               <label className="flex items-center gap-2 text-xs text-gray-700 mb-3">
                 <input type="checkbox" checked={!!form.corp_tax_registered} onChange={setChecked("corp_tax_registered")} /> Corporate Tax Registered
               </label>
               {form.corp_tax_registered && (
-                <Field label="Corp Tax Registration No. / TAN"><Input value={form.corp_tax_registration_number} onChange={set("corp_tax_registration_number")} maxLength={15} /></Field>
+                <Field label="Corp Tax Registration No. / TAN"><Input value={form.corp_tax_registration_number} onChange={(e) => setForm({ ...form, corp_tax_registration_number: e.target.value.replace(/\D/g, "") })} maxLength={15} inputMode="numeric" /></Field>
               )}
             </Section>
           </>
@@ -392,6 +461,12 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
               </Select>
             </Field>
             <Field label="CDD Completion Date"><Input type="date" value={form.cdd_completion_date || ""} onChange={set("cdd_completion_date")} /></Field>
+            <Field label="KYC Verification performed by">
+              <Select value={form.kyc_verified_by || ""} onChange={set("kyc_verified_by")}>
+                <option value="">— select RM —</option>
+                {[...new Set([...(form.kyc_verified_by ? [form.kyc_verified_by] : []), ...rms.map((u) => u.name)])].map((n) => <option key={n} value={n}>{n}</option>)}
+              </Select>
+            </Field>
           </div>
           {form.aml_classification === "EDD" && (
             <Field label="Reason for EDD"><Input value={form.edd_reason} onChange={set("edd_reason")} maxLength={25} /></Field>
