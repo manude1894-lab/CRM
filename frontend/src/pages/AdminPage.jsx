@@ -1,10 +1,20 @@
 import React, { useEffect, useState } from "react";
-import { usersApi, departmentsApi } from "../api/endpoints";
+import { usersApi, departmentsApi, rolesApi } from "../api/endpoints";
+import MasterDataPanel from "../components/admin/MasterDataPanel";
+import RolesPanel from "../components/admin/RolesPanel";
+import AuditLogPanel from "../components/admin/AuditLogPanel";
 import { useAuthStore } from "../store/auth";
 import { Icon, Badge, Modal, Field, Input, Select, Spinner, ErrorBanner } from "../components/ui";
 import { ROLE_LABEL } from "../utils/constants";
 import { toast } from "../store/toast";
 import { confirmDialog } from "../store/confirm";
+
+const TABS = [
+  { key: "users", label: "Users & Departments" },
+  { key: "masters", label: "Master Data" },
+  { key: "roles", label: "Roles" },
+  { key: "audit", label: "Audit Log" },
+];
 
 const ROLE_RESPONSIBILITIES = [
   { role: "Admin", desc: "User management, invoicing (raise/mark paid), full case access" },
@@ -17,6 +27,8 @@ export default function AdminPage() {
   const isAdmin = useAuthStore((s) => s.isAdmin());
   const [users, setUsers] = useState([]);
   const [departments, setDepartments] = useState([]);
+  const [roles, setRoles] = useState([]);
+  const [tab, setTab] = useState("users");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [modal, setModal] = useState(null);
@@ -28,9 +40,10 @@ export default function AdminPage() {
   const load = async () => {
     try {
       setLoading(true); setError(null);
-      const [usersRes, deptRes] = await Promise.all([usersApi.list(), departmentsApi.list()]);
+      const [usersRes, deptRes, rolesRes] = await Promise.all([usersApi.list(), departmentsApi.list(), rolesApi.list().catch(() => [])]);
       setUsers(usersRes);
       setDepartments(deptRes);
+      setRoles(rolesRes);
     } catch (e) {
       setError(e.response?.data?.detail || "Failed to load users");
     } finally { setLoading(false); }
@@ -38,6 +51,7 @@ export default function AdminPage() {
   useEffect(() => { if (isAdmin) load(); else setLoading(false); }, [isAdmin]);
 
   const departmentName = (id) => departments.find((d) => d.id === id)?.name || "—";
+  const roleName = (id) => roles.find((r) => r.id === id)?.name;
 
   const addDepartment = async () => {
     if (!deptName.trim()) return;
@@ -79,12 +93,13 @@ export default function AdminPage() {
         ...form,
         department_id: form.department_id ? +form.department_id : null,
         supervisor_id: form.supervisor_id ? +form.supervisor_id : null,
+        business_role_id: form.business_role_id ? +form.business_role_id : null,
         title: form.title || null,
       };
       if (modal === "new") {
         await usersApi.create(payload);
       } else {
-        const { id, created_at, updated_at, ...patch } = payload;
+        const { id, created_at, updated_at, permissions, ...patch } = payload;
         if (!patch.password) delete patch.password;
         await usersApi.update(form.id, patch);
       }
@@ -108,14 +123,28 @@ export default function AdminPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Admin Panel</h1>
-          <p className="text-sm text-gray-500">User management · System settings</p>
+          <p className="text-sm text-gray-500">Users · Master data · Roles · Audit log</p>
         </div>
-        <button onClick={() => { setForm({ name: "", email: "", password: "", role: "rm", is_active: true, department_id: "", title: "", supervisor_id: "" }); setModal("new"); }}
+        {tab === "users" && <button onClick={() => { setForm({ name: "", email: "", password: "", role: "rm", is_active: true, department_id: "", title: "", supervisor_id: "", business_role_id: "" }); setModal("new"); }}
           className="px-3 py-1.5 text-xs text-white rounded-lg flex items-center gap-1" style={{ background: "#1a3a5c" }}>
           <Icon name="plus" size={14} /> Add User
-        </button>
+        </button>}
       </div>
 
+      <div className="flex gap-1 border-b border-gray-200">
+        {TABS.map((t) => (
+          <button key={t.key} onClick={() => setTab(t.key)}
+            className={`px-4 py-2 text-sm -mb-px border-b-2 ${tab === t.key ? "border-brand-500 text-brand-700 font-medium" : "border-transparent text-gray-500 hover:text-gray-700"}`}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {tab === "masters" && <MasterDataPanel />}
+      {tab === "roles" && <RolesPanel departments={departments} users={users} onChanged={load} />}
+      {tab === "audit" && <AuditLogPanel users={users} />}
+
+      {tab === "users" && (<>
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
@@ -144,7 +173,7 @@ export default function AdminPage() {
                 </td>
                 <td className="py-3 px-4 text-sm text-gray-600">{u.email}</td>
                 <td className="py-3 px-4 text-sm text-gray-600">{departmentName(u.department_id)}</td>
-                <td className="py-3 px-4"><Badge text={u.role} /></td>
+                <td className="py-3 px-4"><Badge text={u.role} />{roleName(u.business_role_id) && <span className="ml-1.5 text-[11px] px-1.5 py-0.5 rounded bg-brand-50 text-brand-700">{roleName(u.business_role_id)}</span>}</td>
                 <td className="py-3 px-4">
                   <span className={`text-xs font-medium ${u.is_active ? "text-green-600" : "text-gray-400"}`}>
                     {u.is_active ? "● Active" : "○ Inactive"}
@@ -228,6 +257,7 @@ export default function AdminPage() {
           </div>
         </div>
       </div>
+      </>)}
 
       {modal && (
         <Modal title={modal === "new" ? "Add User" : `Edit ${form.name}`} onClose={() => setModal(null)}>
@@ -242,6 +272,12 @@ export default function AdminPage() {
               <option value="rm">Relationship Manager</option>
               <option value="ops">Ops</option>
               <option value="screening">Screening</option>
+            </Select>
+          </Field>
+          <Field label="Business Role (BRD §15)">
+            <Select value={form.business_role_id || ""} onChange={(e) => setForm((p) => ({ ...p, business_role_id: e.target.value }))}>
+              <option value="">— None —</option>
+              {roles.filter((r) => r.is_active || r.id === form.business_role_id).map((r) => <option key={r.id} value={r.id}>{r.name}{r.description ? ` — ${r.description}` : ""}</option>)}
             </Select>
           </Field>
           <Field label="Department">

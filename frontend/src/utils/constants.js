@@ -306,7 +306,7 @@ export const FEEDBACK_CHANNEL_OPTIONS = ["Email", "Phone", "WhatsApp", "In-perso
 // ─── Client profile (client-database spec, Phase A) ──────────────────────
 export const REGULATOR_OPTIONS = ["DFSA", "FSRA", "CMA", "UAECB", "Other"];
 
-export const TAG_OPTIONS = ["DIFC", "ADGM", "DNFPB", "Mainland", "Holding Co.", "SPV"];
+export const TAG_OPTIONS = ["DIFC", "ADGM", "DNFBP", "Mainland", "Holding Co.", "SPV"];
 
 // Triam's own internal legal entities (client CRM-change-request item 3).
 export const TRIAM_ENTITY_OPTIONS = ["TMC", "TCPL", "TMCL", "TAB", "TCDL"];

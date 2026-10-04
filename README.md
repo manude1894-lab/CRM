@@ -77,6 +77,16 @@ npm run dev                                         # Vite dev server on :3000
 
 Set `VITE_API_URL` in a `.env` file inside `frontend/` if your API isn't on `localhost:8000/api/v1`.
 
+### Tests
+
+```bash
+cd frontend
+npm test                                            # Vitest, single run
+npm run test:watch                                  # re-run on change
+```
+
+Tests live next to the code they cover (`*.test.js`). They currently cover the Clients page's CSV import/export and form-payload logic in `src/components/accounts/`.
+
 ---
 
 ## The onboarding workflow
@@ -163,12 +173,15 @@ prognica-crm/
 │   ├── src/
 │   │   ├── api/                    Axios client + endpoint wrappers (cases, cdd, compliance, notifications, ...)
 │   │   ├── components/             Shared UI primitives + NotificationBell
+│   │   │   └── accounts/           Clients page pieces: card, form modal, bulk bar, CSV + form helpers (with tests)
 │   │   ├── pages/                  Dashboard, Cases, CDD/Screening, Compliance, Accounts, Activities, Reports, Admin
 │   │   ├── store/                  Zustand auth store (persisted)
 │   │   └── utils/                  Constants (stages, colors, role labels)
 │   ├── Dockerfile
 │   ├── nginx.conf
 │   └── package.json
+├── docs/                           Business/functional specs, status & plan, logo
+├── scripts/field-screenshots/      Playwright script that screenshots every New Client form field
 ├── docker-compose.yml
 ├── API.md                          API reference (sales-pipeline era — pending refresh)
 └── README.md

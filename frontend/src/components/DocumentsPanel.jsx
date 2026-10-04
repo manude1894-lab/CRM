@@ -6,6 +6,8 @@ import { DOCUMENT_CATEGORY_OPTIONS, fmtDate } from "../utils/constants";
 import GenerateDocModal from "./GenerateDocModal";
 import { toast } from "../store/toast";
 import { confirmDialog } from "../store/confirm";
+import { useMasters } from "../hooks/useMasters";
+import { selectableCodes } from "../hooks/masterUtils";
 
 const fmtBytes = (b) =>
   b == null ? "" : b < 1024 ? `${b} B` : b < 1048576 ? `${(b / 1024).toFixed(0)} KB` : `${(b / 1048576).toFixed(1)} MB`;
@@ -36,6 +38,12 @@ export default function DocumentsPanel({ caseId, accountId, scope = null, compac
   const [notes, setNotes] = useState("");
   const [genOpen, setGenOpen] = useState(false);
   const fileRef = useRef(null);
+  // BRD §16/§18 — categories come from the admin-managed list; old built-in ones still display.
+  const docCats = useMasters("document_category", DOCUMENT_CATEGORY_OPTIONS);
+  useEffect(() => {
+    // Once the BRD list has loaded, swap the untouched legacy default for its BRD equivalent.
+    if (category === "Other" && docCats.codes.includes("ANY_OTHER")) setCategory("ANY_OTHER");
+  }, [docCats.codes.join("|")]);
 
   const load = async () => {
     setLoading(true);
@@ -106,7 +114,7 @@ export default function DocumentsPanel({ caseId, accountId, scope = null, compac
                   </button>
                 )}
                 {d.generated_from && <span className="px-1.5 py-0.5 rounded bg-brand-50 text-brand-600">generated</span>}
-                {!compact && !scope?.category && <span className="px-1.5 py-0.5 rounded bg-gray-100">{d.category}</span>}
+                {!compact && !scope?.category && <span className="px-1.5 py-0.5 rounded bg-gray-100">{docCats.labelOf(d.category)}</span>}
                 <span>{fmtBytes(d.size_bytes)}</span>
                 <span>{fmtDate(d.created_at)}</span>
                 {canDelete(d) && (
@@ -125,7 +133,7 @@ export default function DocumentsPanel({ caseId, accountId, scope = null, compac
         {!scope?.case_document_id && !scope?.category && (
           <select value={category} onChange={(e) => setCategory(e.target.value)}
             className="border border-gray-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-brand-400">
-            {DOCUMENT_CATEGORY_OPTIONS.map((c) => <option key={c}>{c}</option>)}
+            {selectableCodes(docCats.items, category).map((c) => <option key={c} value={c}>{docCats.labelOf(c)}</option>)}
           </select>
         )}
         {!compact && (

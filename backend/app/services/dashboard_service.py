@@ -15,7 +15,7 @@ from app.utils.business_days import business_days_between, to_date
 def _rbac_case_query(db: Session, user: User):
     q = db.query(Case)
     if user.role == UserRole.RM:
-        q = q.filter(access_control.rm_visibility_clause(user.id))
+        q = q.filter(access_control.rm_visibility_clause(user))
     return q
 
 

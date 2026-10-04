@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.models import Document, DocumentCategory, Case, CaseDocument, Instruction, User, UserRole
-from app.services import access_control
+from app.services import access_control, master_service
 
 # Allow-list — reject anything not here (executables, html, svg, ...).
 ALLOWED_CONTENT_TYPES = {
@@ -28,7 +28,15 @@ _ALLOWED_EXT = {
     ".pdf", ".png", ".jpg", ".jpeg", ".gif", ".tif", ".tiff",
     ".doc", ".docx", ".xls", ".xlsx", ".txt", ".csv",
 }
-_VALID_CATEGORIES = {c.value for c in DocumentCategory}
+# Built-in categories used by internal flows (CDD checklist, generated docs, filings). User-chosen
+# categories come from the admin-managed "document_category" master list (BRD §16, §18).
+_BUILTIN_CATEGORIES = {c.value for c in DocumentCategory}
+
+
+def _normalise_category(db: Session, category: str) -> str:
+    if category in _BUILTIN_CATEGORIES or category in master_service.active_codes(db, "document_category"):
+        return category
+    return DocumentCategory.OTHER.value
 
 
 def _safe_filename(name: str) -> str:
@@ -77,8 +85,7 @@ def create(
 ) -> Document:
     _case_for_read(db, case_id, user)
 
-    if category not in _VALID_CATEGORIES:
-        category = DocumentCategory.OTHER.value
+    category = _normalise_category(db, category)
 
     filename = _safe_filename(upload.filename)
     if _ext(filename) not in _ALLOWED_EXT:
@@ -148,8 +155,7 @@ def create_for_account(
 ) -> Document:
     _account_for_read(db, account_id, user)
 
-    if category not in _VALID_CATEGORIES:
-        category = DocumentCategory.OTHER.value
+    category = _normalise_category(db, category)
 
     filename = _safe_filename(upload.filename)
     if _ext(filename) not in _ALLOWED_EXT:

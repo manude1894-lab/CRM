@@ -17,6 +17,9 @@ export const useAuthStore = create(
       isRM: () => get().user?.role === "rm",
       isOps: () => get().user?.role === "ops",
       isScreening: () => get().user?.role === "screening",
+      // BRD §15 permission flags (from /auth/login and /auth/me). Admins have every flag; the
+      // fallback covers sessions stored before permissions were added to the user payload.
+      can: (flag) => get().user?.role === "admin" || (get().user?.permissions || []).includes(flag),
     }),
     { name: "ezeetech-auth" }
   )

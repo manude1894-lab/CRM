@@ -9,12 +9,12 @@ from app.schemas.prospect import ProspectCreate, ProspectUpdate, ProspectConvert
 from app.schemas.case import CaseCreate
 from app.utils.uid import next_uid
 from app.utils.fuzzy_match import top_matches
-from app.services import case_service
+from app.services import case_service, access_control
 
 
 def _apply_rbac_filter(query, user: User):
     if user.role == UserRole.RM:
-        query = query.filter(Prospect.owner_id == user.id)
+        query = query.filter(Prospect.owner_id.in_(access_control.team_user_ids(query.session, user.id)))
     return query
 
 
@@ -29,7 +29,7 @@ def get_prospect(db: Session, prospect_id: int, user: User) -> Prospect:
     p = db.query(Prospect).filter(Prospect.id == prospect_id).first()
     if not p:
         raise HTTPException(status_code=404, detail="Prospect not found")
-    if user.role == UserRole.RM and p.owner_id != user.id:
+    if user.role == UserRole.RM and p.owner_id not in access_control.team_user_ids(db, user.id):
         raise HTTPException(status_code=403, detail="Access denied")
     return p
 

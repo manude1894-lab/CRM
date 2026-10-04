@@ -1,7 +1,8 @@
 """Auth router: login, token refresh, current user."""
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
+from app.audit import set_actor, log_event
 from app.database import get_db
 from app.models import User
 from app.schemas import LoginRequest, Token, RefreshTokenRequest, UserRead
@@ -14,13 +15,22 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 
 @router.post("/login", response_model=Token, summary="Login with email and password")
-def login(data: LoginRequest, db: Session = Depends(get_db)):
+def login(data: LoginRequest, request: Request, db: Session = Depends(get_db)):
+    ip = request.client.host if request.client else None
     user = db.query(User).filter(User.email == data.email).first()
     if not user or not user.is_active or not verify_password(data.password, user.hashed_password):
+        # BRD §15 audit — failed attempts are recorded too (email only; never the password).
+        set_actor(db, user.id if user else None, ip)
+        log_event(db, "login_failed", f"Failed login for {data.email}", subject_type="User",
+                  subject_id=user.id if user else None)
+        db.commit()
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password",
         )
+    set_actor(db, user.id, ip)
+    log_event(db, "login", f"{user.name} logged in", subject_type="User", subject_id=user.id)
+    db.commit()
     access = create_access_token(user.id, user.role.value)
     refresh = create_refresh_token(user.id, user.role.value)
     return {

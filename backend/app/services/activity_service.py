@@ -22,7 +22,7 @@ def list_activities(
 ) -> tuple[list[Activity], int]:
     query = db.query(Activity)
     if user.role == UserRole.RM:
-        query = query.filter(Activity.owner_id == user.id)
+        query = query.filter(Activity.owner_id.in_(access_control.team_user_ids(db, user.id)))
 
     if case_id:
         query = query.filter(Activity.case_id == case_id)
@@ -47,7 +47,7 @@ def get_activity(db: Session, activity_id: int, user: User) -> Activity:
     act = db.query(Activity).filter(Activity.id == activity_id).first()
     if not act:
         raise HTTPException(status_code=404, detail="Activity not found")
-    if user.role == UserRole.RM and act.owner_id != user.id:
+    if user.role == UserRole.RM and act.owner_id not in access_control.team_user_ids(db, user.id):
         raise HTTPException(status_code=403, detail="Access denied")
     return act
 
@@ -89,7 +89,7 @@ def update_activity(db: Session, activity_id: int, data: ActivityUpdate, user: U
 
 def delete_activity(db: Session, activity_id: int, user: User) -> None:
     act = get_activity(db, activity_id, user)
-    if user.role == UserRole.RM and act.owner_id != user.id:
+    if user.role == UserRole.RM and act.owner_id not in access_control.team_user_ids(db, user.id):
         raise HTTPException(status_code=403, detail="Access denied")
     db.delete(act)
     db.commit()

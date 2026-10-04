@@ -14,6 +14,7 @@ class UserBase(BaseModel):
     department_id: Optional[int] = None
     title: Optional[str] = None
     supervisor_id: Optional[int] = None
+    business_role_id: Optional[int] = None
 
 
 class UserCreate(UserBase):
@@ -29,10 +30,12 @@ class UserUpdate(BaseModel):
     department_id: Optional[int] = None
     title: Optional[str] = None
     supervisor_id: Optional[int] = None
+    business_role_id: Optional[int] = None
 
 
 class UserRead(UserBase):
     id: int
+    permissions: list[str] = []
     created_at: datetime
     updated_at: datetime
 

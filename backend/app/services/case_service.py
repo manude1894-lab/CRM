@@ -29,7 +29,7 @@ from app.services import notification_service, company_service, compliance_servi
 
 def _apply_rbac_filter(query, user: User):
     if user.role == UserRole.RM:
-        query = query.filter(access_control.rm_visibility_clause(user.id))
+        query = query.filter(access_control.rm_visibility_clause(user))
     return query
 
 

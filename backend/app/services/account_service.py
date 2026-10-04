@@ -11,10 +11,43 @@ from app.models import Account, Priority, User, UserRole, Case, CaseStatus, Invo
 from app.schemas.account import AccountCreate, AccountUpdate, AccountImportRow, AccountImportRowResult, AccountBulkUpdateRequest, BulkUpdateResult
 from app.utils.uid import next_uid
 from app.utils.fuzzy_match import top_matches
-from app.services import compliance_service
+from app.services import compliance_service, access_control, master_service
 
 # Client-database spec §24.6 — review cadence by risk rating.
 _AML_REVIEW_CADENCE_YEARS = {"High": 1, "Medium": 2, "Low": 3}
+
+
+# Account field -> (master list, label, kind). kind: "one" | "many" (JSON list) | "csv" (comma string).
+_MASTER_FIELDS = {
+    "anchor_entity": ("triam_entity", "Anchor Triam Entity", "one"),
+    "non_anchor_entities": ("triam_entity", "Non-anchor Triam Entities", "many"),
+    "services_obtained": ("service", "Services obtained", "many"),
+    "nature_of_services_sought": ("service", "Nature of Services Sought", "many"),
+    "tags": ("tag", "Tags", "csv"),
+    "regulator_name": ("regulator", "Name of Regulator", "one"),
+}
+
+
+def _as_list(value, kind) -> list:
+    if value in (None, "", []):
+        return []
+    if kind == "csv":
+        return [t.strip() for t in str(value).split(",") if t.strip()]
+    if kind == "one":
+        return [value]
+    return list(value)
+
+
+def _validate_master_fields(db: Session, payload: dict, existing: Optional[Account] = None) -> None:
+    """BRD §4/§18 — values must come from the active admin-managed lists. A value the record
+    already holds stays valid even if its master item was later deactivated (so old clients
+    remain editable)."""
+    for field, (list_type, label, kind) in _MASTER_FIELDS.items():
+        if field not in payload:
+            continue
+        new_values = _as_list(payload[field], kind)
+        kept = set(_as_list(getattr(existing, field, None), kind)) if existing else set()
+        master_service.assert_valid(db, list_type, [v for v in new_values if v not in kept], label)
 
 
 def _compute_next_aml_review_date(acc: Account) -> None:
@@ -40,8 +73,10 @@ def list_accounts(
     priority: Optional[str] = None,
 ) -> tuple[list[Account], int]:
     query = db.query(Account)
-    if user.role == UserRole.RM:
-        query = query.filter(Account.owner_id == user.id)
+    # BRD §15 RM privacy + supervisor visibility (was: RMs saw only clients they created).
+    visibility = access_control.account_visibility_clause(db, user)
+    if visibility is not None:
+        query = query.filter(visibility)
 
     if search:
         pattern = f"%{search}%"
@@ -73,7 +108,7 @@ def get_account(db: Session, account_id: int, user: User) -> Account:
     acc = db.query(Account).filter(Account.id == account_id).first()
     if not acc:
         raise HTTPException(status_code=404, detail="Account not found")
-    if user.role == UserRole.RM and acc.owner_id != user.id:
+    if not access_control.user_can_access_account(db, acc, user):
         raise HTTPException(status_code=403, detail="Access denied")
     return acc
 
@@ -131,6 +166,7 @@ def create_account(db: Session, data: AccountCreate, user: User) -> Account:
 
     owner_id = data.owner_id or user.id
     payload = data.model_dump(exclude={"owner_id"})
+    _validate_master_fields(db, payload)
     acc = Account(
         account_uid=next_uid(db, Account, "account_uid", "ACC"),
         **payload,
@@ -150,6 +186,7 @@ def update_account(db: Session, account_id: int, data: AccountUpdate, user: User
     update_data = data.model_dump(exclude_unset=True)
     if user.role == UserRole.RM:
         update_data.pop("owner_id", None)
+    _validate_master_fields(db, update_data, existing=acc)
     if update_data.get("profile_status") in ("Approved", "Active"):
         _assert_shareholder_ownership_complete(acc)
     for field, value in update_data.items():

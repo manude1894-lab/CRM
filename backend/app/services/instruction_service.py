@@ -11,7 +11,7 @@ from app.services import access_control
 
 def _apply_rbac_filter(query, user: User):
     if user.role == UserRole.RM:
-        query = query.join(Case, Instruction.case_id == Case.id).filter(access_control.rm_visibility_clause(user.id))
+        query = query.join(Case, Instruction.case_id == Case.id).filter(access_control.rm_visibility_clause(user))
     return query
 
 

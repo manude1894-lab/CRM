@@ -22,6 +22,29 @@ export const departmentsApi = {
   delete: (id) => api.delete(`/departments/${id}`),
 };
 
+// ─── Master data, roles, audit (BRD §15, §18) ─────────────────────────
+export const mastersApi = {
+  types: () => api.get("/masters").then((r) => r.data),
+  list: (listType, includeInactive = false) =>
+    api.get(`/masters/${listType}`, { params: { include_inactive: includeInactive } }).then((r) => r.data),
+  create: (listType, data) => api.post(`/masters/${listType}`, data).then((r) => r.data),
+  update: (itemId, data) => api.patch(`/masters/items/${itemId}`, data).then((r) => r.data),
+};
+
+export const rolesApi = {
+  permissions: () => api.get("/roles/permissions").then((r) => r.data),
+  list: () => api.get("/roles").then((r) => r.data),
+  create: (data) => api.post("/roles", data).then((r) => r.data),
+  update: (id, data) => api.patch(`/roles/${id}`, data).then((r) => r.data),
+  delete: (id) => api.delete(`/roles/${id}`),
+};
+
+export const auditApi = {
+  list: (params = {}) => api.get("/audit", { params }).then((r) => ({ items: r.data, total: +(r.headers["x-total-count"] || r.data.length) })),
+  forAccount: (accountId, params = {}) =>
+    api.get(`/accounts/${accountId}/audit`, { params }).then((r) => ({ items: r.data, total: +(r.headers["x-total-count"] || r.data.length) })),
+};
+
 // ─── Cases ─────────────────────────────────────────────────────────────
 export const casesApi = {
   list: (params = {}) => api.get("/cases", { params }).then((r) => r.data),

@@ -1,9 +1,11 @@
 """FastAPI auth dependencies: get current user, enforce roles."""
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 
 from app.auth.security import decode_token
+from app.auth.permissions import has_permission
+from app.audit import set_actor
 from app.database import get_db
 from app.models.user import User, UserRole
 
@@ -11,6 +13,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
 
 def get_current_user(
+    request: Request,
     token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db),
 ) -> User:
@@ -29,6 +32,8 @@ def get_current_user(
     user = db.query(User).filter(User.id == user_id, User.is_active == True).first()
     if user is None:
         raise credentials_exception
+    # Every change written through this request's session is attributed to this user (app.audit).
+    set_actor(db, user.id, request.client.host if request.client else None)
     return user
 
 
@@ -40,6 +45,15 @@ def require_roles(*allowed_roles: UserRole):
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=f"Action requires one of roles: {[r.value for r in allowed_roles]}",
             )
+        return user
+    return checker
+
+
+def require_permission(flag: str):
+    """Dependency factory: require a BRD §15 permission flag (see app.models.role.PERMISSIONS)."""
+    def checker(user: User = Depends(get_current_user)) -> User:
+        if not has_permission(user, flag):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"Action requires permission: {flag}")
         return user
     return checker
 
