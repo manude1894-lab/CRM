@@ -73,9 +73,9 @@ for (const [prefix, target] of [["registered address", "registered_address"], ["
 
 const splitList = (value) => value.split(";").map((s) => s.trim()).filter(Boolean);
 
-// Minimal RFC-4180-ish CSV parser: handles quoted fields, escaped "" quotes, commas/newlines inside quotes.
-// Returns one object per data row, keyed by account field name (see IMPORT_HEADER_MAP).
-export function parseCSV(text) {
+// Minimal RFC-4180-ish CSV reader: handles quoted fields, escaped "" quotes, commas/newlines inside quotes.
+// Returns the raw table (header row first) as arrays of strings; blank lines are dropped.
+export function parseCSVTable(text) {
   const rows = [];
   let row = [], field = "", inQuotes = false;
   for (let i = 0; i < text.length; i++) {
@@ -94,6 +94,12 @@ export function parseCSV(text) {
     } else { field += c; }
   }
   if (field !== "" || row.length) { row.push(field); rows.push(row); }
+  return rows;
+}
+
+// Client CSV: one object per data row, keyed by account field name (see IMPORT_HEADER_MAP).
+export function parseCSV(text) {
+  const rows = parseCSVTable(text);
   if (rows.length === 0) return [];
   const headers = rows[0].map((h) => h.trim().toLowerCase());
   return rows.slice(1).map((r) => {

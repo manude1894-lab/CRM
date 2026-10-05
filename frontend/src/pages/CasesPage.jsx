@@ -1,5 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import CaseComplianceBar, { CaseComplianceChip } from "../components/cases/CaseComplianceBar";
+import CsvImportModal from "../components/CsvImportModal";
+import { ROUTES, ROUTE_HELP, REGISTERED_AGENTS, routeFields, stageLabel } from "../components/cases/engagement";
+import { useAuthStore } from "../store/auth";
 import { casesApi, usersApi, accountsApi } from "../api/endpoints";
 import { Icon, Badge, Modal, Field, Input, Select, Textarea, Spinner, ErrorBanner } from "../components/ui";
 import PartyRegisterModal from "../components/PartyRegisterModal";
@@ -16,8 +19,25 @@ const NEXT_STAGE = STAGES.reduce((acc, s, i) => {
   return acc;
 }, {});
 
+const ENTITY_COLUMNS = [
+  ["company_name", "Company Name", "Entity Name", "Name"],
+  ["jurisdiction", "Jurisdiction"],
+  ["incorporation_date", "Incorporation Date", "Date of Incorporation", "Inc Date"],
+  ["company_number", "Company Number", "Company No", "BC Number", "Registration Number"],
+  ["registered_agent", "Registered Agent", "RA"],
+  ["client_id", "Client ID"],
+  ["rm_email", "RM Email"],
+  ["service_type", "Service"],
+  ["last_renewal_date", "Last Renewal", "Last Renewal Date", "Last Annual Fee"],
+  ["last_esr_date", "Last ESR", "Last ESR Date", "Last ESR Filing"],
+  ["last_ar_date", "Last AR", "Last AR Date", "Last Annual Return"],
+  ["notes", "Notes", "Comments"],
+];
+
 export default function CasesPage({ initialCaseId, initialStage } = {}) {
   const appliedInitialCaseRef = useRef(false);
+  const isAdmin = useAuthStore((s) => s.isAdmin());
+  const [importing, setImporting] = useState(false); // P6 — import existing entities
   const [cases, setCases] = useState([]);
   const [users, setUsers] = useState([]);
   const [accounts, setAccounts] = useState([]);
@@ -79,7 +99,9 @@ export default function CasesPage({ initialCaseId, initialStage } = {}) {
   }), [cases, search, stageFilter, statusFilter]);
 
   const openNew = () => {
-    setForm({ company_name: "", source: "Other", introducer: "", onboarding_date: "", jurisdiction: "BVI", service_type: "Company Formation", account_id: null, rm_id: null, tags: "", notes: "" });
+    setForm({ company_name: "", source: "Other", introducer: "", onboarding_date: "", jurisdiction: "BVI", service_type: "Company Formation", account_id: null, rm_id: null, tags: "", notes: "",
+      engagement_route: "Formation", previous_agent: "", incorporation_date: "", company_number: "", registered_agent: "",
+      last_renewal_date: "", last_esr_date: "", last_ar_date: "" });
     setModal("new");
   };
 
@@ -91,10 +113,13 @@ export default function CasesPage({ initialCaseId, initialStage } = {}) {
     try {
       const clean = (o) => ({ ...o, onboarding_date: o.onboarding_date || null, introducer: o.introducer || null });
       if (modal === "new") {
-        await casesApi.create(clean(form));
+        const { engagement_route, previous_agent, incorporation_date, company_number, registered_agent,
+          last_renewal_date, last_esr_date, last_ar_date, ...base } = form;
+        await casesApi.create({ ...clean(base), ...routeFields(form) });
         toast.success("Case created and sent to Compliance for approval.");
       } else {
-        const { id, case_uid, stage, status, invoice_status, invoice_raised_date, invoice_paid_date, created_at, updated_at, compliance_status, ...patch } = form;
+        const { id, case_uid, stage, status, invoice_status, invoice_raised_date, invoice_paid_date, created_at, updated_at, compliance_status,
+          engagement_route, previous_agent, prior_filing_dates, ...patch } = form;
         await casesApi.update(form.id, clean(patch));
         sentToCompliance(form);
       }
@@ -183,11 +208,11 @@ export default function CasesPage({ initialCaseId, initialStage } = {}) {
   if (loading) return <Spinner />;
   if (error) return <ErrorBanner message={error} onRetry={load} />;
 
-  const actionLabel = (stage) => {
+  const actionLabel = (stage, route) => {
     if (stage === "CDD Approved") return "Raise Invoice";
     if (stage === "Invoice Raised") return "Mark Paid";
     if (stage === "Active") return null;
-    return `→ ${NEXT_STAGE[stage]}`;
+    return `→ ${stageLabel(NEXT_STAGE[stage], route)}`;
   };
 
   return (
@@ -207,6 +232,9 @@ export default function CasesPage({ initialCaseId, initialStage } = {}) {
             </button>
           </div>
           <button onClick={exportCSV} className="px-3 py-1.5 text-xs border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600">Export CSV</button>
+          {isAdmin && (
+            <button onClick={() => setImporting(true)} className="px-3 py-1.5 text-xs border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600">Import existing entities</button>
+          )}
           <button onClick={openNew} className="px-3 py-1.5 text-xs text-white rounded-lg flex items-center gap-1" style={{ background: "#1a3a5c" }}>
             <Icon name="plus" size={14} /> New Case
           </button>
@@ -273,7 +301,12 @@ export default function CasesPage({ initialCaseId, initialStage } = {}) {
                       className="bg-white border border-gray-100 rounded-xl p-3 shadow-sm cursor-pointer hover:shadow-md transition-shadow"
                       onClick={() => { setForm(c); setModal("edit"); }}>
                       <div className="font-semibold text-xs text-gray-800 mb-1">{c.company_name}</div>
-                      <div className="text-xs text-gray-400 mb-1">{c.case_uid}</div>
+                      <div className="text-xs text-gray-400 mb-1">{c.case_uid}
+                        {c.engagement_route && c.engagement_route !== "Formation" && <span className="ml-1.5 px-1.5 py-0.5 rounded bg-violet-50 text-violet-700 text-[10px] font-semibold">{c.engagement_route}</span>}
+                      </div>
+                      {c.engagement_route === "Transfer In" && ["Application Submitted", "License Received"].includes(c.stage) && (
+                        <div className="text-[11px] text-violet-700 mb-1">{stageLabel(c.stage, c.engagement_route)}</div>
+                      )}
                       {(c.jurisdiction || c.service_type) && (
                         <div className="text-xs text-gray-400 mb-2">{[c.jurisdiction, c.service_type].filter(Boolean).join(" · ")}</div>
                       )}
@@ -303,10 +336,10 @@ export default function CasesPage({ initialCaseId, initialStage } = {}) {
                           className="text-xs px-2 py-0.5 rounded border border-gray-200 hover:border-brand-300 hover:text-brand-600 text-gray-500">
                           Services
                         </button>
-                        {actionLabel(stage) && (
+                        {actionLabel(stage, c.engagement_route) && (
                           <button onClick={() => advance(c)}
                             className="text-xs px-2 py-0.5 rounded border border-gray-200 hover:border-brand-300 hover:text-brand-600 text-gray-500">
-                            {actionLabel(stage)}
+                            {actionLabel(stage, c.engagement_route)}
                           </button>
                         )}
                         {c.status === "Active" ? (
@@ -356,7 +389,7 @@ export default function CasesPage({ initialCaseId, initialStage } = {}) {
                   <td className="py-3 px-4 text-xs font-medium text-gray-800">{c.case_uid}</td>
                   <td className="py-3 px-4 text-xs text-gray-600">{c.company_name}<div><CaseComplianceChip status={c.compliance_status} /></div></td>
                   <td className="py-3 px-4 text-xs text-gray-500">{c.introducer || "—"}</td>
-                  <td className="py-3 px-4"><Badge text={c.stage} /></td>
+                  <td className="py-3 px-4"><Badge text={stageLabel(c.stage, c.engagement_route)} /></td>
                   <td className="py-3 px-4"><Badge text={c.status} /></td>
                   <td className="py-3 px-4"><Badge text={c.invoice_status} /></td>
                   <td className="py-3 px-4 text-xs text-right text-gray-600">{fmt(c.invoice_amount)}</td>
@@ -427,6 +460,11 @@ export default function CasesPage({ initialCaseId, initialStage } = {}) {
         <PartyRegisterModal caseItem={registerCase} onClose={() => setRegisterCase(null)} />
       )}
 
+      {importing && (
+        <CsvImportModal title="Import existing entities" columns={ENTITY_COLUMNS} required={["company_name", "jurisdiction", "incorporation_date"]}
+          templateName="existing-entities-template.csv" onRun={casesApi.importEntities} onClose={() => setImporting(false)} onDone={load} />
+      )}
+
       {detailsCase && (
         <CompanyDetailsModal caseItem={detailsCase} onClose={() => setDetailsCase(null)} />
       )}
@@ -447,6 +485,45 @@ export default function CasesPage({ initialCaseId, initialStage } = {}) {
         <Modal title={modal === "new" ? "New Case" : `Edit ${form.case_uid}`} onClose={() => setModal(null)}>
           {modal === "edit" && <CaseComplianceBar caseId={form.id} onChanged={() => { setModal(null); load(); }} />}
           {modal === "new" && <p className="text-xs text-gray-500 mb-3">A new case is sent to Compliance for approval before it can move through the pipeline.</p>}
+          {modal === "new" && (
+            <div className="rounded-lg border border-gray-100 bg-gray-50 p-3 mb-3">
+              <Field label="Engagement route" required>
+                <div className="flex flex-wrap gap-1.5">
+                  {ROUTES.map((r) => (
+                    <button key={r} type="button" onClick={() => setForm((p) => ({ ...p, engagement_route: r }))}
+                      className={`px-3 py-1.5 text-xs rounded-lg border ${form.engagement_route === r ? "text-white border-transparent" : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"}`}
+                      style={form.engagement_route === r ? { background: "#1a3a5c" } : {}}>{r}</button>
+                  ))}
+                </div>
+              </Field>
+              <p className="text-[11px] text-gray-500 -mt-2">{ROUTE_HELP[form.engagement_route || "Formation"]}</p>
+              {form.engagement_route && form.engagement_route !== "Formation" && (
+                <div className="grid grid-cols-2 gap-x-4 mt-3">
+                  {form.engagement_route === "Transfer In" && (
+                    <Field label="Previous registered agent" required>
+                      <Input value={form.previous_agent || ""} onChange={(e) => setForm((p) => ({ ...p, previous_agent: e.target.value }))} placeholder="Agent the company is leaving" />
+                    </Field>
+                  )}
+                  <Field label="Incorporation date" required>
+                    <Input type="date" value={form.incorporation_date || ""} onChange={(e) => setForm((p) => ({ ...p, incorporation_date: e.target.value }))} />
+                  </Field>
+                  <Field label="Company number">
+                    <Input value={form.company_number || ""} onChange={(e) => setForm((p) => ({ ...p, company_number: e.target.value }))} />
+                  </Field>
+                  <Field label="Registered agent">
+                    <Select value={form.registered_agent || ""} onChange={(e) => setForm((p) => ({ ...p, registered_agent: e.target.value }))}>
+                      <option value="">—</option>
+                      {REGISTERED_AGENTS.map((a) => <option key={a}>{a}</option>)}
+                    </Select>
+                  </Field>
+                  <Field label="Last licence renewal"><Input type="date" value={form.last_renewal_date || ""} onChange={(e) => setForm((p) => ({ ...p, last_renewal_date: e.target.value }))} /></Field>
+                  <Field label="Last ESR filing"><Input type="date" value={form.last_esr_date || ""} onChange={(e) => setForm((p) => ({ ...p, last_esr_date: e.target.value }))} /></Field>
+                  <Field label="Last Annual Return"><Input type="date" value={form.last_ar_date || ""} onChange={(e) => setForm((p) => ({ ...p, last_ar_date: e.target.value }))} /></Field>
+                  <p className="col-span-2 text-[11px] text-gray-500 -mt-2">The Filing Calendar uses these dates; anything already overdue is flagged.</p>
+                </div>
+              )}
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-x-4">
             <Field label="Client">
               <Select value={form.account_id || ""} onChange={(e) => {

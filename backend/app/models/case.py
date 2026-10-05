@@ -1,5 +1,5 @@
 """SQLAlchemy model: Case (client onboarding journey)."""
-from sqlalchemy import Column, Integer, String, Text, Date, DateTime, ForeignKey, Numeric, Enum as SAEnum
+from sqlalchemy import Column, Integer, String, Text, Date, DateTime, ForeignKey, Numeric, JSON, Enum as SAEnum
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 import enum
@@ -116,6 +116,10 @@ class Case(Base):
     status = Column(String(30), default=CaseStatus.ACTIVE.value, nullable=False)
     # P3 — Compliance review: "Pending Approval" (new case, locked), "Returned" (rejected or
     # withdrawn; fix and resubmit) or "Approved". Only approved cases move through the pipeline.
+    # P6 — how the company came to Triam: Formation / Existing Entity / Transfer In.
+    engagement_route = Column(String(30), default="Formation", server_default="Formation", nullable=False)
+    previous_agent = Column(String(150), nullable=True)  # Transfer In: the registered agent it is leaving
+    prior_filing_dates = Column(JSON, nullable=True)  # {"renewal": "2026-03-14", "esr_filing": ..., "ar_filing": ...}
     compliance_status = Column(String(30), default="Approved", server_default="Approved", nullable=False)  # create_case sets Pending
 
     # Invoicing

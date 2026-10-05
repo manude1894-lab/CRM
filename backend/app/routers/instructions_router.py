@@ -4,10 +4,11 @@ from sqlalchemy.orm import Session
 from typing import Optional
 
 from app.database import get_db
-from app.auth.dependencies import get_current_user
+from app.auth.dependencies import get_current_user, require_admin
 from app.models import User
 from app.schemas import InstructionCreate, InstructionRead, InstructionUpdate
-from app.services import instruction_service
+from app.schemas.case import ImportRequest
+from app.services import instruction_service, engagement_service
 
 router = APIRouter(prefix="/instructions", tags=["Instructions"])
 
@@ -30,6 +31,11 @@ def list_instructions(
     if response is not None:
         response.headers["X-Total-Count"] = str(total)
     return {"items": [InstructionRead.model_validate(i) for i in items], "total": total}
+
+
+@router.post("/import", summary="Import open service requests from CSV rows (dry run first) — Admin")
+def import_service_requests(body: ImportRequest, db: Session = Depends(get_db), user: User = Depends(require_admin)):
+    return engagement_service.import_service_requests(db, user, body.rows, body.dry_run)
 
 
 @router.get("/{instruction_id}", response_model=InstructionRead)

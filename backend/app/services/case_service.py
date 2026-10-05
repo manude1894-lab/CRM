@@ -24,7 +24,7 @@ from app.models import (
 from app.schemas.case import CaseCreate, CaseUpdate, CaseBulkUpdateRequest
 from app.schemas.account import BulkUpdateResult
 from app.utils.uid import next_uid
-from app.services import notification_service, company_service, compliance_service, access_control, case_approval_service
+from app.services import notification_service, company_service, compliance_service, access_control, case_approval_service, engagement_service
 
 
 def _apply_rbac_filter(query, user: User):
@@ -97,11 +97,15 @@ def _least_loaded_rm(db: Session) -> Optional[int]:
 def create_case(db: Session, data: CaseCreate, user: User) -> Case:
     rm_id = data.rm_id or (user.id if user.role == UserRole.RM else None) or _least_loaded_rm(db)
 
-    payload = data.model_dump(exclude={"rm_id"})
+    engagement_service.validate_route(data)
+    payload = data.model_dump(exclude={"rm_id"} | engagement_service.ENGAGEMENT_FIELDS)
     case = Case(
         case_uid=next_uid(db, Case, "case_uid", "CASE"),
         **payload,
         rm_id=rm_id,
+        engagement_route=data.engagement_route or engagement_service.FORMATION,
+        previous_agent=(data.previous_agent or "").strip() or None,
+        prior_filing_dates=engagement_service.prior_dates(data),
     )
     db.add(case)
     db.flush()
@@ -113,6 +117,7 @@ def create_case(db: Session, data: CaseCreate, user: User) -> Case:
     for doc_type in STANDARD_CDD_DOCUMENTS:
         db.add(CaseDocument(cdd_record_id=cdd.id, doc_type=doc_type, received=False))
 
+    engagement_service.apply_route(db, case, data)  # Existing Entity / Transfer In details
     case_approval_service.on_created(db, case, user)  # new cases wait for Compliance approval
     db.commit()
     db.refresh(case)
@@ -283,15 +288,8 @@ def _create_compliance_schedule(db: Session, case: Case) -> ComplianceSchedule:
     existing = db.query(ComplianceSchedule).filter(ComplianceSchedule.case_id == case.id).first()
     if existing:
         return existing
-    from app import jurisdictions
-    profile = company_service.get_or_create(db, case.id)
-    base = profile.incorporation_date or case.license_received_date or date.today()
-    spec = jurisdictions.get(case.jurisdiction)
-    dates = compliance_service.build_schedule_dates(
-        spec, incorporation_date=profile.incorporation_date, base=base,
-    )
-    schedule = ComplianceSchedule(case_id=case.id, **dates)
-    db.add(schedule)
+    # Uses the company's last filing dates when known (Transfer In), so overdue items show.
+    schedule = engagement_service.build_calendar(db, case)
     db.commit()
     db.refresh(schedule)
     return schedule

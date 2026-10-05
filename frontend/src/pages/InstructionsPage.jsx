@@ -8,6 +8,8 @@ import FeedbackPanel from "../components/FeedbackPanel";
 import { INSTRUCTION_STATUS_OPTIONS, INSTRUCTION_TYPE_OPTIONS, fmtFull, fmtDate } from "../utils/constants";
 import { toast } from "../store/toast";
 import { confirmDialog } from "../store/confirm";
+import { useAuthStore } from "../store/auth";
+import CsvImportModal from "../components/CsvImportModal";
 
 // BRD §17 — a service request belongs to a client; the BVI case (and the Vistra dates) are optional.
 const emptyForm = (accountId) => ({
@@ -32,8 +34,26 @@ const cleanPayload = (obj) => Object.fromEntries(
   Object.entries(obj).map(([k, v]) => [k, v === "" ? null : v])
 );
 
+const REQUEST_COLUMNS = [
+  ["client_id", "Client ID"],
+  ["company_name", "Company Name", "Entity", "Entity Name"],
+  ["case_uid", "Case ID", "Case"],
+  ["request_type", "Request Type", "Instruction Type", "Instruction"],
+  ["status", "Status"],
+  ["date_received", "Date Received", "Received"],
+  ["date_sent_to_vistra", "Date Sent to Vistra", "Sent to Vistra"],
+  ["date_received_from_vistra", "Date Received from Vistra", "Received from Vistra"],
+  ["date_completed", "Date Completed", "Completed"],
+  ["cost_amount", "Cost", "Cost Paid"],
+  ["charge_amount", "Charge", "Charge Billed"],
+  ["invoice_reference", "Invoice Reference", "Invoice Ref", "Invoice No"],
+  ["comments", "Comments", "Notes"],
+];
+
 export default function InstructionsPage() {
   const [instructions, setInstructions] = useState([]);
+  const isAdmin = useAuthStore((s) => s.isAdmin());
+  const [importing, setImporting] = useState(false); // P6 — open requests from the Excel tracker
   const [cases, setCases] = useState([]);
   const [accounts, setAccounts] = useState([]);
   const [clientFilter, setClientFilter] = useState("");
@@ -138,9 +158,14 @@ export default function InstructionsPage() {
           <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Service Requests</h1>
           <p className="text-sm text-gray-500">{filtered.length} of {instructions.length} service requests</p>
         </div>
-        <button onClick={openNew} className="px-3 py-1.5 text-xs text-white rounded-lg flex items-center gap-1" style={{ background: "#1a3a5c" }}>
+        <div className="flex gap-2">
+          {isAdmin && (
+            <button onClick={() => setImporting(true)} className="px-3 py-1.5 text-xs border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600">Import</button>
+          )}
+          <button onClick={openNew} className="px-3 py-1.5 text-xs text-white rounded-lg flex items-center gap-1" style={{ background: "#1a3a5c" }}>
           <Icon name="plus" size={14} /> New Service Request
         </button>
+        </div>
       </div>
 
       <div className="flex gap-2 flex-wrap items-center">
@@ -239,6 +264,11 @@ export default function InstructionsPage() {
           </tbody>
         </table>
       </div>
+
+      {importing && (
+        <CsvImportModal title="Import open service requests" columns={REQUEST_COLUMNS} required={["request_type"]}
+          templateName="service-requests-template.csv" onRun={instructionsApi.importRequests} onClose={() => setImporting(false)} onDone={load} />
+      )}
 
       {modal && (
         <Modal title={modal === "new" ? "New Service Request" : "Edit Service Request"} onClose={() => setModal(null)}>

@@ -29,7 +29,21 @@ class CaseBase(BaseModel):
 
 
 class CaseCreate(CaseBase):
-    pass
+    # P6 — engagement route and, for existing / transferring companies, their history.
+    engagement_route: str = "Formation"  # Formation / Existing Entity / Transfer In
+    previous_agent: Optional[str] = Field(None, max_length=150)
+    incorporation_date: Optional[date] = None
+    company_number: Optional[str] = Field(None, max_length=100)
+    registered_agent: Optional[str] = Field(None, max_length=50)
+    last_renewal_date: Optional[date] = None
+    last_esr_date: Optional[date] = None
+    last_ar_date: Optional[date] = None
+
+
+class ImportRequest(BaseModel):
+    """Rows from a CSV (column names already mapped to field names by the browser)."""
+    rows: list[dict] = Field(..., min_length=1, max_length=2000)
+    dry_run: bool = True
 
 
 class CaseUpdate(BaseModel):
@@ -74,6 +88,9 @@ class CaseRead(CaseBase):
     invoice_paid_date: Optional[date] = None
     additional_rm_ids: list[int] = []
     compliance_status: str = "Approved"  # Pending Approval / Returned / Approved (P3)
+    engagement_route: str = "Formation"
+    previous_agent: Optional[str] = None
+    prior_filing_dates: Optional[dict] = None
     created_at: datetime
     updated_at: datetime
 

@@ -77,6 +77,8 @@ export const casesApi = {
   create: (data) => api.post("/cases", data).then((r) => r.data),
   update: (id, data) => api.patch(`/cases/${id}`, data).then((r) => r.data),
   changeStage: (id, stage) => api.post(`/cases/${id}/stage`, { stage }).then((r) => r.data),
+  // P6 — existing entities from the Offshore Entities List (admin; dry run first)
+  importEntities: (rows, dryRun) => api.post("/cases/import", { rows, dry_run: dryRun }).then((r) => r.data),
   raiseInvoice: (id, amount = 0) => api.post(`/cases/${id}/invoice/raise`, { amount }).then((r) => r.data),
   markInvoicePaid: (id) => api.post(`/cases/${id}/invoice/mark-paid`).then((r) => r.data),
   delete: (id) => api.delete(`/cases/${id}`),
@@ -133,6 +135,7 @@ export const accountPartiesApi = {
 // ─── Instructions (service-request tracker) ───────────────────────────
 export const instructionsApi = {
   list: (params = {}) => api.get("/instructions", { params }).then((r) => r.data),
+  importRequests: (rows, dryRun) => api.post("/instructions/import", { rows, dry_run: dryRun }).then((r) => r.data),
   get: (id) => api.get(`/instructions/${id}`).then((r) => r.data),
   create: (data) => api.post("/instructions", data).then((r) => r.data),
   update: (id, data) => api.patch(`/instructions/${id}`, data).then((r) => r.data),

@@ -158,6 +158,9 @@ def approve(db: Session, case: Case, user: User, comment: Optional[str] = None) 
     req.reason_text = (comment or "").strip() or None
     if req.request_type == CREATION:
         case.compliance_status = APPROVED
+        if case.engagement_route == "Existing Entity":
+            from app.services import engagement_service
+            engagement_service.build_calendar(db, case)  # already Active: its Filing Calendar starts now
         log_event(db, "approve", f"Case {_label(case)} approved by Compliance", subject_type="Case", subject_id=case.id,
                   account_id=case.account_id, changes={"request_id": req.id, "comment": req.reason_text})
         db.commit()

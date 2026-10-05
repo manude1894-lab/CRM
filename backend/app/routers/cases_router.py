@@ -7,9 +7,9 @@ from app.database import get_db
 from app.auth.dependencies import get_current_user, require_admin
 from app.models import User
 from app.schemas import CaseCreate, CaseRead, CaseUpdate, CaseStageChangeRequest, AdditionalRMRequest
-from app.schemas.case import InvoiceRaiseRequest, CaseBulkUpdateRequest
+from app.schemas.case import InvoiceRaiseRequest, CaseBulkUpdateRequest, ImportRequest
 from app.schemas.account import BulkUpdateResult
-from app.services import case_service
+from app.services import case_service, engagement_service
 
 router = APIRouter(prefix="/cases", tags=["Cases"])
 
@@ -36,6 +36,11 @@ def list_cases(
 @router.patch("/bulk", response_model=list[BulkUpdateResult], summary="Bulk-update Relationship Manager / Status across selected cases")
 def bulk_update_cases(data: CaseBulkUpdateRequest, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     return case_service.bulk_update_cases(db, user, data)
+
+
+@router.post("/import", summary="Import existing entities from CSV rows (dry run first) — Admin")
+def import_entities(body: ImportRequest, db: Session = Depends(get_db), user: User = Depends(require_admin)):
+    return engagement_service.import_entities(db, user, body.rows, body.dry_run)
 
 
 @router.get("/{case_id}", response_model=CaseRead)
