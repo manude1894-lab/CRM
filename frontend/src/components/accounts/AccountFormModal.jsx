@@ -5,6 +5,7 @@ import NameLookup from "./NameLookup";
 import CompletenessChecklist from "./CompletenessChecklist";
 import WorkflowBar from "./WorkflowBar";
 import AmendmentBar from "./AmendmentBar";
+import ClientDocumentsFolder from "./ClientDocumentsFolder";
 import { useAuthStore } from "../../store/auth";
 import { MONTHS, parseFYE, toFYE, fmtFYE, daysIn } from "../../utils/fye";
 import { toast } from "../../store/toast";
@@ -464,6 +465,14 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
             <Field label="Introducer Name"><Input value={form.introducer_name} onChange={set("introducer_name")} /></Field>
           )}
         </Section>
+
+        {form._id && (
+          // BRD §12 step 8 / §16 — documents are filed against the Client ID. Saved on upload.
+          <Section title="Documents" hasData={["New", "WIP"].includes(form.profile_status)}>
+            <ClientDocumentsFolder accountId={form._id} onboarding={["New", "WIP"].includes(form.profile_status)}
+              onChange={() => setRefreshKey((k) => k + 1)} />
+          </Section>
+        )}
 
         <Section title="Services Obtained" hasData={(form.services_obtained || []).length > 0} {...sectionProps("services")}>
           <MultiSelect options={selectableCodes(services.items, form.services_obtained)} value={form.services_obtained} onChange={setValue("services_obtained")} />

@@ -76,7 +76,7 @@ export default function AccountCard({
           </div>
           <ActionButton icon="accounts" label="Manage Shareholders / Directors / Signatories" onClick={onManageParties} />
           <ActionButton icon="download" label="Track Record" onClick={onTrackRecord} />
-          <ActionButton icon="instructions" label="Attachments" onClick={onAttachments} />
+          <ActionButton icon="instructions" label="Documents" onClick={onAttachments} />
           <ActionButton icon="activities" label="History (audit trail)" onClick={onHistory} className="mb-3" />
           <p className="text-xs font-semibold text-gray-600 mb-2">Cases ({cases.length})</p>
           <div className="space-y-1.5">

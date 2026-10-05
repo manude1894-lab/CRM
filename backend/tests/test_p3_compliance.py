@@ -274,3 +274,27 @@ def test_blank_address_blocks_are_not_changes(db, people):
     account_service.update_account(db, acc.id, AccountUpdate(industry="Banking", registered_address=blank), maker)
     req = amend.submit(db, acc, maker)
     assert [c["field"] for c in req.changes["account"]] == ["industry"]
+
+
+# ─── P4: client document folder (BRD §16) ───────────────────────────────────
+
+def test_client_folder_shows_stage_and_who_can_remove(db, people, seed_master, make_user):
+    seed_master("document_category", ["PASSPORT"])
+    maker, checker = people["maker"], people["checker"]
+    acc = complete_client(db, maker)
+    _upload(db, acc, maker)
+    f = document_service.client_folder(db, acc.id, maker)
+    [d] = f["documents"]
+    assert f["stage"] == "Draft" and f["client_id"] == "TCPL/00001" and d["can_delete"] is True
+    assert d["uploaded_by_name"] == "Rita RM"
+
+    case = case_service.create_case(db, CaseCreate(company_name="Complete Co", account_id=acc.id), maker)
+    f = document_service.client_folder(db, acc.id, maker)
+    assert f["case_documents"] == []  # nothing uploaded on the case yet
+
+    wf.submit(db, acc, maker)
+    f = document_service.client_folder(db, acc.id, checker)
+    assert f["stage"] == "Submitted" and f["documents"][0]["can_delete"] is False  # locked while under review
+    wf.approve(db, acc, checker)
+    f = document_service.client_folder(db, acc.id, checker)
+    assert f["stage"] == "Locked" and "no longer be removed" in f["documents"][0]["lock_reason"]

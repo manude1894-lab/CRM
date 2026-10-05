@@ -3,7 +3,7 @@ import { accountsApi, casesApi, usersApi, amlApi } from "../api/endpoints";
 import { Icon, Modal, Spinner, ErrorBanner } from "../components/ui";
 import AccountPartyModal from "../components/AccountPartyModal";
 import TrackRecordModal from "../components/TrackRecordModal";
-import DocumentsPanel from "../components/DocumentsPanel";
+import ClientDocumentsFolder from "../components/accounts/ClientDocumentsFolder";
 import AccountCard from "../components/accounts/AccountCard";
 import AccountFormModal from "../components/accounts/AccountFormModal";
 import BulkActionBar from "../components/accounts/BulkActionBar";
@@ -251,8 +251,8 @@ export default function AccountsPage({ initialAccountId, initialOpenForm } = {})
       )}
 
       {attachmentsAccount && (
-        <Modal title={`Attachments — ${attachmentsAccount.company_name}`} onClose={() => setAttachmentsAccount(null)}>
-          <DocumentsPanel accountId={attachmentsAccount.id} />
+        <Modal title={`Documents — ${attachmentsAccount.company_name}`} onClose={() => setAttachmentsAccount(null)}>
+          <ClientDocumentsFolder accountId={attachmentsAccount.id} onboarding={["New", "WIP"].includes(attachmentsAccount.profile_status)} />
         </Modal>
       )}
     </div>

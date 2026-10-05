@@ -4,6 +4,7 @@ Bytes are stored in Document.content (Postgres bytea, deferred). The only code t
 reads/writes those bytes lives here — the swap point for a future volume/S3 backend.
 """
 import re
+from typing import Optional
 from datetime import date
 
 from fastapi import HTTPException, UploadFile
@@ -216,22 +217,75 @@ def delete(db: Session, document_id: int, user: User) -> None:
     db.commit()
 
 
-def _assert_client_document_removable(db: Session, doc: Document, user: User) -> None:
-    """BRD §16 — documents form part of the client record:
-    - before the client is first submitted, the uploader (or an Admin) may remove a document;
-    - once submitted, only an Approver-level user (document.delete_submitted) may remove it;
-    - after the client is approved, documents can no longer be removed from the client folder."""
-    from app.auth.permissions import has_permission
+DRAFT, SUBMITTED, LOCKED = "Draft", "Submitted", "Locked"
+
+
+def _client_document_stage(db: Session, account) -> str:
+    """BRD §16 document stage, from the client's progress:
+    Draft until the client is first submitted, Submitted after that, Locked once approved."""
     from app.models import ApprovalRequest
     from app.services import client_workflow_service as wf
-    account = _account_for_read(db, doc.account_id, user)
-    wf.assert_editable(account)
     if account.profile_status in (wf.APPROVED, wf.ACTIVE, wf.INACTIVE, wf.MARKED_EXIT, wf.EXITED):
-        raise HTTPException(status_code=409, detail="This client is approved — its documents can no longer be removed. Upload a newer version instead.")
+        return LOCKED
     submitted = db.query(ApprovalRequest.id).filter(ApprovalRequest.account_id == account.id,
                                                     ApprovalRequest.request_type == "client_profile").first() is not None
-    if submitted:
-        if not has_permission(user, "document.delete_submitted"):
-            raise HTTPException(status_code=403, detail="This client has been submitted for approval — only an Approver can remove its documents")
-    elif user.role != UserRole.ADMIN and doc.uploaded_by_id != user.id:
-        raise HTTPException(status_code=403, detail="Only the uploader or an Admin can delete this document")
+    return SUBMITTED if submitted or account.profile_status == wf.AWAITING else DRAFT
+
+
+def client_document_removal(db: Session, doc: Document, account, user: User) -> tuple[bool, str, Optional[str]]:
+    """(may this user remove it, document stage, why not). BRD §16:
+    - Draft: the uploader (or an Admin) may remove a document;
+    - Submitted: only an Approver-level user (document.delete_submitted) may remove it;
+    - Locked (client approved): documents can no longer be removed from the client folder."""
+    from app.auth.permissions import has_permission
+    from app.services import client_workflow_service as wf
+    stage = _client_document_stage(db, account)
+    if stage == LOCKED:
+        return False, stage, "The client is approved — its documents can no longer be removed. Upload a newer version instead."
+    if account.profile_status == wf.AWAITING:
+        return False, stage, "The client is with Compliance for review; documents can't be changed until it is decided."
+    if stage == SUBMITTED:
+        if has_permission(user, "document.delete_submitted"):
+            return True, stage, None
+        return False, stage, "This client has been submitted for approval — only an Approver can remove its documents."
+    if user.role == UserRole.ADMIN or doc.uploaded_by_id == user.id:
+        return True, stage, None
+    return False, stage, "Only the person who uploaded it (or an Admin) can remove it."
+
+
+def _assert_client_document_removable(db: Session, doc: Document, user: User) -> None:
+    account = _account_for_read(db, doc.account_id, user)
+    from app.services import client_workflow_service as wf
+    wf.assert_editable(account)
+    allowed, stage, reason = client_document_removal(db, doc, account, user)
+    if not allowed:
+        raise HTTPException(status_code=409 if stage == LOCKED else 403, detail=reason)
+
+
+def client_folder(db: Session, account_id: int, user: User) -> dict:
+    """BRD §16 — the client's folder: everything filed against the Client ID, plus the documents
+    attached to the client's cases (read-only here; they are managed on the case)."""
+    from app.models import User as UserModel
+    account = _account_for_read(db, account_id, user)
+    names = {u.id: u.name for u in db.query(UserModel.id, UserModel.name).all()}
+
+    def item(d: Document, **extra) -> dict:
+        out = {c: getattr(d, c) for c in ("id", "case_id", "account_id", "case_document_id", "instruction_id", "category",
+                                          "filename", "content_type", "size_bytes", "uploaded_by_id", "notes",
+                                          "generated_from", "created_at")}
+        out["uploaded_by_name"] = names.get(d.uploaded_by_id)
+        out.update(extra)
+        return out
+
+    client_docs = []
+    for d in db.query(Document).filter(Document.account_id == account.id).order_by(Document.id.desc()).all():
+        allowed, stage, reason = client_document_removal(db, d, account, user)
+        client_docs.append(item(d, can_delete=allowed, stage=stage, lock_reason=reason))
+    case_docs = [item(d, can_delete=False, stage=None, lock_reason="Managed on the case", case_uid=d.case.case_uid)
+                 for d in (db.query(Document).join(Case, Document.case_id == Case.id)
+                           .filter(Case.account_id == account.id).order_by(Document.id.desc()).all())]
+    return {
+        "account_id": account.id, "client_id": account.client_id, "company_name": account.company_name,
+        "profile_status": account.profile_status, "stage": _client_document_stage(db, account),
+        "max_upload_mb": settings.MAX_UPLOAD_MB, "documents": client_docs, "case_documents": case_docs,
+    }

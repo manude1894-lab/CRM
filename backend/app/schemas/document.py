@@ -40,3 +40,23 @@ class DocumentTemplateInfo(BaseModel):
 class DocumentGenerateRequest(BaseModel):
     template_code: str
     params: dict[str, Any] = {}
+
+
+class FolderDocument(DocumentRead):
+    uploaded_by_name: Optional[str] = None
+    can_delete: bool = False
+    stage: Optional[str] = None  # Draft / Submitted / Locked (BRD §16)
+    lock_reason: Optional[str] = None
+    case_uid: Optional[str] = None  # set for documents that belong to one of the client's cases
+
+
+class ClientFolder(BaseModel):
+    """BRD §16 — every document filed against a Client ID."""
+    account_id: int
+    client_id: Optional[str] = None
+    company_name: str
+    profile_status: Optional[str] = None
+    stage: str
+    max_upload_mb: int
+    documents: list[FolderDocument]
+    case_documents: list[FolderDocument]

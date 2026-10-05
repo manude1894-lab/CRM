@@ -10,6 +10,7 @@ from app.database import get_db
 from app.auth.dependencies import get_current_user
 from app.models import User
 from app.schemas import DocumentRead
+from app.schemas.document import ClientFolder
 from app.services import document_service
 
 router = APIRouter(tags=["Documents"])
@@ -40,6 +41,11 @@ def upload_document(
 @router.get("/accounts/{account_id}/documents", response_model=List[DocumentRead])
 def list_account_documents(account_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     return document_service.list_for_account(db, account_id, user)
+
+
+@router.get("/accounts/{account_id}/folder", response_model=ClientFolder, summary="Client document folder (BRD §16)")
+def client_folder(account_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    return document_service.client_folder(db, account_id, user)
 
 
 @router.post("/accounts/{account_id}/documents", response_model=DocumentRead, status_code=status.HTTP_201_CREATED)
