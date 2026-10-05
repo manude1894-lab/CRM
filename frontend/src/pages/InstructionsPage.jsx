@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { instructionsApi, casesApi, invoicesApi } from "../api/endpoints";
+import { instructionsApi, casesApi, invoicesApi, accountsApi } from "../api/endpoints";
+import { useMasters } from "../hooks/useMasters";
+import { selectableCodes } from "../hooks/masterUtils";
 import { Icon, Badge, Modal, Field, Input, Select, Textarea, Spinner, ErrorBanner } from "../components/ui";
 import DocumentsPanel from "../components/DocumentsPanel";
 import FeedbackPanel from "../components/FeedbackPanel";
@@ -7,9 +9,11 @@ import { INSTRUCTION_STATUS_OPTIONS, INSTRUCTION_TYPE_OPTIONS, fmtFull, fmtDate 
 import { toast } from "../store/toast";
 import { confirmDialog } from "../store/confirm";
 
-const emptyForm = (cases) => ({
-  case_id: cases[0]?.id,
-  instruction_type: INSTRUCTION_TYPE_OPTIONS[0],
+// BRD §17 — a service request belongs to a client; the BVI case (and the Vistra dates) are optional.
+const emptyForm = (accountId) => ({
+  account_id: accountId || "",
+  case_id: "",
+  instruction_type: "",
   status: "Pending",
   document_shared: "",
   date_received: new Date().toISOString().split("T")[0],
@@ -31,6 +35,9 @@ const cleanPayload = (obj) => Object.fromEntries(
 export default function InstructionsPage() {
   const [instructions, setInstructions] = useState([]);
   const [cases, setCases] = useState([]);
+  const [accounts, setAccounts] = useState([]);
+  const [clientFilter, setClientFilter] = useState("");
+  const requestTypes = useMasters("service_request_type", INSTRUCTION_TYPE_OPTIONS);
   const [invoices, setInvoices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -42,21 +49,25 @@ export default function InstructionsPage() {
   const load = async () => {
     try {
       setLoading(true); setError(null);
-      const [instRes, caseRes, invRes] = await Promise.all([
+      const [instRes, caseRes, invRes, accRes] = await Promise.all([
         instructionsApi.list({ limit: 500 }),
         casesApi.list({ limit: 500 }),
         invoicesApi.list({ limit: 500 }),
+        accountsApi.list({ limit: 500 }),
       ]);
       setInstructions(instRes.items || []);
       setCases(caseRes.items || []);
+      setAccounts(accRes.items || []);
       setInvoices(invRes.items || []);
     } catch (e) {
-      setError(e.response?.data?.detail || "Failed to load instructions");
+      setError(e.response?.data?.detail || "Failed to load service requests");
     } finally { setLoading(false); }
   };
   useEffect(() => { load(); }, []);
 
   const caseById = useMemo(() => Object.fromEntries(cases.map((c) => [c.id, c])), [cases]);
+  const accountById = useMemo(() => Object.fromEntries(accounts.map((a) => [a.id, a])), [accounts]);
+  const clientCases = cases.filter((c) => !form.account_id || c.account_id === Number(form.account_id));
   const caseInvoices = useMemo(
     () => invoices.filter((inv) => inv.case_id === Number(form.case_id)),
     [invoices, form.case_id]
@@ -64,23 +75,28 @@ export default function InstructionsPage() {
 
   const filtered = instructions.filter((i) => {
     const matchStatus = statusFilter === "All" || i.status === statusFilter;
-    const company = caseById[i.case_id]?.company_name || "";
-    const matchSearch = search === "" || [company, i.instruction_type, i.invoice_reference, i.comments]
+    const acc = accountById[i.account_id];
+    const company = acc?.company_name || caseById[i.case_id]?.company_name || "";
+    const matchSearch = search === "" || [company, acc?.client_id, i.instruction_type, i.invoice_reference, i.comments]
       .some((v) => v?.toLowerCase().includes(search.toLowerCase()));
-    return matchStatus && matchSearch;
+    return matchStatus && matchSearch && (!clientFilter || i.account_id === Number(clientFilter));
   });
 
-  const openNew = () => { setForm(emptyForm(cases)); setModal("new"); };
-  const openEdit = (i) => { setForm({ ...i, charge_amount: i.charge_amount ?? "", cost_amount: i.cost_amount ?? "" }); setModal("edit"); };
+  const openNew = () => { setForm(emptyForm(clientFilter)); setModal("new"); };
+  const openEdit = (i) => { setForm({ ...i, account_id: i.account_id || "", case_id: i.case_id || "", charge_amount: i.charge_amount ?? "", cost_amount: i.cost_amount ?? "" }); setModal("edit"); };
 
   const save = async () => {
+    if (!form.account_id && !form.case_id) return toast.error("Choose the client for this service request");
+    if (!form.instruction_type) return toast.error("Choose the request type");
     try {
       const payload = cleanPayload(form);
       if (payload.invoice_id != null) payload.invoice_id = Number(payload.invoice_id);
       if (modal === "new") {
-        await instructionsApi.create({ ...payload, case_id: Number(payload.case_id) });
+        await instructionsApi.create({ ...payload, account_id: payload.account_id ? Number(payload.account_id) : null,
+          case_id: payload.case_id ? Number(payload.case_id) : null });
+        toast.success("Service request created");
       } else {
-        const { id, case_id, created_at, updated_at, ...patch } = payload;
+        const { id, case_id, account_id, created_at, updated_at, ...patch } = payload;
         await instructionsApi.update(form.id, patch);
       }
       setModal(null); load();
@@ -95,7 +111,7 @@ export default function InstructionsPage() {
   };
 
   const remove = async (id) => {
-    if (!(await confirmDialog("Delete this instruction?"))) return;
+    if (!(await confirmDialog("Delete this service request?"))) return;
     try { await instructionsApi.delete(id); load(); }
     catch (e) { toast.error(e.response?.data?.detail || "Delete failed"); }
   };
@@ -119,11 +135,11 @@ export default function InstructionsPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Instruction Tracker</h1>
+          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Service Requests</h1>
           <p className="text-sm text-gray-500">{filtered.length} of {instructions.length} service requests</p>
         </div>
         <button onClick={openNew} className="px-3 py-1.5 text-xs text-white rounded-lg flex items-center gap-1" style={{ background: "#1a3a5c" }}>
-          <Icon name="plus" size={14} /> New Instruction
+          <Icon name="plus" size={14} /> New Service Request
         </button>
       </div>
 
@@ -140,6 +156,11 @@ export default function InstructionsPage() {
             {s} {s !== "All" && `(${counts[s] || 0})`}
           </button>
         ))}
+        <select value={clientFilter} onChange={(e) => setClientFilter(e.target.value)}
+          className="border border-gray-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-brand-400">
+          <option value="">All clients</option>
+          {accounts.map((a) => <option key={a.id} value={a.id}>{a.company_name}</option>)}
+        </select>
       </div>
 
       <div className="flex flex-wrap gap-3">
@@ -161,8 +182,8 @@ export default function InstructionsPage() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-100 bg-gray-50">
-              <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500">Entity</th>
-              <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500">Instruction Type</th>
+              <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500">Client</th>
+              <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500">Request Type</th>
               <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500">Status</th>
               <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500">Received</th>
               <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500">Completed</th>
@@ -175,13 +196,16 @@ export default function InstructionsPage() {
           </thead>
           <tbody>
             {filtered.length === 0 && (
-              <tr><td colSpan={10} className="py-8 text-center text-sm text-gray-400">No instructions match this filter.</td></tr>
+              <tr><td colSpan={10} className="py-8 text-center text-sm text-gray-400">No service requests match this filter.</td></tr>
             )}
             {filtered.map((i) => (
               <tr key={i.id} className="border-b border-gray-50 hover:bg-gray-50">
                 <td className="py-3 px-4 text-xs">
-                  <div className="font-medium text-gray-800">{caseById[i.case_id]?.company_name || "—"}</div>
-                  <div className="text-gray-400">{caseById[i.case_id]?.case_uid}</div>
+                  <div className="font-medium text-gray-800">{accountById[i.account_id]?.company_name || caseById[i.case_id]?.company_name || "—"}</div>
+                  <div className="text-gray-400">
+                    <span className="font-mono">{accountById[i.account_id]?.client_id || ""}</span>
+                    {i.case_id && <> {accountById[i.account_id]?.client_id ? "· " : ""}{caseById[i.case_id]?.case_uid}</>}
+                  </div>
                 </td>
                 <td className="py-3 px-4 text-xs text-gray-600">{i.instruction_type}</td>
                 <td className="py-3 px-4">
@@ -217,16 +241,24 @@ export default function InstructionsPage() {
       </div>
 
       {modal && (
-        <Modal title={modal === "new" ? "New Instruction" : `Edit Instruction`} onClose={() => setModal(null)}>
+        <Modal title={modal === "new" ? "New Service Request" : "Edit Service Request"} onClose={() => setModal(null)}>
           <div className="grid grid-cols-2 gap-x-4">
-            <Field label="Entity" required>
-              <Select value={form.case_id || ""} disabled={modal === "edit"} onChange={(e) => setForm((p) => ({ ...p, case_id: e.target.value }))}>
-                {cases.map((c) => <option key={c.id} value={c.id}>{c.case_uid} – {c.company_name}</option>)}
+            <Field label="Client" required>
+              <Select value={form.account_id || ""} disabled={modal === "edit"} onChange={(e) => setForm((p) => ({ ...p, account_id: e.target.value, case_id: "" }))}>
+                <option value="">— choose client —</option>
+                {accounts.map((a) => <option key={a.id} value={a.id}>{a.client_id ? `${a.client_id} – ` : ""}{a.company_name}</option>)}
               </Select>
             </Field>
-            <Field label="Instruction Type" required>
+            <Field label="Case / entity (optional)">
+              <Select value={form.case_id || ""} disabled={modal === "edit"} onChange={(e) => setForm((p) => ({ ...p, case_id: e.target.value }))}>
+                <option value="">— none —</option>
+                {clientCases.map((c) => <option key={c.id} value={c.id}>{c.case_uid} – {c.company_name}</option>)}
+              </Select>
+            </Field>
+            <Field label="Request Type" required>
               <Select value={form.instruction_type || ""} onChange={(e) => setForm((p) => ({ ...p, instruction_type: e.target.value }))}>
-                {INSTRUCTION_TYPE_OPTIONS.map((t) => <option key={t}>{t}</option>)}
+                <option value="">— choose —</option>
+                {selectableCodes(requestTypes.items, form.instruction_type).map((t) => <option key={t} value={t}>{requestTypes.labelOf(t)}</option>)}
               </Select>
             </Field>
             <Field label="Status">
@@ -243,12 +275,14 @@ export default function InstructionsPage() {
             <Field label="Date Received">
               <Input type="date" value={form.date_received || ""} onChange={(e) => setForm((p) => ({ ...p, date_received: e.target.value }))} />
             </Field>
+            {form.case_id && (<>
             <Field label="Date Sent to Vistra">
               <Input type="date" value={form.date_sent_to_vistra || ""} onChange={(e) => setForm((p) => ({ ...p, date_sent_to_vistra: e.target.value }))} />
             </Field>
             <Field label="Date Received from Vistra">
               <Input type="date" value={form.date_received_from_vistra || ""} onChange={(e) => setForm((p) => ({ ...p, date_received_from_vistra: e.target.value }))} />
             </Field>
+            </>)}
             <Field label="Date Completed">
               <Input type="date" value={form.date_completed || ""} onChange={(e) => setForm((p) => ({ ...p, date_completed: e.target.value }))} />
             </Field>
@@ -267,14 +301,16 @@ export default function InstructionsPage() {
           </div>
           <Field label="Comments"><Textarea value={form.comments || ""} onChange={(e) => setForm((p) => ({ ...p, comments: e.target.value }))} /></Field>
 
-          {modal === "edit" && form.id && (
+          {!form.case_id && <p className="text-[11px] text-gray-400 -mt-2 mb-3">Without a case, the Vistra dates don't apply and a completed charged request is invoiced manually.</p>}
+
+          {modal === "edit" && form.id && form.case_id && (
             <div className="border-t border-gray-100 pt-3 mb-1">
               <p className="text-xs font-semibold text-gray-600 mb-2">Attachments <span className="text-gray-400 font-normal">· issued docs, filed-return confirmations</span></p>
               <DocumentsPanel caseId={Number(form.case_id)} scope={{ instruction_id: form.id }} defaultCategory="Filed Return / Confirmation" />
             </div>
           )}
 
-          {modal === "edit" && form.id && (
+          {modal === "edit" && form.id && form.case_id && (
             <div className="border-t border-gray-100 pt-3 mb-1">
               <p className="text-xs font-semibold text-gray-600 mb-2">Client Feedback <span className="text-gray-400 font-normal">· logged by staff, not client-submitted</span></p>
               <FeedbackPanel caseId={Number(form.case_id)} instructionId={form.id} />

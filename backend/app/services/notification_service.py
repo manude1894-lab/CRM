@@ -5,7 +5,9 @@ import logging
 from sqlalchemy.orm import Session
 
 from app.models import Notification, User, UserRole
+from app.config import settings
 from app.services.email_service import send_notification_email
+from app.services.sms_service import send_sms
 
 logger = logging.getLogger("ezeetech.notifications")
 
@@ -39,6 +41,9 @@ def notify_user(
     user = db.query(User).filter(User.id == user_id).first()
     if user:
         _send_email_best_effort(user.email, f"TRIAM: {notification_type.replace('_', ' ').title()}", message)
+        # BRD §17 — SMS for the notification types Triam chooses (Compliance decisions by default).
+        if user.mobile and notification_type in {t.strip() for t in settings.SMS_NOTIFICATION_TYPES.split(",")}:
+            send_sms(user.mobile, f"TRIAM: {message}")
     return notification
 
 

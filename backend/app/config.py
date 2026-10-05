@@ -41,6 +41,17 @@ class Settings(BaseSettings):
     SMTP_FROM_NAME: str = "TRIAM"
     SMTP_USE_TLS: bool = True
 
+    # SMS notifications (BRD §17) — provider to be chosen by Triam; off until configured.
+    SMS_ENABLED: bool = False
+    SMS_PROVIDER: str = "log"  # log | http
+    SMS_API_URL: str = ""
+    SMS_API_KEY: str = ""
+    SMS_SENDER_ID: str = "TRIAM"
+    # Notification types that also go out by SMS (comma-separated). Compliance decisions by default.
+    SMS_NOTIFICATION_TYPES: str = ("client_submitted,client_approved,client_rejected,amendment_submitted,"
+                                   "amendment_approved,amendment_rejected,case_submitted,case_approved,case_rejected,"
+                                   "case_amendment_submitted")
+
     # Uploads — client spec CRM-change-request item 16
     MAX_UPLOAD_MB: int = 2
 

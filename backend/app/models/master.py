@@ -23,6 +23,7 @@ MASTER_LIST_TYPES = {
     "licensing_authority": "Licensing Authorities",
     "document_category": "Document Categories",
     "rejection_reason": "Rejection Reasons",
+    "service_request_type": "Service Request Types",
 }
 
 

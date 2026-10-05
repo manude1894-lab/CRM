@@ -14,6 +14,8 @@ class ActivityType(str, enum.Enum):
     DEMO = "Demo"
     FOLLOW_UP = "Follow-up"
     NOTE = "Note"
+    VISIT_REPORT = "Visit Report"  # BRD §17
+    CALL_REPORT = "Call Report"  # BRD §17
 
 
 class ActivityStatus(str, enum.Enum):
@@ -29,7 +31,9 @@ class Activity(Base):
     id = Column(Integer, primary_key=True, index=True)
     activity_uid = Column(String(20), unique=True, index=True, nullable=False)  # ACT-0001
 
-    case_id = Column(Integer, ForeignKey("cases.id", ondelete="CASCADE"), nullable=False)
+    # BRD §17 — activities belong to the client; linking a case is optional.
+    account_id = Column(Integer, ForeignKey("accounts.id", ondelete="CASCADE"), nullable=True, index=True)
+    case_id = Column(Integer, ForeignKey("cases.id", ondelete="CASCADE"), nullable=True)
     owner_id = Column(Integer, ForeignKey("users.id"), nullable=True)
 
     company_name = Column(String(255), nullable=False)
@@ -42,8 +46,15 @@ class Activity(Base):
     next_action = Column(Text, nullable=True)
     due_date = Column(Date, nullable=True)
 
+    # Visit / Call Report details
+    client_contact = Column(String(150), nullable=True)  # who Triam met / spoke to
+    attendees = Column(Text, nullable=True)  # Triam attendees
+    location = Column(String(200), nullable=True)  # Visit Report
+    purpose = Column(String(200), nullable=True)
+
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     case = relationship("Case", back_populates="activities")
+    account = relationship("Account")
     owner = relationship("User", back_populates="activities", foreign_keys=[owner_id])

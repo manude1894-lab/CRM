@@ -16,6 +16,7 @@ router = APIRouter(prefix="/instructions", tags=["Instructions"])
 def list_instructions(
     skip: int = 0, limit: int = 100,
     case_id: Optional[int] = None,
+    account_id: Optional[int] = None,
     status: Optional[str] = None,
     instruction_type: Optional[str] = None,
     search: Optional[str] = None,
@@ -24,7 +25,7 @@ def list_instructions(
     user: User = Depends(get_current_user),
 ):
     items, total = instruction_service.list_instructions(
-        db, user, skip, limit, case_id, status, instruction_type, search,
+        db, user, skip, limit, case_id, status, instruction_type, search, account_id=account_id,
     )
     if response is not None:
         response.headers["X-Total-Count"] = str(total)

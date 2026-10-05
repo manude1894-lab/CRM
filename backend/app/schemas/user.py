@@ -1,9 +1,20 @@
 """Pydantic schemas: User, Auth tokens."""
-from pydantic import BaseModel, EmailStr, Field, ConfigDict
+from pydantic import BaseModel, EmailStr, Field, ConfigDict, field_validator
 from datetime import datetime
 from typing import Optional
 
 from app.models.user import UserRole
+
+
+def _mobile(v):
+    """Optional international mobile number for SMS notifications, stored as +<digits>."""
+    if v in (None, ""):
+        return None
+    from app.services.sms_service import normalise
+    n = normalise(str(v))
+    if n is None:
+        raise ValueError("must be an international number, e.g. +971501234567")
+    return n
 
 
 class UserBase(BaseModel):
@@ -15,6 +26,9 @@ class UserBase(BaseModel):
     title: Optional[str] = None
     supervisor_id: Optional[int] = None
     business_role_id: Optional[int] = None
+    mobile: Optional[str] = None
+
+    _check_mobile = field_validator("mobile", mode="before")(classmethod(lambda cls, v: _mobile(v)))
 
 
 class UserCreate(UserBase):
@@ -31,6 +45,9 @@ class UserUpdate(BaseModel):
     title: Optional[str] = None
     supervisor_id: Optional[int] = None
     business_role_id: Optional[int] = None
+    mobile: Optional[str] = None
+
+    _check_mobile = field_validator("mobile", mode="before")(classmethod(lambda cls, v: _mobile(v)))
 
 
 class UserRead(UserBase):

@@ -95,6 +95,7 @@ export default function AdminPage() {
         supervisor_id: form.supervisor_id ? +form.supervisor_id : null,
         business_role_id: form.business_role_id ? +form.business_role_id : null,
         title: form.title || null,
+        mobile: form.mobile || null,
       };
       if (modal === "new") {
         await usersApi.create(payload);
@@ -125,7 +126,7 @@ export default function AdminPage() {
           <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Admin Panel</h1>
           <p className="text-sm text-gray-500">Users · Master data · Roles · Audit log</p>
         </div>
-        {tab === "users" && <button onClick={() => { setForm({ name: "", email: "", password: "", role: "rm", is_active: true, department_id: "", title: "", supervisor_id: "", business_role_id: "" }); setModal("new"); }}
+        {tab === "users" && <button onClick={() => { setForm({ name: "", email: "", password: "", role: "rm", is_active: true, department_id: "", title: "", mobile: "", supervisor_id: "", business_role_id: "" }); setModal("new"); }}
           className="px-3 py-1.5 text-xs text-white rounded-lg flex items-center gap-1" style={{ background: "#1a3a5c" }}>
           <Icon name="plus" size={14} /> Add User
         </button>}
@@ -290,6 +291,10 @@ export default function AdminPage() {
           </Field>
           <Field label="Title">
             <Input value={form.title || ""} onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))} placeholder="e.g. Senior Associate" />
+          </Field>
+          {/* BRD §17 — used for SMS notifications once an SMS provider is configured. */}
+          <Field label="Mobile (for SMS alerts)">
+            <Input value={form.mobile || ""} onChange={(e) => setForm((p) => ({ ...p, mobile: e.target.value }))} placeholder="e.g. +971501234567" />
           </Field>
           <Field label="Reports To">
             <Select value={form.supervisor_id || ""} onChange={(e) => setForm((p) => ({ ...p, supervisor_id: e.target.value }))}>

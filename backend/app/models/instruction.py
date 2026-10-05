@@ -24,7 +24,9 @@ class Instruction(Base):
     __tablename__ = "instructions"
 
     id = Column(Integer, primary_key=True, index=True)
-    case_id = Column(Integer, ForeignKey("cases.id", ondelete="CASCADE"), nullable=False, index=True)
+    # BRD §17 — a service request belongs to a client; the BVI case is optional.
+    account_id = Column(Integer, ForeignKey("accounts.id", ondelete="CASCADE"), nullable=True, index=True)
+    case_id = Column(Integer, ForeignKey("cases.id", ondelete="CASCADE"), nullable=True, index=True)
 
     # instruction_type/status stored as plain strings (not DB enums) — same precedent
     # as jurisdiction/service_type on Case (migration 0003): free text is far cheaper
@@ -54,5 +56,6 @@ class Instruction(Base):
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     case = relationship("Case", back_populates="instructions")
+    account = relationship("Account")
     invoice = relationship("Invoice", back_populates="instructions")
     attachments = relationship("Document", back_populates="instruction")

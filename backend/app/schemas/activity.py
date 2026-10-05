@@ -7,8 +7,10 @@ from app.models.activity import ActivityType, ActivityStatus
 
 
 class ActivityBase(BaseModel):
-    case_id: int
-    company_name: str = Field(..., min_length=1, max_length=255)
+    # BRD §17 — the client is the anchor; the case is optional. One of the two is required.
+    account_id: Optional[int] = None
+    case_id: Optional[int] = None
+    company_name: Optional[str] = Field(None, max_length=255)  # defaults to the client's name
     activity_date: date
     activity_type: ActivityType
     status: ActivityStatus = ActivityStatus.PLANNED
@@ -17,6 +19,11 @@ class ActivityBase(BaseModel):
     next_action: Optional[str] = None
     due_date: Optional[date] = None
     owner_id: Optional[int] = None
+    # Visit / Call Report details
+    client_contact: Optional[str] = Field(None, max_length=150)
+    attendees: Optional[str] = None
+    location: Optional[str] = Field(None, max_length=200)
+    purpose: Optional[str] = Field(None, max_length=200)
 
 
 class ActivityCreate(ActivityBase):
@@ -33,6 +40,10 @@ class ActivityUpdate(BaseModel):
     next_action: Optional[str] = None
     due_date: Optional[date] = None
     owner_id: Optional[int] = None
+    client_contact: Optional[str] = Field(None, max_length=150)
+    attendees: Optional[str] = None
+    location: Optional[str] = Field(None, max_length=200)
+    purpose: Optional[str] = Field(None, max_length=200)
 
 
 class ActivityRead(ActivityBase):

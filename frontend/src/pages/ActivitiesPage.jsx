@@ -1,64 +1,51 @@
 import React, { useEffect, useState } from "react";
-import { activitiesApi, casesApi, usersApi } from "../api/endpoints";
-import { Icon, Badge, Modal, Field, Input, Select, Textarea, Spinner, ErrorBanner } from "../components/ui";
-import { fmtDate } from "../utils/constants";
+import { activitiesApi, accountsApi, casesApi } from "../api/endpoints";
+import { Icon, Modal, Spinner, ErrorBanner } from "../components/ui";
 import { toast } from "../store/toast";
 import { confirmDialog } from "../store/confirm";
+import ActivityForm, { ACTIVITY_TYPES, REPORT_TYPES, activityPayload, activityProblem, blankActivity } from "../components/activities/ActivityForm";
+import ActivityCard from "../components/activities/ActivityCard";
 
-const TYPE_COLORS = {
-  Meeting: "#1a3a5c", Demo: "#8b5cf6", Call: "#10b981",
-  Email: "#94a3b8", "Follow-up": "#f59e0b", Note: "#64748b",
-};
-
+/** Activities, Visit Reports and Call Reports across all the clients this user can see (BRD §17). */
 export default function ActivitiesPage() {
   const [activities, setActivities] = useState([]);
+  const [accounts, setAccounts] = useState([]);
   const [cases, setCases] = useState([]);
-  const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [typeFilter, setTypeFilter] = useState("All");
+  const [clientFilter, setClientFilter] = useState("");
   const [modal, setModal] = useState(null);
   const [form, setForm] = useState({});
 
   const load = async () => {
     try {
       setLoading(true); setError(null);
-      const [actRes, caseRes, usersRes] = await Promise.all([
-        activitiesApi.list({ limit: 500 }),
-        casesApi.list({ limit: 500 }),
-        usersApi.list(),
+      const [actRes, accRes, caseRes] = await Promise.all([
+        activitiesApi.list({ limit: 500 }), accountsApi.list({ limit: 500 }), casesApi.list({ limit: 500 }),
       ]);
       setActivities(actRes.items || []);
+      setAccounts(accRes.items || []);
       setCases(caseRes.items || []);
-      setUsers(usersRes || []);
     } catch (e) {
       setError(e.response?.data?.detail || "Failed to load activities");
     } finally { setLoading(false); }
   };
   useEffect(() => { load(); }, []);
 
-  const filtered = activities.filter((a) => typeFilter === "All" || a.activity_type === typeFilter);
+  const filtered = activities.filter((a) => (typeFilter === "All" || (typeFilter === "Reports" ? REPORT_TYPES.includes(a.activity_type) : a.activity_type === typeFilter))
+    && (!clientFilter || a.account_id === Number(clientFilter)));
 
-  const openNew = () => {
-    const first = cases[0];
-    setForm({
-      case_id: first?.id, company_name: first?.company_name || "",
-      activity_date: new Date().toISOString().split("T")[0], activity_type: "Call",
-      status: "Planned", summary: "", outcome: "", next_action: "",
-    });
-    setModal("new");
-  };
+  const openNew = (type) => { setForm(blankActivity(clientFilter, type)); setModal("new"); };
 
   const save = async () => {
+    const problem = activityProblem(form);
+    if (problem) return toast.error(problem);
     try {
-      const c = cases.find((x) => x.id === Number(form.case_id));
-      const payload = { ...form, case_id: Number(form.case_id), company_name: c?.company_name || form.company_name };
-      if (modal === "new") {
-        await activitiesApi.create(payload);
-      } else {
-        const { id, activity_uid, created_at, updated_at, ...patch } = payload;
-        await activitiesApi.update(form.id, patch);
-      }
+      const payload = activityPayload(form);
+      if (modal === "new") await activitiesApi.create(payload);
+      else await activitiesApi.update(form.id, payload);
+      toast.success(`${form.activity_type} saved`);
       setModal(null); load();
     } catch (e) {
       toast.error(e.response?.data?.detail || "Save failed");
@@ -76,91 +63,51 @@ export default function ActivitiesPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Activities</h1>
-          <p className="text-sm text-gray-500">{activities.length} total activities</p>
+          <p className="text-sm text-gray-500">Visit Reports, Call Reports and other client activities · {activities.length} in total</p>
         </div>
-        <button onClick={openNew} className="px-3 py-1.5 text-xs text-white rounded-lg flex items-center gap-1" style={{ background: "#1a3a5c" }}>
-          <Icon name="plus" size={14} /> Log Activity
-        </button>
+        <div className="flex gap-2">
+          <button onClick={() => openNew("Visit Report")} className="px-3 py-1.5 text-xs text-white rounded-lg flex items-center gap-1" style={{ background: "#1a3a5c" }}>
+            <Icon name="plus" size={14} /> Visit Report
+          </button>
+          <button onClick={() => openNew("Call Report")} className="px-3 py-1.5 text-xs text-white rounded-lg flex items-center gap-1" style={{ background: "#1a3a5c" }}>
+            <Icon name="plus" size={14} /> Call Report
+          </button>
+          <button onClick={() => openNew("Meeting")} className="px-3 py-1.5 text-xs border border-gray-200 rounded-lg flex items-center gap-1 text-gray-600 hover:bg-gray-50">
+            <Icon name="plus" size={14} /> Other activity
+          </button>
+        </div>
       </div>
 
-      <div className="flex gap-2 flex-wrap">
-        {["All", "Meeting", "Demo", "Call", "Email", "Follow-up"].map((t) => (
+      <div className="flex gap-2 flex-wrap items-center">
+        {["All", "Reports", ...ACTIVITY_TYPES].map((t) => (
           <button key={t} onClick={() => setTypeFilter(t)}
             className={`px-3 py-1.5 text-xs rounded-lg border transition-colors ${typeFilter === t ? "text-white border-transparent" : "border-gray-200 text-gray-600 hover:bg-gray-50"}`}
             style={typeFilter === t ? { background: "#1a3a5c" } : {}}>
-            {t}
+            {t === "Reports" ? "Visit & Call Reports" : t}
           </button>
         ))}
+        <select value={clientFilter} onChange={(e) => setClientFilter(e.target.value)}
+          className="ml-auto border border-gray-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-brand-400">
+          <option value="">All clients</option>
+          {accounts.map((a) => <option key={a.id} value={a.id}>{a.company_name}</option>)}
+        </select>
       </div>
 
       <div className="space-y-3">
         {filtered.length === 0 && <p className="text-sm text-gray-400 text-center py-8">No activities.</p>}
         {filtered.map((a) => (
-          <div key={a.id} className="bg-white border border-gray-100 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow flex gap-4">
-            <div className="flex-shrink-0">
-              <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold"
-                style={{ background: TYPE_COLORS[a.activity_type] || "#94a3b8" }}>
-                {a.activity_type[0]}
-              </div>
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-start justify-between mb-1 flex-wrap gap-2">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-semibold text-sm text-gray-800">{a.company_name}</span>
-                  <Badge text={a.activity_type} />
-                  <span className="text-xs text-gray-400">{a.activity_uid}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-gray-400 whitespace-nowrap">{fmtDate(a.activity_date)}</span>
-                  <button onClick={() => { setForm(a); setModal("edit"); }}
-                    className="p-1 rounded hover:bg-brand-50 text-gray-400 hover:text-brand-600">
-                    <Icon name="edit" size={13} />
-                  </button>
-                  <button onClick={() => remove(a.id)}
-                    className="p-1 rounded hover:bg-red-50 text-gray-400 hover:text-red-500">
-                    <Icon name="del" size={13} />
-                  </button>
-                </div>
-              </div>
-              <p className="text-sm text-gray-700 mb-1">{a.summary}</p>
-              <div className="flex flex-wrap gap-4 text-xs text-gray-500">
-                {a.outcome && <span><strong className="text-gray-600">Outcome:</strong> {a.outcome}</span>}
-                {a.next_action && <span><strong className="text-gray-600">Next:</strong> {a.next_action}</span>}
-              </div>
-            </div>
-          </div>
+          <ActivityCard key={a.id} activity={a} onEdit={() => { setForm({ ...blankActivity(), ...a, account_id: a.account_id || "", case_id: a.case_id || "" }); setModal("edit"); }}
+            onDelete={() => remove(a.id)} />
         ))}
       </div>
 
       {modal && (
-        <Modal title={modal === "new" ? "Log Activity" : `Edit ${form.activity_uid}`} onClose={() => setModal(null)}>
-          <div className="grid grid-cols-2 gap-x-4">
-            <Field label="Case" required>
-              <Select value={form.case_id || ""} onChange={(e) => setForm((p) => ({ ...p, case_id: e.target.value }))}>
-                {cases.map((c) => <option key={c.id} value={c.id}>{c.case_uid} – {c.company_name}</option>)}
-              </Select>
-            </Field>
-            <Field label="Activity Type" required>
-              <Select value={form.activity_type || "Call"} onChange={(e) => setForm((p) => ({ ...p, activity_type: e.target.value }))}>
-                {["Meeting", "Demo", "Call", "Email", "Follow-up", "Note"].map((s) => <option key={s}>{s}</option>)}
-              </Select>
-            </Field>
-            <Field label="Date" required>
-              <Input type="date" value={form.activity_date || ""} onChange={(e) => setForm((p) => ({ ...p, activity_date: e.target.value }))} />
-            </Field>
-            <Field label="Status">
-              <Select value={form.status || "Planned"} onChange={(e) => setForm((p) => ({ ...p, status: e.target.value }))}>
-                {["Planned", "Completed", "Cancelled", "Overdue"].map((s) => <option key={s}>{s}</option>)}
-              </Select>
-            </Field>
-          </div>
-          <Field label="Summary" required><Textarea value={form.summary || ""} onChange={(e) => setForm((p) => ({ ...p, summary: e.target.value }))} /></Field>
-          <Field label="Outcome"><Textarea value={form.outcome || ""} onChange={(e) => setForm((p) => ({ ...p, outcome: e.target.value }))} /></Field>
-          <Field label="Next Action"><Input value={form.next_action || ""} onChange={(e) => setForm((p) => ({ ...p, next_action: e.target.value }))} /></Field>
-          <div className="flex justify-end gap-3 mt-4">
+        <Modal title={modal === "new" ? `New ${form.activity_type}` : `Edit ${form.activity_uid}`} onClose={() => setModal(null)}>
+          <ActivityForm form={form} setForm={setForm} accounts={accounts} cases={cases} />
+          <div className="flex justify-end gap-3 mt-2">
             <button onClick={() => setModal(null)} className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
             <button onClick={save} className="px-4 py-2 text-sm text-white rounded-lg" style={{ background: "#1a3a5c" }}>Save</button>
           </div>
@@ -169,3 +116,4 @@ export default function ActivitiesPage() {
     </div>
   );
 }
+

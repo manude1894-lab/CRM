@@ -19,7 +19,7 @@ const ActionButton = ({ icon, label, onClick, className = "mb-2" }) => (
 // One client tile on the Clients page; clicking it expands compliance details, actions and cases.
 export default function AccountCard({
   account: a, cases, isOpen, isSelected, onToggleOpen, onToggleSelected,
-  onEdit, onDelete, onManageParties, onTrackRecord, onAttachments, onHistory,
+  onEdit, onDelete, onManageParties, onTrackRecord, onAttachments, onHistory, onServicing,
 }) {
   return (
     <div onClick={onToggleOpen}
@@ -77,6 +77,7 @@ export default function AccountCard({
           <ActionButton icon="accounts" label="Manage Shareholders / Directors / Signatories" onClick={onManageParties} />
           <ActionButton icon="download" label="Track Record" onClick={onTrackRecord} />
           <ActionButton icon="instructions" label="Documents" onClick={onAttachments} />
+          <ActionButton icon="activities" label="Visit / Call Reports & Service Requests" onClick={onServicing} />
           <ActionButton icon="activities" label="History (audit trail)" onClick={onHistory} className="mb-3" />
           <p className="text-xs font-semibold text-gray-600 mb-2">Cases ({cases.length})</p>
           <div className="space-y-1.5">

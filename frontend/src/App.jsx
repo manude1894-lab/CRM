@@ -32,7 +32,7 @@ const NAV = [
   // CO / MLRO approval (BRD §12, §13, §15). Shown to anyone with the client.approve permission.
   { key: "approvals", label: "Compliance", icon: "shield", component: ApprovalsPage, perm: "client.approve" },
   { key: "activities", label: "Activities", icon: "activities", component: ActivitiesPage },
-  { key: "instructions", label: "Instruction Tracker", icon: "instructions", component: InstructionsPage },
+  { key: "instructions", label: "Service Requests", icon: "instructions", component: InstructionsPage },
   { key: "action-points", label: "Action Points", icon: "check", component: ActionPointsPage },
   { key: "invoices", label: "Invoices", icon: "invoices", component: InvoicesPage },
   { key: "reports", label: "Reports", icon: "reports", component: ReportsPage },

@@ -23,7 +23,9 @@ class InstructionBase(BaseModel):
 
 
 class InstructionCreate(InstructionBase):
-    case_id: int
+    # BRD §17 — a service request belongs to a client; the BVI case is optional.
+    account_id: Optional[int] = None
+    case_id: Optional[int] = None
 
 
 class InstructionUpdate(BaseModel):
@@ -43,7 +45,8 @@ class InstructionUpdate(BaseModel):
 
 class InstructionRead(InstructionBase):
     id: int
-    case_id: int
+    case_id: Optional[int] = None
+    account_id: Optional[int] = None
     created_at: datetime
     updated_at: datetime
 

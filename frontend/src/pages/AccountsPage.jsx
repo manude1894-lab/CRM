@@ -9,6 +9,7 @@ import AccountFormModal from "../components/accounts/AccountFormModal";
 import BulkActionBar from "../components/accounts/BulkActionBar";
 import ImportPreviewModal from "../components/accounts/ImportPreviewModal";
 import AccountHistoryModal from "../components/accounts/AccountHistoryModal";
+import ClientServicingModal from "../components/accounts/ClientServicingModal";
 import { BLANK_ACCOUNT_FORM, accountToForm } from "../components/accounts/accountForm";
 import { buildAccountsCsv, parseImportRows } from "../components/accounts/accountCsv";
 import { toast } from "../store/toast";
@@ -36,6 +37,7 @@ export default function AccountsPage({ initialAccountId, initialOpenForm } = {})
   const [trackRecordAccount, setTrackRecordAccount] = useState(null); // Account being viewed in TrackRecordModal
   const [attachmentsAccount, setAttachmentsAccount] = useState(null); // Account whose Attachments modal is open
   const [historyAccount, setHistoryAccount] = useState(null); // Account whose audit history is open
+  const [servicingAccount, setServicingAccount] = useState(null); // BRD §17 Visit/Call Reports + Service Requests
   const [selectedIds, setSelectedIds] = useState(() => new Set());
   const [bulkValues, setBulkValues] = useState(BLANK_BULK);
   const [bulkApplying, setBulkApplying] = useState(false);
@@ -219,7 +221,8 @@ export default function AccountsPage({ initialAccountId, initialOpenForm } = {})
             onManageParties={() => setPartiesAccount(a)}
             onTrackRecord={() => setTrackRecordAccount(a)}
             onAttachments={() => setAttachmentsAccount(a)}
-            onHistory={() => setHistoryAccount(a)} />
+            onHistory={() => setHistoryAccount(a)}
+            onServicing={() => setServicingAccount(a)} />
         ))}
       </div>
 
@@ -244,6 +247,10 @@ export default function AccountsPage({ initialAccountId, initialOpenForm } = {})
 
       {trackRecordAccount && (
         <TrackRecordModal account={trackRecordAccount} onClose={() => setTrackRecordAccount(null)} />
+      )}
+
+      {servicingAccount && (
+        <ClientServicingModal account={servicingAccount} cases={cases} onClose={() => setServicingAccount(null)} />
       )}
 
       {historyAccount && (

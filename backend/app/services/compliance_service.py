@@ -215,9 +215,10 @@ def set_ar_status(db: Session, case_id: int, status: str) -> ComplianceSchedule:
         if not has_open:
             db.add(Instruction(
                 case_id=case_id,
+                account_id=schedule.case.account_id if schedule.case else None,
                 instruction_type="AR Filing",
                 status="Pending",
-                comments=f"Annual Return {year} — auto-created from the compliance calendar.",
+                comments=f"Annual Return {year} — auto-created from the Filing Calendar.",
             ))
     elif status == "Confirmed":
         schedule.ar_filing_last_completed_date = date.today()

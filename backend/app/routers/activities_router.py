@@ -16,6 +16,7 @@ router = APIRouter(prefix="/activities", tags=["Activities"])
 def list_activities(
     skip: int = 0, limit: int = 100,
     case_id: Optional[int] = None,
+    account_id: Optional[int] = None,
     activity_type: Optional[str] = None,
     owner_id: Optional[int] = None,
     search: Optional[str] = None,
@@ -24,7 +25,7 @@ def list_activities(
     user: User = Depends(get_current_user),
 ):
     items, total = activity_service.list_activities(
-        db, user, skip, limit, case_id, activity_type, owner_id, search,
+        db, user, skip, limit, case_id, activity_type, owner_id, search, account_id=account_id,
     )
     if response is not None:
         response.headers["X-Total-Count"] = str(total)
