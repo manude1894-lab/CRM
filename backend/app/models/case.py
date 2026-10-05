@@ -114,6 +114,9 @@ class Case(Base):
     # Plain String (not a PG enum) so lifecycle values can be added freely — same
     # precedent as jurisdiction / service_type (migration 0003).
     status = Column(String(30), default=CaseStatus.ACTIVE.value, nullable=False)
+    # P3 — Compliance review: "Pending Approval" (new case, locked), "Returned" (rejected or
+    # withdrawn; fix and resubmit) or "Approved". Only approved cases move through the pipeline.
+    compliance_status = Column(String(30), default="Approved", server_default="Approved", nullable=False)  # create_case sets Pending
 
     # Invoicing
     invoice_status = Column(SAEnum(InvoiceStatus, name="invoice_status", values_callable=lambda obj: [e.value for e in obj]), default=InvoiceStatus.NOT_RAISED, nullable=False)

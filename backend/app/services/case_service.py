@@ -24,7 +24,7 @@ from app.models import (
 from app.schemas.case import CaseCreate, CaseUpdate, CaseBulkUpdateRequest
 from app.schemas.account import BulkUpdateResult
 from app.utils.uid import next_uid
-from app.services import notification_service, company_service, compliance_service, access_control
+from app.services import notification_service, company_service, compliance_service, access_control, case_approval_service
 
 
 def _apply_rbac_filter(query, user: User):
@@ -113,8 +113,10 @@ def create_case(db: Session, data: CaseCreate, user: User) -> Case:
     for doc_type in STANDARD_CDD_DOCUMENTS:
         db.add(CaseDocument(cdd_record_id=cdd.id, doc_type=doc_type, received=False))
 
+    case_approval_service.on_created(db, case, user)  # new cases wait for Compliance approval
     db.commit()
     db.refresh(case)
+    case_approval_service.notify_created(db, case, user)
 
     if case.rm_id and case.rm_id != user.id:
         notification_service.notify_user(
@@ -132,11 +134,21 @@ def create_case(db: Session, data: CaseCreate, user: User) -> Case:
 
 
 def update_case(db: Session, case_id: int, data: CaseUpdate, user: User) -> Case:
+    """Edit a case. On an approved case the edit goes to Compliance as a case amendment and the
+    live case is unchanged until it is approved (see case_approval_service)."""
     case = get_case(db, case_id, user)
     update_data = data.model_dump(exclude_unset=True)
     if user.role == UserRole.RM:
         update_data.pop("rm_id", None)
+    if case.compliance_status != case_approval_service.RETURNED:
+        case_approval_service.route_update(db, case, update_data, user)
+        db.refresh(case)
+        return case
+    return apply_case_update(db, case, CaseUpdate(**update_data), user)
 
+
+def apply_case_update(db: Session, case: Case, data: CaseUpdate, user: User) -> Case:
+    update_data = data.model_dump(exclude_unset=True)
     old_jurisdiction = case.jurisdiction
     old_rm_id = case.rm_id
     old_ops_owner_id = case.ops_owner_id
@@ -172,6 +184,7 @@ def change_stage(db: Session, case_id: int, new_stage: CaseStage, user: User) ->
     below, so the stage pointer and the invoice fields can never drift out of sync.
     """
     case = get_case(db, case_id, user)
+    case_approval_service.assert_can_progress(case)
     _validate_transition(case.stage, new_stage)
 
     target = new_stage.value if isinstance(new_stage, CaseStage) else new_stage
@@ -205,6 +218,7 @@ def change_stage(db: Session, case_id: int, new_stage: CaseStage, user: User) ->
 
 def raise_invoice(db: Session, case_id: int, user: User, amount: float = 0.0) -> Case:
     case = get_case(db, case_id, user)
+    case_approval_service.assert_can_progress(case)
     if case.stage != CaseStage.CDD_APPROVED:
         raise HTTPException(status_code=400, detail="Case must be at the CDD Approved stage to raise an invoice")
     _assert_cdd_approved(db, case)
@@ -225,6 +239,7 @@ def raise_invoice(db: Session, case_id: int, user: User, amount: float = 0.0) ->
 
 def mark_invoice_paid(db: Session, case_id: int, user: User) -> Case:
     case = get_case(db, case_id, user)
+    case_approval_service.assert_can_progress(case)
     if case.stage != CaseStage.INVOICE_RAISED:
         raise HTTPException(status_code=400, detail="Case must be at the Invoice Raised stage to mark the invoice paid")
     if case.invoice_status != InvoiceStatus.RAISED:

@@ -73,6 +73,7 @@ class CaseRead(CaseBase):
     invoice_raised_date: Optional[date] = None
     invoice_paid_date: Optional[date] = None
     additional_rm_ids: list[int] = []
+    compliance_status: str = "Approved"  # Pending Approval / Returned / Approved (P3)
     created_at: datetime
     updated_at: datetime
 

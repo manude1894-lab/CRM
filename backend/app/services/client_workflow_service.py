@@ -235,11 +235,21 @@ def change_status(db: Session, acc: Account, user: User, action: str, reason: Op
 # ─── Reads ──────────────────────────────────────────────────────────────────
 
 def history(db: Session, account_id: int) -> list[ApprovalRequest]:
-    return (db.query(ApprovalRequest).filter(ApprovalRequest.account_id == account_id)
+    """Client review history: onboarding submissions and amendments (drafts never reached Compliance)."""
+    return (db.query(ApprovalRequest)
+            .filter(ApprovalRequest.account_id == account_id,
+                    ApprovalRequest.request_type.in_(("client_profile", "client_amendment")),
+                    ~ApprovalRequest.status.in_((ApprovalStatus.DRAFT.value, ApprovalStatus.DISCARDED.value)))
             .order_by(ApprovalRequest.id.desc()).all())
 
 
-def inbox(db: Session, user: User, status: str = ApprovalStatus.PENDING.value) -> list[ApprovalRequest]:
-    """Checker inbox — requests on clients this user may see."""
-    reqs = db.query(ApprovalRequest).filter(ApprovalRequest.status == status).order_by(ApprovalRequest.submitted_at).all()
-    return [r for r in reqs if _can_see(db, r.account, user)]
+def inbox(db: Session, user: User, status: str = ApprovalStatus.PENDING.value,
+          request_type: Optional[str] = None) -> list[ApprovalRequest]:
+    """The Compliance inbox — every kind of request (new client, client amendment, new case, case
+    amendment) on records this user may see."""
+    from app.services import case_approval_service
+    q = db.query(ApprovalRequest).filter(ApprovalRequest.status == status)
+    if request_type:
+        q = q.filter(ApprovalRequest.request_type == request_type)
+    reqs = q.order_by(ApprovalRequest.submitted_at).all()
+    return [r for r in reqs if case_approval_service.can_see(db, r, user)]

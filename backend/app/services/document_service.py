@@ -208,10 +208,30 @@ def delete(db: Session, document_id: int, user: User) -> None:
     doc = db.query(Document).filter(Document.id == document_id).first()
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
-    if user.role != UserRole.ADMIN and doc.uploaded_by_id != user.id:
-        raise HTTPException(status_code=403, detail="Only the uploader or an Admin can delete this document")
     if doc.account_id is not None:
-        from app.services import client_workflow_service
-        client_workflow_service.assert_editable(_account_for_read(db, doc.account_id, user))
+        _assert_client_document_removable(db, doc, user)
+    elif user.role != UserRole.ADMIN and doc.uploaded_by_id != user.id:
+        raise HTTPException(status_code=403, detail="Only the uploader or an Admin can delete this document")
     db.delete(doc)
     db.commit()
+
+
+def _assert_client_document_removable(db: Session, doc: Document, user: User) -> None:
+    """BRD §16 — documents form part of the client record:
+    - before the client is first submitted, the uploader (or an Admin) may remove a document;
+    - once submitted, only an Approver-level user (document.delete_submitted) may remove it;
+    - after the client is approved, documents can no longer be removed from the client folder."""
+    from app.auth.permissions import has_permission
+    from app.models import ApprovalRequest
+    from app.services import client_workflow_service as wf
+    account = _account_for_read(db, doc.account_id, user)
+    wf.assert_editable(account)
+    if account.profile_status in (wf.APPROVED, wf.ACTIVE, wf.INACTIVE, wf.MARKED_EXIT, wf.EXITED):
+        raise HTTPException(status_code=409, detail="This client is approved — its documents can no longer be removed. Upload a newer version instead.")
+    submitted = db.query(ApprovalRequest.id).filter(ApprovalRequest.account_id == account.id,
+                                                    ApprovalRequest.request_type == "client_profile").first() is not None
+    if submitted:
+        if not has_permission(user, "document.delete_submitted"):
+            raise HTTPException(status_code=403, detail="This client has been submitted for approval — only an Approver can remove its documents")
+    elif user.role != UserRole.ADMIN and doc.uploaded_by_id != user.id:
+        raise HTTPException(status_code=403, detail="Only the uploader or an Admin can delete this document")

@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import CaseComplianceBar, { CaseComplianceChip } from "../components/cases/CaseComplianceBar";
 import { casesApi, usersApi, accountsApi } from "../api/endpoints";
 import { Icon, Badge, Modal, Field, Input, Select, Textarea, Spinner, ErrorBanner } from "../components/ui";
 import PartyRegisterModal from "../components/PartyRegisterModal";
@@ -82,14 +83,20 @@ export default function CasesPage({ initialCaseId, initialStage } = {}) {
     setModal("new");
   };
 
+  // Approved cases change only through Compliance: the edit is sent for approval, not applied.
+  const sentToCompliance = (c) => c?.compliance_status === "Approved"
+    && toast.success("Change sent to Compliance — the case updates once a CO / MLRO approves it.");
+
   const save = async () => {
     try {
       const clean = (o) => ({ ...o, onboarding_date: o.onboarding_date || null, introducer: o.introducer || null });
       if (modal === "new") {
         await casesApi.create(clean(form));
+        toast.success("Case created and sent to Compliance for approval.");
       } else {
-        const { id, case_uid, stage, status, invoice_status, invoice_raised_date, invoice_paid_date, created_at, updated_at, ...patch } = form;
+        const { id, case_uid, stage, status, invoice_status, invoice_raised_date, invoice_paid_date, created_at, updated_at, compliance_status, ...patch } = form;
         await casesApi.update(form.id, clean(patch));
+        sentToCompliance(form);
       }
       setModal(null); load();
     } catch (e) {
@@ -124,7 +131,7 @@ export default function CasesPage({ initialCaseId, initialStage } = {}) {
   };
 
   const setStatus = async (c, status) => {
-    try { await casesApi.update(c.id, { status }); load(); }
+    try { await casesApi.update(c.id, { status }); sentToCompliance(c); load(); }
     catch (e) { toast.error(e.response?.data?.detail || "Update failed"); }
   };
 
@@ -274,6 +281,7 @@ export default function CasesPage({ initialCaseId, initialStage } = {}) {
                         <Badge text={c.status} />
                         <Badge text={c.invoice_status} />
                       </div>
+                      <div className="mt-1"><CaseComplianceChip status={c.compliance_status} /></div>
                       <div className="mt-2 flex flex-wrap gap-1" onClick={(e) => e.stopPropagation()}>
                         <button onClick={() => setRegisterCase(c)}
                           className="text-xs px-2 py-0.5 rounded border border-gray-200 hover:border-brand-300 hover:text-brand-600 text-gray-500">
@@ -346,7 +354,7 @@ export default function CasesPage({ initialCaseId, initialStage } = {}) {
                     <input type="checkbox" checked={selectedIds.has(c.id)} onChange={() => toggleSelected(c.id)} />
                   </td>
                   <td className="py-3 px-4 text-xs font-medium text-gray-800">{c.case_uid}</td>
-                  <td className="py-3 px-4 text-xs text-gray-600">{c.company_name}</td>
+                  <td className="py-3 px-4 text-xs text-gray-600">{c.company_name}<div><CaseComplianceChip status={c.compliance_status} /></div></td>
                   <td className="py-3 px-4 text-xs text-gray-500">{c.introducer || "—"}</td>
                   <td className="py-3 px-4"><Badge text={c.stage} /></td>
                   <td className="py-3 px-4"><Badge text={c.status} /></td>
@@ -437,6 +445,8 @@ export default function CasesPage({ initialCaseId, initialStage } = {}) {
 
       {modal && (
         <Modal title={modal === "new" ? "New Case" : `Edit ${form.case_uid}`} onClose={() => setModal(null)}>
+          {modal === "edit" && <CaseComplianceBar caseId={form.id} onChanged={() => { setModal(null); load(); }} />}
+          {modal === "new" && <p className="text-xs text-gray-500 mb-3">A new case is sent to Compliance for approval before it can move through the pipeline.</p>}
           <div className="grid grid-cols-2 gap-x-4">
             <Field label="Client">
               <Select value={form.account_id || ""} onChange={(e) => {

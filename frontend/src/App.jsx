@@ -25,10 +25,12 @@ const NAV = [
   { key: "prospects", label: "Prospects", icon: "kanban", component: ProspectsPage },
   { key: "cases", label: "Cases", icon: "cases", component: CasesPage },
   { key: "cdd", label: "CDD / Screening", icon: "cdd", component: CDDPage, roles: ["admin", "screening", "rm"] },
-  { key: "compliance", label: "Compliance", icon: "compliance", component: CompliancePage },
+  // Licence renewal / ESR / Annual Return / ROM-RBO due dates (BVI process).
+  { key: "compliance", label: "Filing Calendar", icon: "calendar", component: CompliancePage },
   { key: "accounts", label: "Clients", icon: "accounts", component: AccountsPage },
-  // BRD §15 checker inbox — shown to anyone with the client.approve permission.
-  { key: "approvals", label: "Approvals", icon: "check", component: ApprovalsPage, perm: "client.approve" },
+  // Compliance review desk: new clients, client amendments, new cases and case changes awaiting
+  // CO / MLRO approval (BRD §12, §13, §15). Shown to anyone with the client.approve permission.
+  { key: "approvals", label: "Compliance", icon: "shield", component: ApprovalsPage, perm: "client.approve" },
   { key: "activities", label: "Activities", icon: "activities", component: ActivitiesPage },
   { key: "instructions", label: "Instruction Tracker", icon: "instructions", component: InstructionsPage },
   { key: "action-points", label: "Action Points", icon: "check", component: ActionPointsPage },

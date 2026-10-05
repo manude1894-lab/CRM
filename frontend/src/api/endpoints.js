@@ -53,7 +53,21 @@ export const workflowApi = {
   reject: (accountId, reason_code, reason_text) => api.post(`/accounts/${accountId}/reject`, { reason_code, reason_text }).then((r) => r.data),
   withdraw: (accountId) => api.post(`/accounts/${accountId}/withdraw`).then((r) => r.data),
   status: (accountId, action, reason) => api.post(`/accounts/${accountId}/status`, { action, reason: reason || null }).then((r) => r.data),
-  inbox: (status = "Pending") => api.get("/approvals", { params: { status } }).then((r) => r.data),
+  inbox: (status = "Pending", request_type) => api.get("/approvals", { params: { status, request_type: request_type || undefined } }).then((r) => r.data),
+};
+
+// ─── Compliance: client amendments (BRD §13) and case approvals ───────────
+export const amendmentApi = {
+  get: (accountId) => api.get(`/accounts/${accountId}/amendment`).then((r) => r.data),
+  start: (accountId) => api.post(`/accounts/${accountId}/amendment`).then((r) => r.data),
+  // action: submit | approve | reject | withdraw | discard; body: { comment } or { reason_code, reason_text }
+  act: (accountId, action, body = {}) => api.post(`/accounts/${accountId}/amendment/${action}`, body).then((r) => r.data),
+};
+
+export const caseComplianceApi = {
+  get: (caseId) => api.get(`/cases/${caseId}/compliance`).then((r) => r.data),
+  // action: approve | reject | withdraw | resubmit
+  act: (caseId, action, body = {}) => api.post(`/cases/${caseId}/compliance/${action}`, body).then((r) => r.data),
 };
 
 // ─── Cases ─────────────────────────────────────────────────────────────
@@ -111,8 +125,9 @@ export const ubosApi = {
 export const accountPartiesApi = {
   list: (accountId) => api.get(`/accounts/${accountId}/parties`).then((r) => r.data),
   create: (accountId, data) => api.post(`/accounts/${accountId}/parties`, data).then((r) => r.data),
-  update: (id, data) => api.patch(`/account-parties/${id}`, data).then((r) => r.data),
-  delete: (id) => api.delete(`/account-parties/${id}`),
+  // accountId is only needed for a party added in an open amendment (negative id, not saved yet).
+  update: (id, data, accountId) => api.patch(`/account-parties/${id}`, data, { params: { account_id: accountId } }).then((r) => r.data),
+  delete: (id, accountId) => api.delete(`/account-parties/${id}`, { params: { account_id: accountId } }),
 };
 
 // ─── Instructions (service-request tracker) ───────────────────────────

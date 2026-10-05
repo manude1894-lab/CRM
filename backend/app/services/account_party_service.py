@@ -60,6 +60,13 @@ def list_parties(db: Session, account_id: int) -> list[AccountParty]:
     return db.query(AccountParty).filter(AccountParty.account_id == account_id).order_by(AccountParty.id).all()
 
 
+def list_parties_for(db: Session, account_id: int, user: User) -> list:
+    from app.services import amendment_service
+    account = account_service.get_account(db, account_id, user)  # visibility check
+    staged = amendment_service.my_draft_preview(db, account, user)
+    return staged["parties"] if staged else list_parties(db, account_id)
+
+
 def get_party(db: Session, party_id: int) -> AccountParty:
     p = db.query(AccountParty).filter(AccountParty.id == party_id).first()
     if not p:
@@ -67,7 +74,21 @@ def get_party(db: Session, party_id: int) -> AccountParty:
     return p
 
 
-def create_party(db: Session, account_id: int, data: AccountPartyCreate, user: User) -> AccountParty:
+validate_party = _validate_party  # used by amendment_service when replaying staged party changes
+
+
+def _amendment_target(db: Session, account_id: int, user: User):
+    """BRD §13 — on an approved client, party changes are staged in the open amendment."""
+    from app.services import amendment_service  # local: amendment_service imports this module
+    account = account_service.get_account(db, account_id, user)
+    client_workflow_service.assert_editable(account)
+    return amendment_service, account if amendment_service.is_amendable(account) else None
+
+
+def create_party(db: Session, account_id: int, data: AccountPartyCreate, user: User):
+    amendments, staged_on = _amendment_target(db, account_id, user)
+    if staged_on is not None:
+        return amendments.stage_party_create(db, staged_on, data, user)
     account = _get_account_for_write(db, account_id, user)
     p = AccountParty(account_id=account_id, **data.model_dump())
     _validate_party(account, p)
@@ -79,8 +100,14 @@ def create_party(db: Session, account_id: int, data: AccountPartyCreate, user: U
     return p
 
 
-def update_party(db: Session, party_id: int, data: AccountPartyUpdate, user: User) -> AccountParty:
-    p = get_party(db, party_id)
+def update_party(db: Session, party_id: int, data: AccountPartyUpdate, user: User, account_id: int | None = None):
+    # A negative id is a party added in the open amendment and not approved yet.
+    p = None if party_id < 0 else get_party(db, party_id)
+    amendments, staged_on = _amendment_target(db, p.account_id if p else account_id, user)
+    if staged_on is not None:
+        return amendments.stage_party_update(db, staged_on, party_id, data, user)
+    if p is None:
+        raise HTTPException(status_code=404, detail="Party not found")
     account = _get_account_for_write(db, p.account_id, user)
     update_data = data.model_dump(exclude_unset=True)
     for field, value in update_data.items():
@@ -97,8 +124,14 @@ def update_party(db: Session, party_id: int, data: AccountPartyUpdate, user: Use
     return p
 
 
-def delete_party(db: Session, party_id: int, user: User) -> None:
-    p = get_party(db, party_id)
+def delete_party(db: Session, party_id: int, user: User, account_id: int | None = None) -> None:
+    p = None if party_id < 0 else get_party(db, party_id)
+    amendments, staged_on = _amendment_target(db, p.account_id if p else account_id, user)
+    if staged_on is not None:
+        amendments.stage_party_delete(db, staged_on, party_id, user)
+        return
+    if p is None:
+        raise HTTPException(status_code=404, detail="Party not found")
     account = _get_account_for_write(db, p.account_id, user)
     was_pep = p.is_pep
     db.delete(p)

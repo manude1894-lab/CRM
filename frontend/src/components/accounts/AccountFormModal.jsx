@@ -4,6 +4,7 @@ import { Icon, Modal, Field, Input, Select, MultiSelect, CountrySelect, Textarea
 import NameLookup from "./NameLookup";
 import CompletenessChecklist from "./CompletenessChecklist";
 import WorkflowBar from "./WorkflowBar";
+import AmendmentBar from "./AmendmentBar";
 import { useAuthStore } from "../../store/auth";
 import { MONTHS, parseFYE, toFYE, fmtFYE, daysIn } from "../../utils/fye";
 import { toast } from "../../store/toast";
@@ -13,7 +14,7 @@ import {
 } from "../../utils/constants";
 import {
   PRIORITY_OPTIONS, RISK_OPTIONS, KYC_STATUS_OPTIONS, BLANK_ADDRESS, SECTION_FIELDS,
-  buildAccountPayload, buildSectionPatch, validateCoreFields,
+  buildAccountPayload, buildSectionPatch, validateCoreFields, accountToForm,
 } from "./accountForm";
 import { useMasters } from "../../hooks/useMasters";
 import { selectableCodes } from "../../hooks/masterUtils";
@@ -82,7 +83,28 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
   // The search name follows the legal name until the user edits it themselves.
   const [searchTouched, setSearchTouched] = useState(!!initialForm.search_name);
   const [refreshKey, setRefreshKey] = useState(0);
-  const locked = ["Awaiting Approval", "Exited"].includes(form.profile_status);
+  // BRD §13 — an approved client is changed only through an amendment that Compliance approves.
+  const [amendment, setAmendment] = useState(null);
+  const [previewOf, setPreviewOf] = useState(null); // request id whose staged values are loaded in the form
+  const approvedClient = ["Approved", "Active", "Inactive", "Marked for Exit"].includes(form.profile_status);
+  const myDraft = amendment?.request?.status === "Draft" && amendment.actions.includes("submit");
+  const amendLocked = !!form._id && approvedClient && !myDraft;
+  const locked = ["Awaiting Approval", "Exited"].includes(form.profile_status) || amendLocked;
+  const onAmendmentState = (s) => {
+    setAmendment(s);
+    // Show the maker their staged values (once per draft; later saves keep the form as typed).
+    if (s?.preview && s.request && previewOf !== s.request.id) {
+      setPreviewOf(s.request.id);
+      setForm(accountToForm(s.preview.account));
+    }
+  };
+  const onAmendmentDecided = async () => {
+    // After approve / discard / withdraw, reload the live client so the form shows what is current.
+    setPreviewOf(null);
+    try { setForm(accountToForm(await accountsApi.get(form._id))); } catch { /* keep the form as it is */ }
+    setRefreshKey((k) => k + 1);
+    onChanged();
+  };
   const onWorkflowChanged = (state) => {
     setForm((f) => ({ ...f, profile_status: state.status, _status_updated_at: state.status_updated_at }));
     setRefreshKey((k) => k + 1);
@@ -178,7 +200,10 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
           </div>
         )}
         {form._id && <WorkflowBar accountId={form._id} refreshKey={refreshKey} onChanged={onWorkflowChanged} />}
-        {!locked && <CompletenessChecklist accountId={form._id} refreshKey={refreshKey} />}
+        {form._id && approvedClient && (
+          <AmendmentBar accountId={form._id} refreshKey={refreshKey} onState={onAmendmentState} onDecided={onAmendmentDecided} />
+        )}
+        {!locked && !approvedClient && <CompletenessChecklist accountId={form._id} refreshKey={refreshKey} />}
         <Field label="Client Type">
           <Select value={form.account_type} onChange={set("account_type")}>
             <option>Corporate</option>
@@ -484,7 +509,7 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
         <button onClick={save} disabled={saving || locked}
           className="px-4 py-2 text-sm text-white rounded-lg font-medium disabled:opacity-50"
           style={{ background: "#1a3a5c" }}>
-          {saving ? "Saving..." : mode === "edit" ? "Save Changes" : "Create Client"}
+          {saving ? "Saving..." : mode === "edit" ? (myDraft ? "Save to Amendment" : "Save Changes") : "Create Client"}
         </button>
       </div>
     </Modal>

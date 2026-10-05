@@ -299,9 +299,28 @@ def create_account(db: Session, data: AccountCreate, user: User) -> Account:
     return acc
 
 
-def update_account(db: Session, account_id: int, data: AccountUpdate, user: User) -> Account:
+def update_account(db: Session, account_id: int, data: AccountUpdate, user: User):
+    """Save a section of the client profile.
+
+    Before approval the change applies directly. Once the client is approved (BRD §13) the change is
+    staged in the user's open amendment instead and only reaches the live record when Compliance
+    approves it — the staged view of the client is returned so the form keeps showing it."""
     acc = get_account(db, account_id, user)
     client_workflow_service.assert_editable(acc)
+    from app.services import amendment_service  # local: amendment_service imports this module
+    if amendment_service.is_amendable(acc):
+        return amendment_service.stage_account_update(db, acc, data, user)
+    update_data = apply_update(db, acc, data, user)
+    if update_data:
+        client_workflow_service.note_edit(acc, user)
+    db.commit()
+    db.refresh(acc)
+    return acc
+
+
+def apply_update(db: Session, acc: Account, data: AccountUpdate, user: User) -> dict:
+    """Validate and apply a profile update to `acc` without committing. Shared by direct saves and
+    by amendments (staged on save, then applied for real when Compliance approves)."""
     _assert_date_sanity(data)
     update_data = data.model_dump(exclude_unset=True)
     if user.role == UserRole.RM:
@@ -322,8 +341,6 @@ def update_account(db: Session, account_id: int, data: AccountUpdate, user: User
             raise HTTPException(status_code=409, detail=f"A client named '{clash.company_name}' already exists ({clash.client_id or clash.account_uid})")
     for field, value in update_data.items():
         setattr(acc, field, value)
-    if update_data:
-        client_workflow_service.note_edit(acc, user)
     # Clients created before Client IDs existed get one as soon as they have an Anchor Entity.
     # Once issued, a Client ID never changes (even if the Anchor Entity later does).
     if not acc.client_id and acc.anchor_entity:
@@ -333,9 +350,7 @@ def update_account(db: Session, account_id: int, data: AccountUpdate, user: User
     if "risk_rating" in update_data or "cdd_completion_date" in update_data:
         _compute_next_aml_review_date(acc)
     _normalize_non_anchor_rms(acc)
-    db.commit()
-    db.refresh(acc)
-    return acc
+    return update_data
 
 
 def bulk_update_accounts(db: Session, user: User, data: AccountBulkUpdateRequest) -> list[BulkUpdateResult]:

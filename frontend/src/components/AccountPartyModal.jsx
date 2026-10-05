@@ -69,7 +69,7 @@ export default function AccountPartyModal({ account, onClose }) {
     try {
       const payload = cleanPayload(form);
       if (editing === "new") await accountPartiesApi.create(account.id, payload);
-      else await accountPartiesApi.update(editing, payload);
+      else await accountPartiesApi.update(editing, payload, account.id);
       cancelForm();
       load();
     } catch (e) {
@@ -79,7 +79,7 @@ export default function AccountPartyModal({ account, onClose }) {
 
   const remove = async (row) => {
     if (!(await confirmDialog(`Remove ${row.full_name}?`))) return;
-    try { await accountPartiesApi.delete(row.id); load(); }
+    try { await accountPartiesApi.delete(row.id, account.id); load(); }
     catch (e) { toast.error(e.response?.data?.detail || "Delete failed"); }
   };
 
