@@ -17,6 +17,7 @@ import ActionPointsPage from "./pages/ActionPointsPage";
 import InvoicesPage from "./pages/InvoicesPage";
 import ReportsPage from "./pages/ReportsPage";
 import AdminPage from "./pages/AdminPage";
+import ApprovalsPage from "./pages/ApprovalsPage";
 import { ROLE_LABEL } from "./utils/constants";
 
 const NAV = [
@@ -26,6 +27,8 @@ const NAV = [
   { key: "cdd", label: "CDD / Screening", icon: "cdd", component: CDDPage, roles: ["admin", "screening", "rm"] },
   { key: "compliance", label: "Compliance", icon: "compliance", component: CompliancePage },
   { key: "accounts", label: "Clients", icon: "accounts", component: AccountsPage },
+  // BRD §15 checker inbox — shown to anyone with the client.approve permission.
+  { key: "approvals", label: "Approvals", icon: "check", component: ApprovalsPage, perm: "client.approve" },
   { key: "activities", label: "Activities", icon: "activities", component: ActivitiesPage },
   { key: "instructions", label: "Instruction Tracker", icon: "instructions", component: InstructionsPage },
   { key: "action-points", label: "Action Points", icon: "check", component: ActionPointsPage },
@@ -38,13 +41,15 @@ export default function App() {
   const user = useAuthStore((s) => s.user);
   const isAuthenticated = useAuthStore((s) => !!s.accessToken);
   const logout = useAuthStore((s) => s.logout);
+  // Hooks must all run before the early "not logged in" return below (React rules of hooks).
+  const can = useAuthStore((s) => s.can);
   const [page, setPage] = useState("dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [jumpTo, setJumpTo] = useState(null);
 
   if (!isAuthenticated) return <LoginPage />;
 
-  const navItems = NAV.filter((n) => !n.roles || n.roles.includes(user?.role));
+  const navItems = NAV.filter((n) => (!n.roles || n.roles.includes(user?.role)) && (!n.perm || can(n.perm)));
   const activeItem = navItems.find((n) => n.key === page) || navItems[0];
   const PageComponent = activeItem.component;
 
@@ -122,6 +127,7 @@ export default function App() {
             onNavigate={(t) => { setJumpTo(t); setPage(t.page); }}
             initialStage={jumpTo?.page === "cases" ? jumpTo.stage : undefined}
             initialAccountId={jumpTo?.page === "accounts" ? jumpTo.accountId : undefined}
+            initialOpenForm={jumpTo?.page === "accounts" ? !!jumpTo.openForm : undefined}
             initialCaseId={jumpTo?.page === "cases" ? jumpTo.caseId : undefined}
           />
           </PageErrorBoundary>

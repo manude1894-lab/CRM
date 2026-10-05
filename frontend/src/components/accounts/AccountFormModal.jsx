@@ -3,6 +3,7 @@ import { accountsApi } from "../../api/endpoints";
 import { Icon, Modal, Field, Input, Select, MultiSelect, CountrySelect, Textarea } from "../ui";
 import NameLookup from "./NameLookup";
 import CompletenessChecklist from "./CompletenessChecklist";
+import WorkflowBar from "./WorkflowBar";
 import { useAuthStore } from "../../store/auth";
 import { MONTHS, parseFYE, toFYE, fmtFYE, daysIn } from "../../utils/fye";
 import { toast } from "../../store/toast";
@@ -81,6 +82,12 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
   // The search name follows the legal name until the user edits it themselves.
   const [searchTouched, setSearchTouched] = useState(!!initialForm.search_name);
   const [refreshKey, setRefreshKey] = useState(0);
+  const locked = ["Awaiting Approval", "Exited"].includes(form.profile_status);
+  const onWorkflowChanged = (state) => {
+    setForm((f) => ({ ...f, profile_status: state.status, _status_updated_at: state.status_updated_at }));
+    setRefreshKey((k) => k + 1);
+    onChanged();
+  };
   const canApprove = useAuthStore((s) => s.can("client.approve"));
 
   const set = (key) => (e) => setForm({ ...form, [key]: e.target.value });
@@ -157,7 +164,7 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
     }
   };
 
-  const sectionProps = (key) => ({ onSave: () => saveSection(key), status: sectionStatus[key], error: sectionError[key] });
+  const sectionProps = (key) => ({ onSave: locked ? undefined : () => saveSection(key), status: sectionStatus[key], error: sectionError[key] });
   const today = new Date().toISOString().slice(0, 10);
 
   return (
@@ -167,11 +174,11 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
           // BRD §11 "status visible on every client profile screen" + §19 Client ID
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 px-3 py-2 rounded-lg bg-gray-50 border border-gray-100 text-xs text-gray-600">
             <span>Client ID <span className="font-mono font-semibold text-gray-800">{form._client_id || "—"}</span></span>
-            <span>Status <span className="font-semibold text-gray-800">{form.profile_status}</span></span>
             {form._status_updated_at && <span>Status last updated {fmtDate(form._status_updated_at)}</span>}
           </div>
         )}
-        <CompletenessChecklist accountId={form._id} refreshKey={refreshKey} />
+        {form._id && <WorkflowBar accountId={form._id} refreshKey={refreshKey} onChanged={onWorkflowChanged} />}
+        {!locked && <CompletenessChecklist accountId={form._id} refreshKey={refreshKey} />}
         <Field label="Client Type">
           <Select value={form.account_type} onChange={set("account_type")}>
             <option>Corporate</option>
@@ -286,7 +293,7 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
         </Field>
 
         <div className="flex items-center gap-2 mb-3 pb-3 border-b border-gray-100">
-          <button type="button" onClick={() => saveSection("core", true)} disabled={sectionStatus.core === "saving"}
+          <button type="button" onClick={() => saveSection("core", true)} disabled={locked || sectionStatus.core === "saving"}
             className="px-3 py-1.5 text-xs border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600 disabled:opacity-50">
             {sectionStatus.core === "saving" ? "Saving…" : "Save Client Info"}
           </button>
@@ -437,14 +444,10 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
           <MultiSelect options={selectableCodes(services.items, form.services_obtained)} value={form.services_obtained} onChange={setValue("services_obtained")} />
         </Section>
 
-        <Section title="Profile Status & Engagement" hasData={form.profile_status !== "New" || !!form.engagement_letter_signed || !!form.engagement_letter_valid_until}
+        <Section title="Engagement" hasData={!!form.engagement_letter_signed || !!form.engagement_letter_valid_until}
           {...sectionProps("profileStatus")}>
+          <p className="text-[11px] text-gray-400 mb-2">Profile status ({form.profile_status}) changes only through Submit / Approve and the status buttons at the top.</p>
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Profile Status">
-              <Select value={form.profile_status} onChange={set("profile_status")}>
-                {PROFILE_STATUS_OPTIONS.map((s) => <option key={s}>{s}</option>)}
-              </Select>
-            </Field>
             <Field label="Engagement Letter Valid Until"><Input type="date" value={form.engagement_letter_valid_until || ""} onChange={set("engagement_letter_valid_until")} /></Field>
           </div>
           <label className="flex items-center gap-2 text-xs text-gray-700">
@@ -478,7 +481,7 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
       </div>
       <div className="flex justify-end gap-3 mt-5">
         <button onClick={onClose} className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
-        <button onClick={save} disabled={saving}
+        <button onClick={save} disabled={saving || locked}
           className="px-4 py-2 text-sm text-white rounded-lg font-medium disabled:opacity-50"
           style={{ background: "#1a3a5c" }}>
           {saving ? "Saving..." : mode === "edit" ? "Save Changes" : "Create Client"}

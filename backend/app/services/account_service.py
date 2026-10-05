@@ -13,7 +13,7 @@ from app.audit import log_event
 from app.schemas.account import AccountCreate, AccountUpdate, AccountImportRow, AccountImportRowResult, AccountBulkUpdateRequest, BulkUpdateResult
 from app.utils.uid import next_uid
 from app.utils.fuzzy_match import top_matches
-from app.services import compliance_service, access_control, master_service
+from app.services import compliance_service, access_control, master_service, client_workflow_service
 
 # Client-database spec §24.6 — review cadence by risk rating.
 _AML_REVIEW_CADENCE_YEARS = {"High": 1, "Medium": 2, "Low": 3}
@@ -96,11 +96,19 @@ def next_client_id(db: Session, entity_code: str) -> str:
     concurrent saves can't take the same number (FOR UPDATE is a no-op on SQLite, used in tests)."""
     seq = db.query(ClientIdSequence).filter(ClientIdSequence.entity_code == entity_code).with_for_update().first()
     if seq is None:
-        seq = ClientIdSequence(entity_code=entity_code, last_value=0)
+        # First ID for this entity — start after any IDs already present (e.g. data fixed by hand),
+        # so the counter can never hand out a number that's taken.
+        prefix = f"{entity_code}/"
+        existing = [cid for (cid,) in db.query(Account.client_id).filter(Account.client_id.like(f"{prefix}%")).all()]
+        highest = max((int(c[len(prefix):]) for c in existing if c[len(prefix):].isdigit()), default=0)
+        seq = ClientIdSequence(entity_code=entity_code, last_value=highest)
         db.add(seq)
         db.flush()
-    seq.last_value += 1
-    return f"{entity_code}/{seq.last_value:05d}"
+    while True:
+        seq.last_value += 1
+        candidate = f"{entity_code}/{seq.last_value:05d}"
+        if not db.query(Account.id).filter(Account.client_id == candidate).first():
+            return candidate
 
 
 def lookup_by_name(db: Session, user: User, q: str, exclude_id: Optional[int] = None, limit: int = 10) -> list[dict]:
@@ -264,15 +272,10 @@ def create_account(db: Session, data: AccountCreate, user: User) -> Account:
 
     _assert_date_sanity(data)
 
-    if data.account_type == "Corporate" and data.profile_status in ("Approved", "Active"):
-        # A brand-new account has no parties yet, so ownership can never be complete at creation time.
-        raise HTTPException(
-            status_code=400,
-            detail="Shareholder effective ownership must total 100% before the profile can be Approved/Active (currently 0%).",
-        )
 
     owner_id = data.owner_id or user.id
     payload = data.model_dump(exclude={"owner_id", "allow_duplicate", "duplicate_reason", "search_name"})
+    payload["profile_status"] = client_workflow_service.NEW  # BRD §11 — status only moves via the workflow
     _validate_master_fields(db, payload)
     acc = Account(
         account_uid=next_uid(db, Account, "account_uid", "ACC"),
@@ -298,13 +301,16 @@ def create_account(db: Session, data: AccountCreate, user: User) -> Account:
 
 def update_account(db: Session, account_id: int, data: AccountUpdate, user: User) -> Account:
     acc = get_account(db, account_id, user)
+    client_workflow_service.assert_editable(acc)
     _assert_date_sanity(data)
     update_data = data.model_dump(exclude_unset=True)
     if user.role == UserRole.RM:
         update_data.pop("owner_id", None)
+    # BRD §11/§15 — status changes only through Submit / Approve / Reject / status actions.
+    requested_status = update_data.pop("profile_status", None)
+    if requested_status is not None and requested_status != acc.profile_status:
+        raise HTTPException(status_code=400, detail="Status can't be edited directly — use Submit / Approve / Reject or the status actions on the client profile")
     _validate_master_fields(db, update_data, existing=acc)
-    if update_data.get("profile_status") in ("Approved", "Active"):
-        _assert_shareholder_ownership_complete(acc)
     if "search_name" in update_data:
         if not update_data["search_name"]:
             raise HTTPException(status_code=400, detail="Unique Search Name can't be empty")
@@ -314,11 +320,10 @@ def update_account(db: Session, account_id: int, data: AccountUpdate, user: User
         clash = _same_name_query(db, update_data["company_name"], exclude_id=acc.id).first()
         if clash:
             raise HTTPException(status_code=409, detail=f"A client named '{clash.company_name}' already exists ({clash.client_id or clash.account_uid})")
-    status_changed = "profile_status" in update_data and update_data["profile_status"] != acc.profile_status
     for field, value in update_data.items():
         setattr(acc, field, value)
-    if status_changed:
-        _set_status(acc, user)
+    if update_data:
+        client_workflow_service.note_edit(acc, user)
     # Clients created before Client IDs existed get one as soon as they have an Anchor Entity.
     # Once issued, a Client ID never changes (even if the Anchor Entity later does).
     if not acc.client_id and acc.anchor_entity:

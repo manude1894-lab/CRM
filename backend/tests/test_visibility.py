@@ -105,3 +105,9 @@ def test_case_visibility_includes_team(db, make_user, make_account):
     assert not sees(stranger)
     assert access_control.user_can_access_case(case, boss)
     assert not access_control.user_can_access_case(case, stranger)
+
+
+def test_approvers_see_every_client(db, make_user, make_account, make_role):
+    make_account("Someone else's", spoc=make_user())
+    checker = make_user(business_role=make_role("Checker only", ["client.approve"]))
+    assert visible(db, checker) == {"Someone else's"}

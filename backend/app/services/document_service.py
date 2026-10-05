@@ -153,7 +153,9 @@ def create_for_account(
     user: User,
     notes: str | None = None,
 ) -> Document:
-    _account_for_read(db, account_id, user)
+    account = _account_for_read(db, account_id, user)
+    from app.services import client_workflow_service
+    client_workflow_service.assert_editable(account)  # BRD §12 — frozen while with the checker
 
     category = _normalise_category(db, category)
 
@@ -208,5 +210,8 @@ def delete(db: Session, document_id: int, user: User) -> None:
         raise HTTPException(status_code=404, detail="Document not found")
     if user.role != UserRole.ADMIN and doc.uploaded_by_id != user.id:
         raise HTTPException(status_code=403, detail="Only the uploader or an Admin can delete this document")
+    if doc.account_id is not None:
+        from app.services import client_workflow_service
+        client_workflow_service.assert_editable(_account_for_read(db, doc.account_id, user))
     db.delete(doc)
     db.commit()

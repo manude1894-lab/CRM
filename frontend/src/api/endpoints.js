@@ -45,6 +45,17 @@ export const auditApi = {
     api.get(`/accounts/${accountId}/audit`, { params }).then((r) => ({ items: r.data, total: +(r.headers["x-total-count"] || r.data.length) })),
 };
 
+// ─── Client workflow / maker-checker (BRD §11, §12, §15) ──────────────
+export const workflowApi = {
+  get: (accountId) => api.get(`/accounts/${accountId}/workflow`).then((r) => r.data),
+  submit: (accountId, comment) => api.post(`/accounts/${accountId}/submit`, { comment: comment || null }).then((r) => r.data),
+  approve: (accountId, comment) => api.post(`/accounts/${accountId}/approve`, { comment: comment || null }).then((r) => r.data),
+  reject: (accountId, reason_code, reason_text) => api.post(`/accounts/${accountId}/reject`, { reason_code, reason_text }).then((r) => r.data),
+  withdraw: (accountId) => api.post(`/accounts/${accountId}/withdraw`).then((r) => r.data),
+  status: (accountId, action, reason) => api.post(`/accounts/${accountId}/status`, { action, reason: reason || null }).then((r) => r.data),
+  inbox: (status = "Pending") => api.get("/approvals", { params: { status } }).then((r) => r.data),
+};
+
 // ─── Cases ─────────────────────────────────────────────────────────────
 export const casesApi = {
   list: (params = {}) => api.get("/cases", { params }).then((r) => r.data),

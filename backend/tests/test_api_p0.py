@@ -36,7 +36,8 @@ def test_business_role_grants_permission(client, make_user, make_role):
 
 def test_me_exposes_permissions(client, make_user, make_role):
     co = make_user(business_role=make_role("CO", ["client.approve", "audit.view"]))
-    assert client.get("/api/v1/auth/me", headers=auth(co)).json()["permissions"] == ["audit.view", "client.approve"]
+    # client.approve implies view.all_clients (a checker must see what they approve)
+    assert client.get("/api/v1/auth/me", headers=auth(co)).json()["permissions"] == ["audit.view", "client.approve", "view.all_clients"]
 
 
 def test_changes_through_the_api_are_attributed(client, db, make_user):

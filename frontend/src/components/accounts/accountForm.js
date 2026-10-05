@@ -48,7 +48,8 @@ export const SECTION_FIELDS = {
   ],
   introducer: ["has_introducer", "introducer_name"],
   services: ["services_obtained"],
-  profileStatus: ["profile_status", "engagement_letter_valid_until", "engagement_letter_signed"],
+  // Status itself only changes through the workflow (P2) — this section saves engagement only.
+  profileStatus: ["engagement_letter_valid_until", "engagement_letter_signed"],
   aml: ["aml_classification", "cdd_completion_date", "edd_reason", "kyc_verified_by"],
 };
 
@@ -97,7 +98,8 @@ const toSpocId = (v) => (v ? +v : null);
 
 // Full-form payload for create/update. `_id` and the server-computed next_aml_review_date are stripped.
 export function buildAccountPayload(form) {
-  const { next_aml_review_date, tags, _id, _client_id, _status_updated_at, ...rest } = form;
+  // profile_status is never sent: it changes only through Submit / Approve / status actions (BRD §11).
+  const { next_aml_review_date, tags, _id, _client_id, _status_updated_at, profile_status, ...rest } = form;
   const payload = cleanPayload({ ...rest, tags: (tags || []).join(", ") || null });
   return { ...payload, spoc_id: toSpocId(payload.spoc_id) };
 }

@@ -18,7 +18,7 @@ import { useAuthStore } from "../store/auth";
 
 const BLANK_BULK = { spoc_id: "", risk_rating: "", kyc_status: "" };
 
-export default function AccountsPage({ initialAccountId } = {}) {
+export default function AccountsPage({ initialAccountId, initialOpenForm } = {}) {
   const appliedInitialRef = useRef(false);
   const [accounts, setAccounts] = useState([]);
   const [cases, setCases] = useState([]);
@@ -61,8 +61,10 @@ export default function AccountsPage({ initialAccountId } = {}) {
   useEffect(() => { load(); }, []);
 
   useEffect(() => {
-    if (!appliedInitialRef.current && initialAccountId && accounts.some((a) => a.id === initialAccountId)) {
+    const target = accounts.find((a) => a.id === initialAccountId);
+    if (!appliedInitialRef.current && initialAccountId && target) {
       setSelectedId(initialAccountId);
+      if (initialOpenForm) openEdit(target); // e.g. "Review" from the Approvals inbox
       appliedInitialRef.current = true;
     }
   }, [initialAccountId, accounts]);

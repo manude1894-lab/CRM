@@ -7,12 +7,15 @@ from fastapi import HTTPException
 
 from app.models import Account, AccountParty, User
 from app.schemas.account_party import AccountPartyCreate, AccountPartyUpdate
-from app.services import account_service
+from app.services import account_service, client_workflow_service
 
 
 def _get_account_for_write(db: Session, account_id: int, user: User) -> Account:
-    # Reuses account_service.get_account — same 404 + RM-ownership check, no duplication.
-    return account_service.get_account(db, account_id, user)
+    # Reuses account_service.get_account — same 404 + visibility check, no duplication.
+    account = account_service.get_account(db, account_id, user)
+    client_workflow_service.assert_editable(account)  # locked while awaiting approval (BRD §12)
+    client_workflow_service.note_edit(account, user)  # New -> WIP on first change (BRD §11)
+    return account
 
 
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")

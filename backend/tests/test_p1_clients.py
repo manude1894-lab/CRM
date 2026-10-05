@@ -142,12 +142,15 @@ def test_licensing_authority_must_come_from_master(db, make_user, seed_master):
 def test_status_timestamp_moves_only_on_status_change(db, make_user):
     admin = make_user(role=UserRole.ADMIN)
     acc = create(db, admin)
-    first = acc.status_updated_at
-    assert first is not None and acc.status_updated_by_id == admin.id
+    assert acc.profile_status == "New" and acc.status_updated_by_id == admin.id
     account_service.update_account(db, acc.id, AccountUpdate(industry="Banking"), admin)
-    assert acc.status_updated_at == first
-    account_service.update_account(db, acc.id, AccountUpdate(profile_status="WIP"), admin)
-    assert acc.status_updated_at != first
+    assert acc.profile_status == "WIP"  # P2: the first save moves New -> WIP
+    moved = acc.status_updated_at
+    account_service.update_account(db, acc.id, AccountUpdate(industry="Insurance"), admin)
+    assert acc.status_updated_at == moved  # later edits don't touch the status timestamp
+    with pytest.raises(HTTPException) as e:
+        account_service.update_account(db, acc.id, AccountUpdate(profile_status="Active"), admin)
+    assert "can't be edited directly" in e.value.detail
 
 
 # ─── §6 shareholders ────────────────────────────────────────────────────────
@@ -220,3 +223,11 @@ def test_individual_checklist(db, make_user):
     labels = {m["label"] for m in account_service.missing_mandatory(acc)}
     assert {"Date of Birth", "Passport Expiry Date", "Nationality"} <= labels
     assert "Licensing Authority" not in labels and "At least one Shareholder / UBO" not in labels
+
+
+def test_client_id_skips_numbers_already_taken(db, make_user, make_account):
+    # IDs present without a counter row (e.g. fixed by hand) must not be handed out again.
+    make_account(name="Manual One", client_id="TCPL/00001", anchor_entity="TCPL")
+    make_account(name="Manual Seven", client_id="TCPL/00007", anchor_entity="TCPL")
+    acc = create(db, make_user(), company_name="Fresh Co")
+    assert acc.client_id == "TCPL/00008"
