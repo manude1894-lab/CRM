@@ -183,7 +183,7 @@ function PartyForm({ form, setForm, countries, onCancel, onSave }) {
           <Input type="date" value={form.id_or_license_expiry || ""} onChange={set(setForm, "id_or_license_expiry")} />
         </Field>
       </div>
-      <Field label={isEntity ? "Country of Incorporation" : "Country of Birth"}>
+      <Field label={isEntity ? "Country of Incorporation" : "Country of Birth"} required={form.party_role === "Authorised Signatory"}>
         <CountrySelect value={form.country_of_incorp_or_birth} onChange={set(setForm, "country_of_incorp_or_birth")} countries={countries} />
       </Field>
 
@@ -209,7 +209,7 @@ function PartyForm({ form, setForm, countries, onCancel, onSave }) {
       </Field>
       <Field label="Contact Email" required={isShareholder}><Input type="email" value={form.email || ""} onChange={set(setForm, "email")} /></Field>
 
-      <Field label="Country of Residence">
+      <Field label="Country of Residence" required>
         <CountrySelect value={form.country_of_residence} onChange={set(setForm, "country_of_residence")} countries={countries} />
       </Field>
 

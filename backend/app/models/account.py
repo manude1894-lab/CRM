@@ -56,7 +56,9 @@ class Account(Base):
     licensing_authority_other = Column(String(100), nullable=True)  # BRD §5 — free text when "Other"
     license_start_date = Column(Date, nullable=True)
     license_expiry_date = Column(Date, nullable=True)
-    is_regulated = Column(Boolean, default=False, nullable=False)
+    regulatory_license_expiry_date = Column(Date, nullable=True)  # BRD §5 — mandatory when regulated
+    # BRD §5 Mandatory Yes/No: None = not answered yet (required before submission).
+    is_regulated = Column(Boolean, nullable=True)
     regulator_name = Column(String(50), nullable=True)  # DFSA / FSRA / CMA / UAECB / Other
     regulator_other = Column(String(100), nullable=True)
     license_category = Column(String(100), nullable=True)
@@ -68,13 +70,13 @@ class Account(Base):
 
     # Tax (§9-10.1)
     trn_vat_number = Column(String(30), nullable=True)
-    corp_tax_registered = Column(Boolean, default=False, nullable=False)
+    corp_tax_registered = Column(Boolean, nullable=True)
     corp_tax_registration_number = Column(String(30), nullable=True)
 
     financial_year_end = Column(String(5), nullable=True)  # "MM-DD"
 
     # Introducer (§12-13)
-    has_introducer = Column(Boolean, default=False, nullable=False)
+    has_introducer = Column(Boolean, nullable=True)
     introducer_name = Column(String(255), nullable=True)
 
     services_obtained = Column(JSON, nullable=True)  # list[str]

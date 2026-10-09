@@ -9,7 +9,7 @@ describe("accountToForm", () => {
     const form = accountToForm({ id: 7, company_name: "Acme", strategic_priority: "High", existing_relationship: "Yes" });
     expect(form).toMatchObject({
       _id: 7, company_name: "Acme", account_type: "Corporate", industry: "", kyc_status: "Not Started",
-      profile_status: "New", is_regulated: false, services_obtained: [], tags: [], next_aml_review_date: null,
+      profile_status: "New", is_regulated: null, services_obtained: [], tags: [], next_aml_review_date: null,
     });
     expect(form.registered_address).toEqual(BLANK_ACCOUNT_FORM.registered_address);
   });
@@ -70,7 +70,7 @@ describe("buildSectionPatch", () => {
   it("only includes the requested fields", () => {
     const form = { ...BLANK_ACCOUNT_FORM, trn_vat_number: "123", company_name: "Acme" };
     expect(buildSectionPatch(form, SECTION_FIELDS.tax)).toEqual({
-      trn_vat_number: "123", financial_year_end: null, corp_tax_registered: false, corp_tax_registration_number: null,
+      trn_vat_number: "123", financial_year_end: null, corp_tax_registered: null, corp_tax_registration_number: null,
     });
   });
 

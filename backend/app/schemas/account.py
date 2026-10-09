@@ -96,6 +96,7 @@ class AccountImportRow(BaseModel):
     licensing_authority: Optional[str] = None
     license_start_date: Optional[date] = None
     license_expiry_date: Optional[date] = None
+    regulatory_license_expiry_date: Optional[date] = None
     is_regulated: Optional[bool] = None
     regulator_name: Optional[str] = None
     regulator_other: Optional[str] = None
@@ -212,7 +213,8 @@ class AccountBase(_ClientFieldRules):
     licensing_authority: Optional[str] = None
     license_start_date: Optional[date] = None
     license_expiry_date: Optional[date] = None
-    is_regulated: bool = False
+    regulatory_license_expiry_date: Optional[date] = None
+    is_regulated: Optional[bool] = None
     regulator_name: Optional[str] = None
     regulator_other: Optional[str] = Field(None, max_length=100)
     license_category: Optional[str] = Field(None, max_length=25)
@@ -222,12 +224,12 @@ class AccountBase(_ClientFieldRules):
     operating_address: Optional[AddressBlock] = None
 
     trn_vat_number: Optional[str] = Field(None, max_length=15)
-    corp_tax_registered: bool = False
+    corp_tax_registered: Optional[bool] = None
     corp_tax_registration_number: Optional[str] = Field(None, max_length=15)
 
     financial_year_end: Optional[str] = None
 
-    has_introducer: bool = False
+    has_introducer: Optional[bool] = None
     introducer_name: Optional[str] = None
 
     services_obtained: Optional[list[str]] = None
@@ -298,6 +300,7 @@ class AccountUpdate(_ClientFieldRules):
     licensing_authority: Optional[str] = None
     license_start_date: Optional[date] = None
     license_expiry_date: Optional[date] = None
+    regulatory_license_expiry_date: Optional[date] = None
     is_regulated: Optional[bool] = None
     regulator_name: Optional[str] = None
     regulator_other: Optional[str] = Field(None, max_length=100)

@@ -59,7 +59,9 @@ _LABELS = {
     "engagement_letter_valid_until": "Engagement Letter Valid Until", "services_obtained": "Services Obtained",
     "effective_ownership_percent": "Effective Ownership %", "party_role": "Role", "full_name": "Full Name",
     "mobile_number": "Contact Mobile", "mobile_country_code": "Mobile Country Code", "email": "Email",
-    "regulator_name": "Name of Regulator", "is_regulated": "Regulated",
+    "regulator_name": "Name of Regulator", "is_regulated": "Is entity regulated",
+    "corp_tax_registered": "Corporate Tax Registered", "has_introducer": "Introducer",
+    "regulatory_license_expiry_date": "Current regulatory license expiry",
 }
 
 

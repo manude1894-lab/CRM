@@ -156,7 +156,7 @@ def test_status_timestamp_moves_only_on_status_change(db, make_user):
 # ─── §6 shareholders ────────────────────────────────────────────────────────
 
 def _sh(**kw):
-    base = dict(party_role="Shareholder", full_name="Jane Doe", mobile_country_code="+971",
+    base = dict(party_role="Shareholder", country_of_residence="United Arab Emirates", full_name="Jane Doe", mobile_country_code="+971",
                 mobile_number="501234567", email="jane@example.com", effective_ownership_percent=Decimal("60"))
     base.update(kw)
     return AccountPartyCreate(**base)
@@ -171,7 +171,7 @@ def test_shareholder_contact_mandatory(db, make_user):
     with pytest.raises(HTTPException):
         account_party_service.create_party(db, acc.id, _sh(email="bad"), admin)
     # Directors don't need contact details (optional in BRD §7).
-    account_party_service.create_party(db, acc.id, AccountPartyCreate(party_role="Director", full_name="D"), admin)
+    account_party_service.create_party(db, acc.id, AccountPartyCreate(party_role="Director", full_name="D", country_of_residence="United Arab Emirates"), admin)
 
 
 def test_shareholding_cannot_exceed_100(db, make_user):
@@ -231,3 +231,36 @@ def test_client_id_skips_numbers_already_taken(db, make_user, make_account):
     make_account(name="Manual Seven", client_id="TCPL/00007", anchor_entity="TCPL")
     acc = create(db, make_user(), company_name="Fresh Co")
     assert acc.client_id == "TCPL/00008"
+
+
+# ─── BRD §5 Mandatory Yes/No questions and regulatory licence expiry ────────
+
+def test_yes_no_questions_must_be_answered(db, make_user):
+    admin = make_user(role=UserRole.ADMIN)
+    acc = create(db, admin)
+    labels = {m["label"] for m in account_service.missing_mandatory(acc)}
+    assert {"Is entity regulated (Yes / No)", "Corporate Tax Registered (Yes / No)", "Introducer (Yes / No)"} <= labels
+    account_service.update_account(db, acc.id, AccountUpdate(is_regulated=False, corp_tax_registered=False, has_introducer=False), admin)
+    labels = {m["label"] for m in account_service.missing_mandatory(acc)}
+    assert not any("(Yes / No)" in l for l in labels)  # "No" is an answer
+
+
+def test_regulated_needs_regulatory_licence_expiry(db, make_user):
+    admin = make_user(role=UserRole.ADMIN)
+    acc = create(db, admin, is_regulated=True)
+    assert "Current regulatory license expiry" in {m["label"] for m in account_service.missing_mandatory(acc)}
+    from datetime import date as _d
+    account_service.update_account(db, acc.id, AccountUpdate(regulatory_license_expiry_date=_d(2027, 6, 30)), admin)
+    assert "Current regulatory license expiry" not in {m["label"] for m in account_service.missing_mandatory(acc)}
+
+
+@pytest.mark.parametrize("role,fields,message", [
+    ("Director", {}, "Country of Residence"),
+    ("Authorised Signatory", {"country_of_residence": "India"}, "Country of Birth"),
+])
+def test_party_country_rules(db, make_user, role, fields, message):
+    admin = make_user(role=UserRole.ADMIN)
+    acc = create(db, admin)
+    with pytest.raises(HTTPException) as e:
+        account_party_service.create_party(db, acc.id, AccountPartyCreate(party_role=role, full_name="X", **fields), admin)
+    assert message in e.value.detail

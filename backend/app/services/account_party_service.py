@@ -49,6 +49,13 @@ def _validate_party(account: Account, p: AccountParty) -> None:
                       if o.party_role == "Shareholder" and o is not p and o.id != p.id), Decimal("0"))
         if others + pct > Decimal("100"):
             raise HTTPException(status_code=400, detail=f"Total shareholding would be {others + pct}% — it can't exceed 100% (other shareholders hold {others}%)")
+    # BRD §6–8: Country of Residence is mandatory for every party; Country of Birth for signatories.
+    required = [("Country of Residence", p.country_of_residence)]
+    if p.party_role == "Authorised Signatory":
+        required.append(("Country of Birth", p.country_of_incorp_or_birth))
+    missing = [label for label, value in required if not (value or "").strip()]
+    if missing:
+        raise HTTPException(status_code=400, detail=f"{p.party_role}: {' and '.join(missing)} {'is' if len(missing) == 1 else 'are'} required")
 
 
 def _recompute_pep(db: Session, account: Account) -> None:

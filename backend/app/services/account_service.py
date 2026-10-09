@@ -531,12 +531,17 @@ def missing_mandatory(account: Account) -> list[dict]:
         need("Licensing & Regulatory", "license_start_date", "License Start / Registration Date", when=not forming)
         need("Licensing & Regulatory", "license_expiry_date", "License Expiry Date", when=not forming)
         need("Licensing & Regulatory", "license_activities", "License Activities", when=not forming)
+        need("Licensing & Regulatory", "is_regulated", "Is entity regulated (Yes / No)")
         need("Licensing & Regulatory", "regulator_name", "Name of Regulator", when=account.is_regulated)
         need("Licensing & Regulatory", "regulator_other", "Other Regulator details",
              when=account.is_regulated and account.regulator_name == "Other")
         need("Licensing & Regulatory", "license_category", "License Category", when=account.is_regulated)
+        need("Licensing & Regulatory", "regulatory_license_expiry_date", "Current regulatory license expiry",
+             when=account.is_regulated)
         need("Tax", "financial_year_end", "Financial Year End")
+        need("Tax", "corp_tax_registered", "Corporate Tax Registered (Yes / No)")
         need("Tax", "corp_tax_registration_number", "Corp Tax Registration No.", when=account.corp_tax_registered)
+        need("Introducer", "has_introducer", "Introducer (Yes / No)")
         need("Introducer", "introducer_name", "Introducer Name", when=account.has_introducer)
 
         # §6 — shareholders must exist and add up to 100%.

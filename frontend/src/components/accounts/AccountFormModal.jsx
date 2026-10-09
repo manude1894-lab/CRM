@@ -51,6 +51,17 @@ const Section = ({ title, children, hasData, onSave, status, error }) => {
   );
 };
 
+// BRD §5 "Mandatory Yes/No": blank until answered, so an unanswered question is not taken as "No".
+const YesNo = ({ label, value, onChange }) => (
+  <Field label={`${label} *`}>
+    <Select value={value === true ? "yes" : value === false ? "no" : ""} onChange={(e) => onChange(e.target.value === "yes" ? true : e.target.value === "no" ? false : null)}>
+      <option value="">— select —</option>
+      <option value="yes">Yes</option>
+      <option value="no">No</option>
+    </Select>
+  </Field>
+);
+
 const AddressFields = ({ value, onChange }) => {
   const v = value || BLANK_ADDRESS;
   const set = (k) => (e) => onChange({ ...v, [k]: e.target.value });
@@ -330,7 +341,7 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
 
         {!isIndividual && (
           <>
-            <Section title="Licensing & Regulatory" hasData={!!(form.licensing_authority || form.license_activities || form.license_start_date || form.license_expiry_date || form.is_regulated || form.license_category)}
+            <Section title="Licensing & Regulatory" hasData={!!(form.licensing_authority || form.license_activities || form.license_start_date || form.license_expiry_date || form.is_regulated != null || form.license_category)}
               {...sectionProps("licensing")}>
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Licensing Authority">
@@ -357,9 +368,9 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
                   <p className="text-[11px] text-gray-400 text-right">{(form.license_activities || "").length}/250</p>
                 </Field>
               </div>
-              <label className="flex items-center gap-2 text-xs text-gray-700 mb-3">
-                <input type="checkbox" checked={!!form.is_regulated} onChange={setChecked("is_regulated")} /> Is entity regulated
-              </label>
+              <div className="grid grid-cols-2 gap-3">
+                <YesNo label="Is entity regulated" value={form.is_regulated} onChange={setValue("is_regulated")} />
+              </div>
               {form.is_regulated && (
                 <div className="grid grid-cols-2 gap-3">
                   <Field label="Regulator">
@@ -372,6 +383,7 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
                     <Field label="Other Regulator"><Input value={form.regulator_other} onChange={set("regulator_other")} /></Field>
                   )}
                   <Field label="License Category"><Input value={form.license_category} onChange={set("license_category")} maxLength={25} /></Field>
+                  <Field label="Current regulatory license expiry *"><Input type="date" value={form.regulatory_license_expiry_date || ""} onChange={set("regulatory_license_expiry_date")} /></Field>
                 </div>
               )}
             </Section>
@@ -403,9 +415,9 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
                   </div>
                 </Field>
               </div>
-              <label className="flex items-center gap-2 text-xs text-gray-700 mb-3">
-                <input type="checkbox" checked={!!form.corp_tax_registered} onChange={setChecked("corp_tax_registered")} /> Corporate Tax Registered
-              </label>
+              <div className="grid grid-cols-2 gap-3">
+                <YesNo label="Corporate Tax Registered" value={form.corp_tax_registered} onChange={setValue("corp_tax_registered")} />
+              </div>
               {form.corp_tax_registered && (
                 <Field label="Corp Tax Registration No. / TAN"><Input value={form.corp_tax_registration_number} onChange={(e) => setForm({ ...form, corp_tax_registration_number: e.target.value.replace(/\D/g, "") })} maxLength={15} inputMode="numeric" /></Field>
               )}
@@ -457,10 +469,10 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
           </Section>
         )}
 
-        <Section title="Introducer" hasData={!!form.has_introducer} {...sectionProps("introducer")}>
-          <label className="flex items-center gap-2 text-xs text-gray-700 mb-3">
-            <input type="checkbox" checked={!!form.has_introducer} onChange={setChecked("has_introducer")} /> Introduced by a third party
-          </label>
+        <Section title="Introducer" hasData={form.has_introducer != null} {...sectionProps("introducer")}>
+          <div className="grid grid-cols-2 gap-3">
+            <YesNo label="Introduced by a third party" value={form.has_introducer} onChange={setValue("has_introducer")} />
+          </div>
           {form.has_introducer && (
             <Field label="Introducer Name"><Input value={form.introducer_name} onChange={set("introducer_name")} /></Field>
           )}

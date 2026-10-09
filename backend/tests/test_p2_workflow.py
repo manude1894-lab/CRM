@@ -32,9 +32,10 @@ def complete_client(db, maker):
         license_expiry_date=date(2030, 1, 1), license_activities="Consulting", financial_year_end="12-31",
         services_obtained=["Accounting & Bookkeeping"], risk_rating="Low", aml_classification="Standard",
         kyc_verified_by="Rita RM", cdd_completion_date=date(2026, 9, 1),
+        is_regulated=False, corp_tax_registered=False, has_introducer=False,
     ), maker)
     account_party_service.create_party(db, acc.id, AccountPartyCreate(
-        party_role="Shareholder", full_name="Jane Owner", mobile_country_code="+971", mobile_number="501234567",
+        party_role="Shareholder", country_of_residence="United Arab Emirates", full_name="Jane Owner", mobile_country_code="+971", mobile_number="501234567",
         email="jane@example.com", effective_ownership_percent=Decimal("100"),
     ), maker)
     db.refresh(acc)
