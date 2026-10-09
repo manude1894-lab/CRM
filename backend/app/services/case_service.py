@@ -158,6 +158,7 @@ def apply_case_update(db: Session, case: Case, data: CaseUpdate, user: User) -> 
     old_jurisdiction = case.jurisdiction
     old_rm_id = case.rm_id
     old_ops_owner_id = case.ops_owner_id
+    old_account_id = case.account_id
     for field, value in update_data.items():
         setattr(case, field, value)
 
@@ -180,6 +181,8 @@ def apply_case_update(db: Session, case: Case, data: CaseUpdate, user: User) -> 
         )
 
     _refresh_account_stats(db, case.account_id)
+    if old_account_id != case.account_id:
+        _refresh_account_stats(db, old_account_id)  # the case moved to another client
     return case
 
 

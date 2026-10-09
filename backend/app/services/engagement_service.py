@@ -194,6 +194,7 @@ def import_entities(db: Session, user: User, rows: list[dict], dry_run: bool) ->
     from app.models import CompanyProfile
     existing_numbers = {(n or "").strip().lower() for (n,) in db.query(CompanyProfile.company_number).all() if n}
     seen_names, seen_numbers, results = set(), set(), []
+    touched: set[int] = set()  # clients whose case count changes
 
     for idx, raw in enumerate(rows):
         r = {k: (v.strip() if isinstance(v, str) else v) for k, v in raw.items()}
@@ -251,10 +252,15 @@ def import_entities(db: Session, user: User, rows: list[dict], dry_run: bool) ->
             log_event(db, "import", f"Existing entity {case.case_uid} ({name}) imported", subject_type="Case",
                       subject_id=case.id, account_id=case.account_id, changes={"row": idx + 1})
             res["case_id"] = case.id
+            if case.account_id:
+                touched.add(case.account_id)
         results.append(res)
 
     if not dry_run:
         db.commit()
+        from app.services.case_service import _refresh_account_stats  # local: case_service imports this module
+        for account_id in touched:
+            _refresh_account_stats(db, account_id)
     return results
 
 

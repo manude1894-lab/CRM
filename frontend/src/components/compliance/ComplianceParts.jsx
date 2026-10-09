@@ -70,7 +70,8 @@ export function DecisionNote({ request }) {
   const rejected = request.status === "Rejected";
   return (
     <div className={`text-xs rounded px-2 py-1.5 ${rejected ? "bg-red-50 text-red-700" : "bg-gray-50 text-gray-600"}`}>
-      {request.status} by {request.checker_name || "—"}{request.decided_at ? ` on ${fmtDate(request.decided_at)}` : ""}
+      {request.status === "Withdrawn" ? "Withdrawn from Compliance" : request.status}
+      {request.checker_name ? ` by ${request.checker_name}` : ""}{request.decided_at ? ` on ${fmtDate(request.decided_at)}` : ""}
       {request.reason_code && <> — <strong>{reasons.labelOf(request.reason_code)}</strong>: {request.reason_text}</>}
     </div>
   );

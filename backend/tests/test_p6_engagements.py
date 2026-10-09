@@ -118,6 +118,8 @@ def test_import_entity_links_client_and_rm(db, people, make_account):
                                                           "incorporation_date": "01/01/2021", "client_id": "tcpl/00009"}], dry_run=False)
     case = db.get(Case, r["case_id"])
     assert case.account_id == acc.id and case.rm_id == rm.id
+    db.refresh(acc)
+    assert acc.total_cases == 1  # the Clients table count follows the import
     [bad] = engagement_service.import_entities(db, admin, [{"company_name": "Z", "jurisdiction": "BVI", "incorporation_date": "01/01/2021",
                                                             "client_id": "TCPL/99999"}], dry_run=True)
     assert bad["status"] == "error" and "No client" in bad["message"]
