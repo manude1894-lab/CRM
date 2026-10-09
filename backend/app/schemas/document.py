@@ -1,5 +1,5 @@
 """Pydantic schemas: Document (uploaded / generated file metadata — never the bytes)."""
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional, Any
 from datetime import datetime
 
@@ -17,6 +17,7 @@ class DocumentRead(BaseModel):
     uploaded_by_id: Optional[int] = None
     notes: Optional[str] = None
     generated_from: Optional[str] = None
+    link_url: Optional[str] = None
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
@@ -48,6 +49,21 @@ class FolderDocument(DocumentRead):
     stage: Optional[str] = None  # Draft / Submitted / Locked (BRD §16)
     lock_reason: Optional[str] = None
     case_uid: Optional[str] = None  # set for documents that belong to one of the client's cases
+    link_url: Optional[str] = None
+
+
+class RemovedDocument(BaseModel):
+    filename: Optional[str] = None
+    category: Optional[str] = None
+    removed_by_name: Optional[str] = None
+    removed_at: Optional[datetime] = None
+
+
+class LinkDocumentCreate(BaseModel):
+    category: str
+    url: str = Field(..., max_length=1000)
+    title: Optional[str] = Field(None, max_length=255)
+    notes: Optional[str] = Field(None, max_length=500)
 
 
 class ClientFolder(BaseModel):
@@ -61,3 +77,5 @@ class ClientFolder(BaseModel):
     max_upload_mb: int
     documents: list[FolderDocument]
     case_documents: list[FolderDocument]
+    removed: list[RemovedDocument] = []
+    compliance_can_file: bool = False

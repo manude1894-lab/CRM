@@ -43,7 +43,8 @@ class Document(Base):
     content_type = Column(String(120), nullable=True)
     size_bytes = Column(Integer, nullable=False)
 
-    content = deferred(Column(LargeBinary, nullable=False))
+    content = deferred(Column(LargeBinary, nullable=True))  # empty for link documents
+    link_url = Column(String(1000), nullable=True)  # Triam mark-up §14: a link (e.g. SharePoint) instead of a file
 
     uploaded_by_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     notes = Column(String(500), nullable=True)

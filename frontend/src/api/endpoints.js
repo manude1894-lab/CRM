@@ -225,6 +225,7 @@ export const documentsApi = {
   listForAccount: (accountId) => api.get(`/accounts/${accountId}/documents`).then((r) => r.data),
   // BRD §16 — the client folder: documents by category, their stage and whether this user may remove them
   folder: (accountId) => api.get(`/accounts/${accountId}/folder`).then((r) => r.data),
+  addLink: (accountId, data) => api.post(`/accounts/${accountId}/documents/link`, data).then((r) => r.data),
   uploadForAccount: (accountId, formData) =>
     api.post(`/accounts/${accountId}/documents`, formData, { headers: { "Content-Type": undefined } }).then((r) => r.data),
   remove: (id) => api.delete(`/documents/${id}`),

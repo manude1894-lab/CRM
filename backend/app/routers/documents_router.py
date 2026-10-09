@@ -10,7 +10,7 @@ from app.database import get_db
 from app.auth.dependencies import get_current_user
 from app.models import User
 from app.schemas import DocumentRead
-from app.schemas.document import ClientFolder
+from app.schemas.document import ClientFolder, LinkDocumentCreate
 from app.services import document_service
 
 router = APIRouter(tags=["Documents"])
@@ -58,6 +58,13 @@ def upload_account_document(
     user: User = Depends(get_current_user),
 ):
     return document_service.create_for_account(db, account_id, file, category, user, notes=notes)
+
+
+@router.post("/accounts/{account_id}/documents/link", response_model=DocumentRead, status_code=status.HTTP_201_CREATED,
+             summary="File a link (e.g. SharePoint) instead of a file (Triam mark-up §14)")
+def add_account_document_link(account_id: int, data: LinkDocumentCreate, db: Session = Depends(get_db),
+                              user: User = Depends(get_current_user)):
+    return document_service.create_link_for_account(db, account_id, data.category, data.url, data.title, user, notes=data.notes)
 
 
 @router.get("/documents/{document_id}/download")

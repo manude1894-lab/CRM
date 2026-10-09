@@ -12,23 +12,22 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.models import Document, DocumentCategory, Case, CaseDocument, Instruction, User, UserRole
+from app.audit import log_event
 from app.services import access_control, master_service
 
 # Allow-list — reject anything not here (executables, html, svg, ...).
 ALLOWED_CONTENT_TYPES = {
     "application/pdf",
-    "image/png", "image/jpeg", "image/gif", "image/tiff",
+    "image/png", "image/jpeg", "image/bmp", "image/x-ms-bmp",
     "application/msword",
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     "application/vnd.ms-excel",
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    "text/plain", "text/csv",
     "application/octet-stream",  # some browsers send this for .xlsx/.doc — extension is re-checked below
 }
-_ALLOWED_EXT = {
-    ".pdf", ".png", ".jpg", ".jpeg", ".gif", ".tif", ".tiff",
-    ".doc", ".docx", ".xls", ".xlsx", ".txt", ".csv",
-}
+# Triam BRD mark-up §14: Word, Excel, PDF, JPG, JPEG, PNG, BMP — or a URL (see create_link_for_account).
+_ALLOWED_EXT = {".pdf", ".jpg", ".jpeg", ".png", ".bmp", ".doc", ".docx", ".xls", ".xlsx"}
+ALLOWED_TYPES_LABEL = "Word, Excel, PDF, JPG, JPEG, PNG or BMP"
 # Built-in categories used by internal flows (CDD checklist, generated docs, filings). User-chosen
 # categories come from the admin-managed "document_category" master list (BRD §16, §18).
 _BUILTIN_CATEGORIES = {c.value for c in DocumentCategory}
@@ -90,7 +89,7 @@ def create(
 
     filename = _safe_filename(upload.filename)
     if _ext(filename) not in _ALLOWED_EXT:
-        raise HTTPException(status_code=400, detail=f"File type not allowed: {filename}")
+        raise HTTPException(status_code=400, detail=f"File type not allowed: {filename}. Allowed: {ALLOWED_TYPES_LABEL}, or add a link")
     if upload.content_type and upload.content_type not in ALLOWED_CONTENT_TYPES:
         raise HTTPException(status_code=400, detail=f"Content type not allowed: {upload.content_type}")
 
@@ -155,14 +154,12 @@ def create_for_account(
     notes: str | None = None,
 ) -> Document:
     account = _account_for_read(db, account_id, user)
-    from app.services import client_workflow_service
-    client_workflow_service.assert_editable(account)  # BRD §12 — frozen while with the checker
-
     category = _normalise_category(db, category)
+    _assert_can_file(db, account, category, user)
 
     filename = _safe_filename(upload.filename)
     if _ext(filename) not in _ALLOWED_EXT:
-        raise HTTPException(status_code=400, detail=f"File type not allowed: {filename}")
+        raise HTTPException(status_code=400, detail=f"File type not allowed: {filename}. Allowed: {ALLOWED_TYPES_LABEL}, or add a link")
     if upload.content_type and upload.content_type not in ALLOWED_CONTENT_TYPES:
         raise HTTPException(status_code=400, detail=f"Content type not allowed: {upload.content_type}")
 
@@ -184,6 +181,57 @@ def create_for_account(
         notes=(notes or None),
     )
     db.add(doc)
+    db.flush()
+    log_event(db, "document_upload", f"{_category_label(db, category)}: {filename} filed for {account.company_name}",
+              user_id=user.id, subject_type="Document", subject_id=doc.id, account_id=account.id)
+    db.commit()
+    db.refresh(doc)
+    return doc
+
+
+def _category_meta(db: Session, category: str) -> dict:
+    from app.models import MasterItem
+    item = db.query(MasterItem).filter(MasterItem.list_type == "document_category", MasterItem.code == category).first()
+    return (item.meta or {}) if item else {}
+
+
+def _category_label(db: Session, category: str) -> str:
+    from app.models import MasterItem
+    item = db.query(MasterItem).filter(MasterItem.list_type == "document_category", MasterItem.code == category).first()
+    return item.label if item else category
+
+
+def _assert_can_file(db: Session, account, category: str, user: User) -> None:
+    """The client folder is frozen while the client is with the checker (BRD §12). Compliance documents
+    (CDD Form, AML Risk Assessment) are filed only by Compliance, which may do so during its review
+    (Triam BRD mark-up §14)."""
+    from app.auth.permissions import has_permission
+    from app.services import client_workflow_service as wf
+    if _category_meta(db, category).get("compliance_only"):
+        if not has_permission(user, "client.cdd_edit"):
+            raise HTTPException(status_code=403, detail="This document is filed by Compliance (MLRO) only")
+        if account.profile_status == wf.AWAITING and wf.stage_of(wf.pending_request(db, account.id)) == wf.STAGE_COMPLIANCE:
+            return
+    wf.assert_editable(account)
+
+
+def create_link_for_account(db: Session, account_id: int, category: str, url: str, title: str | None,
+                            user: User, notes: str | None = None) -> Document:
+    """Triam BRD mark-up §14 — a document can be a URL instead of a file, e.g. the KYC verification
+    video kept on SharePoint."""
+    account = _account_for_read(db, account_id, user)
+    category = _normalise_category(db, category)
+    _assert_can_file(db, account, category, user)
+    url = (url or "").strip()
+    if not url.lower().startswith("https://") or len(url) > 1000 or any(c.isspace() for c in url):
+        raise HTTPException(status_code=400, detail="Enter a valid https:// link")
+    name = (title or "").strip()[:255] or url.rsplit("/", 1)[-1][:255] or "Link"
+    doc = Document(account_id=account_id, category=category, filename=name, content_type="text/uri-list",
+                   size_bytes=0, content=None, link_url=url, uploaded_by_id=user.id, notes=(notes or None))
+    db.add(doc)
+    db.flush()
+    log_event(db, "document_upload", f"{_category_label(db, category)}: link '{name}' filed for {account.company_name}",
+              user_id=user.id, subject_type="Document", subject_id=doc.id, account_id=account.id, changes={"url": url})
     db.commit()
     db.refresh(doc)
     return doc
@@ -202,6 +250,8 @@ def get(db: Session, document_id: int, user: User) -> Document:
 
 def stream_content(db: Session, document_id: int, user: User) -> tuple[bytes, str, str]:
     doc = get(db, document_id, user)
+    if doc.link_url:
+        raise HTTPException(status_code=400, detail="This document is a link — open it from the client folder")
     return doc.content, doc.filename, doc.content_type or "application/octet-stream"
 
 
@@ -213,6 +263,12 @@ def delete(db: Session, document_id: int, user: User) -> None:
         _assert_client_document_removable(db, doc, user)
     elif user.role != UserRole.ADMIN and doc.uploaded_by_id != user.id:
         raise HTTPException(status_code=403, detail="Only the uploader or an Admin can delete this document")
+    if doc.account_id is not None:
+        # Triam mark-up §14: removals stay visible in the folder's history.
+        log_event(db, "document_delete", f"{_category_label(db, doc.category)}: {doc.filename} removed",
+                  user_id=user.id, subject_type="Document", subject_id=doc.id, account_id=doc.account_id,
+                  changes={"category": doc.category, "filename": doc.filename, "uploaded_by_id": doc.uploaded_by_id,
+                           "uploaded_at": doc.created_at.isoformat() if doc.created_at else None})
     db.delete(doc)
     db.commit()
 
@@ -272,7 +328,7 @@ def client_folder(db: Session, account_id: int, user: User) -> dict:
     def item(d: Document, **extra) -> dict:
         out = {c: getattr(d, c) for c in ("id", "case_id", "account_id", "case_document_id", "instruction_id", "category",
                                           "filename", "content_type", "size_bytes", "uploaded_by_id", "notes",
-                                          "generated_from", "created_at")}
+                                          "generated_from", "created_at", "link_url")}
         out["uploaded_by_name"] = names.get(d.uploaded_by_id)
         out.update(extra)
         return out
@@ -288,4 +344,23 @@ def client_folder(db: Session, account_id: int, user: User) -> dict:
         "account_id": account.id, "client_id": account.client_id, "temp_id": account.temp_id, "company_name": account.company_name,
         "profile_status": account.profile_status, "stage": _client_document_stage(db, account),
         "max_upload_mb": settings.MAX_UPLOAD_MB, "documents": client_docs, "case_documents": case_docs,
+        "removed": _removed_history(db, account.id, names),
+        "compliance_can_file": _compliance_can_file(db, account, user),
     }
+
+
+def _compliance_can_file(db: Session, account, user: User) -> bool:
+    from app.auth.permissions import has_permission
+    from app.services import client_workflow_service as wf
+    if not has_permission(user, "client.cdd_edit") or account.profile_status == wf.EXITED:
+        return False
+    return account.profile_status != wf.AWAITING or wf.stage_of(wf.pending_request(db, account.id)) == wf.STAGE_COMPLIANCE
+
+
+def _removed_history(db: Session, account_id: int, names: dict) -> list[dict]:
+    """Documents removed from the client folder, with who removed them and when (Triam mark-up §14)."""
+    from app.models import AuditLog
+    rows = (db.query(AuditLog).filter(AuditLog.account_id == account_id, AuditLog.action == "document_delete")
+            .order_by(AuditLog.id.desc()).all())
+    return [{"filename": (r.changes or {}).get("filename"), "category": (r.changes or {}).get("category"),
+             "removed_by_name": names.get(r.user_id), "removed_at": r.occurred_at} for r in rows]
