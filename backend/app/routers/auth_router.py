@@ -34,6 +34,8 @@ def login(data: LoginRequest, request: Request, db: Session = Depends(get_db)):
             detail="Invalid email or password",
         )
     security_service.record_success(user)
+    from datetime import datetime, timezone
+    user.previous_login_at, user.last_login_at = user.last_login_at, datetime.now(timezone.utc)
     set_actor(db, user.id, ip)
     log_event(db, "login", f"{user.name} logged in", subject_type="User", subject_id=user.id)
     db.commit()

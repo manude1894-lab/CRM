@@ -57,6 +57,8 @@ class UserRead(UserBase):
     permissions: list[str] = []
     business_role_name: Optional[str] = None
     locked_until: Optional[datetime] = None  # P7 — shown to admins; resetting the password unlocks
+    last_login_at: Optional[datetime] = None
+    previous_login_at: Optional[datetime] = None
     created_at: datetime
     updated_at: datetime
 

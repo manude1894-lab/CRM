@@ -14,12 +14,14 @@ const STATUS_STYLE = { Pending: "bg-amber-50 text-amber-700", "In Progress": "bg
  * BRD §17 — servicing an existing client: its Visit / Call Reports and activity history, and its
  * Service Requests, in one place on the client.
  */
-export default function ClientServicingModal({ account, cases = [], onClose }) {
-  const [tab, setTab] = useState("reports");
+export default function ClientServicingModal({ account, cases = [], onClose, startWith = null }) {
+  const [tab, setTab] = useState(startWith === "request" ? "requests" : "reports");
   const [activities, setActivities] = useState(null);
   const [requests, setRequests] = useState(null);
   const [form, setForm] = useState(null); // activity form, when open
-  const [sr, setSr] = useState(null); // service request form, when open
+  // service request form, when open (Triam mark-up §11: opened straight from the client, with its details)
+  const [sr, setSr] = useState(startWith === "request"
+    ? { instruction_type: "", case_id: "", date_received: new Date().toISOString().split("T")[0], charge_amount: "", comments: "" } : null);
   const [busy, setBusy] = useState(false);
   const requestTypes = useMasters("service_request_type", INSTRUCTION_TYPE_OPTIONS);
   const clientCases = cases.filter((c) => c.account_id === account.id);

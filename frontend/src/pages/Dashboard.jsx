@@ -1,3 +1,4 @@
+import { formatTimestamp } from "../utils/auditFormat";
 import React, { useEffect, useState } from "react";
 import { dashboardApi, accountsApi } from "../api/endpoints";
 import { Icon, Badge, Spinner, ErrorBanner } from "../components/ui";
@@ -95,12 +96,15 @@ export default function Dashboard({ onNavigate = () => {} } = {}) {
   const [updatedAt, setUpdatedAt] = useState(null);
   const [open, setOpen] = useState({});
   const [showAllDue, setShowAllDue] = useState(false);
+  const [myWork, setMyWork] = useState([]);
 
   const load = async () => {
     try {
       setError(null);
-      const [dash, accs] = await Promise.all([dashboardApi.get(), accountsApi.list({ limit: 200 }).catch(() => [])]);
+      const [dash, accs, work] = await Promise.all([dashboardApi.get(), accountsApi.list({ limit: 200 }).catch(() => []),
+        dashboardApi.myWork().catch(() => [])]);
       setData(dash);
+      setMyWork(work || []);
       setAccounts(Array.isArray(accs?.items) ? accs.items : []); // paginated: { items, total }
       setUpdatedAt(new Date());
     } catch (e) {
@@ -154,11 +158,30 @@ export default function Dashboard({ onNavigate = () => {} } = {}) {
         <div>
           <h1 className="text-2xl font-bold text-gray-900 tracking-tight">{greeting()}{user?.name ? `, ${user.name.split(" ")[0]}` : ""}</h1>
           <p className="text-sm text-gray-500">Here's what needs attention across onboarding and compliance.</p>
+          {user?.previous_login_at && <p className="text-xs text-gray-400 mt-0.5">Last login {formatTimestamp(user.previous_login_at)}</p>}
         </div>
         <button onClick={load} className="text-xs text-gray-400 hover:text-brand-600">
           Updated {updatedAt?.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} · Refresh
         </button>
       </div>
+
+      {/* Triam mark-up §2 — role-level dashboard: the work waiting for this user. */}
+      {myWork.some((w) => w.count > 0) && (
+        <Panel title="My work" right={<span className="text-xs text-gray-400">{user?.business_role_name || ""}</span>}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 p-3">
+            {myWork.filter((w) => w.count > 0).map((w) => (
+              <button key={w.key} onClick={() => onNavigate({ page: w.page })}
+                className="flex items-center gap-3 text-left rounded-lg border border-gray-100 hover:border-brand-300 hover:bg-brand-50/40 px-3 py-2.5">
+                <span className="text-2xl font-bold text-brand-700 w-10 text-center">{w.count}</span>
+                <span className="min-w-0">
+                  <span className="block text-sm font-medium text-gray-800">{w.label}</span>
+                  {w.hint && <span className="block text-[11px] text-gray-400">{w.hint}</span>}
+                </span>
+              </button>
+            ))}
+          </div>
+        </Panel>
+      )}
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
         <StatCard label="Open cases" value={kpis.open_cases} icon="cases" onClick={() => onNavigate({ page: "cases" })} />

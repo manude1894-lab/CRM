@@ -309,6 +309,7 @@ export const activitiesApi = {
 // ─── Dashboard ─────────────────────────────────────────────────────────
 export const dashboardApi = {
   get: () => api.get("/dashboard").then((r) => r.data),
+  myWork: () => api.get("/dashboard/my-work").then((r) => r.data),
 };
 
 // ─── Prospects (pre-Case proposal tracking) ───────────────────────────

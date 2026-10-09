@@ -19,7 +19,17 @@ def get_user(db: Session, user_id: int) -> User:
     return user
 
 
+def _assert_company_email(email: str) -> None:
+    """Triam mark-up §13 — when USER_EMAIL_DOMAINS is set (e.g. "asktriam.com"), users must have a
+    company email address; access lasts while that address is active."""
+    from app.config import settings
+    domains = [d.strip().lower() for d in (settings.USER_EMAIL_DOMAINS or "").split(",") if d.strip()]
+    if domains and email.rsplit("@", 1)[-1].lower() not in domains:
+        raise HTTPException(status_code=400, detail=f"Use a company email address ({', '.join('@' + d for d in domains)})")
+
+
 def create_user(db: Session, data: UserCreate) -> User:
+    _assert_company_email(data.email)
     if db.query(User).filter(User.email == data.email).first():
         raise HTTPException(status_code=400, detail="Email already registered")
     _check_business_role(db, data.business_role_id)
@@ -70,6 +80,8 @@ def update_user(db: Session, user_id: int, data: UserUpdate) -> User:
             raise HTTPException(status_code=400, detail="That supervisor reports to this user — the hierarchy would loop")
     if "business_role_id" in update_data:
         _check_business_role(db, update_data["business_role_id"])
+    if update_data.get("email") and update_data["email"] != user.email:
+        _assert_company_email(update_data["email"])
     if "extra_role_ids" in update_data:
         user.extra_roles = _extra_roles(db, update_data.pop("extra_role_ids"))
     if "password" in update_data:

@@ -29,6 +29,7 @@ export default function ClientProfilePage({ accountId, initialTab = "overview", 
   const [tab, setTab] = useState(initialTab);
   const [version, setVersion] = useState(0); // remounts the tabs after a status change or save
   const [trackRecord, setTrackRecord] = useState(false);
+  const [tabStart, setTabStart] = useState(null); // "request" opens a new service request on the Reports & Requests tab
   const isAdmin = useAuthStore((s) => s.isAdmin());
 
   const load = () => accountsApi.get(accountId).then((a) => { setAccount(a); setError(null); })
@@ -44,6 +45,8 @@ export default function ClientProfilePage({ accountId, initialTab = "overview", 
   const clientCases = cases.filter((c) => c.account_id === a.id);
   const individual = a.account_type === "Individual";
   const onboarding = ["New", "WIP"].includes(a.profile_status);
+  const existing = ["Approved", "Active", "Inactive", "Marked for Exit", "Exited"].includes(a.profile_status);
+  const [servicingStart, setServicingStart] = [tabStart, setTabStart];
 
   const remove = async () => {
     if (!(await confirmDialog(`Delete ${a.company_name}? This cannot be undone.`))) return;
@@ -68,6 +71,9 @@ export default function ClientProfilePage({ accountId, initialTab = "overview", 
         title={a.company_name}
         subtitle={[a.client_id || `Temporary ID ${a.temp_id || a.account_uid}`, individual ? "Individual" : "Corporate", a.anchor_entity, userName(a.spoc_id) && `Anchor RM: ${userName(a.spoc_id)}`].filter(Boolean).join(" · ")}
         actions={<>
+          {["Approved", "Active"].includes(a.profile_status) && (
+            <Button onClick={() => { setServicingStart("request"); setTab("servicing"); }}>New service request</Button>
+          )}
           <Button onClick={() => setTab("profile")}>Edit profile</Button>
           <MoreMenu items={[
             { label: "Track record", onClick: () => setTrackRecord(true) },
@@ -75,7 +81,13 @@ export default function ClientProfilePage({ accountId, initialTab = "overview", 
           ]} />
         </>}
       />
-      <div className="flex flex-wrap gap-1.5">
+      <div className="flex flex-wrap gap-1.5 items-center">
+        {/* Triam mark-up §9: existing relationships show status + date + Risk Level + Next AML Review on top. */}
+        {existing && a.next_aml_review_date && (
+          <span className={`text-[11px] px-2 py-0.5 rounded ${new Date(a.next_aml_review_date) < new Date() ? "bg-red-50 text-red-700" : "bg-gray-100 text-gray-600"}`}>
+            Next AML review {fmtDate(a.next_aml_review_date)}
+          </span>
+        )}
         {a.risk_rating && <Badge text={`${a.risk_rating} Risk`} />}
         {a.is_pep && <Badge text="PEP" />}
         {(a.tags || "").split(",").map((t) => t.trim()).filter(Boolean).map((t) => <Badge key={t} text={t} />)}
@@ -150,7 +162,7 @@ export default function ClientProfilePage({ accountId, initialTab = "overview", 
         )}
         {tab === "parties" && <Panel><Embedded><AccountPartyModal account={a} onClose={refresh} /></Embedded></Panel>}
         {tab === "documents" && <Panel><ClientDocumentsFolder accountId={a.id} onboarding={onboarding} /></Panel>}
-        {tab === "servicing" && <Panel><Embedded><ClientServicingModal account={a} cases={cases} onClose={() => {}} /></Embedded></Panel>}
+        {tab === "servicing" && <Panel><Embedded><ClientServicingModal account={a} cases={cases} startWith={servicingStart} onClose={() => {}} /></Embedded></Panel>}
         {tab === "history" && <Panel><Embedded><AccountHistoryModal account={a} onClose={() => {}} /></Embedded></Panel>}
         {tab === "cases" && (clientCases.length === 0
           ? <EmptyState title="No cases for this client yet" text="Create one from the Cases page and link it to this client." />

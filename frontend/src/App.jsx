@@ -20,6 +20,7 @@ import AdminPage from "./pages/AdminPage";
 import ApprovalsPage from "./pages/ApprovalsPage";
 import ChangePasswordModal from "./components/ChangePasswordModal";
 import { ROLE_LABEL, fmtToday } from "./utils/constants";
+import { formatTimestamp } from "./utils/auditFormat";
 
 // The menu, grouped by area of work. Order within the array is the order on screen.
 const NAV = [
@@ -105,6 +106,11 @@ export default function App() {
                 <div className="flex-1 min-w-0">
                   <div className="text-xs font-semibold text-gray-800 truncate">{user?.name}</div>
                   <div className="text-xs text-gray-400 truncate">{user?.business_role_name || ROLE_LABEL[user?.role] || user?.role}</div>
+                  {user?.last_login_at && (
+                    <div className="text-[10px] text-gray-400 truncate" title={user.previous_login_at ? `Last login ${formatTimestamp(user.previous_login_at)}` : "First login"}>
+                      Logged in {formatTimestamp(user.last_login_at)}
+                    </div>
+                  )}
                 </div>
                 <button onClick={() => setPasswordOpen(true)} className="text-gray-400 hover:text-brand-600 text-[11px]" title="Change password">
                   Password

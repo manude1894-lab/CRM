@@ -39,7 +39,9 @@ class User(Base):
     # P7 — login lockout and password tracking
     failed_login_count = Column(Integer, default=0, server_default="0", nullable=False)
     locked_until = Column(DateTime(timezone=True), nullable=True)
-    password_changed_at = Column(DateTime(timezone=True), nullable=True)  # for SMS notifications (BRD §17), e.g. +971501234567
+    password_changed_at = Column(DateTime(timezone=True), nullable=True)
+    last_login_at = Column(DateTime(timezone=True), nullable=True)  # this sign-in
+    previous_login_at = Column(DateTime(timezone=True), nullable=True)  # shown as "last login" (Triam mark-up §2)  # for SMS notifications (BRD §17), e.g. +971501234567
     supervisor_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     # BRD §15 business role (CO / MLRO / RO / …) — adds permissions on top of the system tier in `role`.
     business_role_id = Column(Integer, ForeignKey("roles.id", ondelete="SET NULL"), nullable=True)

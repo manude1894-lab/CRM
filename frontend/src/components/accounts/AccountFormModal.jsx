@@ -20,7 +20,7 @@ import {
 import { useMasters } from "../../hooks/useMasters";
 import { selectableCodes, servicesForEntities } from "../../hooks/masterUtils";
 
-const Section = ({ title, children, hasData, onSave, status, error }) => {
+const Section = ({ title, children, hasData, onSave, status, error, dirty = true }) => {
   const [open, setOpen] = useState(!!hasData);
   return (
     <div className="mb-2 border border-gray-100 rounded-lg overflow-hidden">
@@ -37,8 +37,9 @@ const Section = ({ title, children, hasData, onSave, status, error }) => {
           {children}
           {onSave && (
             <div className="flex items-center gap-2 mt-3 pt-3 border-t border-gray-100">
-              <button type="button" onClick={onSave} disabled={status === "saving"}
-                className="px-3 py-1.5 text-xs border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600 disabled:opacity-50">
+              <button type="button" onClick={onSave} disabled={status === "saving" || !dirty} title={dirty ? "" : "No changes to save"}
+                className={`px-3 py-1.5 text-xs rounded-lg border disabled:cursor-not-allowed ${dirty
+                  ? "border-brand-600 bg-brand-600 text-white hover:bg-brand-700" : "border-gray-200 text-gray-400 bg-white"}`}>
                 {status === "saving" ? "Saving…" : `Save ${title}`}
               </button>
               {status === "saved" && <span className="text-xs text-emerald-600">Saved</span>}
@@ -85,6 +86,11 @@ const AddressFields = ({ value, onChange }) => {
  */
 export default function AccountFormModal({ initialForm, users, countries, onClose, onChanged, onOpenExisting, hideWorkflow = false, hideDocuments = false }) {
   const [form, setForm] = useState(initialForm);
+  // What the server last saved — a section's Save is active only when it differs (unsaved changes).
+  const [saved, setSaved] = useState(initialForm);
+  const loadForm = (f) => { setForm(f); setSaved(f); };
+  const sectionDirty = (key) => JSON.stringify(buildSectionPatch(form, SECTION_FIELDS[key])) !== JSON.stringify(buildSectionPatch(saved, SECTION_FIELDS[key]));
+  const anyDirty = Object.keys(SECTION_FIELDS).some(sectionDirty);
   const [mode, setMode] = useState(initialForm._id ? "edit" : "new");
   const [saving, setSaving] = useState(false);
   const [sectionStatus, setSectionStatus] = useState({});
@@ -116,13 +122,13 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
     // Show the maker their staged values (once per draft; later saves keep the form as typed).
     if (s?.preview && s.request && previewOf !== s.request.id) {
       setPreviewOf(s.request.id);
-      setForm(accountToForm(s.preview.account));
+      loadForm(accountToForm(s.preview.account));
     }
   };
   const onAmendmentDecided = async () => {
     // After approve / discard / withdraw, reload the live client so the form shows what is current.
     setPreviewOf(null);
-    try { setForm(accountToForm(await accountsApi.get(form._id))); } catch { /* keep the form as it is */ }
+    try { loadForm(accountToForm(await accountsApi.get(form._id))); } catch { /* keep the form as it is */ }
     setRefreshKey((k) => k + 1);
     onChanged();
   };
@@ -182,6 +188,7 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
   const saveSection = async (key, isCore = false) => {
     setSectionStatus((s) => ({ ...s, [key]: "saving" }));
     setSectionError((s) => ({ ...s, [key]: null }));
+    const snapshot = form;
     try {
       const patch = buildSectionPatch(form, SECTION_FIELDS[key]);
       if (form._id) {
@@ -197,6 +204,7 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
         setForm((f) => ({ ...f, _id: created.id, search_name: created.search_name, _client_id: created.client_id, _status_updated_at: created.status_updated_at }));
         setMode("edit");
       }
+      setSaved((prev) => ({ ...prev, ...Object.fromEntries(SECTION_FIELDS[key].map((f) => [f, snapshot[f]])) }));
       setSectionStatus((s) => ({ ...s, [key]: "saved" }));
       setRefreshKey((k) => k + 1);
       onChanged();
@@ -207,7 +215,7 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
     }
   };
 
-  const sectionProps = (key) => ({ onSave: locked ? undefined : () => saveSection(key), status: sectionStatus[key], error: sectionError[key] });
+  const sectionProps = (key) => ({ onSave: locked ? undefined : () => saveSection(key), status: sectionStatus[key], error: sectionError[key], dirty: sectionDirty(key) });
   const today = new Date().toISOString().slice(0, 10);
 
   return (
@@ -360,8 +368,10 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
         </Field>
 
         <div className="flex items-center gap-2 mb-3 pb-3 border-b border-gray-100">
-          <button type="button" onClick={() => saveSection("core", true)} disabled={locked || sectionStatus.core === "saving"}
-            className="px-3 py-1.5 text-xs border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600 disabled:opacity-50">
+          <button type="button" onClick={() => saveSection("core", true)} disabled={locked || sectionStatus.core === "saving" || !sectionDirty("core")}
+            title={sectionDirty("core") ? "" : "No changes to save"}
+            className={`px-3 py-1.5 text-xs rounded-lg border disabled:cursor-not-allowed ${!locked && sectionDirty("core")
+              ? "border-brand-600 bg-brand-600 text-white hover:bg-brand-700" : "border-gray-200 text-gray-400 bg-white"}`}>
             {sectionStatus.core === "saving" ? "Saving…" : "Save Client Info"}
           </button>
           {sectionStatus.core === "saved" && <span className="text-xs text-emerald-600">Saved</span>}
@@ -576,7 +586,7 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
       </div>
       <div className="flex justify-end gap-3 mt-5">
         <button onClick={onClose} className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
-        <button onClick={save} disabled={saving || locked}
+        <button onClick={save} disabled={saving || locked || (mode === "edit" && !anyDirty)}
           className="px-4 py-2 text-sm text-white rounded-lg font-medium disabled:opacity-50"
           style={{ background: "#1a3a5c" }}>
           {saving ? "Saving..." : mode === "edit" ? (myDraft ? "Save to Amendment" : "Save Changes") : "Create Client"}
