@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { invoicesApi, instructionsApi, casesApi } from "../api/endpoints";
-import { Icon, Badge, Modal, Field, Input, Select, Textarea, Spinner, ErrorBanner } from "../components/ui";
+import { Icon, Badge, Modal, Field, Input, Select, Textarea, Spinner, ErrorBanner, PageHeader } from "../components/ui";
 import { INVOICE_LEDGER_STATUS_OPTIONS, fmtFull, fmtDate } from "../utils/constants";
 import { toast } from "../store/toast";
 import { confirmDialog } from "../store/confirm";
@@ -112,17 +112,13 @@ export default function InvoicesPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Invoices</h1>
-          <p className="text-sm text-gray-500">
-            {filtered.length} of {invoices.length} invoices · {fmtFull(totalOutstanding)} outstanding (Raised + Overdue)
-          </p>
-        </div>
-        <button onClick={openNew} className="px-3 py-1.5 text-xs text-white rounded-lg flex items-center gap-1" style={{ background: "#1a3a5c" }}>
+      <PageHeader title="Invoices"
+        subtitle={<>{filtered.length} of {invoices.length} invoices · {fmtFull(totalOutstanding)} outstanding (Raised + Overdue)</>}
+        actions={<>
+<button onClick={openNew} className="px-3 py-2 text-sm text-white rounded-lg font-medium flex items-center gap-1.5 hover:opacity-90" style={{ background: "#1a3a5c" }}>
           <Icon name="plus" size={14} /> New Invoice
         </button>
-      </div>
+        </>} />
 
       <div className="flex gap-2 flex-wrap items-center">
         <div className="relative flex-1 min-w-48">

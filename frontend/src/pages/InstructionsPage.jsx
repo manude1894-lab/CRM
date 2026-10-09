@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { instructionsApi, casesApi, invoicesApi, accountsApi } from "../api/endpoints";
 import { useMasters } from "../hooks/useMasters";
 import { selectableCodes } from "../hooks/masterUtils";
-import { Icon, Badge, Modal, Field, Input, Select, Textarea, Spinner, ErrorBanner } from "../components/ui";
+import { Icon, Badge, Modal, Field, Input, Select, Textarea, Spinner, ErrorBanner, PageHeader } from "../components/ui";
 import DocumentsPanel from "../components/DocumentsPanel";
 import FeedbackPanel from "../components/FeedbackPanel";
 import { INSTRUCTION_STATUS_OPTIONS, INSTRUCTION_TYPE_OPTIONS, fmtFull, fmtDate } from "../utils/constants";
@@ -153,20 +153,18 @@ export default function InstructionsPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Service Requests</h1>
-          <p className="text-sm text-gray-500">{filtered.length} of {instructions.length} service requests</p>
-        </div>
-        <div className="flex gap-2">
+      <PageHeader title="Service Requests"
+        subtitle={<>{filtered.length} of {instructions.length} service requests</>}
+        actions={<>
+<div className="flex gap-2">
           {isAdmin && (
-            <button onClick={() => setImporting(true)} className="px-3 py-1.5 text-xs border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600">Import</button>
+            <button onClick={() => setImporting(true)} className="px-3 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-700 bg-white font-medium">Import</button>
           )}
-          <button onClick={openNew} className="px-3 py-1.5 text-xs text-white rounded-lg flex items-center gap-1" style={{ background: "#1a3a5c" }}>
+          <button onClick={openNew} className="px-3 py-2 text-sm text-white rounded-lg font-medium flex items-center gap-1.5 hover:opacity-90" style={{ background: "#1a3a5c" }}>
           <Icon name="plus" size={14} /> New Service Request
         </button>
         </div>
-      </div>
+        </>} />
 
       <div className="flex gap-2 flex-wrap items-center">
         <div className="relative flex-1 min-w-48">

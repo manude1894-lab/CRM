@@ -140,19 +140,148 @@ export const MetricCard = ({ label, value, sub, color = "#1a3a5c", icon }) => (
 );
 
 // ─── Modal ──────────────────────────────────────────────────────────────
-export const Modal = ({ title, onClose, children }) => (
-  <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.4)" }}>
-    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto mx-4">
-      <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-        <h2 className="text-base font-semibold text-gray-800">{title}</h2>
-        <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-          <Icon name="close" size={20} />
-        </button>
+// When a screen that is normally a pop-up is shown inside a page (e.g. a client tab), its Modal renders
+// inline. Pop-ups opened from inside it (confirmations, reject dialogs) still open as pop-ups.
+const EmbedContext = React.createContext(false);
+export const Embedded = ({ children }) => <EmbedContext.Provider value={true}>{children}</EmbedContext.Provider>;
+
+export const Modal = ({ title, onClose, children, size = "md" }) => {
+  const embedded = React.useContext(EmbedContext);
+  if (embedded) return <EmbedContext.Provider value={false}><div>{children}</div></EmbedContext.Provider>;
+  const width = { md: "max-w-2xl", lg: "max-w-4xl" }[size] || "max-w-2xl";
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.4)" }}>
+      <div className={`bg-white rounded-2xl shadow-2xl w-full ${width} max-h-[90vh] overflow-y-auto mx-4`}>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+          <h2 className="text-base font-semibold text-gray-800">{title}</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <Icon name="close" size={20} />
+          </button>
+        </div>
+        <div className="p-6">{children}</div>
       </div>
-      <div className="p-6">{children}</div>
     </div>
+  );
+};
+
+// ─── Page structure ─────────────────────────────────────────────────────
+/** The same header on every page: title, one-line description, actions on the right. */
+export const PageHeader = ({ title, subtitle, actions, back }) => (
+  <div className="flex items-start justify-between flex-wrap gap-3">
+    <div className="min-w-0">
+      {back && (
+        <button onClick={back.onClick} className="flex items-center gap-1 text-xs text-gray-500 hover:text-brand-600 mb-1">
+          <Icon name="chevronLeft" size={14} /> {back.label}
+        </button>
+      )}
+      <h1 className="text-2xl font-bold text-gray-900 tracking-tight">{title}</h1>
+      {subtitle && <p className="text-sm text-gray-500 mt-0.5">{subtitle}</p>}
+    </div>
+    {actions && <div className="flex items-center gap-2 flex-wrap">{actions}</div>}
   </div>
 );
+
+/** Search box + filters row under the page header. */
+export const FilterBar = ({ children }) => <div className="flex items-center gap-2 flex-wrap">{children}</div>;
+
+export const SearchInput = ({ value, onChange, placeholder = "Search…" }) => (
+  <div className="relative flex-1 min-w-[220px] max-w-md">
+    <Icon name="search" size={15} className="absolute left-3 top-2.5 text-gray-400" />
+    <input value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder}
+      className="w-full pl-8 pr-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:border-brand-400" />
+  </div>
+);
+
+export const EmptyState = ({ title, text, action }) => (
+  <div className="text-center py-14 px-4 bg-white border border-dashed border-gray-200 rounded-xl">
+    <div className="text-sm font-medium text-gray-700">{title}</div>
+    {text && <div className="text-xs text-gray-400 mt-1">{text}</div>}
+    {action && <div className="mt-3">{action}</div>}
+  </div>
+);
+
+/** Underlined tabs. tabs: [{ key, label, count? }] */
+export const Tabs = ({ tabs, active, onChange }) => (
+  <div className="flex gap-1 border-b border-gray-200 overflow-x-auto">
+    {tabs.map((t) => (
+      <button key={t.key} onClick={() => onChange(t.key)}
+        className={`px-4 py-2.5 text-sm whitespace-nowrap -mb-px border-b-2 ${active === t.key ? "border-brand-500 text-brand-700 font-semibold" : "border-transparent text-gray-500 hover:text-gray-800"}`}>
+        {t.label}{t.count != null && <span className="ml-1.5 text-xs text-gray-400">{t.count}</span>}
+      </button>
+    ))}
+  </div>
+);
+
+/** A titled white panel. */
+export const Panel = ({ title, actions, children, className = "" }) => (
+  <div className={`bg-white border border-gray-100 rounded-xl shadow-sm ${className}`}>
+    {(title || actions) && (
+      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+        <div className="text-sm font-semibold text-gray-800">{title}</div>
+        {actions}
+      </div>
+    )}
+    <div className="p-4">{children}</div>
+  </div>
+);
+
+/** Label / value pairs in a panel. items: [[label, value]] */
+export const FactList = ({ items }) => (
+  <dl className="grid grid-cols-[minmax(110px,40%)_1fr] gap-x-3 gap-y-2 text-sm">
+    {items.map(([label, value]) => (
+      <React.Fragment key={label}>
+        <dt className="text-gray-500">{label}</dt>
+        <dd className="text-gray-800 break-words">{value === null || value === undefined || value === "" ? <span className="text-gray-300">—</span> : value}</dd>
+      </React.Fragment>
+    ))}
+  </dl>
+);
+
+/** "⋯" button with a small menu. items: [{ label, onClick, danger?, hidden? }] */
+export const MoreMenu = ({ items, label = "More actions" }) => {
+  const [pos, setPos] = React.useState(null); // fixed position, so the menu isn't clipped by scroll areas
+  const shown = items.filter((i) => !i.hidden);
+  if (shown.length === 0) return null;
+  const toggle = (e) => {
+    if (pos) return setPos(null);
+    const r = e.currentTarget.getBoundingClientRect();
+    const below = window.innerHeight - r.bottom > 40 + shown.length * 34;
+    const width = 240;
+    setPos({ left: Math.max(8, Math.min(r.right - width, window.innerWidth - width - 8)), width,
+      ...(below ? { top: r.bottom + 4 } : { bottom: window.innerHeight - r.top + 4 }) });
+  };
+  return (
+    <div onClick={(e) => e.stopPropagation()}>
+      <button title={label} onClick={toggle}
+        className="px-2 py-1 text-sm leading-none rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 bg-white">⋯</button>
+      {pos && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setPos(null)} />
+          <div className="fixed z-50 bg-white border border-gray-100 rounded-lg shadow-lg py-1" style={pos}>
+            {shown.map((i) => (
+              <button key={i.label} onClick={() => { setPos(null); i.onClick(); }}
+                className={`w-full text-left px-3 py-1.5 text-sm hover:bg-gray-50 ${i.danger ? "text-red-600" : "text-gray-700"}`}>
+                {i.label}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
+
+/** Primary / secondary buttons with one look everywhere. */
+export const Button = ({ variant = "secondary", className = "", children, ...props }) => {
+  const look = variant === "primary" ? "text-white border-transparent hover:opacity-90" : variant === "danger"
+    ? "border-red-200 text-red-600 hover:bg-red-50 bg-white" : "border-gray-200 text-gray-700 hover:bg-gray-50 bg-white";
+  return (
+    <button {...props} style={variant === "primary" ? { background: "#1a3a5c" } : undefined}
+      className={`px-3 py-2 text-sm rounded-lg border font-medium flex items-center gap-1.5 disabled:opacity-50 ${look} ${className}`}>
+      {children}
+    </button>
+  );
+};
 
 // ─── Form primitives ────────────────────────────────────────────────────
 export const Field = ({ label, children, required }) => (

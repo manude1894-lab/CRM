@@ -83,7 +83,7 @@ const AddressFields = ({ value, onChange }) => {
  * - onChanged: called after any successful save so the parent can reload the list.
  * - onOpenExisting(account): user picked an existing client from the duplicate warning.
  */
-export default function AccountFormModal({ initialForm, users, countries, onClose, onChanged, onOpenExisting }) {
+export default function AccountFormModal({ initialForm, users, countries, onClose, onChanged, onOpenExisting, hideWorkflow = false, hideDocuments = false }) {
   const [form, setForm] = useState(initialForm);
   const [mode, setMode] = useState(initialForm._id ? "edit" : "new");
   const [saving, setSaving] = useState(false);
@@ -211,7 +211,7 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
             {form._status_updated_at && <span>Status last updated {fmtDate(form._status_updated_at)}</span>}
           </div>
         )}
-        {form._id && <WorkflowBar accountId={form._id} refreshKey={refreshKey} onChanged={onWorkflowChanged} />}
+        {form._id && !hideWorkflow && <WorkflowBar accountId={form._id} refreshKey={refreshKey} onChanged={onWorkflowChanged} />}
         {form._id && approvedClient && (
           <AmendmentBar accountId={form._id} refreshKey={refreshKey} onState={onAmendmentState} onDecided={onAmendmentDecided} />
         )}
@@ -478,7 +478,7 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
           )}
         </Section>
 
-        {form._id && (
+        {form._id && !hideDocuments && (
           // BRD §12 step 8 / §16 — documents are filed against the Client ID. Saved on upload.
           <Section title="Documents" hasData={["New", "WIP"].includes(form.profile_status)}>
             <ClientDocumentsFolder accountId={form._id} onboarding={["New", "WIP"].includes(form.profile_status)}

@@ -21,23 +21,24 @@ import ApprovalsPage from "./pages/ApprovalsPage";
 import ChangePasswordModal from "./components/ChangePasswordModal";
 import { ROLE_LABEL } from "./utils/constants";
 
+// The menu, grouped by area of work. Order within the array is the order on screen.
 const NAV = [
-  { key: "dashboard", label: "Dashboard", icon: "dashboard", component: Dashboard },
-  { key: "prospects", label: "Prospects", icon: "kanban", component: ProspectsPage },
-  { key: "cases", label: "Cases", icon: "cases", component: CasesPage },
-  { key: "cdd", label: "CDD / Screening", icon: "cdd", component: CDDPage, roles: ["admin", "screening", "rm"] },
-  // Licence renewal / ESR / Annual Return / ROM-RBO due dates (BVI process).
-  { key: "compliance", label: "Filing Calendar", icon: "calendar", component: CompliancePage },
-  { key: "accounts", label: "Clients", icon: "accounts", component: AccountsPage },
+  { key: "dashboard", label: "Dashboard", icon: "dashboard", component: Dashboard, group: null },
+  { key: "accounts", label: "Clients", icon: "accounts", component: AccountsPage, group: "Clients & Cases" },
+  { key: "prospects", label: "Prospects", icon: "kanban", component: ProspectsPage, group: "Clients & Cases" },
+  { key: "cases", label: "Cases", icon: "cases", component: CasesPage, group: "Clients & Cases" },
   // Compliance review desk: new clients, client amendments, new cases and case changes awaiting
   // CO / MLRO approval (BRD §12, §13, §15). Shown to anyone with the client.approve permission.
-  { key: "approvals", label: "Compliance", icon: "shield", component: ApprovalsPage, perm: "client.approve" },
-  { key: "activities", label: "Activities", icon: "activities", component: ActivitiesPage },
-  { key: "instructions", label: "Service Requests", icon: "instructions", component: InstructionsPage },
-  { key: "action-points", label: "Action Points", icon: "check", component: ActionPointsPage },
-  { key: "invoices", label: "Invoices", icon: "invoices", component: InvoicesPage },
-  { key: "reports", label: "Reports", icon: "reports", component: ReportsPage },
-  { key: "admin", label: "Admin", icon: "admin", component: AdminPage, roles: ["admin"] },
+  { key: "approvals", label: "Compliance", icon: "shield", component: ApprovalsPage, perm: "client.approve", group: "Compliance" },
+  { key: "cdd", label: "CDD / Screening", icon: "cdd", component: CDDPage, roles: ["admin", "screening", "rm"], group: "Compliance" },
+  // Licence renewal / ESR / Annual Return / ROM-RBO due dates (BVI process).
+  { key: "compliance", label: "Filing Calendar", icon: "calendar", component: CompliancePage, group: "Compliance" },
+  { key: "activities", label: "Activities", icon: "activities", component: ActivitiesPage, group: "Servicing" },
+  { key: "instructions", label: "Service Requests", icon: "instructions", component: InstructionsPage, group: "Servicing" },
+  { key: "action-points", label: "Action Points", icon: "check", component: ActionPointsPage, group: "Servicing" },
+  { key: "invoices", label: "Invoices", icon: "invoices", component: InvoicesPage, group: "Finance & Reports" },
+  { key: "reports", label: "Reports", icon: "reports", component: ReportsPage, group: "Finance & Reports" },
+  { key: "admin", label: "Admin", icon: "admin", component: AdminPage, roles: ["admin"], group: "Administration" },
 ];
 
 export default function App() {
@@ -78,14 +79,19 @@ export default function App() {
         </div>
 
         <nav className="flex-1 py-2 space-y-0.5 overflow-y-auto px-2">
-          {navItems.map((item) => (
-            <button key={item.key} onClick={() => { setJumpTo(null); setPage(item.key); }}
+          {navItems.map((item, i) => (
+            <React.Fragment key={item.key}>
+            {item.group && item.group !== navItems[i - 1]?.group && (sidebarOpen
+              ? <div className="px-3 pt-4 pb-1 text-[10px] font-semibold uppercase tracking-wider text-gray-400">{item.group}</div>
+              : <div className="mx-3 my-2 border-t border-gray-100" />)}
+            <button onClick={() => { setJumpTo(null); setPage(item.key); }}
               title={sidebarOpen ? undefined : item.label}
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors text-left ${sidebarOpen ? "" : "justify-center"} ${page === item.key ? "text-white" : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"}`}
+              className={`w-full flex items-center gap-3 px-3 py-1.5 rounded-lg text-sm transition-colors text-left ${sidebarOpen ? "" : "justify-center"} ${page === item.key ? "text-white" : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"}`}
               style={page === item.key ? { background: "#1a3a5c" } : {}}>
               <Icon name={item.icon} size={18} className={`flex-shrink-0 ${page === item.key ? "text-gold" : ""}`} />
               {sidebarOpen && <span className="flex-1 font-medium">{item.label}</span>}
             </button>
+            </React.Fragment>
           ))}
         </nav>
 

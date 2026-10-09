@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { dashboardApi, reportsApi } from "../api/endpoints";
-import { MetricCard, CustomTooltip, Badge, Icon, Spinner, ErrorBanner } from "../components/ui";
+import { MetricCard, CustomTooltip, Badge, Icon, Spinner, ErrorBanner, PageHeader } from "../components/ui";
 import { fmtDate } from "../utils/constants";
 import { toast } from "../store/toast";
 
@@ -48,10 +48,8 @@ export default function ReportsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Reports & Analytics</h1>
-        <p className="text-sm text-gray-500">Entity servicing · Download PDFs or view inline analytics</p>
-      </div>
+      <PageHeader title="Reports & Analytics"
+        subtitle={<>Entity servicing · Download PDFs or view inline analytics</>} />
 
       {/* PDF Downloads */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">

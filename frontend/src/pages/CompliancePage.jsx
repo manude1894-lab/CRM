@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { complianceApi } from "../api/endpoints";
-import { Icon, Badge, Spinner, ErrorBanner } from "../components/ui";
+import { Icon, Badge, Spinner, ErrorBanner, PageHeader } from "../components/ui";
 import { AR_FILING_STATUS_OPTIONS, fmtDate } from "../utils/constants";
 import ComplianceCalendar from "../components/ComplianceCalendar";
 import { toast } from "../store/toast";
@@ -58,16 +58,14 @@ export default function CompliancePage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Filing Calendar</h1>
-          <p className="text-sm text-gray-500">{rows.length} renewals / filings due in the next {days} days</p>
-        </div>
-        <div className="flex items-center gap-2">
+      <PageHeader title="Filing Calendar"
+        subtitle={<>{rows.length} renewals / filings due in the next {days} days</>}
+        actions={<>
+<div className="flex items-center gap-2">
           <div className="flex border border-gray-200 rounded-lg overflow-hidden">
             {WINDOWS.map((w) => (
               <button key={w} onClick={() => setDays(w)}
-                className={`px-3 py-1.5 text-xs ${days === w ? "bg-gray-100 text-gray-800" : "text-gray-500 hover:bg-gray-50"}`}>
+                className={`px-3 py-2 text-sm ${days === w ? "bg-gray-100 text-gray-800" : "text-gray-500 hover:bg-gray-50"}`}>
                 {w}d
               </button>
             ))}
@@ -75,13 +73,13 @@ export default function CompliancePage() {
           <div className="flex border border-gray-200 rounded-lg overflow-hidden">
             {[["table", "Table"], ["calendar", "Calendar"]].map(([v, label]) => (
               <button key={v} onClick={() => setView(v)}
-                className={`px-3 py-1.5 text-xs ${view === v ? "bg-gray-100 text-gray-800" : "text-gray-500 hover:bg-gray-50"}`}>
+                className={`px-3 py-2 text-sm ${view === v ? "bg-gray-100 text-gray-800" : "text-gray-500 hover:bg-gray-50"}`}>
                 {label}
               </button>
             ))}
           </div>
         </div>
-      </div>
+        </>} />
 
       {view === "calendar" && (
         <ComplianceCalendar rows={rows} itemLabel={ITEM_LABEL} onMarkDone={markDone} onSetArStatus={setArStatus} />

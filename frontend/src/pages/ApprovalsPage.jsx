@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { amendmentApi, caseComplianceApi, casesApi, workflowApi } from "../api/endpoints";
-import { Modal, Spinner, ErrorBanner } from "../components/ui";
+import { Modal, Spinner, ErrorBanner, PageHeader } from "../components/ui";
 import { useMasters } from "../hooks/useMasters";
 import { formatTimestamp } from "../utils/auditFormat";
 import { fmtDate } from "../utils/constants";
@@ -50,13 +50,9 @@ export default function ApprovalsPage({ onNavigate }) {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Compliance</h1>
-        <p className="text-sm text-gray-500">
-          New clients, changes to approved clients, new cases and changes to cases waiting for Compliance approval.
-          You can't approve anything you submitted yourself.
-        </p>
-      </div>
+      <PageHeader title="Compliance"
+        subtitle={<>New clients, changes to approved clients, new cases and changes to cases waiting for Compliance approval.
+          You can't approve anything you submitted yourself.</>} />
       <div className="flex gap-1 border-b border-gray-200">
         {TABS.map((t) => (
           <button key={t} onClick={() => setTab(t)}

@@ -4,7 +4,7 @@ import CsvImportModal from "../components/CsvImportModal";
 import { ROUTES, ROUTE_HELP, REGISTERED_AGENTS, routeFields, stageLabel } from "../components/cases/engagement";
 import { useAuthStore } from "../store/auth";
 import { casesApi, usersApi, accountsApi } from "../api/endpoints";
-import { Icon, Badge, Modal, Field, Input, Select, Textarea, Spinner, ErrorBanner } from "../components/ui";
+import { Icon, Badge, Modal, Field, Input, Select, Textarea, Spinner, ErrorBanner, MoreMenu, PageHeader, Button, SearchInput, FilterBar } from "../components/ui";
 import PartyRegisterModal from "../components/PartyRegisterModal";
 import CompanyDetailsModal from "../components/CompanyDetailsModal";
 import LifecycleModal from "../components/LifecycleModal";
@@ -217,29 +217,27 @@ export default function CasesPage({ initialCaseId, initialStage } = {}) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Cases</h1>
-          <p className="text-sm text-gray-500">{filtered.length} onboarding cases</p>
-        </div>
-        <div className="flex gap-2 flex-wrap">
+      <PageHeader title="Cases"
+        subtitle={<>{filtered.length} onboarding cases</>}
+        actions={<>
+<div className="flex gap-2 flex-wrap">
           <div className="flex border border-gray-200 rounded-lg overflow-hidden">
-            <button onClick={() => setView("kanban")} className={`px-3 py-1.5 text-xs flex items-center gap-1 ${view === "kanban" ? "bg-gray-100 text-gray-800" : "text-gray-500 hover:bg-gray-50"}`}>
+            <button onClick={() => setView("kanban")} className={`px-3 py-2 text-sm flex items-center gap-1.5 ${view === "kanban" ? "bg-gray-100 text-gray-800" : "text-gray-500 hover:bg-gray-50"}`}>
               <Icon name="kanban" size={14} /> Kanban
             </button>
-            <button onClick={() => setView("table")} className={`px-3 py-1.5 text-xs flex items-center gap-1 ${view === "table" ? "bg-gray-100 text-gray-800" : "text-gray-500 hover:bg-gray-50"}`}>
+            <button onClick={() => setView("table")} className={`px-3 py-2 text-sm flex items-center gap-1.5 ${view === "table" ? "bg-gray-100 text-gray-800" : "text-gray-500 hover:bg-gray-50"}`}>
               <Icon name="table" size={14} /> Table
             </button>
           </div>
-          <button onClick={exportCSV} className="px-3 py-1.5 text-xs border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600">Export CSV</button>
+          <button onClick={exportCSV} className="px-3 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-700 bg-white font-medium">Export CSV</button>
           {isAdmin && (
-            <button onClick={() => setImporting(true)} className="px-3 py-1.5 text-xs border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600">Import existing entities</button>
+            <button onClick={() => setImporting(true)} className="px-3 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-700 bg-white font-medium">Import existing entities</button>
           )}
-          <button onClick={openNew} className="px-3 py-1.5 text-xs text-white rounded-lg flex items-center gap-1" style={{ background: "#1a3a5c" }}>
+          <button onClick={openNew} className="px-3 py-2 text-sm text-white rounded-lg font-medium flex items-center gap-1.5 hover:opacity-90" style={{ background: "#1a3a5c" }}>
             <Icon name="plus" size={14} /> New Case
           </button>
         </div>
-      </div>
+        </>} />
 
       <div className="flex gap-2 flex-wrap">
         <div className="relative flex-1 min-w-48">
@@ -249,11 +247,11 @@ export default function CasesPage({ initialCaseId, initialStage } = {}) {
         </div>
         <select value={stageFilter} onChange={(e) => setStageFilter(e.target.value)}
           className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none">
-          {["All", ...STAGES].map((s) => <option key={s}>{s}</option>)}
+          {["All", ...STAGES].map((s) => <option key={s} value={s}>{s === "All" ? "All stages" : s}</option>)}
         </select>
         <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
           className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none">
-          {["All", "Closed RELs", ...CASE_STATUS_OPTIONS].map((s) => <option key={s}>{s}</option>)}
+          {["All", "Closed RELs", ...CASE_STATUS_OPTIONS].map((s) => <option key={s} value={s}>{s === "All" ? "All open statuses" : s}</option>)}
         </select>
       </div>
 
@@ -310,49 +308,30 @@ export default function CasesPage({ initialCaseId, initialStage } = {}) {
                       {(c.jurisdiction || c.service_type) && (
                         <div className="text-xs text-gray-400 mb-2">{[c.jurisdiction, c.service_type].filter(Boolean).join(" · ")}</div>
                       )}
-                      <div className="flex items-center justify-between gap-1 flex-wrap">
-                        <Badge text={c.status} />
-                        <Badge text={c.invoice_status} />
+                      <div className="flex items-center gap-1 flex-wrap">
+                        <CaseComplianceChip status={c.compliance_status} />
+                        {c.status !== "Active" && <Badge text={c.status} />}
+                        {c.invoice_status && c.invoice_status !== "Not Raised" && <Badge text={`Invoice ${c.invoice_status}`} />}
                       </div>
-                      <div className="mt-1"><CaseComplianceChip status={c.compliance_status} /></div>
-                      <div className="mt-2 flex flex-wrap gap-1" onClick={(e) => e.stopPropagation()}>
-                        <button onClick={() => setRegisterCase(c)}
-                          className="text-xs px-2 py-0.5 rounded border border-gray-200 hover:border-brand-300 hover:text-brand-600 text-gray-500">
-                          Register
-                        </button>
-                        <button onClick={() => setDetailsCase(c)}
-                          className="text-xs px-2 py-0.5 rounded border border-gray-200 hover:border-brand-300 hover:text-brand-600 text-gray-500">
-                          Details
-                        </button>
-                        <button onClick={() => setFormationCase(c)}
-                          className="text-xs px-2 py-0.5 rounded border border-gray-200 hover:border-brand-300 hover:text-brand-600 text-gray-500">
-                          Formation
-                        </button>
-                        <button onClick={() => setLifecycleCase(c)}
-                          className="text-xs px-2 py-0.5 rounded border border-gray-200 hover:border-brand-300 hover:text-brand-600 text-gray-500">
-                          Lifecycle
-                        </button>
-                        <button onClick={() => setServicesCase(c)}
-                          className="text-xs px-2 py-0.5 rounded border border-gray-200 hover:border-brand-300 hover:text-brand-600 text-gray-500">
-                          Services
-                        </button>
+                      <div className="mt-2 pt-2 border-t border-gray-50 flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
                         {actionLabel(stage, c.engagement_route) && (
-                          <button onClick={() => advance(c)}
-                            className="text-xs px-2 py-0.5 rounded border border-gray-200 hover:border-brand-300 hover:text-brand-600 text-gray-500">
+                          <button onClick={() => advance(c)} disabled={c.compliance_status !== "Approved"}
+                            title={c.compliance_status !== "Approved" ? "Waiting for Compliance approval" : ""}
+                            className="flex-1 text-xs px-2 py-1 rounded-lg text-white font-medium disabled:opacity-40 disabled:cursor-not-allowed truncate"
+                            style={{ background: "#1a3a5c" }}>
                             {actionLabel(stage, c.engagement_route)}
                           </button>
                         )}
-                        {c.status === "Active" ? (
-                          <button onClick={() => setStatus(c, "Docs Pending")}
-                            className="text-xs px-2 py-0.5 rounded border border-gray-200 hover:border-amber-300 hover:text-amber-600 text-gray-500">
-                            Mark Docs Pending
-                          </button>
-                        ) : c.status === "Docs Pending" && (
-                          <button onClick={() => setStatus(c, "Active")}
-                            className="text-xs px-2 py-0.5 rounded border border-gray-200 hover:border-green-300 hover:text-green-600 text-gray-500">
-                            Resume
-                          </button>
-                        )}
+                        <MoreMenu items={[
+                          { label: "Open case", onClick: () => { setForm(c); setModal("edit"); } },
+                          { label: "Register (directors, shareholders, UBOs)", onClick: () => setRegisterCase(c) },
+                          { label: "Company details", onClick: () => setDetailsCase(c) },
+                          { label: "Formation", onClick: () => setFormationCase(c) },
+                          { label: "Lifecycle", onClick: () => setLifecycleCase(c) },
+                          { label: "Services", onClick: () => setServicesCase(c) },
+                          { label: "Mark docs pending", onClick: () => setStatus(c, "Docs Pending"), hidden: c.status !== "Active" },
+                          { label: "Resume", onClick: () => setStatus(c, "Active"), hidden: c.status !== "Docs Pending" },
+                        ]} />
                       </div>
                     </div>
                   ))}

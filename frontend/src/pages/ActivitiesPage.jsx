@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { activitiesApi, accountsApi, casesApi } from "../api/endpoints";
-import { Icon, Modal, Spinner, ErrorBanner } from "../components/ui";
+import { Icon, Modal, Spinner, ErrorBanner, PageHeader } from "../components/ui";
 import { toast } from "../store/toast";
 import { confirmDialog } from "../store/confirm";
 import ActivityForm, { ACTIVITY_TYPES, REPORT_TYPES, activityPayload, activityProblem, blankActivity } from "../components/activities/ActivityForm";
@@ -63,23 +63,21 @@ export default function ActivitiesPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Activities</h1>
-          <p className="text-sm text-gray-500">Visit Reports, Call Reports and other client activities · {activities.length} in total</p>
-        </div>
-        <div className="flex gap-2">
-          <button onClick={() => openNew("Visit Report")} className="px-3 py-1.5 text-xs text-white rounded-lg flex items-center gap-1" style={{ background: "#1a3a5c" }}>
+      <PageHeader title="Activities"
+        subtitle={<>Visit Reports, Call Reports and other client activities · {activities.length} in total</>}
+        actions={<>
+<div className="flex gap-2">
+          <button onClick={() => openNew("Visit Report")} className="px-3 py-2 text-sm text-white rounded-lg font-medium flex items-center gap-1.5 hover:opacity-90" style={{ background: "#1a3a5c" }}>
             <Icon name="plus" size={14} /> Visit Report
           </button>
-          <button onClick={() => openNew("Call Report")} className="px-3 py-1.5 text-xs text-white rounded-lg flex items-center gap-1" style={{ background: "#1a3a5c" }}>
+          <button onClick={() => openNew("Call Report")} className="px-3 py-2 text-sm text-white rounded-lg font-medium flex items-center gap-1.5 hover:opacity-90" style={{ background: "#1a3a5c" }}>
             <Icon name="plus" size={14} /> Call Report
           </button>
-          <button onClick={() => openNew("Meeting")} className="px-3 py-1.5 text-xs border border-gray-200 rounded-lg flex items-center gap-1 text-gray-600 hover:bg-gray-50">
+          <button onClick={() => openNew("Meeting")} className="px-3 py-2 text-sm border border-gray-200 rounded-lg flex items-center gap-1.5 text-gray-700 bg-white font-medium hover:bg-gray-50">
             <Icon name="plus" size={14} /> Other activity
           </button>
         </div>
-      </div>
+        </>} />
 
       <div className="flex gap-2 flex-wrap items-center">
         {["All", "Reports", ...ACTIVITY_TYPES].map((t) => (

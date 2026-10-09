@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { actionPointsApi, casesApi, usersApi } from "../api/endpoints";
 import { useAuthStore } from "../store/auth";
-import { Icon, Badge, Modal, Field, Input, Select, Textarea, Spinner, ErrorBanner } from "../components/ui";
+import { Icon, Badge, Modal, Field, Input, Select, Textarea, Spinner, ErrorBanner, PageHeader } from "../components/ui";
 import { ACTION_POINT_STATUS_OPTIONS, ACTION_POINT_PRIORITY_OPTIONS, fmtDate } from "../utils/constants";
 import { toast } from "../store/toast";
 import { confirmDialog } from "../store/confirm";
@@ -72,15 +72,13 @@ export default function ActionPointsPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Action Points</h1>
-          <p className="text-sm text-gray-500">{items.length} open operational tasks (WIP board)</p>
-        </div>
-        <button onClick={openNew} className="px-3 py-1.5 text-xs text-white rounded-lg flex items-center gap-1" style={{ background: "#1a3a5c" }}>
+      <PageHeader title="Action Points"
+        subtitle={<>{items.length} open operational tasks (WIP board)</>}
+        actions={<>
+<button onClick={openNew} className="px-3 py-2 text-sm text-white rounded-lg font-medium flex items-center gap-1.5 hover:opacity-90" style={{ background: "#1a3a5c" }}>
           <Icon name="plus" size={14} /> Add
         </button>
-      </div>
+        </>} />
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {ACTION_POINT_STATUS_OPTIONS.map((col) => {

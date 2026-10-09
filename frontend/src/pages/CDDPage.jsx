@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { casesApi, cddApi, directorsApi, shareholdersApi, ubosApi } from "../api/endpoints";
 import { useAuthStore } from "../store/auth";
-import { Icon, Badge, Modal, Field, Input, Select, Spinner, ErrorBanner } from "../components/ui";
+import { Icon, Badge, Modal, Field, Input, Select, Spinner, ErrorBanner, PageHeader } from "../components/ui";
 import AMLAssessmentPanel from "../components/AMLAssessmentPanel";
 import PEPAssessmentPanel from "../components/PEPAssessmentPanel";
 import DocumentsPanel from "../components/DocumentsPanel";
@@ -175,10 +175,8 @@ export default function CDDPage() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 tracking-tight">CDD / KYC Screening</h1>
-        <p className="text-sm text-gray-500">{queue.length} cases awaiting screening review</p>
-      </div>
+      <PageHeader title="CDD / KYC Screening"
+        subtitle={<>{queue.length} cases awaiting screening review</>} />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="lg:col-span-1 space-y-2">

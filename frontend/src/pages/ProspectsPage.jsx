@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { prospectsApi, usersApi } from "../api/endpoints";
-import { Icon, Badge, Modal, Field, Input, Select, Textarea, Spinner, ErrorBanner } from "../components/ui";
+import { Icon, Badge, Modal, Field, Input, Select, Textarea, Spinner, ErrorBanner, PageHeader } from "../components/ui";
 import DuplicateWarning from "../components/DuplicateWarning";
 import { PROSPECT_STATUS_OPTIONS, CASE_SOURCE_OPTIONS, JURISDICTION_OPTIONS, SERVICE_TYPE_OPTIONS, fmtFull, fmtDate } from "../utils/constants";
 import { toast } from "../store/toast";
@@ -100,15 +100,13 @@ export default function ProspectsPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Prospects</h1>
-          <p className="text-sm text-gray-500">{items.length} tracked leads / proposals — not yet onboarded clients</p>
-        </div>
-        <button onClick={openNew} className="px-3 py-1.5 text-xs text-white rounded-lg flex items-center gap-1" style={{ background: "#1a3a5c" }}>
+      <PageHeader title="Prospects"
+        subtitle={<>{items.length} tracked leads / proposals — not yet onboarded clients</>}
+        actions={<>
+<button onClick={openNew} className="px-3 py-2 text-sm text-white rounded-lg font-medium flex items-center gap-1.5 hover:opacity-90" style={{ background: "#1a3a5c" }}>
           <Icon name="plus" size={14} /> Add Prospect
         </button>
-      </div>
+        </>} />
 
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4 overflow-x-auto">
         {PROSPECT_STATUS_OPTIONS.map((col) => {
