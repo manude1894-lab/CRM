@@ -104,7 +104,7 @@ export default function App() {
               <>
                 <div className="flex-1 min-w-0">
                   <div className="text-xs font-semibold text-gray-800 truncate">{user?.name}</div>
-                  <div className="text-xs text-gray-400 truncate">{ROLE_LABEL[user?.role] || user?.role}</div>
+                  <div className="text-xs text-gray-400 truncate">{user?.business_role_name || ROLE_LABEL[user?.role] || user?.role}</div>
                 </div>
                 <button onClick={() => setPasswordOpen(true)} className="text-gray-400 hover:text-brand-600 text-[11px]" title="Change password">
                   Password
@@ -142,7 +142,7 @@ export default function App() {
             </div>
             <NotificationBell />
             {user && (
-              <span className="text-xs font-medium text-gray-600 bg-gray-100 px-2.5 py-1.5 rounded-lg">{ROLE_LABEL[user.role] || user.role}</span>
+              <span className="text-xs font-medium text-gray-600 bg-gray-100 px-2.5 py-1.5 rounded-lg">{user.business_role_name || ROLE_LABEL[user.role] || user.role}</span>
             )}
           </div>
         </header>

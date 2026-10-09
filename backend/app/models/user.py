@@ -46,6 +46,11 @@ class User(Base):
         from app.auth.permissions import user_permissions  # local import: auth imports models
         return sorted(user_permissions(self))
 
+    @property
+    def business_role_name(self):
+        """Shown as the user's role in the app (e.g. "MLRO") instead of the system tier."""
+        return self.business_role.name if self.business_role and self.business_role.is_active else None
+
     # Reverse relationships
     cases_as_rm = relationship("Case", back_populates="rm", foreign_keys="Case.rm_id")
     cases_as_ops = relationship("Case", back_populates="ops_owner", foreign_keys="Case.ops_owner_id")

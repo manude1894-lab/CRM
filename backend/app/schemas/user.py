@@ -53,6 +53,7 @@ class UserUpdate(BaseModel):
 class UserRead(UserBase):
     id: int
     permissions: list[str] = []
+    business_role_name: Optional[str] = None
     locked_until: Optional[datetime] = None  # P7 — shown to admins; resetting the password unlocks
     created_at: datetime
     updated_at: datetime

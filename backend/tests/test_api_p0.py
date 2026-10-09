@@ -40,6 +40,12 @@ def test_me_exposes_permissions(client, make_user, make_role):
     assert client.get("/api/v1/auth/me", headers=auth(co)).json()["permissions"] == ["audit.view", "client.approve", "view.all_clients"]
 
 
+def test_me_shows_business_role_name(client, make_user, make_role):
+    mlro = make_user(business_role=make_role("MLRO", ["client.approve"]))
+    assert client.get("/api/v1/auth/me", headers=auth(mlro)).json()["business_role_name"] == "MLRO"
+    assert client.get("/api/v1/auth/me", headers=auth(make_user())).json()["business_role_name"] is None
+
+
 def test_changes_through_the_api_are_attributed(client, db, make_user):
     admin = make_user("Admin", role=UserRole.ADMIN)
     r = client.post("/api/v1/roles", json={"name": "MLRO", "permissions": ["client.approve"]}, headers=auth(admin))
