@@ -309,7 +309,7 @@ export const REGULATOR_OPTIONS = ["DFSA", "FSRA", "CMA", "UAECB", "Other"];
 export const TAG_OPTIONS = ["DIFC", "ADGM", "DNFBP", "Mainland", "Holding Co.", "SPV"];
 
 // Triam's own internal legal entities (client CRM-change-request item 3).
-export const TRIAM_ENTITY_OPTIONS = ["TMC", "TCPL", "TMCL", "TAB", "TCDL"];
+export const TRIAM_ENTITY_OPTIONS = ["TCPL", "TMCL", "IFZA", "TABL", "TCDL"];
 
 export const SERVICES_OBTAINED_OPTIONS = [
   "Company Formation",

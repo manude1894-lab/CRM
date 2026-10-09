@@ -26,6 +26,7 @@ class UserBase(BaseModel):
     title: Optional[str] = None
     supervisor_id: Optional[int] = None
     business_role_id: Optional[int] = None
+    extra_role_ids: Optional[list[int]] = None  # additional business roles
     mobile: Optional[str] = None
 
     _check_mobile = field_validator("mobile", mode="before")(classmethod(lambda cls, v: _mobile(v)))
@@ -45,6 +46,7 @@ class UserUpdate(BaseModel):
     title: Optional[str] = None
     supervisor_id: Optional[int] = None
     business_role_id: Optional[int] = None
+    extra_role_ids: Optional[list[int]] = None  # additional business roles
     mobile: Optional[str] = None
 
     _check_mobile = field_validator("mobile", mode="before")(classmethod(lambda cls, v: _mobile(v)))

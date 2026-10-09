@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { itemsFromStrings, sortItems, labelOf, selectableCodes, opensFreeText } from "./masterUtils";
+import { itemsFromStrings, sortItems, labelOf, selectableCodes, opensFreeText, servicesForEntities } from "./masterUtils";
 
 const items = [
   { code: "COI", label: "Certificate of Incorporation", sort_order: 20, is_active: true },
@@ -37,5 +37,20 @@ describe("masterUtils", () => {
   it("knows which items open a free-text field", () => {
     expect(opensFreeText(items, "Other")).toBe(true);
     expect(opensFreeText(items, "MOA")).toBe(false);
+  });
+});
+
+describe("servicesForEntities", () => {
+  const items = [
+    { code: "Audit Services", meta: { entities: ["TMCL", "TABL"] } },
+    { code: "Set up SPVs", meta: { entities: ["TCDL", "TCPL"] } },
+    { code: "Legacy", meta: null },
+  ];
+  it("shows only the chosen entities' services (plus unmapped ones)", () => {
+    expect(servicesForEntities(items, ["TABL"]).map((i) => i.code)).toEqual(["Audit Services", "Legacy"]);
+    expect(servicesForEntities(items, ["TCPL", "TMCL"]).map((i) => i.code)).toEqual(["Audit Services", "Set up SPVs", "Legacy"]);
+  });
+  it("shows everything until an entity is chosen", () => {
+    expect(servicesForEntities(items, [""]).length).toBe(3);
   });
 });

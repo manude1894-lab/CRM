@@ -5,7 +5,7 @@ import MasterDataPanel from "../components/admin/MasterDataPanel";
 import RolesPanel from "../components/admin/RolesPanel";
 import AuditLogPanel from "../components/admin/AuditLogPanel";
 import { useAuthStore } from "../store/auth";
-import { Icon, Badge, Modal, Field, Input, Select, Spinner, ErrorBanner, PageHeader } from "../components/ui";
+import { Icon, Badge, Modal, Field, Input, Select, Spinner, ErrorBanner, PageHeader, MultiSelect } from "../components/ui";
 import { ROLE_LABEL } from "../utils/constants";
 import { toast } from "../store/toast";
 import { confirmDialog } from "../store/confirm";
@@ -96,6 +96,7 @@ export default function AdminPage() {
         department_id: form.department_id ? +form.department_id : null,
         supervisor_id: form.supervisor_id ? +form.supervisor_id : null,
         business_role_id: form.business_role_id ? +form.business_role_id : null,
+        extra_role_ids: (form.extra_role_ids || []).map(Number).filter((id) => id !== +form.business_role_id),
         title: form.title || null,
         mobile: form.mobile || null,
       };
@@ -126,7 +127,7 @@ export default function AdminPage() {
       <PageHeader title="Admin Panel"
         subtitle={<>Users · Master data · Roles · Audit log · System health</>}
         actions={<>
-{tab === "users" && <button onClick={() => { setForm({ name: "", email: "", password: "", role: "rm", is_active: true, department_id: "", title: "", mobile: "", supervisor_id: "", business_role_id: "" }); setModal("new"); }}
+{tab === "users" && <button onClick={() => { setForm({ name: "", email: "", password: "", role: "rm", is_active: true, department_id: "", title: "", mobile: "", supervisor_id: "", business_role_id: "", extra_role_ids: [] }); setModal("new"); }}
           className="px-3 py-2 text-sm text-white rounded-lg font-medium flex items-center gap-1.5 hover:opacity-90" style={{ background: "#1a3a5c" }}>
           <Icon name="plus" size={14} /> Add User
         </button>}
@@ -175,7 +176,7 @@ export default function AdminPage() {
                 </td>
                 <td className="py-3 px-4 text-sm text-gray-600">{u.email}</td>
                 <td className="py-3 px-4 text-sm text-gray-600">{departmentName(u.department_id)}</td>
-                <td className="py-3 px-4"><Badge text={u.role} />{roleName(u.business_role_id) && <span className="ml-1.5 text-[11px] px-1.5 py-0.5 rounded bg-brand-50 text-brand-700">{roleName(u.business_role_id)}</span>}</td>
+                <td className="py-3 px-4"><Badge text={u.role} />{[u.business_role_id, ...(u.extra_role_ids || [])].map(roleName).filter(Boolean).map((n) => <span key={n} className="ml-1.5 text-[11px] px-1.5 py-0.5 rounded bg-brand-50 text-brand-700">{n}</span>)}</td>
                 <td className="py-3 px-4">
                   <span className={`text-xs font-medium ${u.is_active ? "text-green-600" : "text-gray-400"}`}>
                     {u.is_active ? "● Active" : "○ Inactive"}
@@ -284,6 +285,12 @@ export default function AdminPage() {
               <option value="">— None —</option>
               {roles.filter((r) => r.is_active || r.id === form.business_role_id).map((r) => <option key={r.id} value={r.id}>{r.name}{r.description ? ` — ${r.description}` : ""}</option>)}
             </Select>
+          </Field>
+          <Field label="Additional roles (one person can hold several, e.g. MLRO and Approver)">
+            <MultiSelect
+              options={roles.filter((r) => (r.is_active || (form.extra_role_ids || []).includes(r.id)) && r.id !== +form.business_role_id).map((r) => r.id)}
+              value={form.extra_role_ids || []} getLabel={(id) => roles.find((r) => r.id === id)?.name || id}
+              onChange={(ids) => setForm((p) => ({ ...p, extra_role_ids: ids }))} />
           </Field>
           <Field label="Department">
             <Select value={form.department_id || ""} onChange={(e) => setForm((p) => ({ ...p, department_id: e.target.value }))}>

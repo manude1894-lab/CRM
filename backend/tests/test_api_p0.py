@@ -37,7 +37,7 @@ def test_business_role_grants_permission(client, make_user, make_role):
 def test_me_exposes_permissions(client, make_user, make_role):
     co = make_user(business_role=make_role("CO", ["client.approve", "audit.view"]))
     # client.approve implies view.all_clients (a checker must see what they approve)
-    assert client.get("/api/v1/auth/me", headers=auth(co)).json()["permissions"] == ["audit.view", "client.approve", "view.all_clients"]
+    assert client.get("/api/v1/auth/me", headers=auth(co)).json()["permissions"] == ["audit.view", "client.approve", "client.cdd_edit", "view.all_clients"]
 
 
 def test_me_shows_business_role_name(client, make_user, make_role):
@@ -86,3 +86,18 @@ def test_login_success_and_failure_are_audited(client, db):
     assert client.post("/api/v1/auth/login", json={"email": "login@example.com", "password": "secret123"}).status_code == 200
     actions = [e.action for e in db.query(AuditLog).filter(AuditLog.subject_type == "User", AuditLog.action.like("login%")).all()]
     assert actions == ["login_failed", "login"]
+
+
+def test_user_can_hold_several_roles(client, db, make_user, make_role):
+    """Triam BRD mark-up §13: one email ID can be assigned more than one role."""
+    mlro = make_role("MLRO", ["client.approve"])
+    approver = make_role("Approver", ["client.final_approve"])
+    admin = make_user(role=UserRole.ADMIN)
+    person = make_user(business_role=mlro)
+    r = client.patch(f"/api/v1/users/{person.id}", json={"extra_role_ids": [approver.id]}, headers=auth(admin))
+    assert r.status_code == 200 and r.json()["extra_role_ids"] == [approver.id]
+    me = client.get("/api/v1/auth/me", headers=auth(person)).json()
+    assert {"client.approve", "client.final_approve"} <= set(me["permissions"])
+    assert me["business_role_name"] == "MLRO · Approver"
+    # a role still held as an additional role can't be deleted
+    assert client.delete(f"/api/v1/roles/{approver.id}", headers=auth(admin)).status_code == 400

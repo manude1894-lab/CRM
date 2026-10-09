@@ -18,7 +18,7 @@ import {
   buildAccountPayload, buildSectionPatch, validateCoreFields, accountToForm,
 } from "./accountForm";
 import { useMasters } from "../../hooks/useMasters";
-import { selectableCodes } from "../../hooks/masterUtils";
+import { selectableCodes, servicesForEntities } from "../../hooks/masterUtils";
 
 const Section = ({ title, children, hasData, onSave, status, error }) => {
   const [open, setOpen] = useState(!!hasData);
@@ -487,7 +487,7 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
         )}
 
         <Section title="Services Obtained" hasData={(form.services_obtained || []).length > 0} {...sectionProps("services")}>
-          <MultiSelect options={selectableCodes(services.items, form.services_obtained)} value={form.services_obtained} onChange={setValue("services_obtained")} />
+          <MultiSelect options={selectableCodes(servicesForEntities(services.items, [form.anchor_entity, ...(form.non_anchor_entities || [])]), form.services_obtained)} value={form.services_obtained} onChange={setValue("services_obtained")} />
         </Section>
 
         <Section title="Engagement" hasData={!!form.engagement_letter_signed || !!form.engagement_letter_valid_until}

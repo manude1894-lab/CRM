@@ -19,6 +19,10 @@ PERMISSIONS = {
     "audit.view": "View the full audit log",
     "view.all_clients": "See every client, regardless of RM",
     "view.department_clients": "See clients whose Anchor RM is in the same department",
+    "client.final_approve": "Give the final approval to new clients after Compliance (Approver)",
+    "client.cdd_edit": "Complete the CDD / risk assessment section of a client (Compliance)",
+    "invoice.manage": "Raise invoices: invoice number, date, currency, amount and the invoice file (Accounts)",
+    "prospect.assign": "Assign prospects to RMs (Prospecting Team Coordinator)",
 }
 
 

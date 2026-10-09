@@ -23,6 +23,7 @@ def create_user(db: Session, data: UserCreate) -> User:
     if db.query(User).filter(User.email == data.email).first():
         raise HTTPException(status_code=400, detail="Email already registered")
     _check_business_role(db, data.business_role_id)
+    extra = _extra_roles(db, data.extra_role_ids)
     from app.services import security_service
     security_service.assert_password_ok(data.password, data.email)
     user = User(
@@ -37,6 +38,7 @@ def create_user(db: Session, data: UserCreate) -> User:
         business_role_id=data.business_role_id,
         mobile=data.mobile,
     )
+    user.extra_roles = extra
     security_service.password_set(user)
     db.add(user)
     db.commit()
@@ -49,6 +51,16 @@ def _check_business_role(db: Session, role_id) -> None:
         raise HTTPException(status_code=400, detail="Business role not found")
 
 
+def _extra_roles(db: Session, role_ids) -> list[Role]:
+    """Additional business roles — one person may hold several (e.g. MLRO and Approver)."""
+    if not role_ids:
+        return []
+    roles = db.query(Role).filter(Role.id.in_(set(role_ids))).all()
+    if len(roles) != len(set(role_ids)):
+        raise HTTPException(status_code=400, detail="Business role not found")
+    return roles
+
+
 def update_user(db: Session, user_id: int, data: UserUpdate) -> User:
     user = get_user(db, user_id)
     update_data = data.model_dump(exclude_unset=True)
@@ -58,6 +70,8 @@ def update_user(db: Session, user_id: int, data: UserUpdate) -> User:
             raise HTTPException(status_code=400, detail="That supervisor reports to this user — the hierarchy would loop")
     if "business_role_id" in update_data:
         _check_business_role(db, update_data["business_role_id"])
+    if "extra_role_ids" in update_data:
+        user.extra_roles = _extra_roles(db, update_data.pop("extra_role_ids"))
     if "password" in update_data:
         from app.services import security_service
         new_password = update_data.pop("password")

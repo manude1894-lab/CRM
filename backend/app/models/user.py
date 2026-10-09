@@ -1,10 +1,19 @@
 """SQLAlchemy model: User (with RBAC role)."""
-from sqlalchemy import Column, Integer, String, DateTime, Enum as SAEnum, Boolean, ForeignKey
+from sqlalchemy import Column, Integer, String, DateTime, Enum as SAEnum, Boolean, ForeignKey, Table
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 import enum
 
 from app.database import Base
+
+
+# A user can hold more than one business role (Triam BRD mark-up §13): the main role is
+# users.business_role_id, any others are listed here. Permissions are the union of all of them.
+user_extra_roles = Table(
+    "user_extra_roles", Base.metadata,
+    Column("user_id", Integer, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True),
+    Column("role_id", Integer, ForeignKey("roles.id", ondelete="CASCADE"), primary_key=True),
+)
 
 
 class UserRole(str, enum.Enum):
@@ -39,6 +48,17 @@ class User(Base):
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     business_role = relationship("Role", foreign_keys=[business_role_id])
+    extra_roles = relationship("Role", secondary=user_extra_roles, lazy="selectin")
+
+    @property
+    def all_business_roles(self) -> list:
+        """The main role first, then any additional ones (active roles only)."""
+        roles = ([self.business_role] if self.business_role else []) + [r for r in self.extra_roles if r.id != self.business_role_id]
+        return [r for r in roles if r.is_active]
+
+    @property
+    def extra_role_ids(self) -> list[int]:
+        return [r.id for r in self.extra_roles]
 
     @property
     def permissions(self) -> list[str]:
@@ -49,7 +69,8 @@ class User(Base):
     @property
     def business_role_name(self):
         """Shown as the user's role in the app (e.g. "MLRO") instead of the system tier."""
-        return self.business_role.name if self.business_role and self.business_role.is_active else None
+        names = [r.name for r in self.all_business_roles]
+        return " · ".join(names) if names else None
 
     # Reverse relationships
     cases_as_rm = relationship("Case", back_populates="rm", foreign_keys="Case.rm_id")
