@@ -18,6 +18,7 @@ class AccountPartyRole(str, enum.Enum):
     SHAREHOLDER = "Shareholder"
     DIRECTOR = "Director"
     AUTHORISED_SIGNATORY = "Authorised Signatory"
+    JOINT_HOLDER = "Joint Holder"  # Individual clients (Triam BRD mark-up §2, §10 step 6)
 
 
 class AccountPartyConstitution(str, enum.Enum):
@@ -47,6 +48,7 @@ class AccountParty(Base):
     mobile_number = Column(String(12), nullable=True)
     email = Column(String(255), nullable=True)
 
+    nationality = Column(String(120), nullable=True)  # mandatory for every party (Triam mark-up §5.1–5.3)
     country_of_residence = Column(String(120), nullable=True)
     residential_address = Column(JSON, nullable=True)  # AddressBlock shape (see schemas/account.py)
 

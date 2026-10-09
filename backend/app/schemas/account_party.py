@@ -21,6 +21,7 @@ class AccountPartyBase(BaseModel):
     mobile_number: Optional[str] = Field(None, max_length=12)
     email: Optional[str] = None
 
+    nationality: Optional[str] = None
     country_of_residence: Optional[str] = None
     residential_address: Optional[AddressBlock] = None
 
@@ -50,6 +51,7 @@ class AccountPartyUpdate(BaseModel):
     mobile_country_code: Optional[str] = None
     mobile_number: Optional[str] = Field(None, max_length=12)
     email: Optional[str] = None
+    nationality: Optional[str] = None
     country_of_residence: Optional[str] = None
     residential_address: Optional[AddressBlock] = None
     uae_visa_number: Optional[str] = None

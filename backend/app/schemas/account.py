@@ -30,7 +30,26 @@ class _ClientFieldRules(BaseModel):
             raise ValueError("must contain digits only")
         return v
 
-    @field_validator("individual_email", mode="before", check_fields=False)
+    @field_validator("client_category", mode="before", check_fields=False)
+    @classmethod
+    def _category(cls, v):
+        if v in (None, ""):
+            return None
+        if v not in ("Under Formation", "Existing"):
+            raise ValueError("must be 'Under Formation' or 'Existing'")
+        return v
+
+    @field_validator("lei_number", mode="before", check_fields=False)
+    @classmethod
+    def _lei(cls, v):
+        if v in (None, ""):
+            return None
+        v = str(v).strip().upper()
+        if not v.isalnum() or len(v) > 20:
+            raise ValueError("must be up to 20 letters and digits")
+        return v
+
+    @field_validator("individual_email", "contact_email", mode="before", check_fields=False)
     @classmethod
     def _email(cls, v):
         if v in (None, ""):
@@ -142,6 +161,14 @@ class AccountImportRow(BaseModel):
     individual_email: Optional[str] = None
     uae_visa_number: Optional[str] = None
     uae_visa_expiry: Optional[date] = None
+    client_category: Optional[str] = None  # "Under Formation" | "Existing"
+    contact_mobile_country_code: Optional[str] = None
+    contact_mobile_number: Optional[str] = Field(None, max_length=12)
+    contact_email: Optional[str] = None
+    nature_of_business: Optional[str] = Field(None, max_length=1000)
+    lei_number: Optional[str] = Field(None, max_length=20)
+    lei_expiry_date: Optional[date] = None
+    is_one_time_service: Optional[bool] = None
     nature_of_services_sought: Optional[list[str]] = None
 
 
@@ -262,6 +289,14 @@ class AccountBase(_ClientFieldRules):
     individual_email: Optional[str] = None
     uae_visa_number: Optional[str] = None
     uae_visa_expiry: Optional[date] = None
+    client_category: Optional[str] = None  # "Under Formation" | "Existing"
+    contact_mobile_country_code: Optional[str] = None
+    contact_mobile_number: Optional[str] = Field(None, max_length=12)
+    contact_email: Optional[str] = None
+    nature_of_business: Optional[str] = Field(None, max_length=1000)
+    lei_number: Optional[str] = Field(None, max_length=20)
+    lei_expiry_date: Optional[date] = None
+    is_one_time_service: Optional[bool] = None
     nature_of_services_sought: Optional[list[str]] = None
 
 
@@ -349,6 +384,14 @@ class AccountUpdate(_ClientFieldRules):
     individual_email: Optional[str] = None
     uae_visa_number: Optional[str] = None
     uae_visa_expiry: Optional[date] = None
+    client_category: Optional[str] = None  # "Under Formation" | "Existing"
+    contact_mobile_country_code: Optional[str] = None
+    contact_mobile_number: Optional[str] = Field(None, max_length=12)
+    contact_email: Optional[str] = None
+    nature_of_business: Optional[str] = Field(None, max_length=1000)
+    lei_number: Optional[str] = Field(None, max_length=20)
+    lei_expiry_date: Optional[date] = None
+    is_one_time_service: Optional[bool] = None
     nature_of_services_sought: Optional[list[str]] = None
 
 

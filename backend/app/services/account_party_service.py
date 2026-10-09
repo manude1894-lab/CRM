@@ -31,14 +31,21 @@ def _validate_party(account: Account, p: AccountParty) -> None:
     """
     if p.email and not _EMAIL_RE.match(p.email.strip()):
         raise HTTPException(status_code=400, detail="Contact Email is not a valid email address")
-    if p.party_role == "Shareholder":
+    individual_client = account.account_type == "Individual"
+    if individual_client and p.party_role != "Joint Holder":
+        raise HTTPException(status_code=400, detail="An Individual client has Joint Holders, not shareholders, directors or signatories")
+    if not individual_client and p.party_role == "Joint Holder":
+        raise HTTPException(status_code=400, detail="Joint Holders apply to Individual clients only")
+    if p.party_role in ("Shareholder", "Authorised Signatory", "Joint Holder"):
+        # Triam mark-up §5.3 / §6: signatories and joint holders need mobile and email too.
         missing = [label for label, value in (
             ("Contact Mobile country code", p.mobile_country_code),
             ("Contact Mobile number", p.mobile_number),
             ("Contact Email", p.email),
         ) if not (value or "").strip()]
         if missing:
-            raise HTTPException(status_code=400, detail=f"Shareholder {', '.join(missing)} {'is' if len(missing) == 1 else 'are'} required")
+            raise HTTPException(status_code=400, detail=f"{p.party_role} {', '.join(missing)} {'is' if len(missing) == 1 else 'are'} required")
+    if p.party_role == "Shareholder":
         pct = p.effective_ownership_percent
         if pct is None:
             raise HTTPException(status_code=400, detail="Shareholder Effective Ownership Share (%) is required")
@@ -50,7 +57,7 @@ def _validate_party(account: Account, p: AccountParty) -> None:
         if others + pct > Decimal("100"):
             raise HTTPException(status_code=400, detail=f"Total shareholding would be {others + pct}% — it can't exceed 100% (other shareholders hold {others}%)")
     # BRD §6–8: Country of Residence is mandatory for every party; Country of Birth for signatories.
-    required = [("Country of Residence", p.country_of_residence)]
+    required = [("Country of Residence", p.country_of_residence), ("Nationality", p.nationality)]
     if p.party_role == "Authorised Signatory":
         required.append(("Country of Birth", p.country_of_incorp_or_birth))
     missing = [label for label, value in required if not (value or "").strip()]

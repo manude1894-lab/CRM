@@ -32,11 +32,15 @@ def complete_client(db, maker):
         country="United Arab Emirates", registration_number="CI-123", incorporation_date=date(2020, 1, 1),
         license_number="L-1", licensing_authority="DMCC", license_start_date=date(2024, 1, 1),
         license_expiry_date=date(2030, 1, 1), license_activities="Consulting", financial_year_end="12-31",
-        services_obtained=["Accounting & Bookkeeping"],
+        services_obtained=["Accounting & Bookkeeping"], client_category="Existing",
+        contact_mobile_country_code="+971", contact_mobile_number="43334444", contact_email="info@complete.example",
+        nature_of_services_sought=["Accounting & Bookkeeping"],
+        registered_address={"line1": "Office 1201, Tower A", "city": "Dubai", "country": "United Arab Emirates"},
+        operating_address={"line1": "Office 1201, Tower A", "city": "Dubai", "country": "United Arab Emirates"},
         is_regulated=False, corp_tax_registered=False, has_introducer=False,
     ), maker)
     account_party_service.create_party(db, acc.id, AccountPartyCreate(
-        party_role="Shareholder", country_of_residence="United Arab Emirates", full_name="Jane Owner", mobile_country_code="+971", mobile_number="501234567",
+        party_role="Shareholder", country_of_residence="United Arab Emirates", nationality="United Arab Emirates", full_name="Jane Owner", mobile_country_code="+971", mobile_number="501234567",
         email="jane@example.com", effective_ownership_percent=Decimal("100"),
     ), maker)
     db.refresh(acc)

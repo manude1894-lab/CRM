@@ -154,7 +154,7 @@ def test_status_timestamp_moves_only_on_status_change(db, make_user):
 # ─── §6 shareholders ────────────────────────────────────────────────────────
 
 def _sh(**kw):
-    base = dict(party_role="Shareholder", country_of_residence="United Arab Emirates", full_name="Jane Doe", mobile_country_code="+971",
+    base = dict(party_role="Shareholder", country_of_residence="United Arab Emirates", nationality="United Arab Emirates", full_name="Jane Doe", mobile_country_code="+971",
                 mobile_number="501234567", email="jane@example.com", effective_ownership_percent=Decimal("60"))
     base.update(kw)
     return AccountPartyCreate(**base)
@@ -169,7 +169,7 @@ def test_shareholder_contact_mandatory(db, make_user):
     with pytest.raises(HTTPException):
         account_party_service.create_party(db, acc.id, _sh(email="bad"), admin)
     # Directors don't need contact details (optional in BRD §7).
-    account_party_service.create_party(db, acc.id, AccountPartyCreate(party_role="Director", full_name="D", country_of_residence="United Arab Emirates"), admin)
+    account_party_service.create_party(db, acc.id, AccountPartyCreate(party_role="Director", full_name="D", country_of_residence="United Arab Emirates", nationality="India"), admin)
 
 
 def test_shareholding_cannot_exceed_100(db, make_user):
@@ -203,10 +203,14 @@ def test_missing_mandatory_for_a_new_corporate(db, make_user):
 
 
 def test_formation_clients_skip_incorporation_fields(db, make_user):
+    """Triam mark-up §5: licence and incorporation details are mandatory only for Existing companies."""
     admin = make_user(role=UserRole.ADMIN)
-    acc = create(db, admin, services_obtained=["Company Formation"])
+    acc = create(db, admin, client_category="Under Formation")
     labels = {m["label"] for m in account_service.missing_mandatory(acc)}
-    assert "Incorporation Date" not in labels and "Licensing Authority" not in labels
+    assert "Incorporation Date" not in labels and "License Expiry Date" not in labels
+    assert "Licensing Authority" in labels  # mandatory for both
+    existing = create(db, admin, company_name="Old Firm Ltd", client_category="Existing")
+    assert {"Incorporation Date", "License Expiry Date"} <= {m["label"] for m in account_service.missing_mandatory(existing)}
 
 
 def test_conditional_fields(db, make_user):
@@ -257,7 +261,10 @@ def test_regulated_needs_regulatory_licence_expiry(db, make_user):
 
 @pytest.mark.parametrize("role,fields,message", [
     ("Director", {}, "Country of Residence"),
-    ("Authorised Signatory", {"country_of_residence": "India"}, "Country of Birth"),
+    ("Authorised Signatory", {"country_of_residence": "India", "nationality": "India", "mobile_country_code": "+91",
+                              "mobile_number": "9812345678", "email": "sig@example.com"}, "Country of Birth"),
+    ("Director", {"country_of_residence": "India"}, "Nationality"),
+    ("Authorised Signatory", {"country_of_residence": "India", "nationality": "India"}, "Contact Mobile"),
 ])
 def test_party_country_rules(db, make_user, role, fields, message):
     admin = make_user(role=UserRole.ADMIN)
@@ -265,3 +272,48 @@ def test_party_country_rules(db, make_user, role, fields, message):
     with pytest.raises(HTTPException) as e:
         account_party_service.create_party(db, acc.id, AccountPartyCreate(party_role=role, full_name="X", **fields), admin)
     assert message in e.value.detail
+
+
+# ─── Triam BRD mark-up §5, §5.1–5.3, §6 ─────────────────────────────────────
+
+def test_new_corporate_fields_are_checked(db, make_user):
+    admin = make_user(role=UserRole.ADMIN)
+    acc = create(db, admin)
+    labels = {m["label"] for m in account_service.missing_mandatory(acc)}
+    assert {"New Client Category (Under Formation / Existing)", "Contact Mobile (company)", "Contact Email (company)",
+            "Nature of Services sought", "Registered Address (line 1, city and country)",
+            "Operating Address (line 1, city and country)"} <= labels
+    with pytest.raises(Exception):
+        AccountUpdate(lei_number="LEI-WITH-DASHES")
+    assert AccountUpdate(lei_number="5493001kjtiigc8y1r12").lei_number == "5493001KJTIIGC8Y1R12"
+    with pytest.raises(Exception):
+        AccountUpdate(contact_email="not-an-email")
+    with pytest.raises(Exception):
+        AccountUpdate(client_category="Maybe")
+
+
+def test_client_name_is_at_most_50_characters(db, make_user):
+    admin = make_user(role=UserRole.ADMIN)
+    with pytest.raises(HTTPException) as e:
+        create(db, admin, company_name="A" * 51)
+    assert "50 characters" in e.value.detail
+    acc = create(db, admin, company_name="Short Name Ltd")
+    with pytest.raises(HTTPException):
+        account_service.update_account(db, acc.id, AccountUpdate(company_name="B" * 51), admin)
+
+
+def test_individual_clients_have_joint_holders(db, make_user):
+    admin = make_user(role=UserRole.ADMIN)
+    ind = create(db, admin, account_type="Individual", company_name="Sara Khan")
+    labels = {m["label"] for m in account_service.missing_mandatory(ind)}
+    assert {"Contact Mobile", "Contact Email", "Residential Address (line 1, city and country)"} <= labels
+    with pytest.raises(HTTPException) as e:
+        account_party_service.create_party(db, ind.id, _sh(), admin)
+    assert "Joint Holders" in e.value.detail
+    holder = dict(party_role="Joint Holder", full_name="Omar Khan", country_of_residence="United Arab Emirates",
+                  nationality="Pakistan", mobile_country_code="+971", mobile_number="501112222", email="omar@example.com")
+    account_party_service.create_party(db, ind.id, AccountPartyCreate(**holder), admin)
+    corp = create(db, admin, company_name="Corp Ltd")
+    with pytest.raises(HTTPException) as e:
+        account_party_service.create_party(db, corp.id, AccountPartyCreate(**holder), admin)
+    assert "Individual clients only" in e.value.detail

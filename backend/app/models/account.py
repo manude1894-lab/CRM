@@ -119,6 +119,15 @@ class Account(Base):
     individual_email = Column(String(255), nullable=True)
     uae_visa_number = Column(String(50), nullable=True)
     uae_visa_expiry = Column(Date, nullable=True)
+    # Triam BRD mark-up §5
+    client_category = Column(String(20), nullable=True)  # "Under Formation" | "Existing"
+    contact_mobile_country_code = Column(String(6), nullable=True)  # company contact
+    contact_mobile_number = Column(String(12), nullable=True)
+    contact_email = Column(String(255), nullable=True)
+    nature_of_business = Column(Text, nullable=True)  # detailed nature of business / profession
+    lei_number = Column(String(20), nullable=True)
+    lei_expiry_date = Column(Date, nullable=True)
+    is_one_time_service = Column(Boolean, nullable=True)
     nature_of_services_sought = Column(JSON, nullable=True)  # list[str] — client spec §23.13
 
     # Computed / denormalized

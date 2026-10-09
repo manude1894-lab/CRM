@@ -26,6 +26,9 @@ export const BLANK_ACCOUNT_FORM = {
   residential_address: { ...BLANK_ADDRESS },
   individual_mobile: "", individual_mobile_country_code: "+971", individual_mobile_number: "",
   individual_email: "", uae_visa_number: "", uae_visa_expiry: "", nature_of_services_sought: [],
+  // Triam BRD mark-up §5
+  client_category: "", contact_mobile_country_code: "+971", contact_mobile_number: "", contact_email: "",
+  nature_of_business: "", lei_number: "", lei_expiry_date: "", is_one_time_service: null,
 };
 
 // Field groups saved by each section's own Save button (client CRM-change-request item 19).
@@ -35,8 +38,10 @@ export const SECTION_FIELDS = {
     "single_point_of_contact", "strategic_priority", "existing_relationship", "spoc_id", "non_anchor_rm_ids",
     "anchor_entity", "non_anchor_entities", "registration_number", "license_number", "incorporation_date",
     "kyc_status", "tags",
+    "client_category", "contact_mobile_country_code", "contact_mobile_number", "contact_email",
+    "nature_of_services_sought", "is_one_time_service",
   ],
-  licensing: ["licensing_authority", "licensing_authority_other", "license_start_date", "license_expiry_date", "license_activities", "is_regulated", "regulator_name", "regulator_other", "license_category", "regulatory_license_expiry_date"],
+  licensing: ["nature_of_business", "lei_number", "lei_expiry_date", "licensing_authority", "licensing_authority_other", "license_start_date", "license_expiry_date", "license_activities", "is_regulated", "regulator_name", "regulator_other", "license_category", "regulatory_license_expiry_date"],
   registeredAddress: ["registered_address"],
   operatingAddress: ["operating_address"],
   tax: ["trn_vat_number", "financial_year_end", "corp_tax_registered", "corp_tax_registration_number"],
@@ -45,6 +50,7 @@ export const SECTION_FIELDS = {
     "source_of_funds", "source_of_wealth", "country_of_residence", "residential_address",
     "individual_mobile_country_code", "individual_mobile_number", "individual_email",
     "uae_visa_number", "uae_visa_expiry", "nature_of_services_sought", "is_pep",
+    "nature_of_business", "is_one_time_service",
   ],
   introducer: ["has_introducer", "introducer_name"],
   services: ["services_obtained"],
@@ -83,6 +89,10 @@ export function accountToForm(a) {
     individual_mobile_number: a.individual_mobile_number || "", individual_email: a.individual_email || "",
     uae_visa_number: a.uae_visa_number || "", uae_visa_expiry: a.uae_visa_expiry || "",
     nature_of_services_sought: a.nature_of_services_sought || [],
+    client_category: a.client_category || "", contact_mobile_country_code: a.contact_mobile_country_code || "",
+    contact_mobile_number: a.contact_mobile_number || "", contact_email: a.contact_email || "",
+    nature_of_business: a.nature_of_business || "", lei_number: a.lei_number || "", lei_expiry_date: a.lei_expiry_date || "",
+    is_one_time_service: a.is_one_time_service ?? null,
     _id: a.id,
     // Read-only, shown in the profile header (BRD §11 / §19).
     _client_id: a.client_id || null,

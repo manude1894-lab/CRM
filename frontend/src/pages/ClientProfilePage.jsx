@@ -54,7 +54,7 @@ export default function ClientProfilePage({ accountId, initialTab = "overview", 
   const tabs = [
     { key: "overview", label: "Overview" },
     { key: "profile", label: "Profile" },
-    ...(individual ? [] : [{ key: "parties", label: "Shareholders & Directors" }]),
+    { key: "parties", label: individual ? "Joint Holders" : "Shareholders & Directors" },
     { key: "documents", label: "Documents" },
     { key: "servicing", label: "Reports & Requests" },
     { key: "cases", label: "Cases", count: clientCases.length },
@@ -96,7 +96,9 @@ export default function ClientProfilePage({ accountId, initialTab = "overview", 
                 ["Country of residence", a.country_of_residence], ["Passport expiry", fmtDate(a.passport_expiry_date)],
                 ["Occupation", a.occupation], ["Email", a.individual_email],
               ] : [
-                ["Unique search name", a.search_name], ["Industry", a.industry], ["Country of incorporation", a.country],
+                ["Unique search name", a.search_name], ["New client category", a.client_category], ["Country of incorporation", a.country],
+                ["Contact", [a.contact_mobile_country_code && a.contact_mobile_number ? `${a.contact_mobile_country_code} ${a.contact_mobile_number}` : null, a.contact_email].filter(Boolean).join(" · ") || null],
+                ["LEI", a.lei_number ? `${a.lei_number}${a.lei_expiry_date ? ` (expires ${fmtDate(a.lei_expiry_date)})` : ""}` : null],
                 ["Incorporation date", fmtDate(a.incorporation_date)], ["Incorporation cert. no.", a.registration_number],
                 ["Website", a.website], ["Key contacts", a.key_contacts],
               ]} />
@@ -105,7 +107,8 @@ export default function ClientProfilePage({ accountId, initialTab = "overview", 
               <FactList items={[
                 ["Anchor entity", a.anchor_entity], ["Non-anchor entities", list(a.non_anchor_entities)],
                 ["Anchor RM", userName(a.spoc_id)], ["Non-anchor RMs", list((a.non_anchor_rm_ids || []).map(userName).filter(Boolean))],
-                ["Services", list(a.services_obtained)], ["Invoiced to date", fmt(a.total_invoiced_amount)],
+                ["Services", list(a.services_obtained)], ["Nature of services sought", list(a.nature_of_services_sought)],
+                ["One-time service", yesNo(a.is_one_time_service)], ["Invoiced to date", fmt(a.total_invoiced_amount)],
               ]} />
             </Panel>
             {!individual && (

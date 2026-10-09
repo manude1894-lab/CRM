@@ -238,7 +238,7 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
           </Select>
         </Field>
         <Field label={isIndividual ? "Full Name (as per passport) *" : "Company Name *"}>
-          <Input value={form.company_name} onChange={setCompanyName} placeholder={isIndividual ? "e.g. John Smith" : "e.g. Al Futtaim Group"} />
+          <Input value={form.company_name} onChange={setCompanyName} maxLength={isIndividual ? 255 : 50} placeholder={isIndividual ? "e.g. John Smith" : "e.g. Al Futtaim Group"} />
         </Field>
         <NameLookup
           name={form.company_name}
@@ -256,12 +256,38 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
         {!isIndividual && (
           <>
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Industry">
-                <Input value={form.industry} onChange={set("industry")} placeholder="e.g. Fintech" />
+              <Field label="New Client Category *">
+                <Select value={form.client_category || ""} onChange={set("client_category")}>
+                  <option value="">— select —</option>
+                  <option value="Under Formation">Under Formation</option>
+                  <option value="Existing">Existing</option>
+                </Select>
               </Field>
               <Field label="Country of Incorporation / Registration">
                 <CountrySelect value={form.country} onChange={set("country")} countries={countries} />
               </Field>
+            </div>
+            {form.client_category === "Under Formation" && (
+              <p className="text-[11px] text-gray-500 -mt-2 mb-3">Licence and incorporation details may be left blank until the company is formed.</p>
+            )}
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Contact Mobile *">
+                <div className="flex gap-2">
+                  <Select value={form.contact_mobile_country_code || ""} onChange={set("contact_mobile_country_code")} className="w-40 flex-shrink-0">
+                    <option value="">Code</option>
+                    {COUNTRY_CALLING_CODES.map((c) => <option key={c.code} value={c.code}>{c.label}</option>)}
+                  </Select>
+                  <Input value={form.contact_mobile_number || ""} onChange={set("contact_mobile_number")} maxLength={12} placeholder="e.g. 43334444" />
+                </div>
+              </Field>
+              <Field label="Contact Email *"><Input type="email" value={form.contact_email || ""} onChange={set("contact_email")} placeholder="e.g. info@company.com" /></Field>
+            </div>
+            <Field label="Nature of Services sought *">
+              <MultiSelect options={selectableCodes(servicesForEntities(services.items, [form.anchor_entity, ...(form.non_anchor_entities || [])]), form.nature_of_services_sought)}
+                value={form.nature_of_services_sought} onChange={setValue("nature_of_services_sought")} />
+            </Field>
+            <div className="grid grid-cols-2 gap-3">
+              <YesNo label="Is this a one-time service?" value={form.is_one_time_service} onChange={setValue("is_one_time_service")} />
             </div>
             <Field label="Website">
               <Input value={form.website} onChange={set("website")} placeholder="e.g. https://company.com" />
@@ -275,11 +301,6 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
           <Input value={form.single_point_of_contact} onChange={set("single_point_of_contact")} placeholder="e.g. Jane Doe" />
         </Field>
         <div className="grid grid-cols-2 gap-3">
-          <Field label="Strategic Priority">
-            <Select value={form.strategic_priority} onChange={set("strategic_priority")}>
-              {PRIORITY_OPTIONS.map((p) => <option key={p}>{p}</option>)}
-            </Select>
-          </Field>
           <Field label="Existing Relationship">
             <Select value={form.existing_relationship} onChange={set("existing_relationship")}>
               <option>No</option>
@@ -371,8 +392,15 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
                 <Field label="License Start Date"><DateInput value={form.license_start_date || ""} onChange={set("license_start_date")} /></Field>
                 <Field label="License Expiry Date"><DateInput min={today} value={form.license_expiry_date || ""} onChange={set("license_expiry_date")} /></Field>
               </div>
+              <Field label="Detailed Nature of Business carried out currently">
+                <Textarea rows={2} value={form.nature_of_business} onChange={set("nature_of_business")} maxLength={1000} />
+              </Field>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="LEI, if registered"><Input value={form.lei_number} onChange={(e) => setForm({ ...form, lei_number: e.target.value.toUpperCase() })} maxLength={20} placeholder="20 letters / digits" /></Field>
+                <Field label="LEI Expiry Date"><DateInput value={form.lei_expiry_date || ""} onChange={set("lei_expiry_date")} /></Field>
+              </div>
               <div className="mb-3">
-                <Field label="License Activities">
+                <Field label={form.client_category === "Under Formation" ? "Licensed Activities" : "Licensed Activities *"}>
                   <Textarea rows={3} value={form.license_activities} onChange={set("license_activities")} maxLength={250} />
                   <p className="text-[11px] text-gray-400 text-right">{(form.license_activities || "").length}/250</p>
                 </Field>
@@ -458,9 +486,15 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
             </Field>
             <Field label="Source of Funds"><Input value={form.source_of_funds} onChange={set("source_of_funds")} placeholder="e.g. Salary, business income" /></Field>
             <Field label="Source of Wealth"><Input value={form.source_of_wealth} onChange={set("source_of_wealth")} placeholder="e.g. Accumulated savings, inheritance" /></Field>
-            <Field label="Nature of Services Sought">
+            <Field label="Nature of Services Sought *">
               <MultiSelect options={selectableCodes(services.items, form.nature_of_services_sought)} value={form.nature_of_services_sought} onChange={setValue("nature_of_services_sought")} />
             </Field>
+            <Field label="Detailed Nature of Profession / Business">
+              <Textarea rows={2} value={form.nature_of_business} onChange={set("nature_of_business")} maxLength={1000} />
+            </Field>
+            <div className="grid grid-cols-2 gap-3">
+              <YesNo label="Is this a one-time service?" value={form.is_one_time_service} onChange={setValue("is_one_time_service")} />
+            </div>
 
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mt-3 mb-1.5">Residential Address</p>
             <AddressFields value={form.residential_address} onChange={setValue("residential_address")} />

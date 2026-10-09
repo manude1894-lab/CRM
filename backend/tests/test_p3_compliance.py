@@ -103,7 +103,7 @@ def test_staged_party_changes_are_validated_and_not_live(db, people):
     account_party_service.update_party(db, jane.id, AccountPartyUpdate(effective_ownership_percent=Decimal("50")), maker)
     with pytest.raises(HTTPException) as e:  # 50 + 60 > 100 is refused while staging, as on a direct save
         account_party_service.create_party(db, acc.id, AccountPartyCreate(
-            party_role="Shareholder", country_of_residence="United Arab Emirates", full_name="Omar New", mobile_country_code="+971", mobile_number="509999999",
+            party_role="Shareholder", country_of_residence="United Arab Emirates", nationality="United Arab Emirates", full_name="Omar New", mobile_country_code="+971", mobile_number="509999999",
             email="omar@example.com", effective_ownership_percent=Decimal("60")), maker)
     assert "can't exceed 100%" in e.value.detail
     db.expire_all()
@@ -117,7 +117,7 @@ def test_party_amendment_end_to_end(db, people):
     amend.start(db, acc, maker)
     account_party_service.update_party(db, jane_id, AccountPartyUpdate(effective_ownership_percent=Decimal("50")), maker)
     omar = account_party_service.create_party(db, acc.id, AccountPartyCreate(
-        party_role="Shareholder", country_of_residence="United Arab Emirates", full_name="Omar New", mobile_country_code="+971", mobile_number="509999999",
+        party_role="Shareholder", country_of_residence="United Arab Emirates", nationality="United Arab Emirates", full_name="Omar New", mobile_country_code="+971", mobile_number="509999999",
         email="omar@example.com", effective_ownership_percent=Decimal("50")), maker)
     account_party_service.update_party(db, omar["id"], AccountPartyUpdate(full_name="Omar Haddad"), maker, account_id=acc.id)
     listed = account_party_service.list_parties_for(db, acc.id, maker)
@@ -272,7 +272,7 @@ def test_blank_address_blocks_are_not_changes(db, people):
     acc = approved_client(db, people)
     amend.start(db, acc, maker)
     blank = {"line1": "", "line2": "", "landmark": "", "zip": "", "po_box": "", "city": "", "country": ""}
-    account_service.update_account(db, acc.id, AccountUpdate(industry="Banking", registered_address=blank), maker)
+    account_service.update_account(db, acc.id, AccountUpdate(industry="Banking", residential_address=blank), maker)
     req = amend.submit(db, acc, maker)
     assert [c["field"] for c in req.changes["account"]] == ["industry"]
 

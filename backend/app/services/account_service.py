@@ -243,7 +243,12 @@ def _normalize_non_anchor_rms(acc: Account) -> None:
         acc.non_anchor_rm_ids = list(dict.fromkeys(i for i in acc.non_anchor_rm_ids if i != acc.spoc_id)) or None
 
 
+MAX_CLIENT_NAME = 50  # Triam mark-up §5: "50 char long, alpha-num-Spl. Char."
+
+
 def create_account(db: Session, data: AccountCreate, user: User) -> Account:
+    if len(data.company_name.strip()) > MAX_CLIENT_NAME:
+        raise HTTPException(status_code=400, detail=f"Client name can be at most {MAX_CLIENT_NAME} characters")
     # BRD §3 — an ordinary duplicate is blocked; an approver may create it with a recorded reason.
     existing = _same_name_query(db, data.company_name).first()
     override_reason = None
@@ -378,6 +383,9 @@ def apply_update(db: Session, acc: Account, data: AccountUpdate, user: User) -> 
             raise HTTPException(status_code=400, detail="Unique Search Name can't be empty")
         if _search_name_taken(db, update_data["search_name"], exclude_id=acc.id):
             raise HTTPException(status_code=400, detail=f"Unique Search Name '{update_data['search_name']}' is already used by another client")
+    if update_data.get("company_name") and len(update_data["company_name"].strip()) > MAX_CLIENT_NAME and \
+            update_data["company_name"].strip() != (acc.company_name or "").strip():
+        raise HTTPException(status_code=400, detail=f"Client name can be at most {MAX_CLIENT_NAME} characters")
     if update_data.get("company_name") and _norm(update_data["company_name"]) != _norm(acc.company_name):
         clash = _same_name_query(db, update_data["company_name"], exclude_id=acc.id).first()
         if clash:
@@ -562,15 +570,29 @@ def missing_mandatory(account: Account) -> list[dict]:
         need("Individual details", "country_of_birth", "Country of Birth")
         need("Individual details", "nationality", "Nationality")
         need("Individual details", "country_of_residence", "Country of Residence")
+        need("Individual details", "individual_mobile_number", "Contact Mobile")
+        need("Individual details", "individual_mobile_country_code", "Contact Mobile country code")
+        need("Individual details", "individual_email", "Contact Email")
+        need("Individual details", "nature_of_services_sought", "Nature of Services sought")
+        addr = account.residential_address or {}
+        if not all((addr.get(f) or "").strip() for f in ("line1", "city", "country")):
+            missing.append({"section": "Individual details", "field": "residential_address", "label": "Residential Address (line 1, city and country)"})
     else:
-        # §5 — incorporation date may be blank for a new company formation.
-        forming = "Company Formation" in (account.services_obtained or [])
+        # §5 (Triam mark-up) — New Client Category: licence and incorporation details are mandatory for
+        # existing companies and may be blank for companies under formation.
+        category = account.client_category
+        forming = category == "Under Formation" or (category is None and "Company Formation" in (account.services_obtained or []))
+        need("Client info", "client_category", "New Client Category (Under Formation / Existing)")
         need("Client info", "company_name", "Client Name")
         need("Client info", "country", "Country of Incorporation / Registration")
+        need("Client info", "contact_mobile_number", "Contact Mobile (company)")
+        need("Client info", "contact_mobile_country_code", "Contact Mobile country code (company)")
+        need("Client info", "contact_email", "Contact Email (company)")
+        need("Client info", "nature_of_services_sought", "Nature of Services sought")
         need("Client info", "registration_number", "Incorporation Certificate No.", when=not forming)
         need("Client info", "incorporation_date", "Incorporation Date", when=not forming)
         need("Client info", "license_number", "Trade / Commercial License Number", when=not forming)
-        need("Licensing & Regulatory", "licensing_authority", "Licensing Authority", when=not forming)
+        need("Licensing & Regulatory", "licensing_authority", "Licensing Authority")
         need("Licensing & Regulatory", "licensing_authority_other", "Licensing Authority (Other) details",
              when=account.licensing_authority == "Other")
         need("Licensing & Regulatory", "license_start_date", "License Start / Registration Date", when=not forming)
@@ -582,7 +604,11 @@ def missing_mandatory(account: Account) -> list[dict]:
              when=account.is_regulated and account.regulator_name == "Other")
         need("Licensing & Regulatory", "license_category", "License Category", when=account.is_regulated)
         need("Licensing & Regulatory", "regulatory_license_expiry_date", "Current regulatory license expiry",
-             when=account.is_regulated)
+             when=account.is_regulated and not forming)
+        for key, label in (("registered_address", "Registered Address"), ("operating_address", "Operating Address")):
+            addr = getattr(account, key) or {}
+            if not all((addr.get(f) or "").strip() for f in ("line1", "city", "country")):
+                missing.append({"section": label, "field": key, "label": f"{label} (line 1, city and country)"})
         need("Tax", "financial_year_end", "Financial Year End")
         need("Tax", "corp_tax_registered", "Corporate Tax Registered (Yes / No)")
         need("Tax", "corp_tax_registration_number", "Corp Tax Registration No.", when=account.corp_tax_registered)

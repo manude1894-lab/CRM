@@ -5,7 +5,8 @@ import { COUNTRY_CALLING_CODES, isUAE } from "../utils/constants";
 import { toast } from "../store/toast";
 import { confirmDialog } from "../store/confirm";
 
-const ROLES = ["Shareholder", "Director", "Authorised Signatory"];
+const CORPORATE_ROLES = ["Shareholder", "Director", "Authorised Signatory"];
+const INDIVIDUAL_ROLES = ["Joint Holder"];  // Triam BRD mark-up: individual clients have joint holders
 
 const BLANK_ADDRESS = { line1: "", line2: "", landmark: "", zip: "", po_box: "", city: "", country: "" };
 
@@ -19,6 +20,7 @@ const emptyParty = (role) => ({
   mobile_country_code: "+971",
   mobile_number: "",
   email: "",
+  nationality: "",
   country_of_residence: "",
   residential_address: { ...BLANK_ADDRESS },
   uae_visa_number: "",
@@ -34,10 +36,11 @@ const cleanPayload = (obj) => Object.fromEntries(
   Object.entries(obj).map(([k, v]) => [k, v === "" ? null : v])
 );
 
-const partyLabel = (role) => role === "Shareholder" ? "Shareholder" : role === "Director" ? "Director" : "Authorised Signatory";
+export const partyLabel = (role) => role;
 
 export default function AccountPartyModal({ account, onClose }) {
-  const [tab, setTab] = useState("Shareholder");
+  const ROLES = account.account_type === "Individual" ? INDIVIDUAL_ROLES : CORPORATE_ROLES;
+  const [tab, setTab] = useState(ROLES[0]);
   const [parties, setParties] = useState([]);
   const [countries, setCountries] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -159,12 +162,14 @@ const setAddr = (setForm, k) => (e) => setForm((p) => ({ ...p, residential_addre
 function PartyForm({ form, setForm, countries, onCancel, onSave }) {
   const isShareholder = form.party_role === "Shareholder";
   const isDirector = form.party_role === "Director";
+  // Triam mark-up §5.3 / §6: signatories and joint holders need mobile and email too.
+  const contactRequired = ["Shareholder", "Authorised Signatory", "Joint Holder"].includes(form.party_role);
   const isEntity = form.constitution === "Entity";
   const isUAEResident = isUAE(form.country_of_residence);
 
   return (
     <div>
-      {form.party_role !== "Authorised Signatory" && (
+      {!["Authorised Signatory", "Joint Holder"].includes(form.party_role) && (
         <Field label="Constitution">
           <Select value={form.constitution} onChange={set(setForm, "constitution")}>
             <option>Individual</option>
@@ -198,7 +203,7 @@ function PartyForm({ form, setForm, countries, onCancel, onSave }) {
         </Field>
       )}
 
-      <Field label="Contact Mobile" required={isShareholder}>
+      <Field label="Contact Mobile" required={contactRequired}>
         <div className="flex gap-2">
           <Select value={form.mobile_country_code || ""} onChange={set(setForm, "mobile_country_code")} className="w-40 flex-shrink-0">
             <option value="">Code</option>
@@ -207,8 +212,11 @@ function PartyForm({ form, setForm, countries, onCancel, onSave }) {
           <Input value={form.mobile_number || ""} onChange={set(setForm, "mobile_number")} maxLength={12} placeholder="e.g. 501234567" />
         </div>
       </Field>
-      <Field label="Contact Email" required={isShareholder}><Input type="email" value={form.email || ""} onChange={set(setForm, "email")} /></Field>
+      <Field label="Contact Email" required={contactRequired}><Input type="email" value={form.email || ""} onChange={set(setForm, "email")} /></Field>
 
+      <Field label="Nationality" required>
+        <CountrySelect value={form.nationality} onChange={set(setForm, "nationality")} countries={countries} />
+      </Field>
       <Field label="Country of Residence" required>
         <CountrySelect value={form.country_of_residence} onChange={set(setForm, "country_of_residence")} countries={countries} />
       </Field>
