@@ -269,7 +269,7 @@ export const exportFilename = (base, ext = "csv") => {
 export const isUAE = (country) => country === "UAE" || (country || "").startsWith("United Arab Emirates");
 
 // BRD §14 — display dates as DD MM YYYY everywhere (was DD-MM-YYYY, client CRM-change-request items 8/14).
-// Native <input type="date"> fields are left alone (browser-controlled, ISO value).
+// Date entry uses the shared <DateInput> (components/ui), which shows DD MM YYYY on every computer.
 export const fmtDate = (d) => {
   if (!d) return "";
   const s = String(d).slice(0, 10);
@@ -374,3 +374,19 @@ export const COUNTRY_CALLING_CODES = [
   { code: "+7", label: "+7 (Russia)" },
   { code: "+55", label: "+55 (Brazil)" },
 ];
+
+// Today as "Fri 09 10 2026" for the top bar (BRD §14 date format, independent of the PC's region).
+export const fmtToday = (now = new Date()) => {
+  const pad = (n) => String(n).padStart(2, "0");
+  const day = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][now.getDay()];
+  return `${day} ${pad(now.getDate())} ${pad(now.getMonth() + 1)} ${now.getFullYear()}`;
+};
+
+// CSV dates as DD/MM/YYYY, which Excel set to UAE / UK format reads as dates. Timestamps add HH:MM.
+export const csvDate = (v) => {
+  if (v === null || v === undefined || v === "") return v;
+  const s = String(v);
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2}))?/);
+  if (!m) return v;
+  return `${m[3]}/${m[2]}/${m[1]}${m[4] && s.length > 10 ? ` ${m[4]}:${m[5]}` : ""}`;
+};

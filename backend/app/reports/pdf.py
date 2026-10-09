@@ -17,6 +17,7 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, Tabl
 from reportlab.lib.enums import TA_CENTER
 
 from app.models import Case
+from app.utils.dates import dmy
 
 # TRIAM brand color
 PRIMARY = colors.HexColor("#1a3a5c")
@@ -76,7 +77,7 @@ def _header_footer(canvas, doc):
     canvas.setFillColor(MUTED)
     canvas.drawString(2 * cm, 1.2 * cm, "TRIAM — Entity Servicing & Compliance Tracker")
     canvas.drawRightString(A4[0] - 2 * cm, 1.2 * cm, f"Page {doc.page}")
-    canvas.drawCentredString(A4[0] / 2, 1.2 * cm, f"Generated {date.today().isoformat()}")
+    canvas.drawCentredString(A4[0] / 2, 1.2 * cm, f"Generated {dmy(date.today())}")
     canvas.restoreState()
 
 
@@ -141,7 +142,7 @@ def case_stage_summary_pdf(dashboard: dict) -> bytes:
     doc = _new_doc(buf)
     styles = _styles()
     elements = []
-    elements += _brand_header(styles, "Case Stage Summary Report", f"Onboarding pipeline overview · {date.today().isoformat()}")
+    elements += _brand_header(styles, "Case Stage Summary Report", f"Onboarding pipeline overview · {dmy(date.today())}")
 
     kpis = dashboard["kpis"]
     elements.append(_kpi_row([
@@ -160,7 +161,7 @@ def case_stage_summary_pdf(dashboard: dict) -> bytes:
     elements.append(Spacer(1, 0.6 * cm))
     elements.append(Paragraph("Upcoming Renewals / Filings (next 60 days)", styles["H2"]))
     comp_rows = [
-        [c["case_uid"], c["company_name"], c["item"].replace("_", " ").title(), c["due_date"].isoformat(), str(c["days_remaining"])]
+        [c["case_uid"], c["company_name"], c["item"].replace("_", " ").title(), dmy(c["due_date"]), str(c["days_remaining"])]
         for c in dashboard["upcoming_compliance"]
     ]
     elements.append(_data_table(
@@ -180,7 +181,7 @@ def case_details_pdf(cases: list[Case]) -> bytes:
     elements = []
     elements += _brand_header(
         styles, "Case Details Report",
-        f"{len(cases)} cases · {date.today().isoformat()}",
+        f"{len(cases)} cases · {dmy(date.today())}",
     )
 
     headers = ["ID", "Company", "Stage", "Status", "Invoice", "RM", "Created"]
@@ -193,7 +194,7 @@ def case_details_pdf(cases: list[Case]) -> bytes:
             c.status,
             c.invoice_status.value,
             c.rm.name if c.rm else "—",
-            c.created_at.date().isoformat() if c.created_at else "—",
+            dmy(c.created_at),
         ])
     elements.append(_data_table(
         headers, rows,
@@ -210,12 +211,12 @@ def compliance_calendar_pdf(dashboard: dict) -> bytes:
     elements = []
     elements += _brand_header(
         styles, "Compliance Calendar Report",
-        f"Upcoming renewals, compliance filings & tax filings · {date.today().isoformat()}",
+        f"Upcoming renewals, compliance filings & tax filings · {dmy(date.today())}",
     )
 
     headers = ["Case", "Company", "Item", "Due Date", "Days Left"]
     rows = [
-        [c["case_uid"], c["company_name"], c["item"].replace("_", " ").title(), c["due_date"].isoformat(), str(c["days_remaining"])]
+        [c["case_uid"], c["company_name"], c["item"].replace("_", " ").title(), dmy(c["due_date"]), str(c["days_remaining"])]
         for c in dashboard["upcoming_compliance"]
     ]
     elements.append(_data_table(
@@ -233,7 +234,7 @@ def rm_ops_performance_pdf(dashboard: dict) -> bytes:
     elements = []
     elements += _brand_header(
         styles, "RM / Ops Performance Report",
-        f"Caseload by Relationship Manager & Ops · {date.today().isoformat()}",
+        f"Caseload by Relationship Manager & Ops · {dmy(date.today())}",
     )
 
     headers = ["Name", "Role", "Total Cases", "Active Cases"]
@@ -256,7 +257,7 @@ def account_track_record_pdf(record: dict) -> bytes:
     elements = []
     elements += _brand_header(
         styles, "Client Track Record",
-        f"{record['company_name']} ({record['account_uid']}) · Generated {date.today().isoformat()}",
+        f"{record['company_name']} ({record['account_uid']}) · Generated {dmy(date.today())}",
     )
 
     elements.append(_kpi_row([
@@ -272,7 +273,7 @@ def account_track_record_pdf(record: dict) -> bytes:
     profile_rows = [
         ["Account Type", record["account_type"] or "—", "Industry", record["industry"] or "—"],
         ["Country", record["country"] or "—", "Risk Rating", record["risk_rating"] or "—"],
-        ["KYC Status", record["kyc_status"] or "—", "Client Since", record["client_since"].date().isoformat()],
+        ["KYC Status", record["kyc_status"] or "—", "Client Since", dmy(record["client_since"])],
     ]
     elements.append(_data_table(["", "", "", ""], profile_rows, col_widths=[3.5 * cm, 5.5 * cm, 3.5 * cm, 4.5 * cm]))
     elements.append(Spacer(1, 0.6 * cm))
@@ -295,10 +296,10 @@ def account_track_record_pdf(record: dict) -> bytes:
     compliance_rows = [
         [
             c["case_uid"],
-            c["next_renewal_due"].isoformat() if c["next_renewal_due"] else "—",
-            c["next_esr_due"].isoformat() if c["next_esr_due"] else "—",
-            c["next_ar_due"].isoformat() if c["next_ar_due"] else "—",
-            c["next_bo_due"].isoformat() if c["next_bo_due"] else "—",
+            dmy(c["next_renewal_due"]),
+            dmy(c["next_esr_due"]),
+            dmy(c["next_ar_due"]),
+            dmy(c["next_bo_due"]),
         ]
         for c in record["cases"]
     ]

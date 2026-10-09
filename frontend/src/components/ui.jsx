@@ -309,6 +309,127 @@ export const Select = ({ children, className = "", ...props }) => (
   </select>
 );
 
+// ─── Date entry: DD MM YYYY with calendar selection (BRD) ──────────────
+// A drop-in replacement for <input type="date">: value is "YYYY-MM-DD" (or ""), onChange receives
+// { target: { value } }. It always shows and accepts DD MM YYYY, whatever the computer's region.
+const MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const isoToText = (iso) => (iso && /^\d{4}-\d{2}-\d{2}/.test(iso) ? `${iso.slice(8, 10)} ${iso.slice(5, 7)} ${iso.slice(0, 4)}` : "");
+const pad = (n) => String(n).padStart(2, "0");
+const toIso = (y, m, d) => `${y}-${pad(m)}-${pad(d)}`;
+export const parseDMY = (text) => {
+  const d = (text || "").replace(/\D/g, "");
+  if (d.length !== 8) return null;
+  const day = +d.slice(0, 2), month = +d.slice(2, 4), year = +d.slice(4);
+  const dt = new Date(Date.UTC(year, month - 1, day));
+  if (year < 1900 || year > 2200 || dt.getUTCMonth() !== month - 1 || dt.getUTCDate() !== day) return null;
+  return toIso(year, month, day);
+};
+const maskDMY = (raw) => {
+  const d = raw.replace(/\D/g, "").slice(0, 8);
+  return [d.slice(0, 2), d.slice(2, 4), d.slice(4)].filter(Boolean).join(" ");
+};
+
+export const DateInput = ({ value, onChange, min, max, disabled, className = "", placeholder = "DD MM YYYY", required, ...rest }) => {
+  const [text, setText] = React.useState(isoToText(value));
+  const [problem, setProblem] = React.useState(null);
+  const [pop, setPop] = React.useState(null); // { top|bottom, left } while the calendar is open
+  const [cursor, setCursor] = React.useState(null); // { y, m } month shown in the calendar
+  React.useEffect(() => { setText(isoToText(value)); setProblem(null); }, [value]);
+  const emit = (iso) => onChange?.({ target: { value: iso, name: rest.name } });
+  const outOfRange = (iso) => (min && iso < min) ? `Earliest allowed: ${isoToText(min)}` : (max && iso > max) ? `Latest allowed: ${isoToText(max)}` : null;
+
+  const commit = (t) => {
+    if (!t.trim()) { setProblem(null); if (value) emit(""); return; }
+    const iso = parseDMY(t);
+    if (!iso) { setProblem("Enter a valid date as DD MM YYYY"); return; }
+    const range = outOfRange(iso);
+    if (range) { setProblem(range); return; }
+    setProblem(null);
+    if (iso !== value) emit(iso);
+  };
+  const onType = (e) => {
+    const masked = maskDMY(e.target.value);
+    setText(masked);
+    if (masked.replace(/\D/g, "").length === 8) commit(masked);
+  };
+
+  const openCalendar = (e) => {
+    if (disabled) return;
+    const r = e.currentTarget.parentElement.getBoundingClientRect();
+    const below = window.innerHeight - r.bottom > 330;
+    setPop({ left: Math.min(r.left, window.innerWidth - 290), ...(below ? { top: r.bottom + 4 } : { bottom: window.innerHeight - r.top + 4 }) });
+    const base = parseDMY(text) || value || new Date().toISOString().slice(0, 10);
+    setCursor({ y: +base.slice(0, 4), m: +base.slice(5, 7) });
+  };
+  const pick = (iso) => { setPop(null); setProblem(null); emit(iso); };
+
+  const days = [];
+  if (cursor) {
+    const first = new Date(Date.UTC(cursor.y, cursor.m - 1, 1));
+    const lead = (first.getUTCDay() + 6) % 7; // weeks start on Monday
+    const count = new Date(Date.UTC(cursor.y, cursor.m, 0)).getUTCDate();
+    for (let i = 0; i < lead; i++) days.push(null);
+    for (let d = 1; d <= count; d++) days.push(toIso(cursor.y, cursor.m, d));
+  }
+  const shift = (n) => setCursor((c) => { const m = c.m + n; return { y: c.y + Math.floor((m - 1) / 12), m: ((m - 1) % 12 + 12) % 12 + 1 }; });
+  const today = new Date().toISOString().slice(0, 10);
+  const years = [];
+  for (let y = 1920; y <= 2100; y++) years.push(y);
+
+  return (
+    <div className={`relative ${className.includes("w-") ? "" : "w-full"}`}>
+      <input {...rest} type="text" inputMode="numeric" value={text} placeholder={placeholder} disabled={disabled} required={required}
+        onChange={onType} onBlur={() => commit(text)} title={problem || "DD MM YYYY"}
+        className={`w-full border rounded-lg pl-3 pr-9 py-2 text-sm focus:outline-none focus:ring-1 disabled:bg-gray-50 disabled:text-gray-500 ${problem ? "border-red-300 focus:border-red-400 focus:ring-red-100" : "border-gray-200 focus:border-brand-400 focus:ring-brand-100"} ${className}`} />
+      <button type="button" onClick={openCalendar} disabled={disabled} tabIndex={-1} title="Choose from calendar"
+        className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-brand-600 disabled:opacity-40">
+        <Icon name="calendar" size={16} />
+      </button>
+      {problem && <p className="text-[11px] text-red-600 mt-0.5">{problem}</p>}
+      {pop && cursor && (
+        <>
+          <div className="fixed inset-0 z-[60]" onClick={() => setPop(null)} />
+          <div className="fixed z-[61] w-[280px] bg-white border border-gray-200 rounded-xl shadow-xl p-3" style={pop}>
+            <div className="flex items-center gap-1 mb-2">
+              <button type="button" onClick={() => shift(-1)} className="p-1 rounded hover:bg-gray-100 text-gray-500"><Icon name="chevronLeft" size={16} /></button>
+              <select value={cursor.m} onChange={(e) => setCursor((c) => ({ ...c, m: +e.target.value }))}
+                className="flex-1 text-sm border border-gray-200 rounded px-1 py-0.5">
+                {MONTHS_SHORT.map((mName, i) => <option key={mName} value={i + 1}>{mName}</option>)}
+              </select>
+              <select value={cursor.y} onChange={(e) => setCursor((c) => ({ ...c, y: +e.target.value }))}
+                className="text-sm border border-gray-200 rounded px-1 py-0.5">
+                {years.map((y) => <option key={y} value={y}>{y}</option>)}
+              </select>
+              <button type="button" onClick={() => shift(1)} className="p-1 rounded hover:bg-gray-100 text-gray-500"><Icon name="chevronRight" size={16} /></button>
+            </div>
+            <div className="grid grid-cols-7 gap-0.5 text-center text-[11px] text-gray-400 mb-1">
+              {["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"].map((d) => <div key={d}>{d}</div>)}
+            </div>
+            <div className="grid grid-cols-7 gap-0.5">
+              {days.map((iso, i) => {
+                if (!iso) return <div key={`b${i}`} />;
+                const blocked = (min && iso < min) || (max && iso > max);
+                const selected = iso === value;
+                return (
+                  <button type="button" key={iso} disabled={blocked} onClick={() => pick(iso)}
+                    className={`h-8 text-sm rounded-md ${selected ? "text-white" : iso === today ? "font-semibold text-brand-700 bg-brand-50" : "text-gray-700 hover:bg-gray-100"} disabled:text-gray-300 disabled:hover:bg-transparent`}
+                    style={selected ? { background: "#1a3a5c" } : undefined}>
+                    {+iso.slice(8)}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="flex justify-between mt-2 pt-2 border-t border-gray-100 text-xs">
+              <button type="button" onClick={() => { setPop(null); setText(""); setProblem(null); if (value) emit(""); }} className="text-gray-500 hover:text-red-600">Clear</button>
+              <button type="button" disabled={(min && today < min) || (max && today > max)} onClick={() => pick(today)} className="text-brand-600 hover:underline disabled:text-gray-300">Today</button>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
+
 export const Textarea = (props) => (
   <textarea
     {...props}

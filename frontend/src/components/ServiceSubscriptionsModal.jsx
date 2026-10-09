@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { serviceSubscriptionsApi } from "../api/endpoints";
-import { Modal, Field, Input, Select, Textarea, Spinner, ErrorBanner, Badge } from "./ui";
+import { Modal, Field, Input, Select, Textarea, Spinner, ErrorBanner, Badge, DateInput } from "./ui";
 import { SERVICE_NAME_SUGGESTIONS, SERVICE_BILLING_FREQUENCY_OPTIONS, SERVICE_SUBSCRIPTION_STATUS_OPTIONS, fmtFull, fmtDate } from "../utils/constants";
 import { toast } from "../store/toast";
 import { confirmDialog } from "../store/confirm";
@@ -104,8 +104,8 @@ export default function ServiceSubscriptionsModal({ caseItem, onClose }) {
                     {SERVICE_SUBSCRIPTION_STATUS_OPTIONS.map((o) => <option key={o}>{o}</option>)}
                   </Select>
                 </Field>
-                <Field label="Start Date"><Input type="date" value={form.start_date || ""} onChange={set("start_date")} /></Field>
-                <Field label="Next Billing Date"><Input type="date" value={form.next_billing_date || ""} onChange={set("next_billing_date")} /></Field>
+                <Field label="Start Date"><DateInput value={form.start_date || ""} onChange={set("start_date")} /></Field>
+                <Field label="Next Billing Date"><DateInput value={form.next_billing_date || ""} onChange={set("next_billing_date")} /></Field>
               </div>
               <Field label="Notes"><Textarea value={form.notes || ""} onChange={set("notes")} /></Field>
               <div className="flex justify-end gap-2">

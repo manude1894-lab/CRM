@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { pepApi } from "../api/endpoints";
 import { useAuthStore } from "../store/auth";
-import { Badge, Modal, Field, Input, Select, Textarea } from "./ui";
+import { Badge, Modal, Field, Input, Select, Textarea, DateInput } from "./ui";
 import { PEP_TYPE_OPTIONS, PEP_RISK_CONCLUSION_OPTIONS } from "../utils/constants";
 import { toast } from "../store/toast";
 import { confirmDialog } from "../store/confirm";
@@ -123,7 +123,7 @@ export default function PEPAssessmentPanel({ caseId, parties = [] }) {
             </Field>
             <Field label="Position / Office"><Input value={form.position || ""} onChange={set("position")} /></Field>
             <Field label="Jurisdiction"><Input value={form.pep_jurisdiction || ""} onChange={set("pep_jurisdiction")} /></Field>
-            <Field label="PEP Since"><Input type="date" value={form.since_date || ""} onChange={set("since_date")} /></Field>
+            <Field label="PEP Since"><DateInput value={form.since_date || ""} onChange={set("since_date")} /></Field>
           </div>
           <label className="flex items-center gap-2 text-xs text-gray-700 my-1">
             <input type="checkbox" checked={!!form.still_in_office} onChange={setBool("still_in_office")} /> Still in office
@@ -140,7 +140,7 @@ export default function PEPAssessmentPanel({ caseId, parties = [] }) {
                 {PEP_RISK_CONCLUSION_OPTIONS.map((o) => <option key={o}>{o}</option>)}
               </Select>
             </Field>
-            <Field label="Assessment Date"><Input type="date" value={form.assessment_date || ""} onChange={set("assessment_date")} /></Field>
+            <Field label="Assessment Date"><DateInput value={form.assessment_date || ""} onChange={set("assessment_date")} /></Field>
           </div>
           <label className="flex items-center gap-2 text-xs text-gray-700 my-1">
             <input type="checkbox" checked={!!form.senior_management_approved} disabled={!canSignOff} onChange={setBool("senior_management_approved")} />

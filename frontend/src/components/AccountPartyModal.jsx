@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { accountPartiesApi, amlApi } from "../api/endpoints";
-import { Icon, Modal, Field, Input, Select, CountrySelect, Spinner, ErrorBanner } from "./ui";
+import { Icon, Modal, Field, Input, Select, CountrySelect, Spinner, ErrorBanner, DateInput } from "./ui";
 import { COUNTRY_CALLING_CODES, isUAE } from "../utils/constants";
 import { toast } from "../store/toast";
 import { confirmDialog } from "../store/confirm";
@@ -177,10 +177,10 @@ function PartyForm({ form, setForm, countries, onCancel, onSave }) {
       </Field>
       <div className="grid grid-cols-2 gap-3">
         <Field label={isEntity ? "Incorporation Date" : "Date of Birth"}>
-          <Input type="date" value={form.dob_or_incorp_date || ""} onChange={set(setForm, "dob_or_incorp_date")} />
+          <DateInput value={form.dob_or_incorp_date || ""} onChange={set(setForm, "dob_or_incorp_date")} />
         </Field>
         <Field label={isEntity ? "License / CI Expiry" : "Passport Expiry"}>
-          <Input type="date" value={form.id_or_license_expiry || ""} onChange={set(setForm, "id_or_license_expiry")} />
+          <DateInput value={form.id_or_license_expiry || ""} onChange={set(setForm, "id_or_license_expiry")} />
         </Field>
       </div>
       <Field label={isEntity ? "Country of Incorporation" : "Country of Birth"} required={form.party_role === "Authorised Signatory"}>
@@ -230,7 +230,7 @@ function PartyForm({ form, setForm, countries, onCancel, onSave }) {
       {isUAEResident && (
         <div className="grid grid-cols-2 gap-3">
           <Field label="UAE Visa No."><Input value={form.uae_visa_number || ""} onChange={set(setForm, "uae_visa_number")} /></Field>
-          <Field label="UAE Visa Expiry"><Input type="date" value={form.uae_visa_expiry || ""} onChange={set(setForm, "uae_visa_expiry")} /></Field>
+          <Field label="UAE Visa Expiry"><DateInput value={form.uae_visa_expiry || ""} onChange={set(setForm, "uae_visa_expiry")} /></Field>
         </div>
       )}
 

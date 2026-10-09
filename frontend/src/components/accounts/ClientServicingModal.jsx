@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { activitiesApi, instructionsApi } from "../../api/endpoints";
-import { Modal, Field, Input, Select, Textarea, Spinner } from "../ui";
+import { Modal, Field, Input, Select, Textarea, Spinner, DateInput } from "../ui";
 import { toast } from "../../store/toast";
 import { useMasters } from "../../hooks/useMasters";
 import { selectableCodes } from "../../hooks/masterUtils";
@@ -110,7 +110,7 @@ export default function ClientServicingModal({ account, cases = [], onClose }) {
                 {clientCases.map((c) => <option key={c.id} value={c.id}>{c.case_uid} – {c.company_name}</option>)}
               </Select>
             </Field>
-            <Field label="Date Received"><Input type="date" value={sr.date_received} onChange={(e) => setSr((p) => ({ ...p, date_received: e.target.value }))} /></Field>
+            <Field label="Date Received"><DateInput value={sr.date_received} onChange={(e) => setSr((p) => ({ ...p, date_received: e.target.value }))} /></Field>
             <Field label="Charge (to client)"><Input type="number" min="0" step="0.01" value={sr.charge_amount} onChange={(e) => setSr((p) => ({ ...p, charge_amount: e.target.value }))} /></Field>
           </div>
           <Field label="Details"><Textarea rows={3} value={sr.comments} onChange={(e) => setSr((p) => ({ ...p, comments: e.target.value }))} /></Field>

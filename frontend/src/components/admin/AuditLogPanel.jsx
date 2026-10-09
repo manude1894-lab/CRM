@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { auditApi } from "../../api/endpoints";
-import { Select, Input } from "../ui";
+import { Select, Input, DateInput } from "../ui";
 import AuditTrail from "../AuditTrail";
 import { toast } from "../../store/toast";
 
@@ -42,8 +42,8 @@ export default function AuditLogPanel({ users }) {
           <option value="">All users</option>
           {users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
         </Select>
-        <Input type="date" value={filters.date_from} onChange={set("date_from")} className="text-xs !w-auto" title="From" />
-        <Input type="date" value={filters.date_to} onChange={set("date_to")} className="text-xs !w-auto" title="To" />
+        <DateInput value={filters.date_from} onChange={set("date_from")} className="text-xs !w-auto" title="From" />
+        <DateInput value={filters.date_to} onChange={set("date_to")} className="text-xs !w-auto" title="To" />
         <span className="text-xs text-gray-400 ml-auto">{data.total} entr{data.total === 1 ? "y" : "ies"}</span>
       </div>
       <AuditTrail entries={data.items} loading={loading} emptyText="No audit entries match these filters." />

@@ -12,6 +12,7 @@ from app.models import Document, Case, User, UserRole
 from app.reports import letter_pdf, resolution_pdf
 from app.services import company_service, party_service, access_control
 from app import jurisdictions
+from app.utils.dates import dmy, long_date
 
 SIGNATORY_NAME = "Kalyanaram Sivalanka"
 SIGNATORY_TITLE = "Director"
@@ -137,7 +138,7 @@ def _b_rora(p: dict, ctx: dict):
     s = ctx["spec"]
     ra = p.get("registered_agent") or _ra(ctx)
     office = p.get("registered_office") or f"the offices of {ra}, {s.name}"
-    eff = p.get("effective_date") or date.today().isoformat()
+    eff = long_date(p.get("effective_date") or date.today())
     return _resolution(
         ctx, "Written Resolutions of the Directors — Registered Agent and Registered Office",
         ["The directors wish to confirm the Company's registered agent and registered office."],
@@ -195,7 +196,7 @@ def _b_change_director(p: dict, ctx: dict):
     s = ctx["spec"]
     name = p.get("director_name") or ""
     action = (p.get("action") or "Appointed").lower()
-    eff = p.get("effective_date") or date.today().isoformat()
+    eff = long_date(p.get("effective_date") or date.today())
     return _resolution(
         ctx, "Written Resolutions of the Directors — Change of Director",
         ["The directors wish to record a change to the board of the Company."],
@@ -237,7 +238,7 @@ def _b_change_shareholding(p: dict, ctx: dict):
     transferee = p.get("transferee") or ""
     shares = p.get("number_of_shares") or ""
     cls = p.get("share_class") or "ordinary"
-    eff = p.get("effective_date") or date.today().isoformat()
+    eff = long_date(p.get("effective_date") or date.today())
     return _resolution(
         ctx, "Written Resolutions of the Directors — Change of Shareholding",
         ["The directors wish to record a transfer of shares in the Company."],
@@ -446,7 +447,7 @@ def generate(db: Session, case_id: int, code: str, params: dict, user: User) -> 
         content=pdf_bytes,
         uploaded_by_id=user.id,
         generated_from=code,
-        notes=f"Generated from template '{t['label']}' on {date.today().isoformat()}",
+        notes=f"Generated from template '{t['label']}' on {dmy(date.today())}",
     )
     db.add(doc)
     db.commit()

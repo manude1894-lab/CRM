@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { actionPointsApi, casesApi, usersApi } from "../api/endpoints";
 import { useAuthStore } from "../store/auth";
-import { Icon, Badge, Modal, Field, Input, Select, Textarea, Spinner, ErrorBanner, PageHeader } from "../components/ui";
+import { Icon, Badge, Modal, Field, Input, Select, Textarea, Spinner, ErrorBanner, PageHeader, DateInput } from "../components/ui";
 import { ACTION_POINT_STATUS_OPTIONS, ACTION_POINT_PRIORITY_OPTIONS, fmtDate } from "../utils/constants";
 import { toast } from "../store/toast";
 import { confirmDialog } from "../store/confirm";
@@ -145,7 +145,7 @@ export default function ActionPointsPage() {
                 {ACTION_POINT_PRIORITY_OPTIONS.map((x) => <option key={x}>{x}</option>)}
               </Select>
             </Field>
-            <Field label="Due Date"><Input type="date" value={form.due_date || ""} onChange={(e) => setForm((p) => ({ ...p, due_date: e.target.value }))} /></Field>
+            <Field label="Due Date"><DateInput value={form.due_date || ""} onChange={(e) => setForm((p) => ({ ...p, due_date: e.target.value }))} /></Field>
           </div>
           <div className="flex justify-end gap-3 mt-4">
             <button onClick={() => setModal(false)} className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>

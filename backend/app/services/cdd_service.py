@@ -7,6 +7,7 @@ from fastapi import HTTPException
 from app.models import CDDRecord, CaseDocument, Case, CaseStage, CaseStatus, DocumentStatus, User, UserRole, Director, Shareholder, UBO
 from app.schemas.cdd import CDDRecordUpdate, CDDReviewRequest, CaseDocumentCreate, CaseDocumentUpdate
 from app.services import notification_service
+from app.utils.dates import dmy
 
 # Per-party CDD requirements — Vistra KYC Appendix C.
 INDIVIDUAL_PARTY_DOCUMENTS = [
@@ -96,7 +97,7 @@ def grant_cdd_exception(db: Session, case_id: int, reason: str, days: int, user:
     case = db.query(Case).filter(Case.id == case_id).first()
     if case:
         msg = (f"CDD exception granted on {case.case_uid} ({case.company_name}) — "
-               f"expires {cdd.exception_expires_on}. Reason: {reason}")
+               f"expires {dmy(cdd.exception_expires_on)}. Reason: {reason}")
         if case.rm_id:
             notification_service.notify_user(db, case.rm_id, msg, "cdd_exception_granted",
                                              link=f"/cases/{case_id}", case_id=case_id)

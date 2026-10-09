@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { accountsApi } from "../../api/endpoints";
-import { Icon, Modal, Field, Input, Select, MultiSelect, CountrySelect, Textarea } from "../ui";
+import { Icon, Modal, Field, Input, Select, MultiSelect, CountrySelect, Textarea, DateInput } from "../ui";
 import NameLookup from "./NameLookup";
 import CompletenessChecklist from "./CompletenessChecklist";
 import WorkflowBar from "./WorkflowBar";
@@ -307,7 +307,7 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
               <Input value={form.license_number} onChange={set("license_number")} placeholder="e.g. DIFC-LIC-9012" maxLength={30} />
             </Field>
             <Field label="Incorporation Date">
-              <Input type="date" max={today} value={form.incorporation_date || ""} onChange={set("incorporation_date")} />
+              <DateInput max={today} value={form.incorporation_date || ""} onChange={set("incorporation_date")} />
             </Field>
           </div>
         )}
@@ -359,8 +359,8 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
                     <Input value={form.licensing_authority_other || ""} onChange={set("licensing_authority_other")} maxLength={100} />
                   </Field>
                 )}
-                <Field label="License Start Date"><Input type="date" value={form.license_start_date || ""} onChange={set("license_start_date")} /></Field>
-                <Field label="License Expiry Date"><Input type="date" min={today} value={form.license_expiry_date || ""} onChange={set("license_expiry_date")} /></Field>
+                <Field label="License Start Date"><DateInput value={form.license_start_date || ""} onChange={set("license_start_date")} /></Field>
+                <Field label="License Expiry Date"><DateInput min={today} value={form.license_expiry_date || ""} onChange={set("license_expiry_date")} /></Field>
               </div>
               <div className="mb-3">
                 <Field label="License Activities">
@@ -383,7 +383,7 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
                     <Field label="Other Regulator"><Input value={form.regulator_other} onChange={set("regulator_other")} /></Field>
                   )}
                   <Field label="License Category"><Input value={form.license_category} onChange={set("license_category")} maxLength={25} /></Field>
-                  <Field label="Current regulatory license expiry *"><Input type="date" value={form.regulatory_license_expiry_date || ""} onChange={set("regulatory_license_expiry_date")} /></Field>
+                  <Field label="Current regulatory license expiry *"><DateInput value={form.regulatory_license_expiry_date || ""} onChange={set("regulatory_license_expiry_date")} /></Field>
                 </div>
               )}
             </Section>
@@ -429,11 +429,11 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
           <Section title="Individual Details" hasData={!!(form.date_of_birth || form.country_of_birth || form.nationality || form.passport_number || form.occupation || form.individual_mobile_number || form.individual_email || form.country_of_residence || form.source_of_funds || form.source_of_wealth || form.is_pep || (form.nature_of_services_sought || []).length > 0)}
             {...sectionProps("individual")}>
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Date of Birth"><Input type="date" value={form.date_of_birth || ""} onChange={set("date_of_birth")} /></Field>
+              <Field label="Date of Birth"><DateInput value={form.date_of_birth || ""} onChange={set("date_of_birth")} /></Field>
               <Field label="Country of Birth"><CountrySelect value={form.country_of_birth} onChange={set("country_of_birth")} countries={countries} /></Field>
               <Field label="Nationality"><CountrySelect value={form.nationality} onChange={set("nationality")} countries={countries} /></Field>
               <Field label="Passport Number"><Input value={form.passport_number} onChange={set("passport_number")} /></Field>
-              <Field label="Passport Expiry"><Input type="date" value={form.passport_expiry_date || ""} onChange={set("passport_expiry_date")} /></Field>
+              <Field label="Passport Expiry"><DateInput value={form.passport_expiry_date || ""} onChange={set("passport_expiry_date")} /></Field>
               <Field label="Occupation"><Input value={form.occupation} onChange={set("occupation")} /></Field>
               <Field label="Email"><Input type="email" value={form.individual_email} onChange={set("individual_email")} /></Field>
               <Field label="Country of Residence"><CountrySelect value={form.country_of_residence} onChange={set("country_of_residence")} countries={countries} /></Field>
@@ -459,7 +459,7 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
             {isUAE(form.country_of_residence) && (
               <div className="grid grid-cols-2 gap-3 mt-3">
                 <Field label="UAE Visa No."><Input value={form.uae_visa_number} onChange={set("uae_visa_number")} /></Field>
-                <Field label="UAE Visa Expiry"><Input type="date" value={form.uae_visa_expiry || ""} onChange={set("uae_visa_expiry")} /></Field>
+                <Field label="UAE Visa Expiry"><DateInput value={form.uae_visa_expiry || ""} onChange={set("uae_visa_expiry")} /></Field>
               </div>
             )}
 
@@ -494,7 +494,7 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
           {...sectionProps("profileStatus")}>
           <p className="text-[11px] text-gray-400 mb-2">Profile status ({form.profile_status}) changes only through Submit / Approve and the status buttons at the top.</p>
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Engagement Letter Valid Until"><Input type="date" value={form.engagement_letter_valid_until || ""} onChange={set("engagement_letter_valid_until")} /></Field>
+            <Field label="Engagement Letter Valid Until"><DateInput value={form.engagement_letter_valid_until || ""} onChange={set("engagement_letter_valid_until")} /></Field>
           </div>
           <label className="flex items-center gap-2 text-xs text-gray-700">
             <input type="checkbox" checked={!!form.engagement_letter_signed} onChange={setChecked("engagement_letter_signed")} /> Engagement Letter Signed
@@ -509,7 +509,7 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
                 {AML_CLASSIFICATION_OPTIONS.map((o) => <option key={o}>{o}</option>)}
               </Select>
             </Field>
-            <Field label="CDD Completion Date"><Input type="date" value={form.cdd_completion_date || ""} onChange={set("cdd_completion_date")} /></Field>
+            <Field label="CDD Completion Date"><DateInput value={form.cdd_completion_date || ""} onChange={set("cdd_completion_date")} /></Field>
             <Field label="KYC Verification performed by">
               <Select value={form.kyc_verified_by || ""} onChange={set("kyc_verified_by")}>
                 <option value="">— select RM —</option>

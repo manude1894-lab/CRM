@@ -1,5 +1,5 @@
 import React from "react";
-import { Field, Input, Select, Textarea } from "../ui";
+import { Field, Input, Select, Textarea, DateInput } from "../ui";
 
 export const ACTIVITY_TYPES = ["Visit Report", "Call Report", "Meeting", "Call", "Email", "Follow-up", "Note", "Demo"];
 export const REPORT_TYPES = ["Visit Report", "Call Report"];
@@ -60,7 +60,7 @@ export default function ActivityForm({ form, setForm, accounts = [], cases = [],
             {ACTIVITY_TYPES.map((t) => <option key={t}>{t}</option>)}
           </Select>
         </Field>
-        <Field label="Date" required><Input type="date" value={form.activity_date || ""} onChange={set("activity_date")} /></Field>
+        <Field label="Date" required><DateInput value={form.activity_date || ""} onChange={set("activity_date")} /></Field>
         <Field label="Status">
           <Select value={form.status || "Completed"} onChange={set("status")}>
             {ACTIVITY_STATUSES.map((s) => <option key={s}>{s}</option>)}
@@ -90,7 +90,7 @@ export default function ActivityForm({ form, setForm, accounts = [], cases = [],
       <Field label="Outcome"><Textarea rows={2} value={form.outcome || ""} onChange={set("outcome")} /></Field>
       <div className="grid grid-cols-2 gap-x-4">
         <Field label="Next action"><Input value={form.next_action || ""} onChange={set("next_action")} /></Field>
-        <Field label="Next action due"><Input type="date" value={form.due_date || ""} onChange={set("due_date")} /></Field>
+        <Field label="Next action due"><DateInput value={form.due_date || ""} onChange={set("due_date")} /></Field>
       </div>
     </div>
   );

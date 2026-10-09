@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { prospectsApi, usersApi } from "../api/endpoints";
-import { Icon, Badge, Modal, Field, Input, Select, Textarea, Spinner, ErrorBanner, PageHeader } from "../components/ui";
+import { Icon, Badge, Modal, Field, Input, Select, Textarea, Spinner, ErrorBanner, PageHeader, DateInput } from "../components/ui";
 import DuplicateWarning from "../components/DuplicateWarning";
 import { PROSPECT_STATUS_OPTIONS, CASE_SOURCE_OPTIONS, JURISDICTION_OPTIONS, SERVICE_TYPE_OPTIONS, fmtFull, fmtDate } from "../utils/constants";
 import { toast } from "../store/toast";
@@ -176,10 +176,10 @@ export default function ProspectsPage() {
                 {PROSPECT_STATUS_OPTIONS.map((x) => <option key={x}>{x}</option>)}
               </Select>
             </Field>
-            <Field label="Proposal Sent Date"><Input type="date" value={form.proposal_sent_date || ""} onChange={(e) => setForm((p) => ({ ...p, proposal_sent_date: e.target.value }))} /></Field>
+            <Field label="Proposal Sent Date"><DateInput value={form.proposal_sent_date || ""} onChange={(e) => setForm((p) => ({ ...p, proposal_sent_date: e.target.value }))} /></Field>
             <Field label="Proposal Amount"><Input type="number" min="0" step="0.01" value={form.proposal_amount ?? ""} onChange={(e) => setForm((p) => ({ ...p, proposal_amount: e.target.value }))} /></Field>
-            <Field label="Expected Close Date"><Input type="date" value={form.expected_close_date || ""} onChange={(e) => setForm((p) => ({ ...p, expected_close_date: e.target.value }))} /></Field>
-            <Field label="Next Follow-up Date"><Input type="date" value={form.next_follow_up_date || ""} onChange={(e) => setForm((p) => ({ ...p, next_follow_up_date: e.target.value }))} /></Field>
+            <Field label="Expected Close Date"><DateInput value={form.expected_close_date || ""} onChange={(e) => setForm((p) => ({ ...p, expected_close_date: e.target.value }))} /></Field>
+            <Field label="Next Follow-up Date"><DateInput value={form.next_follow_up_date || ""} onChange={(e) => setForm((p) => ({ ...p, next_follow_up_date: e.target.value }))} /></Field>
           </div>
           {form.status === "Lost" && (
             <Field label="Lost Reason"><Textarea value={form.lost_reason || ""} onChange={(e) => setForm((p) => ({ ...p, lost_reason: e.target.value }))} /></Field>

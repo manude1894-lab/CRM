@@ -25,6 +25,7 @@ from app.schemas.case import CaseCreate, CaseUpdate, CaseBulkUpdateRequest
 from app.schemas.account import BulkUpdateResult
 from app.utils.uid import next_uid
 from app.services import notification_service, company_service, compliance_service, access_control, case_approval_service, engagement_service
+from app.utils.dates import dmy
 
 
 def _apply_rbac_filter(query, user: User):
@@ -271,7 +272,7 @@ def _assert_cdd_approved(db: Session, case: Case) -> None:
     if cdd and cdd.exception_granted:
         raise HTTPException(
             status_code=400,
-            detail=f"CDD exception expired on {cdd.exception_expires_on} — complete CDD or grant a new exception before raising an invoice",
+            detail=f"CDD exception expired on {dmy(cdd.exception_expires_on)} — complete CDD or grant a new exception before raising an invoice",
         )
     raise HTTPException(
         status_code=400,

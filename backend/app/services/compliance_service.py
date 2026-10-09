@@ -15,6 +15,7 @@ from app.models import ComplianceSchedule, Case, CaseStatus, UserRole
 from app.schemas.compliance import ComplianceMarkDoneRequest
 from app.services import notification_service
 from app import jurisdictions
+from app.utils.dates import dmy
 
 # Case statuses for which the compliance calendar no longer applies — the entity
 # is struck off, dissolved or has left Triam's administration. Reminders and the
@@ -247,7 +248,7 @@ def flag_bo_filing_due(db: Session, case_id: int) -> None:
 
     if case:
         msg = (f"Ownership change on {case.case_uid} ({case.company_name}) — "
-               f"ROM/RBO filing due by {new_due} (to the registered agent).")
+               f"ROM/RBO filing due by {dmy(new_due)} (to the registered agent).")
         notification_service.notify_role(db, UserRole.OPS, msg, "bo_filing_flagged",
                                          link=f"/compliance/{case_id}", case_id=case_id)
         notification_service.notify_role(db, UserRole.ADMIN, msg, "bo_filing_flagged",

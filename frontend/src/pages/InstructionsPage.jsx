@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { instructionsApi, casesApi, invoicesApi, accountsApi } from "../api/endpoints";
 import { useMasters } from "../hooks/useMasters";
 import { selectableCodes } from "../hooks/masterUtils";
-import { Icon, Badge, Modal, Field, Input, Select, Textarea, Spinner, ErrorBanner, PageHeader } from "../components/ui";
+import { Icon, Badge, Modal, Field, Input, Select, Textarea, Spinner, ErrorBanner, PageHeader, DateInput } from "../components/ui";
 import DocumentsPanel from "../components/DocumentsPanel";
 import FeedbackPanel from "../components/FeedbackPanel";
 import { INSTRUCTION_STATUS_OPTIONS, INSTRUCTION_TYPE_OPTIONS, fmtFull, fmtDate } from "../utils/constants";
@@ -301,18 +301,18 @@ export default function InstructionsPage() {
               <Input type="number" min="0" step="0.01" value={form.charge_amount ?? ""} onChange={(e) => setForm((p) => ({ ...p, charge_amount: e.target.value }))} />
             </Field>
             <Field label="Date Received">
-              <Input type="date" value={form.date_received || ""} onChange={(e) => setForm((p) => ({ ...p, date_received: e.target.value }))} />
+              <DateInput value={form.date_received || ""} onChange={(e) => setForm((p) => ({ ...p, date_received: e.target.value }))} />
             </Field>
             {form.case_id && (<>
             <Field label="Date Sent to Vistra">
-              <Input type="date" value={form.date_sent_to_vistra || ""} onChange={(e) => setForm((p) => ({ ...p, date_sent_to_vistra: e.target.value }))} />
+              <DateInput value={form.date_sent_to_vistra || ""} onChange={(e) => setForm((p) => ({ ...p, date_sent_to_vistra: e.target.value }))} />
             </Field>
             <Field label="Date Received from Vistra">
-              <Input type="date" value={form.date_received_from_vistra || ""} onChange={(e) => setForm((p) => ({ ...p, date_received_from_vistra: e.target.value }))} />
+              <DateInput value={form.date_received_from_vistra || ""} onChange={(e) => setForm((p) => ({ ...p, date_received_from_vistra: e.target.value }))} />
             </Field>
             </>)}
             <Field label="Date Completed">
-              <Input type="date" value={form.date_completed || ""} onChange={(e) => setForm((p) => ({ ...p, date_completed: e.target.value }))} />
+              <DateInput value={form.date_completed || ""} onChange={(e) => setForm((p) => ({ ...p, date_completed: e.target.value }))} />
             </Field>
             <Field label="Invoice Reference">
               <Input value={form.invoice_reference || ""} onChange={(e) => setForm((p) => ({ ...p, invoice_reference: e.target.value }))} placeholder="e.g. 2024-TCS-00005" />

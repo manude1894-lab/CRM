@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { lifecycleApi, jurisdictionsApi } from "../api/endpoints";
-import { Modal, Field, Input, Select, Textarea, Spinner, ErrorBanner } from "./ui";
+import { Modal, Field, Input, Select, Textarea, Spinner, ErrorBanner, DateInput } from "./ui";
 import DocumentsPanel from "./DocumentsPanel";
 import { toast } from "../store/toast";
 import {
@@ -80,7 +80,7 @@ export default function LifecycleModal({ caseItem, onClose }) {
                   {closureMethods.map((o) => <option key={o}>{o}</option>)}
                 </Select>
               </Field>
-              <Field label="Closure Initiated Date"><Input type="date" value={form.closure_initiated_date || ""} onChange={set("closure_initiated_date")} /></Field>
+              <Field label="Closure Initiated Date"><DateInput value={form.closure_initiated_date || ""} onChange={set("closure_initiated_date")} /></Field>
             </div>
             <Field label="Closure Reason"><Textarea value={form.closure_reason || ""} onChange={set("closure_reason")} /></Field>
             <div className="grid grid-cols-2 gap-x-3 items-end">
@@ -88,7 +88,7 @@ export default function LifecycleModal({ caseItem, onClose }) {
                 <input type="checkbox" checked={!!form.client_acknowledgement_received} onChange={setBool("client_acknowledgement_received")} />
                 Written client acknowledgement received (§X)
               </label>
-              <Field label="Acknowledgement Date"><Input type="date" value={form.client_acknowledgement_date || ""} onChange={set("client_acknowledgement_date")} /></Field>
+              <Field label="Acknowledgement Date"><DateInput value={form.client_acknowledgement_date || ""} onChange={set("client_acknowledgement_date")} /></Field>
               <label className="flex items-center gap-2 text-xs text-gray-700 mb-2">
                 <input type="checkbox" checked={!!form.outstanding_filings_cleared} onChange={setBool("outstanding_filings_cleared")} />
                 Outstanding filings cleared
@@ -97,13 +97,13 @@ export default function LifecycleModal({ caseItem, onClose }) {
                 <input type="checkbox" checked={!!form.strike_off_in_good_standing} onChange={setBool("strike_off_in_good_standing")} />
                 Struck off in good standing
               </label>
-              <Field label="Strike-off Date"><Input type="date" value={form.strike_off_date || ""} onChange={set("strike_off_date")} /></Field>
-              <Field label="Expected Dissolution Date (strike-off + 7 yrs)"><Input type="date" value={form.expected_dissolution_date || ""} onChange={set("expected_dissolution_date")} /></Field>
+              <Field label="Strike-off Date"><DateInput value={form.strike_off_date || ""} onChange={set("strike_off_date")} /></Field>
+              <Field label="Expected Dissolution Date (strike-off + 7 yrs)"><DateInput value={form.expected_dissolution_date || ""} onChange={set("expected_dissolution_date")} /></Field>
               <label className="flex items-center gap-2 text-xs text-gray-700 mb-2">
                 <input type="checkbox" checked={!!form.dissolution_confirmed} onChange={setBool("dissolution_confirmed")} />
                 Dissolution confirmed by Registry
               </label>
-              <Field label="Dissolution Date"><Input type="date" value={form.dissolution_date || ""} onChange={set("dissolution_date")} /></Field>
+              <Field label="Dissolution Date"><DateInput value={form.dissolution_date || ""} onChange={set("dissolution_date")} /></Field>
             </div>
           </Section>
 
@@ -114,8 +114,8 @@ export default function LifecycleModal({ caseItem, onClose }) {
                   {RESTORATION_STATUS_OPTIONS.map((o) => <option key={o}>{o}</option>)}
                 </Select>
               </Field>
-              <Field label="Initiated Date"><Input type="date" value={form.restoration_initiated_date || ""} onChange={set("restoration_initiated_date")} /></Field>
-              <Field label="Completed Date"><Input type="date" value={form.restoration_completed_date || ""} onChange={set("restoration_completed_date")} /></Field>
+              <Field label="Initiated Date"><DateInput value={form.restoration_initiated_date || ""} onChange={set("restoration_initiated_date")} /></Field>
+              <Field label="Completed Date"><DateInput value={form.restoration_completed_date || ""} onChange={set("restoration_completed_date")} /></Field>
               <Field label="Strike-off Cause">
                 <Select value={form.strike_off_cause || ""} onChange={set("strike_off_cause")}>
                   <option value="">— select —</option>
@@ -157,8 +157,8 @@ export default function LifecycleModal({ caseItem, onClose }) {
                   {REGISTERED_AGENT_OPTIONS.map((o) => <option key={o}>{o}</option>)}
                 </Select>
               </Field>
-              <Field label="Initiated Date"><Input type="date" value={form.transfer_initiated_date || ""} onChange={set("transfer_initiated_date")} /></Field>
-              <Field label="Completed Date"><Input type="date" value={form.transfer_completed_date || ""} onChange={set("transfer_completed_date")} /></Field>
+              <Field label="Initiated Date"><DateInput value={form.transfer_initiated_date || ""} onChange={set("transfer_initiated_date")} /></Field>
+              <Field label="Completed Date"><DateInput value={form.transfer_completed_date || ""} onChange={set("transfer_completed_date")} /></Field>
             </div>
             <label className="flex items-center gap-2 text-xs text-gray-700 mt-1">
               <input type="checkbox" checked={!!form.transfer_ends_administration} onChange={setBool("transfer_ends_administration")} />

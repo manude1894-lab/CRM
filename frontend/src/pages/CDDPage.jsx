@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { casesApi, cddApi, directorsApi, shareholdersApi, ubosApi } from "../api/endpoints";
 import { useAuthStore } from "../store/auth";
-import { Icon, Badge, Modal, Field, Input, Select, Spinner, ErrorBanner, PageHeader } from "../components/ui";
+import { Icon, Badge, Modal, Field, Input, Select, Spinner, ErrorBanner, PageHeader, DateInput } from "../components/ui";
 import AMLAssessmentPanel from "../components/AMLAssessmentPanel";
 import PEPAssessmentPanel from "../components/PEPAssessmentPanel";
 import DocumentsPanel from "../components/DocumentsPanel";
@@ -268,7 +268,7 @@ export default function CDDPage() {
 
               {selectedCdd?.exception_granted && (
                 <div className="bg-amber-50 border border-amber-100 rounded-lg p-3 text-xs text-amber-700">
-                  <strong>CDD exception active</strong> — expires {selectedCdd.exception_expires_on}.
+                  <strong>CDD exception active</strong> — expires {fmtDate(selectedCdd.exception_expires_on)}.
                   {selectedCdd.exception_reason && <> Reason: {selectedCdd.exception_reason}</>}
                 </div>
               )}
@@ -336,7 +336,7 @@ export default function CDDPage() {
                                         return (
                                           <label className="flex items-center gap-1 text-[11px] text-gray-400" title="Document expiry (e.g. passport)">
                                             <span>exp</span>
-                                            <input type="date" value={doc.expiry_date || ""}
+                                            <DateInput value={doc.expiry_date || ""}
                                               onChange={(e) => setExpiry(doc, e.target.value)}
                                               className={`border rounded px-1 py-0.5 text-[11px] focus:outline-none ${ei ? ei.cls : "text-gray-500 border-gray-200"}`} />
                                             {ei?.label && <span className={`font-medium ${ei.cls.split(" ")[0]}`}>{ei.label}</span>}

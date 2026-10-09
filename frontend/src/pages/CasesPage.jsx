@@ -4,13 +4,13 @@ import CsvImportModal from "../components/CsvImportModal";
 import { ROUTES, ROUTE_HELP, REGISTERED_AGENTS, routeFields, stageLabel } from "../components/cases/engagement";
 import { useAuthStore } from "../store/auth";
 import { casesApi, usersApi, accountsApi } from "../api/endpoints";
-import { Icon, Badge, Modal, Field, Input, Select, Textarea, Spinner, ErrorBanner, MoreMenu, PageHeader, Button, SearchInput, FilterBar } from "../components/ui";
+import { Icon, Badge, Modal, Field, Input, Select, Textarea, Spinner, ErrorBanner, MoreMenu, PageHeader, Button, SearchInput, FilterBar, DateInput } from "../components/ui";
 import PartyRegisterModal from "../components/PartyRegisterModal";
 import CompanyDetailsModal from "../components/CompanyDetailsModal";
 import LifecycleModal from "../components/LifecycleModal";
 import FormationModal from "../components/FormationModal";
 import ServiceSubscriptionsModal from "../components/ServiceSubscriptionsModal";
-import { STAGES, STAGE_COLORS, CASE_SOURCE_OPTIONS, JURISDICTION_OPTIONS, SERVICE_TYPE_OPTIONS, CASE_STATUS_OPTIONS, CLOSED_REL_STATUSES, fmt, exportFilename } from "../utils/constants";
+import { STAGES, STAGE_COLORS, CASE_SOURCE_OPTIONS, JURISDICTION_OPTIONS, SERVICE_TYPE_OPTIONS, CASE_STATUS_OPTIONS, CLOSED_REL_STATUSES, fmt, exportFilename, csvDate } from "../utils/constants";
 import { toast } from "../store/toast";
 import { confirmDialog } from "../store/confirm";
 
@@ -198,7 +198,7 @@ export default function CasesPage({ initialCaseId, initialStage } = {}) {
 
   const exportCSV = () => {
     const headers = ["UID", "Company", "Introduced By", "Onboarding Date", "Stage", "Status", "Invoice", "Source"];
-    const rows = filtered.map((c) => [c.case_uid, c.company_name, c.introducer, c.onboarding_date, c.stage, c.status, c.invoice_status, c.source]);
+    const rows = filtered.map((c) => [c.case_uid, c.company_name, c.introducer, csvDate(c.onboarding_date), c.stage, c.status, c.invoice_status, c.source]);
     const csv = [headers, ...rows].map((r) => r.map((v) => `"${v ?? ""}"`).join(",")).join("\n");
     const a = document.createElement("a");
     a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
@@ -484,7 +484,7 @@ export default function CasesPage({ initialCaseId, initialStage } = {}) {
                     </Field>
                   )}
                   <Field label="Incorporation date" required>
-                    <Input type="date" value={form.incorporation_date || ""} onChange={(e) => setForm((p) => ({ ...p, incorporation_date: e.target.value }))} />
+                    <DateInput value={form.incorporation_date || ""} onChange={(e) => setForm((p) => ({ ...p, incorporation_date: e.target.value }))} />
                   </Field>
                   <Field label="Company number">
                     <Input value={form.company_number || ""} onChange={(e) => setForm((p) => ({ ...p, company_number: e.target.value }))} />
@@ -495,9 +495,9 @@ export default function CasesPage({ initialCaseId, initialStage } = {}) {
                       {REGISTERED_AGENTS.map((a) => <option key={a}>{a}</option>)}
                     </Select>
                   </Field>
-                  <Field label="Last licence renewal"><Input type="date" value={form.last_renewal_date || ""} onChange={(e) => setForm((p) => ({ ...p, last_renewal_date: e.target.value }))} /></Field>
-                  <Field label="Last ESR filing"><Input type="date" value={form.last_esr_date || ""} onChange={(e) => setForm((p) => ({ ...p, last_esr_date: e.target.value }))} /></Field>
-                  <Field label="Last Annual Return"><Input type="date" value={form.last_ar_date || ""} onChange={(e) => setForm((p) => ({ ...p, last_ar_date: e.target.value }))} /></Field>
+                  <Field label="Last licence renewal"><DateInput value={form.last_renewal_date || ""} onChange={(e) => setForm((p) => ({ ...p, last_renewal_date: e.target.value }))} /></Field>
+                  <Field label="Last ESR filing"><DateInput value={form.last_esr_date || ""} onChange={(e) => setForm((p) => ({ ...p, last_esr_date: e.target.value }))} /></Field>
+                  <Field label="Last Annual Return"><DateInput value={form.last_ar_date || ""} onChange={(e) => setForm((p) => ({ ...p, last_ar_date: e.target.value }))} /></Field>
                   <p className="col-span-2 text-[11px] text-gray-500 -mt-2">The Filing Calendar uses these dates; anything already overdue is flagged.</p>
                 </div>
               )}
@@ -527,7 +527,7 @@ export default function CasesPage({ initialCaseId, initialStage } = {}) {
               </Select>
             </Field>
             <Field label="Introduced By"><Input value={form.introducer || ""} onChange={(e) => setForm((p) => ({ ...p, introducer: e.target.value }))} placeholder="e.g. Vistra, Rosemont, a referrer" /></Field>
-            <Field label="Onboarding Date"><Input type="date" value={form.onboarding_date || ""} onChange={(e) => setForm((p) => ({ ...p, onboarding_date: e.target.value }))} /></Field>
+            <Field label="Onboarding Date"><DateInput value={form.onboarding_date || ""} onChange={(e) => setForm((p) => ({ ...p, onboarding_date: e.target.value }))} /></Field>
             <Field label="Jurisdiction">
               <Select value={form.jurisdiction || ""} onChange={(e) => setForm((p) => ({ ...p, jurisdiction: e.target.value }))}>
                 <option value="">— Select —</option>

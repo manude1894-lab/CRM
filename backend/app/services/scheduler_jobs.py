@@ -14,6 +14,7 @@ from app.services.compliance_service import DORMANT_CASE_STATUSES
 from app.services.compliance_service import _ITEM_FIELDS
 from app.utils.business_days import business_days_between, to_date
 from app import jurisdictions
+from app.utils.dates import dmy
 
 logger = logging.getLogger("ezeetech.scheduler")
 
@@ -106,7 +107,7 @@ def _check_compliance_reminders(db, item_key: str, notification_type: str, role:
         key = f"{notification_type}_{days_remaining}d"
         if notification_service.has_unresolved_notification(db, case.id, key):
             continue
-        msg = f"{spec_item.label} for case {case.case_uid} ({case.company_name}) is due in {days_remaining} days ({due_date})."
+        msg = f"{spec_item.label} for case {case.case_uid} ({case.company_name}) is due in {days_remaining} days ({dmy(due_date)})."
         notification_service.notify_role(db, role, msg, key, link=f"/compliance/{case.id}", case_id=case.id)
         notification_service.notify_role(db, UserRole.ADMIN, msg, key, link=f"/compliance/{case.id}", case_id=case.id)
 
@@ -164,7 +165,7 @@ def check_cdd_exceptions_expiring():
             if notification_service.has_unresolved_notification(db, case.id, key):
                 continue
             msg = (f"CDD exception for case {case.case_uid} ({case.company_name}) "
-                   f"expires in {days_remaining} days ({cdd.exception_expires_on}).")
+                   f"expires in {days_remaining} days ({dmy(cdd.exception_expires_on)}).")
             if case.rm_id:
                 notification_service.notify_user(db, case.rm_id, msg, key, link=f"/cdd/{case.id}", case_id=case.id)
             notification_service.notify_role(db, UserRole.ADMIN, msg, key, link=f"/cdd/{case.id}", case_id=case.id)

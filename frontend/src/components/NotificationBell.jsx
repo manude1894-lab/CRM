@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { formatTimestamp } from "../utils/auditFormat";
 import { notificationsApi } from "../api/endpoints";
 import { Icon } from "./ui";
 
@@ -93,7 +94,7 @@ export default function NotificationBell() {
             <button key={n.id} onClick={() => markRead(n)}
               className={`w-full text-left px-4 py-3 border-b border-gray-50 hover:bg-gray-50 ${!n.read_at ? "bg-brand-50/40" : ""}`}>
               <p className="text-xs text-gray-700 leading-snug">{n.message}</p>
-              <p className="text-[10px] text-gray-400 mt-1">{new Date(n.created_at).toLocaleString()}</p>
+              <p className="text-[10px] text-gray-400 mt-1">{formatTimestamp(n.created_at)}</p>
             </button>
           ))}
         </div>

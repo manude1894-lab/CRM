@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { invoicesApi, instructionsApi, casesApi } from "../api/endpoints";
-import { Icon, Badge, Modal, Field, Input, Select, Textarea, Spinner, ErrorBanner, PageHeader } from "../components/ui";
+import { Icon, Badge, Modal, Field, Input, Select, Textarea, Spinner, ErrorBanner, PageHeader, DateInput } from "../components/ui";
 import { INVOICE_LEDGER_STATUS_OPTIONS, fmtFull, fmtDate } from "../utils/constants";
 import { toast } from "../store/toast";
 import { confirmDialog } from "../store/confirm";
@@ -211,13 +211,13 @@ export default function InvoicesPage() {
               <Input type="number" min="0" step="0.01" value={form.amount ?? ""} onChange={(e) => setForm((p) => ({ ...p, amount: e.target.value }))} />
             </Field>
             <Field label="Raised Date">
-              <Input type="date" value={form.raised_date || ""} onChange={(e) => setForm((p) => ({ ...p, raised_date: e.target.value }))} />
+              <DateInput value={form.raised_date || ""} onChange={(e) => setForm((p) => ({ ...p, raised_date: e.target.value }))} />
             </Field>
             <Field label="Due Date">
-              <Input type="date" value={form.due_date || ""} onChange={(e) => setForm((p) => ({ ...p, due_date: e.target.value }))} />
+              <DateInput value={form.due_date || ""} onChange={(e) => setForm((p) => ({ ...p, due_date: e.target.value }))} />
             </Field>
             <Field label="Paid Date">
-              <Input type="date" value={form.paid_date || ""} onChange={(e) => setForm((p) => ({ ...p, paid_date: e.target.value }))} />
+              <DateInput value={form.paid_date || ""} onChange={(e) => setForm((p) => ({ ...p, paid_date: e.target.value }))} />
             </Field>
           </div>
           <Field label="Description"><Input value={form.description || ""} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} placeholder="e.g. COI + COGS issuance, notarization" /></Field>

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { companyProfileApi, casesApi } from "../api/endpoints";
-import { Modal, Field, Input, Select, Textarea, Spinner, ErrorBanner } from "./ui";
+import { Modal, Field, Input, Select, Textarea, Spinner, ErrorBanner, DateInput } from "./ui";
 import DocumentsPanel from "./DocumentsPanel";
 import { toast } from "../store/toast";
 import {
@@ -70,14 +70,14 @@ export default function CompanyDetailsModal({ caseItem, onClose }) {
                   {NAME_CHECK_STATUS_OPTIONS.map((o) => <option key={o}>{o}</option>)}
                 </Select>
               </Field>
-              <Field label="Name Confirmed Date"><Input type="date" value={form.name_confirmed_date || ""} onChange={set("name_confirmed_date")} /></Field>
+              <Field label="Name Confirmed Date"><DateInput value={form.name_confirmed_date || ""} onChange={set("name_confirmed_date")} /></Field>
               <Field label="Registered Agent">
                 <Select value={form.registered_agent || ""} onChange={set("registered_agent")}>
                   <option value="">— select —</option>
                   {REGISTERED_AGENT_OPTIONS.map((o) => <option key={o}>{o}</option>)}
                 </Select>
               </Field>
-              <Field label="Incorporation Date"><Input type="date" value={form.incorporation_date || ""} onChange={set("incorporation_date")} /></Field>
+              <Field label="Incorporation Date"><DateInput value={form.incorporation_date || ""} onChange={set("incorporation_date")} /></Field>
               <Field label="Company Number"><Input value={form.company_number || ""} onChange={set("company_number")} /></Field>
               <Field label="Chinese Name"><Input value={form.chinese_name || ""} onChange={set("chinese_name")} /></Field>
               <Field label="Entity Category">
@@ -148,13 +148,13 @@ export default function CompanyDetailsModal({ caseItem, onClose }) {
                 </label>
               ))}
             </div>
-            <Field label="Activation Docs Received Date"><Input type="date" value={form.activation_docs_received_date || ""} onChange={set("activation_docs_received_date")} /></Field>
+            <Field label="Activation Docs Received Date"><DateInput value={form.activation_docs_received_date || ""} onChange={set("activation_docs_received_date")} /></Field>
           </Section>
 
           <Section title="Engagement">
             <div className="grid grid-cols-2 gap-x-3">
-              <Field label="Engagement Letter Sent"><Input type="date" value={el.engagement_letter_sent_date || ""} onChange={setEngagement("engagement_letter_sent_date")} /></Field>
-              <Field label="Engagement Letter Signed"><Input type="date" value={el.engagement_letter_signed_date || ""} onChange={setEngagement("engagement_letter_signed_date")} /></Field>
+              <Field label="Engagement Letter Sent"><DateInput value={el.engagement_letter_sent_date || ""} onChange={setEngagement("engagement_letter_sent_date")} /></Field>
+              <Field label="Engagement Letter Signed"><DateInput value={el.engagement_letter_signed_date || ""} onChange={setEngagement("engagement_letter_signed_date")} /></Field>
             </div>
             <p className="text-[11px] text-gray-400">Generate the letter itself from the Attachments panel below ("Generate" → Engagement Letter).</p>
           </Section>

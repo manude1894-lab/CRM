@@ -19,7 +19,7 @@ import ReportsPage from "./pages/ReportsPage";
 import AdminPage from "./pages/AdminPage";
 import ApprovalsPage from "./pages/ApprovalsPage";
 import ChangePasswordModal from "./components/ChangePasswordModal";
-import { ROLE_LABEL } from "./utils/constants";
+import { ROLE_LABEL, fmtToday } from "./utils/constants";
 
 // The menu, grouped by area of work. Order within the array is the order on screen.
 const NAV = [
@@ -138,7 +138,7 @@ export default function App() {
           <div className="flex items-center gap-3">
             <CommandPalette onNavigate={(t) => { setJumpTo(t); setPage(t.page); }} />
             <div className="text-xs text-gray-500 bg-gray-100 px-3 py-1.5 rounded-lg hidden sm:block">
-              {new Date().toLocaleDateString("en-US", { weekday: "short", year: "numeric", month: "short", day: "numeric" })}
+              {fmtToday()}
             </div>
             <NotificationBell />
             {user && (

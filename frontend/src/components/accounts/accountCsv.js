@@ -1,3 +1,4 @@
+import { csvDate } from "../../utils/constants";
 // CSV import/export for the Clients page. Pure functions (no React, no API) so they can be unit-tested.
 
 const IMPORT_ADDRESS_COL_KEYS = { "line 1": "line1", "line 2": "line2", "landmark": "landmark", "city": "city", "zip": "zip", "p.o. box": "po_box", "country": "country" };
@@ -98,6 +99,12 @@ export function parseCSVTable(text) {
 }
 
 // Client CSV: one object per data row, keyed by account field name (see IMPORT_HEADER_MAP).
+// Dates written by the export (DD/MM/YYYY) or typed in Excel (DD-MM-YYYY, DD MM YYYY) go back to ISO.
+const dmyToIso = (v) => {
+  const m = v.match(/^(\d{2})[/\- .](\d{2})[/\- .](\d{4})$/);
+  return m ? `${m[3]}-${m[2]}-${m[1]}` : v;
+};
+
 export function parseCSV(text) {
   const rows = parseCSVTable(text);
   if (rows.length === 0) return [];
@@ -122,7 +129,7 @@ export function parseCSV(text) {
       } else if (IMPORT_BOOLEAN_FIELDS.has(key)) {
         obj[key] = IMPORT_TRUTHY.has(value.toLowerCase());
       } else {
-        obj[key] = value;
+        obj[key] = dmyToIso(value);
       }
     });
     return obj;
@@ -193,5 +200,5 @@ export function buildAccountsCsv(accounts, users) {
     (a.nature_of_services_sought || []).join("; "),
     a.total_cases, a.total_invoiced_amount, a.created_at, a.updated_at,
   ]);
-  return [EXPORT_HEADERS, ...rows].map((r) => r.map((v) => `"${(v ?? "").toString().replace(/"/g, '""')}"`).join(",")).join("\n");
+  return [EXPORT_HEADERS, ...rows].map((r) => r.map((v) => `"${(csvDate(v) ?? "").toString().replace(/"/g, '""')}"`).join(",")).join("\n");
 }

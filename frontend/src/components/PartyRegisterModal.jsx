@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { directorsApi, shareholdersApi, ubosApi, amlApi } from "../api/endpoints";
-import { Icon, Modal, Field, Input, Select, Textarea, Spinner, ErrorBanner } from "./ui";
+import { Icon, Modal, Field, Input, Select, Textarea, Spinner, ErrorBanner, DateInput } from "./ui";
 import { toast } from "../store/toast";
 import { confirmDialog } from "../store/confirm";
 import {
@@ -350,8 +350,8 @@ function ChargesEditor({ value = [], onChange }) {
             <Field label="Chargee"><Input value={c.chargee || ""} onChange={(e) => upd(i, "chargee", e.target.value)} /></Field>
             <Field label="Amount"><Input type="number" min="0" value={c.amount ?? ""} onChange={(e) => upd(i, "amount", e.target.value)} /></Field>
             <Field label="Currency"><Input value={c.currency || ""} onChange={(e) => upd(i, "currency", e.target.value)} /></Field>
-            <Field label="Date Created"><Input type="date" value={c.date_created || ""} onChange={(e) => upd(i, "date_created", e.target.value)} /></Field>
-            <Field label="Date Satisfied"><Input type="date" value={c.date_satisfied || ""} onChange={(e) => upd(i, "date_satisfied", e.target.value)} /></Field>
+            <Field label="Date Created"><DateInput value={c.date_created || ""} onChange={(e) => upd(i, "date_created", e.target.value)} /></Field>
+            <Field label="Date Satisfied"><DateInput value={c.date_satisfied || ""} onChange={(e) => upd(i, "date_satisfied", e.target.value)} /></Field>
             <Field label="Status">
               <Select value={c.status || "Outstanding"} onChange={(e) => upd(i, "status", e.target.value)}>
                 {CHARGE_STATUS_OPTIONS.map((s) => <option key={s}>{s}</option>)}
@@ -388,7 +388,7 @@ function DirectorForm({ form, setForm, onCancel, onSave }) {
           <Field label="First Name"><Input value={form.first_name || ""} onChange={set(setForm, "first_name")} /></Field>
           <Field label="Middle Name"><Input value={form.middle_name || ""} onChange={set(setForm, "middle_name")} /></Field>
           <Field label="Last Name"><Input value={form.last_name || ""} onChange={set(setForm, "last_name")} /></Field>
-          <Field label="Date of Birth"><Input type="date" value={form.date_of_birth || ""} onChange={set(setForm, "date_of_birth")} /></Field>
+          <Field label="Date of Birth"><DateInput value={form.date_of_birth || ""} onChange={set(setForm, "date_of_birth")} /></Field>
           <Field label="Place of Birth"><Input value={form.place_of_birth || ""} onChange={set(setForm, "place_of_birth")} /></Field>
           <Field label="Nationality"><Input value={form.nationality || ""} onChange={set(setForm, "nationality")} /></Field>
           <Field label="Passport Number"><Input value={form.passport_number || ""} onChange={set(setForm, "passport_number")} /></Field>
@@ -398,7 +398,7 @@ function DirectorForm({ form, setForm, onCancel, onSave }) {
           <Field label="Corporate Name"><Input value={form.corporate_name || ""} onChange={set(setForm, "corporate_name")} /></Field>
           <Field label="Corporate Number"><Input value={form.corporate_number || ""} onChange={set(setForm, "corporate_number")} /></Field>
           <Field label="Country of Incorporation"><Input value={form.country_of_incorporation || ""} onChange={set(setForm, "country_of_incorporation")} /></Field>
-          <Field label="Date of Incorporation"><Input type="date" value={form.corporate_date_of_incorporation || ""} onChange={set(setForm, "corporate_date_of_incorporation")} /></Field>
+          <Field label="Date of Incorporation"><DateInput value={form.corporate_date_of_incorporation || ""} onChange={set(setForm, "corporate_date_of_incorporation")} /></Field>
         </div>
       )}
       {form.director_type === "Individual"
@@ -412,8 +412,8 @@ function DirectorForm({ form, setForm, onCancel, onSave }) {
         <Field label="Residential/Registered Address"><Input value={form.residential_address || ""} onChange={set(setForm, "residential_address")} /></Field>
         <Field label="Residential/Registered City"><Input value={form.residential_city || ""} onChange={set(setForm, "residential_city")} /></Field>
         <Field label="Residential/Registered Country"><Input value={form.residential_country || ""} onChange={set(setForm, "residential_country")} /></Field>
-        <Field label="Appointment Date"><Input type="date" value={form.appointment_date || ""} onChange={set(setForm, "appointment_date")} /></Field>
-        <Field label="Cessation Date"><Input type="date" value={form.cessation_date || ""} onChange={set(setForm, "cessation_date")} /></Field>
+        <Field label="Appointment Date"><DateInput value={form.appointment_date || ""} onChange={set(setForm, "appointment_date")} /></Field>
+        <Field label="Cessation Date"><DateInput value={form.cessation_date || ""} onChange={set(setForm, "cessation_date")} /></Field>
       </div>
       <FormButtons onCancel={onCancel} onSave={onSave} />
     </div>
@@ -444,8 +444,8 @@ function ShareholderForm({ form, setForm, onCancel, onSave }) {
         <Field label="Share Class"><Input value={form.share_class || ""} onChange={set(setForm, "share_class")} /></Field>
         <Field label="Shareholding %"><Input type="number" min="0" max="100" step="0.01" value={form.shareholding_percent ?? ""} onChange={set(setForm, "shareholding_percent")} /></Field>
         <Field label="Consideration Paid"><Input type="number" min="0" step="0.01" value={form.consideration_paid ?? ""} onChange={set(setForm, "consideration_paid")} placeholder="amount paid for the shares" /></Field>
-        <Field label="Date Entered"><Input type="date" value={form.date_entered || ""} onChange={set(setForm, "date_entered")} /></Field>
-        <Field label="Date Ceased"><Input type="date" value={form.date_ceased || ""} onChange={set(setForm, "date_ceased")} /></Field>
+        <Field label="Date Entered"><DateInput value={form.date_entered || ""} onChange={set(setForm, "date_entered")} /></Field>
+        <Field label="Date Ceased"><DateInput value={form.date_ceased || ""} onChange={set(setForm, "date_ceased")} /></Field>
       </div>
       <div className="flex items-center gap-4 py-1">
         <label className="flex items-center gap-1.5 text-xs text-gray-600">
@@ -464,7 +464,7 @@ function ShareholderForm({ form, setForm, onCancel, onSave }) {
             <Field label="Nominator Name"><Input value={form.nominator_name || ""} onChange={set(setForm, "nominator_name")} /></Field>
             <Field label="Nominator Address"><Input value={form.nominator_address || ""} onChange={set(setForm, "nominator_address")} /></Field>
             <Field label="Relationship"><Input value={form.nominator_relationship || ""} onChange={set(setForm, "nominator_relationship")} /></Field>
-            <Field label="Nominee Agreement Date"><Input type="date" value={form.nominee_agreement_date || ""} onChange={set(setForm, "nominee_agreement_date")} /></Field>
+            <Field label="Nominee Agreement Date"><DateInput value={form.nominee_agreement_date || ""} onChange={set(setForm, "nominee_agreement_date")} /></Field>
           </div>
         </>
       )}
@@ -494,12 +494,12 @@ function UBOForm({ form, setForm, onCancel, onSave, countries, shareholders }) {
         <Field label="First Name"><Input value={form.first_name || ""} onChange={set(setForm, "first_name")} /></Field>
         <Field label="Middle Name"><Input value={form.middle_name || ""} onChange={set(setForm, "middle_name")} /></Field>
         <Field label="Last Name"><Input value={form.last_name || ""} onChange={set(setForm, "last_name")} /></Field>
-        <Field label="Date of Birth"><Input type="date" value={form.date_of_birth || ""} onChange={set(setForm, "date_of_birth")} /></Field>
+        <Field label="Date of Birth"><DateInput value={form.date_of_birth || ""} onChange={set(setForm, "date_of_birth")} /></Field>
         <Field label="Place of Birth"><Input value={form.place_of_birth || ""} onChange={set(setForm, "place_of_birth")} /></Field>
         <Field label="Nationality"><CountrySelect k="nationality" /></Field>
         <Field label="Country of Residence"><CountrySelect k="country_of_residence" /></Field>
         <Field label="Passport Number"><Input value={form.passport_number || ""} onChange={set(setForm, "passport_number")} /></Field>
-        <Field label="Passport Expiry"><Input type="date" value={form.passport_expiry || ""} onChange={set(setForm, "passport_expiry")} /></Field>
+        <Field label="Passport Expiry"><DateInput value={form.passport_expiry || ""} onChange={set(setForm, "passport_expiry")} /></Field>
       </div>
       <div className="grid grid-cols-3 gap-x-3">
         <Field label="Residential Address"><Input value={form.residential_address || ""} onChange={set(setForm, "residential_address")} /></Field>
@@ -522,8 +522,8 @@ function UBOForm({ form, setForm, onCancel, onSave, countries, shareholders }) {
             {shareholders.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
           </Select>
         </Field>
-        <Field label="Appointment Date"><Input type="date" value={form.appointment_date || ""} onChange={set(setForm, "appointment_date")} /></Field>
-        <Field label="Cessation Date"><Input type="date" value={form.cessation_date || ""} onChange={set(setForm, "cessation_date")} /></Field>
+        <Field label="Appointment Date"><DateInput value={form.appointment_date || ""} onChange={set(setForm, "appointment_date")} /></Field>
+        <Field label="Cessation Date"><DateInput value={form.cessation_date || ""} onChange={set(setForm, "cessation_date")} /></Field>
       </div>
       <label className="flex items-center gap-1.5 text-xs text-gray-600 py-1">
         <input type="checkbox" checked={!!form.is_pep} onChange={setBool(setForm, "is_pep")} />

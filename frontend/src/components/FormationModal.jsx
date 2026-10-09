@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { formationApi } from "../api/endpoints";
 import { useAuthStore } from "../store/auth";
-import { Modal, Field, Input, Select, Textarea, Spinner, ErrorBanner } from "./ui";
+import { Modal, Field, Input, Select, Textarea, Spinner, ErrorBanner, DateInput } from "./ui";
 import { toast } from "../store/toast";
 import {
   SCREENING_STATUS_OPTIONS, MLRO_SIGNOFF_STATUS_OPTIONS, VISTRA_STATUS_OPTIONS,
@@ -72,7 +72,7 @@ export default function FormationModal({ caseItem, users = [], onClose }) {
                   {SCREENING_STATUS_OPTIONS.map((o) => <option key={o}>{o}</option>)}
                 </Select>
               </Field>
-              <Field label="Screening Date"><Input type="date" value={form.screening_date || ""} onChange={set("screening_date")} /></Field>
+              <Field label="Screening Date"><DateInput value={form.screening_date || ""} onChange={set("screening_date")} /></Field>
               <Field label="Tool">
                 <Select value={form.screening_tool || ""} onChange={set("screening_tool")}>
                   <option value="">— select —</option>
@@ -120,11 +120,11 @@ export default function FormationModal({ caseItem, users = [], onClose }) {
                   {VISTRA_STATUS_OPTIONS.map((o) => <option key={o}>{o}</option>)}
                 </Select>
               </Field>
-              <Field label="Submitted Date"><Input type="date" value={form.vistra_submitted_date || ""} onChange={set("vistra_submitted_date")} /></Field>
-              <Field label="Approved Date"><Input type="date" value={form.vistra_approved_date || ""} onChange={set("vistra_approved_date")} /></Field>
+              <Field label="Submitted Date"><DateInput value={form.vistra_submitted_date || ""} onChange={set("vistra_submitted_date")} /></Field>
+              <Field label="Approved Date"><DateInput value={form.vistra_approved_date || ""} onChange={set("vistra_approved_date")} /></Field>
               <Field label="Vistra Officer"><Input value={form.vistra_officer || ""} onChange={set("vistra_officer")} /></Field>
-              <Field label="Query Raised Date"><Input type="date" value={form.vistra_query_raised_date || ""} onChange={set("vistra_query_raised_date")} /></Field>
-              <Field label="Query Resolved Date"><Input type="date" value={form.vistra_query_resolved_date || ""} onChange={set("vistra_query_resolved_date")} /></Field>
+              <Field label="Query Raised Date"><DateInput value={form.vistra_query_raised_date || ""} onChange={set("vistra_query_raised_date")} /></Field>
+              <Field label="Query Resolved Date"><DateInput value={form.vistra_query_resolved_date || ""} onChange={set("vistra_query_resolved_date")} /></Field>
             </div>
             <Field label="Vistra Query"><Textarea value={form.vistra_query_text || ""} onChange={set("vistra_query_text")} /></Field>
           </Section>
@@ -132,7 +132,7 @@ export default function FormationModal({ caseItem, users = [], onClose }) {
           <Section title="Formation Milestones (§V)">
             <div className="grid grid-cols-2 gap-x-3">
               {MILESTONES.map(([k, label]) => (
-                <Field key={k} label={label}><Input type="date" value={form[k] || ""} onChange={set(k)} /></Field>
+                <Field key={k} label={label}><DateInput value={form[k] || ""} onChange={set(k)} /></Field>
               ))}
             </div>
           </Section>

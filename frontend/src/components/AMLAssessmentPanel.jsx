@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { amlApi } from "../api/endpoints";
 import { useAuthStore } from "../store/auth";
-import { Icon, Badge, Modal, Field, Input, Select, Textarea } from "./ui";
+import { Icon, Badge, Modal, Field, Input, Select, Textarea, DateInput } from "./ui";
 import { fmtDate } from "../utils/constants";
 import { toast } from "../store/toast";
 import { confirmDialog } from "../store/confirm";
@@ -240,7 +240,7 @@ export default function AMLAssessmentPanel({ caseId, entityName, parties = [] })
               </Select>
             </Field>
             <Field label="Assessment Date">
-              <Input type="date" value={form.assessment_date || ""} onChange={(e) => setForm((p) => ({ ...p, assessment_date: e.target.value }))} />
+              <DateInput value={form.assessment_date || ""} onChange={(e) => setForm((p) => ({ ...p, assessment_date: e.target.value }))} />
             </Field>
             {form.subject_type === "Individual" && (
               <Field label="Link to Director / Shareholder">
