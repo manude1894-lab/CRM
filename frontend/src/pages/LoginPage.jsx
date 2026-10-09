@@ -15,7 +15,7 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const data = await authApi.login(email, password);
-      setTokens(data.access_token, data.refresh_token, data.user);
+      setTokens(data.access_token, data.refresh_token, data.user, !!data.password_change_recommended);
     } catch (e) {
       setError(e.response?.data?.detail || "Login failed. Please check your credentials.");
     } finally {

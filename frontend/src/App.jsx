@@ -18,6 +18,7 @@ import InvoicesPage from "./pages/InvoicesPage";
 import ReportsPage from "./pages/ReportsPage";
 import AdminPage from "./pages/AdminPage";
 import ApprovalsPage from "./pages/ApprovalsPage";
+import ChangePasswordModal from "./components/ChangePasswordModal";
 import { ROLE_LABEL } from "./utils/constants";
 
 const NAV = [
@@ -48,6 +49,9 @@ export default function App() {
   const [page, setPage] = useState("dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [jumpTo, setJumpTo] = useState(null);
+  const [passwordOpen, setPasswordOpen] = useState(false);
+  const passwordWarning = useAuthStore((s) => s.passwordChangeRecommended);
+  const clearPasswordWarning = useAuthStore((s) => s.clearPasswordWarning);
 
   if (!isAuthenticated) return <LoginPage />;
 
@@ -96,6 +100,9 @@ export default function App() {
                   <div className="text-xs font-semibold text-gray-800 truncate">{user?.name}</div>
                   <div className="text-xs text-gray-400 truncate">{ROLE_LABEL[user?.role] || user?.role}</div>
                 </div>
+                <button onClick={() => setPasswordOpen(true)} className="text-gray-400 hover:text-brand-600 text-[11px]" title="Change password">
+                  Password
+                </button>
                 <button onClick={logout} className="text-gray-400 hover:text-red-500" title="Logout">
                   <Icon name="logout" size={16} />
                 </button>
@@ -107,6 +114,17 @@ export default function App() {
 
       {/* Main */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        {passwordWarning && (
+          // P7 — the account still uses a default password.
+          <div className="flex flex-wrap items-center gap-3 px-6 py-2 bg-amber-50 border-b border-amber-200 text-sm text-amber-900">
+            <span className="flex-1">You signed in with a default password. Please change it now to keep client data safe.</span>
+            <button onClick={() => setPasswordOpen(true)} className="px-3 py-1 text-xs text-white rounded-lg" style={{ background: "#1a3a5c" }}>Change password</button>
+          </div>
+        )}
+        {passwordOpen && (
+          <ChangePasswordModal onClose={() => setPasswordOpen(false)} onChanged={clearPasswordWarning}
+            reason={passwordWarning ? "This account still uses a default password." : null} />
+        )}
         <header className="flex items-center justify-between px-6 py-3 bg-white border-b border-gray-100">
           <button onClick={() => setSidebarOpen((o) => !o)} className="text-gray-400 hover:text-gray-600 p-1 rounded">
             <Icon name="menu" size={20} />

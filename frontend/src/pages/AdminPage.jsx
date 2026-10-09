@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import SystemHealthPanel from "../components/admin/SystemHealthPanel";
 import { usersApi, departmentsApi, rolesApi } from "../api/endpoints";
 import MasterDataPanel from "../components/admin/MasterDataPanel";
 import RolesPanel from "../components/admin/RolesPanel";
@@ -14,6 +15,7 @@ const TABS = [
   { key: "masters", label: "Master Data" },
   { key: "roles", label: "Roles" },
   { key: "audit", label: "Audit Log" },
+  { key: "health", label: "System Health" },
 ];
 
 const ROLE_RESPONSIBILITIES = [
@@ -124,7 +126,7 @@ export default function AdminPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Admin Panel</h1>
-          <p className="text-sm text-gray-500">Users · Master data · Roles · Audit log</p>
+          <p className="text-sm text-gray-500">Users · Master data · Roles · Audit log · System health</p>
         </div>
         {tab === "users" && <button onClick={() => { setForm({ name: "", email: "", password: "", role: "rm", is_active: true, department_id: "", title: "", mobile: "", supervisor_id: "", business_role_id: "" }); setModal("new"); }}
           className="px-3 py-1.5 text-xs text-white rounded-lg flex items-center gap-1" style={{ background: "#1a3a5c" }}>
@@ -144,6 +146,7 @@ export default function AdminPage() {
       {tab === "masters" && <MasterDataPanel />}
       {tab === "roles" && <RolesPanel departments={departments} users={users} onChanged={load} />}
       {tab === "audit" && <AuditLogPanel users={users} />}
+      {tab === "health" && <SystemHealthPanel />}
 
       {tab === "users" && (<>
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-x-auto">
@@ -178,6 +181,9 @@ export default function AdminPage() {
                 <td className="py-3 px-4">
                   <span className={`text-xs font-medium ${u.is_active ? "text-green-600" : "text-gray-400"}`}>
                     {u.is_active ? "● Active" : "○ Inactive"}
+                    {u.locked_until && new Date(u.locked_until) > new Date() && (
+                      <span className="ml-1.5 px-1.5 py-0.5 rounded bg-red-50 text-red-700" title="Too many wrong passwords. Set a new password to unlock.">Locked</span>
+                    )}
                   </span>
                 </td>
                 <td className="py-3 px-4">

@@ -3,6 +3,7 @@ import { api } from "./client";
 // ─── Auth ──────────────────────────────────────────────────────────────
 export const authApi = {
   login: (email, password) => api.post("/auth/login", { email, password }).then((r) => r.data),
+  changePassword: (current_password, new_password) => api.post("/auth/change-password", { current_password, new_password }),
   me: () => api.get("/auth/me").then((r) => r.data),
 };
 
@@ -337,4 +338,9 @@ export const reportsApi = {
     a.remove();
     window.URL.revokeObjectURL(url);
   },
+};
+
+// ─── System (P7 go-live checks) ─────────────────────────────────────────
+export const systemApi = {
+  healthChecks: () => api.get("/system/health-checks").then((r) => r.data),
 };

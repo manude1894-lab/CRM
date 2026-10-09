@@ -7,9 +7,11 @@ export const useAuthStore = create(
       accessToken: null,
       refreshToken: null,
       user: null,
-      setTokens: (accessToken, refreshToken, user) =>
-        set({ accessToken, refreshToken, user }),
-      logout: () => set({ accessToken: null, refreshToken: null, user: null }),
+      passwordChangeRecommended: false, // P7 — signed in with a default password
+      setTokens: (accessToken, refreshToken, user, passwordChangeRecommended = false) =>
+        set({ accessToken, refreshToken, user, passwordChangeRecommended }),
+      clearPasswordWarning: () => set({ passwordChangeRecommended: false }),
+      logout: () => set({ accessToken: null, refreshToken: null, user: null, passwordChangeRecommended: false }),
       isAuthenticated: () => !!get().accessToken,
       role: () => get().user?.role || null,
       canEdit: () => ["admin", "rm", "ops"].includes(get().user?.role),

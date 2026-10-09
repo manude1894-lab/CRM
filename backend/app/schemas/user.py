@@ -53,10 +53,16 @@ class UserUpdate(BaseModel):
 class UserRead(UserBase):
     id: int
     permissions: list[str] = []
+    locked_until: Optional[datetime] = None  # P7 — shown to admins; resetting the password unlocks
     created_at: datetime
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str = Field(..., max_length=100)
 
 
 class LoginRequest(BaseModel):
@@ -69,6 +75,7 @@ class Token(BaseModel):
     refresh_token: str
     token_type: str = "bearer"
     user: UserRead
+    password_change_recommended: bool = False  # signed in with a default password
 
 
 class RefreshTokenRequest(BaseModel):

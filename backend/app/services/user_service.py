@@ -23,6 +23,8 @@ def create_user(db: Session, data: UserCreate) -> User:
     if db.query(User).filter(User.email == data.email).first():
         raise HTTPException(status_code=400, detail="Email already registered")
     _check_business_role(db, data.business_role_id)
+    from app.services import security_service
+    security_service.assert_password_ok(data.password, data.email)
     user = User(
         name=data.name,
         email=data.email,
@@ -33,7 +35,9 @@ def create_user(db: Session, data: UserCreate) -> User:
         title=data.title,
         supervisor_id=data.supervisor_id,
         business_role_id=data.business_role_id,
+        mobile=data.mobile,
     )
+    security_service.password_set(user)
     db.add(user)
     db.commit()
     db.refresh(user)
@@ -55,7 +59,11 @@ def update_user(db: Session, user_id: int, data: UserUpdate) -> User:
     if "business_role_id" in update_data:
         _check_business_role(db, update_data["business_role_id"])
     if "password" in update_data:
-        user.hashed_password = hash_password(update_data.pop("password"))
+        from app.services import security_service
+        new_password = update_data.pop("password")
+        security_service.assert_password_ok(new_password, user.email)
+        user.hashed_password = hash_password(new_password)
+        security_service.password_set(user)  # an admin reset also unlocks the account
     for field, value in update_data.items():
         setattr(user, field, value)
     db.commit()

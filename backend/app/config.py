@@ -52,6 +52,10 @@ class Settings(BaseSettings):
                                    "amendment_approved,amendment_rejected,case_submitted,case_approved,case_rejected,"
                                    "case_amendment_submitted")
 
+    # Login lockout (P7): this many wrong passwords in a row locks the account for N minutes.
+    LOGIN_MAX_ATTEMPTS: int = 5
+    LOGIN_LOCK_MINUTES: int = 15
+
     # Uploads — client spec CRM-change-request item 16
     MAX_UPLOAD_MB: int = 2
 

@@ -15,7 +15,7 @@ from app.routers import (
     action_points_router, pep_router, generation_router, jurisdictions_router,
     prospects_router, service_subscriptions_router, service_feedback_router,
     account_party_router, department_router,
-    masters_router, roles_router, audit_router, workflow_router,
+    masters_router, roles_router, audit_router, workflow_router, system_router,
 )
 from app.services.scheduler_jobs import run_daily_sweep
 import app.audit  # noqa: F401  registers the audit-trail listener (BRD §15)
@@ -55,6 +55,17 @@ app.add_middleware(
 )
 
 
+# ─── Security headers (P7) ─────────────────────────────────────────────────
+@app.middleware("http")
+async def security_headers(request, call_next):
+    response = await call_next(request)
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+    response.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+    return response
+
+
 # ─── Root / Health ─────────────────────────────────────────────────────────
 @app.get("/", tags=["Health"])
 def root():
@@ -84,5 +95,6 @@ for r in (
     prospects_router.router, service_subscriptions_router.router, service_feedback_router.router,
     account_party_router.router, department_router.router,
     masters_router.router, roles_router.router, audit_router.router, workflow_router.router,
+    system_router.router,
 ):
     app.include_router(r, prefix=settings.API_V1_PREFIX)
