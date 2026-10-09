@@ -6,11 +6,12 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class SubmitRequest(BaseModel):
-    comment: Optional[str] = Field(None, max_length=1000)
+    comment: Optional[str] = Field(None, max_length=4000)  # "RM/Sales comments", up to 250 words
+    kyc_declared: bool = False  # "KYC verification is done as per extant verification procedures"
 
 
 class ApproveRequest(BaseModel):
-    comment: Optional[str] = Field(None, max_length=1000)
+    comment: Optional[str] = Field(None, max_length=4000)  # Compliance / Approver comments, up to 250 words
 
 
 class RejectRequest(BaseModel):
@@ -47,6 +48,12 @@ class ApprovalRead(BaseModel):
     reason_text: Optional[str] = None
     changes: Optional[dict] = None  # before/after for amendments
     previous_request_id: Optional[int] = None
+    stage: Optional[str] = None
+    kyc_declared: Optional[bool] = None
+    compliance_checker_id: Optional[int] = None
+    compliance_checker_name: Optional[str] = None
+    compliance_comment: Optional[str] = None
+    compliance_decided_at: Optional[datetime] = None
     # Inbox convenience
     company_name: Optional[str] = None
     client_id: Optional[str] = None
@@ -61,6 +68,7 @@ class ApprovalRead(BaseModel):
         out = cls.model_validate(r)
         out.maker_name = r.maker.name if r.maker else None
         out.checker_name = r.checker.name if r.checker else None
+        out.compliance_checker_name = r.compliance_checker.name if r.compliance_checker else None
         if r.account is not None:
             out.company_name, out.client_id, out.account_type = r.account.company_name, r.account.client_id, r.account.account_type
         if r.case is not None:
@@ -78,6 +86,7 @@ class WorkflowAction(BaseModel):
 
 class WorkflowState(BaseModel):
     status: str
+    stage: Optional[str] = None  # while Awaiting Approval: "Compliance" or "Approver"
     status_updated_at: Optional[datetime] = None
     status_updated_by: Optional[str] = None
     locked: bool

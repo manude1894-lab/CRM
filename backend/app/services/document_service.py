@@ -285,7 +285,7 @@ def client_folder(db: Session, account_id: int, user: User) -> dict:
                  for d in (db.query(Document).join(Case, Document.case_id == Case.id)
                            .filter(Case.account_id == account.id).order_by(Document.id.desc()).all())]
     return {
-        "account_id": account.id, "client_id": account.client_id, "company_name": account.company_name,
+        "account_id": account.id, "client_id": account.client_id, "temp_id": account.account_uid, "company_name": account.company_name,
         "profile_status": account.profile_status, "stage": _client_document_stage(db, account),
         "max_upload_mb": settings.MAX_UPLOAD_MB, "documents": client_docs, "case_documents": case_docs,
     }

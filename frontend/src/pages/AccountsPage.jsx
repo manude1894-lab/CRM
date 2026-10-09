@@ -137,7 +137,7 @@ export default function AccountsPage({ initialAccountId, initialOpenForm, onNavi
 
   // Matches legal name, Unique Search Name (BRD §3) or Client ID (BRD §19).
   const q = search.toLowerCase();
-  const filtered = accounts.filter((a) => (!q || [a.company_name, a.search_name, a.client_id].some((v) => (v || "").toLowerCase().includes(q)))
+  const filtered = accounts.filter((a) => (!q || [a.company_name, a.search_name, a.client_id, a.account_uid].some((v) => (v || "").toLowerCase().includes(q)))
     && (!statusFilter || (a.profile_status || "New") === statusFilter)
     && (!riskFilter || a.risk_rating === riskFilter));
   const ids = filtered.map((a) => a.id);
@@ -198,7 +198,7 @@ export default function AccountsPage({ initialAccountId, initialOpenForm, onNavi
                 <th className="py-2.5 px-3 w-8">
                   <input type="checkbox" checked={ids.every((id) => selectedIds.has(id))} onChange={() => toggleSelectAll(ids)} />
                 </th>
-                {["Client ID", "Client", "Status", "Risk", "Anchor RM", "AML", "Next AML review", "Cases"].map((h) => (
+                {["Client ID", "Client", "Status", "Risk", "Anchor RM", "PEP", "Next AML review", "Cases"].map((h) => (
                   <th key={h} className={`py-2.5 px-3 font-semibold ${h === "Cases" ? "text-right" : "text-left"}`}>{h}</th>
                 ))}
               </tr>
@@ -209,7 +209,7 @@ export default function AccountsPage({ initialAccountId, initialOpenForm, onNavi
                   <td className="py-2.5 px-3" onClick={(e) => e.stopPropagation()}>
                     <input type="checkbox" checked={selectedIds.has(a.id)} onChange={() => toggleSelected(a.id)} />
                   </td>
-                  <td className="py-2.5 px-3 font-mono text-xs text-gray-600">{a.client_id || "—"}</td>
+                  <td className="py-2.5 px-3 font-mono text-xs text-gray-600">{a.client_id || <span className="text-gray-400" title="Temporary ID until Compliance approves">{a.account_uid}</span>}</td>
                   <td className="py-2.5 px-3">
                     <div className="font-medium text-gray-800">{a.company_name}</div>
                     <div className="text-xs text-gray-400">{a.account_type === "Individual" ? "Individual" : (a.industry || "Corporate")}{a.is_pep ? " · PEP" : ""}</div>
@@ -217,7 +217,7 @@ export default function AccountsPage({ initialAccountId, initialOpenForm, onNavi
                   <td className="py-2.5 px-3"><Badge text={a.profile_status || "New"} /></td>
                   <td className="py-2.5 px-3 text-xs text-gray-600">{a.risk_rating || "—"}</td>
                   <td className="py-2.5 px-3 text-xs text-gray-600">{userName(a.spoc_id)}</td>
-                  <td className="py-2.5 px-3 text-xs text-gray-600">{a.aml_classification || "—"}</td>
+                  <td className="py-2.5 px-3 text-xs text-gray-600">{a.is_pep ? "PEP" : "—"}</td>
                   <td className="py-2.5 px-3 text-xs text-gray-600">{fmtDate(a.next_aml_review_date) || "—"}</td>
                   <td className="py-2.5 px-3 text-xs text-gray-600 text-right">{a.total_cases || 0}</td>
                 </tr>

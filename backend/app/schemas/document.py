@@ -54,6 +54,7 @@ class ClientFolder(BaseModel):
     """BRD §16 — every document filed against a Client ID."""
     account_id: int
     client_id: Optional[str] = None
+    temp_id: Optional[str] = None  # shown until the Client ID is issued at Compliance approval
     company_name: str
     profile_status: Optional[str] = None
     stage: str

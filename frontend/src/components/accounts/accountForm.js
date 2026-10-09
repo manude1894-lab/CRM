@@ -34,7 +34,7 @@ export const SECTION_FIELDS = {
     "account_type", "company_name", "search_name", "industry", "country", "website", "key_contacts",
     "single_point_of_contact", "strategic_priority", "existing_relationship", "spoc_id", "non_anchor_rm_ids",
     "anchor_entity", "non_anchor_entities", "registration_number", "license_number", "incorporation_date",
-    "risk_rating", "kyc_status", "tags",
+    "kyc_status", "tags",
   ],
   licensing: ["licensing_authority", "licensing_authority_other", "license_start_date", "license_expiry_date", "license_activities", "is_regulated", "regulator_name", "regulator_other", "license_category", "regulatory_license_expiry_date"],
   registeredAddress: ["registered_address"],
@@ -50,7 +50,8 @@ export const SECTION_FIELDS = {
   services: ["services_obtained"],
   // Status itself only changes through the workflow (P2) — this section saves engagement only.
   profileStatus: ["engagement_letter_valid_until", "engagement_letter_signed"],
-  aml: ["aml_classification", "cdd_completion_date", "edd_reason", "kyc_verified_by"],
+  // Triam mark-up §7/§10: completed only by Compliance (MLRO).
+  aml: ["risk_rating", "cdd_completion_date", "edd_reason", "kyc_verified_by"],
 };
 
 // Maps an account from the API into editable form state (nulls → "", tags string → array).

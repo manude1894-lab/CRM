@@ -19,11 +19,10 @@ def create(db, user, **fields):
 # ─── §19 Client ID ──────────────────────────────────────────────────────────
 
 def test_client_ids_count_per_entity(db, make_user):
-    rm = make_user()
-    a = create(db, rm, company_name="A Ltd")
-    b = create(db, rm, company_name="B Ltd")
-    c = create(db, rm, company_name="C Ltd", anchor_entity="TMCL")
-    assert (a.client_id, b.client_id, c.client_id) == ("TCPL/00001", "TCPL/00002", "TMCL/00001")
+    a = create(db, make_user(), company_name="A Ltd")
+    assert a.client_id is None  # issued when Compliance approves (Triam mark-up §18)
+    ids = [account_service.next_client_id(db, e) for e in ("TCPL", "TCPL", "TMCL")]
+    assert ids == ["TCPL/00001", "TCPL/00002", "TMCL/00001"]
 
 
 def test_anchor_entity_required_to_create(db, make_user):
@@ -32,19 +31,19 @@ def test_anchor_entity_required_to_create(db, make_user):
     assert "Anchor Triam Entity" in e.value.detail
 
 
-def test_client_id_never_changes_when_anchor_changes(db, make_user):
+def test_client_id_never_changes_when_anchor_changes(db, make_user, make_account):
     admin = make_user(role=UserRole.ADMIN)
-    acc = create(db, admin)
-    account_service.update_account(db, acc.id, AccountUpdate(anchor_entity="TAB"), admin)
+    acc = make_account(name="Kept Co", client_id="TCPL/00001", anchor_entity="TCPL", profile_status="Approved")
+    account_service.apply_update(db, acc, AccountUpdate(anchor_entity="TABL"), admin)
     assert acc.client_id == "TCPL/00001"
 
 
 def test_legacy_client_gets_an_id_once_it_has_an_anchor(db, make_user, make_account):
     admin = make_user(role=UserRole.ADMIN)
-    acc = make_account(name="Old Co")  # created before Client IDs, no anchor
+    acc = make_account(name="Old Co", profile_status="Active")  # approved before Client IDs, no anchor
     assert acc.client_id is None
-    account_service.update_account(db, acc.id, AccountUpdate(anchor_entity="TAB"), admin)
-    assert acc.client_id == "TAB/00001"
+    account_service.apply_update(db, acc, AccountUpdate(anchor_entity="TABL"), admin)
+    assert acc.client_id == "TABL/00001"
     assert acc.search_name == "Old Co"
 
 
@@ -79,10 +78,9 @@ def test_approver_can_create_duplicate_with_reason(db, make_user, make_role):
     dup = create(db, mlro, allow_duplicate=True, duplicate_reason="Separate legal entity registered in ADGM")
     assert dup.duplicate_override_reason.startswith("Separate legal entity")
     assert dup.search_name == "Acme Holdings (TCPL)"  # default disambiguated
-    assert dup.client_id != first.client_id
     event = db.query(AuditLog).filter(AuditLog.action == "duplicate_override").one()
     assert event.account_id == dup.id
-    assert event.changes["existing_client"] == first.client_id
+    assert event.changes["existing_client"] == first.account_uid  # no Client ID before approval
 
 
 def test_rename_into_an_existing_name_is_blocked(db, make_user):
@@ -196,8 +194,11 @@ def test_missing_mandatory_for_a_new_corporate(db, make_user):
     admin = make_user(role=UserRole.ADMIN)
     acc = create(db, admin)
     labels = {m["label"] for m in account_service.missing_mandatory(acc)}
-    assert {"Anchor RM", "Licensing Authority", "Financial Year End", "At least one Shareholder / UBO",
-            "KYC Verification performed by", "CDD/AML Risk Level"} <= labels
+    assert {"Anchor RM", "Licensing Authority", "Financial Year End", "At least one Shareholder / UBO"} <= labels
+    # the CDD section is Compliance's checklist, not the RM's
+    assert "CDD/AML Risk Level" not in labels
+    assert {m["label"] for m in account_service.missing_cdd(acc)} == {
+        "CDD/AML Risk Level", "KYC Verification performed by", "CDD Completion Date"}
     assert "Anchor Triam Entity" not in labels
 
 
@@ -211,10 +212,11 @@ def test_formation_clients_skip_incorporation_fields(db, make_user):
 def test_conditional_fields(db, make_user):
     admin = make_user(role=UserRole.ADMIN)
     acc = create(db, admin, is_regulated=True, regulator_name="Other", has_introducer=True,
-                 aml_classification="EDD", licensing_authority="Other")
+                 risk_rating="High", licensing_authority="Other")
     labels = {m["label"] for m in account_service.missing_mandatory(acc)}
-    assert {"Other Regulator details", "License Category", "Introducer Name", "Reason for EDD",
+    assert {"Other Regulator details", "License Category", "Introducer Name",
             "Licensing Authority (Other) details"} <= labels
+    assert "Reason for EDD" in {m["label"] for m in account_service.missing_cdd(acc)}  # EDD applies to High risk
 
 
 def test_individual_checklist(db, make_user):
@@ -229,8 +231,7 @@ def test_client_id_skips_numbers_already_taken(db, make_user, make_account):
     # IDs present without a counter row (e.g. fixed by hand) must not be handed out again.
     make_account(name="Manual One", client_id="TCPL/00001", anchor_entity="TCPL")
     make_account(name="Manual Seven", client_id="TCPL/00007", anchor_entity="TCPL")
-    acc = create(db, make_user(), company_name="Fresh Co")
-    assert acc.client_id == "TCPL/00008"
+    assert account_service.next_client_id(db, "TCPL") == "TCPL/00008"
 
 
 # ─── BRD §5 Mandatory Yes/No questions and regulatory licence expiry ────────

@@ -90,11 +90,14 @@ export default function ApprovalsPage({ onNavigate }) {
                       {REQUEST_TYPE_LABEL[r.request_type] || r.request_type}
                     </span>
                     {r.changes?.count > 0 && <div className="text-[11px] text-gray-400 mt-1">{r.changes.count} change{r.changes.count === 1 ? "" : "s"}</div>}
+                    {r.request_type === "client_profile" && r.status === "Pending" && (
+                      <div className="text-[11px] text-amber-700 mt-1">{r.stage === "Approver" ? "With the Approver" : "With Compliance"}</div>
+                    )}
                   </td>
                   <td className="py-2.5 px-4">
                     <div className="font-medium text-gray-800">{r.case_name || r.company_name}</div>
                     <div className="text-xs text-gray-400">
-                      <span className="font-mono">{r.case_uid || r.client_id || "—"}</span>
+                      <span className="font-mono">{r.case_uid || r.client_id || "Temporary ID"}</span>
                       {r.case_uid && r.client_id && <> · client <span className="font-mono">{r.client_id}</span></>}
                       {!r.case_uid && r.account_type && <> · {r.account_type}</>}
                     </div>

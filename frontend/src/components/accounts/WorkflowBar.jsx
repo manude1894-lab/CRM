@@ -19,6 +19,8 @@ const STATUS_STYLE = {
 
 // Actions that need a short reason typed by the user.
 const NEEDS_REASON = { deactivate: "Why is the client being made inactive?", mark_exit: "Why is the client exiting?" };
+const MAX_WORDS = 250;
+export const wordCount = (t) => (t || "").trim().split(/\s+/).filter(Boolean).length;
 
 /**
  * BRD §11/§12/§15 — the client's lifecycle status, the actions this user may take now (disabled ones
@@ -31,6 +33,7 @@ export default function WorkflowBar({ accountId, refreshKey, onChanged }) {
   const [dialog, setDialog] = useState(null); // { action, label }
   const [text, setText] = useState("");
   const [reasonCode, setReasonCode] = useState("");
+  const [kycDeclared, setKycDeclared] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const reasons = useMasters("rejection_reason", []);
 
@@ -42,14 +45,14 @@ export default function WorkflowBar({ accountId, refreshKey, onChanged }) {
     setBusy(true);
     try {
       let next;
-      if (action === "submit") next = await workflowApi.submit(accountId, text);
+      if (action === "submit") next = await workflowApi.submit(accountId, text, kycDeclared);
       else if (action === "approve") next = await workflowApi.approve(accountId, text);
       else if (action === "reject") next = await workflowApi.reject(accountId, reasonCode, text);
       else if (action === "withdraw") next = await workflowApi.withdraw(accountId);
       else next = await workflowApi.status(accountId, action, text);
       setState(next);
-      setDialog(null); setText(""); setReasonCode("");
-      toast.success(`Client is now ${next.status}`);
+      setDialog(null); setText(""); setReasonCode(""); setKycDeclared(false);
+      toast.success(next.stage ? `Client is now with ${next.stage === "Approver" ? "the Approver" : "Compliance"}` : `Client is now ${next.status}`);
       onChanged?.(next);
     } catch (e) {
       toast.error(e.response?.data?.detail || "Action failed");
@@ -59,16 +62,27 @@ export default function WorkflowBar({ accountId, refreshKey, onChanged }) {
   const open = (a) => {
     // Simple actions run straight away; others ask for a comment / reason first.
     if (["activate", "reactivate", "cancel_exit", "withdraw"].includes(a.action)) return run(a.action);
-    setText(""); setReasonCode(""); setDialog(a);
+    setText(""); setReasonCode(""); setKycDeclared(false); setDialog(a);
   };
 
   const rejectTooShort = dialog?.action === "reject" && (text.trim().length < 15 || !reasonCode);
   const reasonMissing = NEEDS_REASON[dialog?.action] && !text.trim();
+  // Triam mark-up §7/§10: mandatory comment boxes of up to 250 words.
+  const commentLabel = dialog?.action === "submit" ? "RM/Sales comments"
+    : dialog?.action === "approve" ? (state.stage === "Approver" ? "Approver's comments" : "Compliance comments") : null;
+  const words = wordCount(text);
+  const commentBad = !!commentLabel && (!text.trim() || words > MAX_WORDS);
+  const kycMissing = dialog?.action === "submit" && !kycDeclared;
 
   return (
     <div className="mb-3 rounded-lg border border-gray-100 bg-white">
       <div className="flex flex-wrap items-center gap-2 px-3 py-2">
         <span className={`text-xs font-semibold px-2 py-0.5 rounded ${STATUS_STYLE[state.status] || "bg-gray-100 text-gray-700"}`}>{state.status}</span>
+        {state.stage && (
+          <span className="text-[11px] font-medium px-2 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-100">
+            {state.stage === "Approver" ? "Step 2 of 2 · with the Approver" : "Step 1 of 2 · with Compliance (MLRO)"}
+          </span>
+        )}
         {state.status_updated_at && (
           <span className="text-[11px] text-gray-400">since {fmtDate(state.status_updated_at)}{state.status_updated_by ? ` · ${state.status_updated_by}` : ""}</span>
         )}
@@ -91,7 +105,7 @@ export default function WorkflowBar({ accountId, refreshKey, onChanged }) {
       )}
       {state.locked && state.status === "Awaiting Approval" && (
         <div className="px-3 py-1.5 text-[11px] bg-amber-50 text-amber-800 border-t border-amber-100">
-          Locked for review — editing is disabled until the checker decides or the submission is withdrawn.
+          Locked for review — editing is disabled until {state.stage === "Approver" ? "the Approver decides" : "Compliance decides or the submission is withdrawn"}.{state.stage !== "Approver" && " Compliance completes the CDD section meanwhile."}
         </div>
       )}
       {state.history.length > 0 && (
@@ -106,8 +120,9 @@ export default function WorkflowBar({ accountId, refreshKey, onChanged }) {
                   <span className="font-semibold">{h.status}</span> · submitted by {h.maker_name || "—"} {formatTimestamp(h.submitted_at)}
                   {h.decided_at && <> · {h.status.toLowerCase()} {h.checker_name ? `by ${h.checker_name} ` : ""}{formatTimestamp(h.decided_at)}</>}
                   {h.reason_code && <div className="text-red-600">Reason: {reasons.labelOf(h.reason_code)} — {h.reason_text}</div>}
-                  {!h.reason_code && h.reason_text && <div className="text-gray-500">Comment: {h.reason_text}</div>}
-                  {h.maker_comment && <div className="text-gray-500">Maker: {h.maker_comment}</div>}
+                  {h.maker_comment && <div className="text-gray-500">RM/Sales comments: {h.maker_comment}{h.kyc_declared ? " · KYC verification confirmed" : ""}</div>}
+                  {h.compliance_comment && <div className="text-gray-500">Compliance ({h.compliance_checker_name || "—"}, {formatTimestamp(h.compliance_decided_at)}): {h.compliance_comment}</div>}
+                  {!h.reason_code && h.reason_text && <div className="text-gray-500">{h.request_type === "client_profile" && h.compliance_comment ? "Approver" : "Comment"}: {h.reason_text}</div>}
                 </div>
               ))}
             </div>
@@ -125,15 +140,29 @@ export default function WorkflowBar({ accountId, refreshKey, onChanged }) {
               </Select>
             </Field>
           )}
-          <Field label={dialog.action === "reject" ? "What needs fixing? (at least 15 characters)" : NEEDS_REASON[dialog.action] || "Comment (optional)"}
-            required={dialog.action === "reject" || !!NEEDS_REASON[dialog.action]}>
-            <Textarea rows={3} value={text} onChange={(e) => setText(e.target.value)} maxLength={dialog.action === "reject" ? 2000 : 500} />
+          <Field label={dialog.action === "reject" ? "What needs fixing? (at least 15 characters)" : commentLabel || NEEDS_REASON[dialog.action] || "Comment (optional)"}
+            required={dialog.action === "reject" || !!NEEDS_REASON[dialog.action] || !!commentLabel}>
+            <Textarea rows={commentLabel ? 5 : 3} value={text} onChange={(e) => setText(e.target.value)} maxLength={commentLabel ? 4000 : dialog.action === "reject" ? 2000 : 500} />
+            {commentLabel && <div className={`text-[11px] text-right mt-0.5 ${words > MAX_WORDS ? "text-red-600" : "text-gray-400"}`}>{words} / {MAX_WORDS} words</div>}
           </Field>
-          {dialog.action === "submit" && <p className="text-xs text-gray-500 -mt-2 mb-3">The profile will be locked until an approver decides.</p>}
-          {dialog.action === "approve" && <p className="text-xs text-gray-500 -mt-2 mb-3">You confirm you've reviewed the information and documents.</p>}
+          {dialog.action === "submit" && (
+            <>
+              <label className="flex items-start gap-2 text-xs text-gray-700 mb-3">
+                <input type="checkbox" className="mt-0.5" checked={kycDeclared} onChange={(e) => setKycDeclared(e.target.checked)} />
+                <span>I confirm that the client's KYC verification is done as per the extant verification procedures.</span>
+              </label>
+              <p className="text-xs text-gray-500 mb-3">The profile goes to Compliance (MLRO) and then to the Approver, and is locked meanwhile.</p>
+            </>
+          )}
+          {dialog.action === "approve" && (
+            <p className="text-xs text-gray-500 -mt-2 mb-3">
+              {state.stage === "Approver" ? "You give the final approval; the client becomes Approved and available for service requests."
+                : "You confirm the CDD section is complete and the information and documents are reviewed. The Client ID is issued and the client goes to the Approver."}
+            </p>
+          )}
           <div className="flex justify-end gap-3 mt-2">
             <button onClick={() => setDialog(null)} className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
-            <button onClick={() => run(dialog.action)} disabled={busy || rejectTooShort || reasonMissing}
+            <button onClick={() => run(dialog.action)} disabled={busy || rejectTooShort || reasonMissing || commentBad || kycMissing}
               className="px-4 py-2 text-sm text-white rounded-lg font-medium disabled:opacity-50" style={{ background: "#1a3a5c" }}>
               {busy ? "Working…" : dialog.label}
             </button>

@@ -22,7 +22,7 @@ export default function AccountCard({ account: a, anchorRm, isSelected, onOpen, 
             <h3 className="text-sm font-bold text-gray-800 truncate">{a.company_name}</h3>
             <Badge text={a.profile_status || "New"} />
           </div>
-          <p className="text-[11px] font-mono text-gray-400">{a.client_id || "—"}</p>
+          <p className="text-[11px] font-mono text-gray-400">{a.client_id || `Temp ${a.account_uid}`}</p>
           <p className="text-xs text-gray-500 truncate">
             {a.account_type === "Individual" ? `Individual · ${a.nationality || "—"}` : `${a.industry || "—"} · ${a.country || "—"}`}
           </p>

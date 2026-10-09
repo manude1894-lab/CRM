@@ -66,7 +66,7 @@ export default function ClientProfilePage({ accountId, initialTab = "overview", 
       <PageHeader
         back={{ label: "Clients", onClick: onBack }}
         title={a.company_name}
-        subtitle={[a.client_id, individual ? "Individual" : "Corporate", a.anchor_entity, userName(a.spoc_id) && `Anchor RM: ${userName(a.spoc_id)}`].filter(Boolean).join(" · ")}
+        subtitle={[a.client_id || `Temporary ID ${a.account_uid}`, individual ? "Individual" : "Corporate", a.anchor_entity, userName(a.spoc_id) && `Anchor RM: ${userName(a.spoc_id)}`].filter(Boolean).join(" · ")}
         actions={<>
           <Button onClick={() => setTab("profile")}>Edit profile</Button>
           <MoreMenu items={[
@@ -77,7 +77,6 @@ export default function ClientProfilePage({ accountId, initialTab = "overview", 
       />
       <div className="flex flex-wrap gap-1.5">
         {a.risk_rating && <Badge text={`${a.risk_rating} Risk`} />}
-        {a.aml_classification && <Badge text={a.aml_classification} />}
         {a.is_pep && <Badge text="PEP" />}
         {(a.tags || "").split(",").map((t) => t.trim()).filter(Boolean).map((t) => <Badge key={t} text={t} />)}
       </div>
@@ -122,7 +121,7 @@ export default function ClientProfilePage({ accountId, initialTab = "overview", 
             )}
             <Panel title="KYC / AML">
               <FactList items={[
-                ["Risk level", a.risk_rating], ["AML classification", a.aml_classification], ["KYC verified by", a.kyc_verified_by],
+                ["CDD/AML risk level", a.risk_rating], ["Reason for EDD", a.edd_reason], ["KYC verified by", a.kyc_verified_by],
                 ["CDD completed", fmtDate(a.cdd_completion_date)], ["Next AML review", fmtDate(a.next_aml_review_date)], ["PEP", a.is_pep ? "Yes" : "No"],
               ]} />
             </Panel>

@@ -256,7 +256,7 @@ def create_account(db: Session, data: AccountCreate, user: User) -> Account:
         if len(override_reason) < 10:
             raise HTTPException(status_code=400, detail="Give a meaningful reason (at least 10 characters) for creating a duplicate client")
 
-    # BRD §19 — the Client ID is built from the Anchor Triam Entity, so it's needed up front.
+    # BRD §19 — the Client ID is built from the Anchor Triam Entity (issued at Compliance approval).
     if not (data.anchor_entity or "").strip():
         raise HTTPException(status_code=400, detail="Anchor Triam Entity is required — it determines the Client ID")
 
@@ -267,11 +267,9 @@ def create_account(db: Session, data: AccountCreate, user: User) -> Account:
     else:
         search_name = _default_search_name(db, data.company_name, data.anchor_entity)
 
-    if data.account_type != "Individual" and not (data.industry or "").strip():
-        raise HTTPException(status_code=400, detail="Industry is required")
-
     _assert_date_sanity(data)
-
+    if any(getattr(data, f, None) not in (None, "") for f in CDD_FIELDS) and not has_permission(user, "client.cdd_edit"):
+        raise HTTPException(status_code=403, detail="Only Compliance (MLRO) can complete the CDD / risk assessment section")
 
     owner_id = data.owner_id or user.id
     payload = data.model_dump(exclude={"owner_id", "allow_duplicate", "duplicate_reason", "search_name"})
@@ -279,7 +277,6 @@ def create_account(db: Session, data: AccountCreate, user: User) -> Account:
     _validate_master_fields(db, payload)
     acc = Account(
         account_uid=next_uid(db, Account, "account_uid", "ACC"),
-        client_id=next_client_id(db, payload["anchor_entity"]),
         search_name=search_name,
         duplicate_override_reason=override_reason,
         **payload,
@@ -299,6 +296,10 @@ def create_account(db: Session, data: AccountCreate, user: User) -> Account:
     return acc
 
 
+# Triam BRD mark-up §7/§11: the CDD / risk assessment section is completed only by Compliance (MLRO).
+CDD_FIELDS = ("risk_rating", "aml_classification", "edd_reason", "kyc_verified_by", "cdd_completion_date")
+
+
 def update_account(db: Session, account_id: int, data: AccountUpdate, user: User):
     """Save a section of the client profile.
 
@@ -306,6 +307,8 @@ def update_account(db: Session, account_id: int, data: AccountUpdate, user: User
     staged in the user's open amendment instead and only reaches the live record when Compliance
     approves it — the staged view of the client is returned so the form keeps showing it."""
     acc = get_account(db, account_id, user)
+    if _compliance_cdd_save(db, acc, data, user):
+        return acc
     client_workflow_service.assert_editable(acc)
     from app.services import amendment_service  # local: amendment_service imports this module
     if amendment_service.is_amendable(acc):
@@ -316,6 +319,28 @@ def update_account(db: Session, account_id: int, data: AccountUpdate, user: User
     db.commit()
     db.refresh(acc)
     return acc
+
+
+def _compliance_cdd_save(db: Session, acc: Account, data: AccountUpdate, user: User) -> bool:
+    """While a new client is at the Compliance step the profile is locked, except that Compliance
+    completes the CDD section. Returns True when this save was that case (and is done)."""
+    if acc.profile_status != client_workflow_service.AWAITING:
+        return False
+    fields = set(data.model_dump(exclude_unset=True))
+    req = client_workflow_service.pending_request(db, acc.id)
+    if not fields or not fields <= set(CDD_FIELDS) or client_workflow_service.stage_of(req) != client_workflow_service.STAGE_COMPLIANCE \
+            or not has_permission(user, "client.cdd_edit"):
+        return False
+    before = {f: getattr(acc, f) for f in fields}
+    apply_update(db, acc, data, user)
+    changed = {f: {"old": str(before[f]) if before[f] is not None else None, "new": str(getattr(acc, f)) if getattr(acc, f) is not None else None}
+               for f in fields if before[f] != getattr(acc, f)}
+    if changed:
+        log_event(db, "cdd_update", f"CDD section of {acc.company_name} completed by Compliance", subject_type="Account",
+                  subject_id=acc.id, account_id=acc.id, changes=changed)
+    db.commit()
+    db.refresh(acc)
+    return True
 
 
 def apply_update(db: Session, acc: Account, data: AccountUpdate, user: User) -> dict:
@@ -329,6 +354,9 @@ def apply_update(db: Session, acc: Account, data: AccountUpdate, user: User) -> 
     requested_status = update_data.pop("profile_status", None)
     if requested_status is not None and requested_status != acc.profile_status:
         raise HTTPException(status_code=400, detail="Status can't be edited directly — use Submit / Approve / Reject or the status actions on the client profile")
+    cdd_changes = [f for f in CDD_FIELDS if f in update_data and update_data[f] != getattr(acc, f)]
+    if cdd_changes and not has_permission(user, "client.cdd_edit"):
+        raise HTTPException(status_code=403, detail="Only Compliance (MLRO) can complete the CDD / risk assessment section")
     _validate_master_fields(db, update_data, existing=acc)
     if "search_name" in update_data:
         if not update_data["search_name"]:
@@ -341,9 +369,11 @@ def apply_update(db: Session, acc: Account, data: AccountUpdate, user: User) -> 
             raise HTTPException(status_code=409, detail=f"A client named '{clash.company_name}' already exists ({clash.client_id or clash.account_uid})")
     for field, value in update_data.items():
         setattr(acc, field, value)
-    # Clients created before Client IDs existed get one as soon as they have an Anchor Entity.
+    # The Client ID is issued when Compliance approves a new client (Triam mark-up §18); until then the
+    # temporary ID is shown. Approved clients that pre-date Client IDs get one on their next save.
     # Once issued, a Client ID never changes (even if the Anchor Entity later does).
-    if not acc.client_id and acc.anchor_entity:
+    if not acc.client_id and acc.anchor_entity and acc.profile_status not in (
+            client_workflow_service.NEW, client_workflow_service.WIP, client_workflow_service.AWAITING):
         acc.client_id = next_client_id(db, acc.anchor_entity)
     if not acc.search_name:
         acc.search_name = _default_search_name(db, acc.company_name, acc.anchor_entity)
@@ -554,14 +584,25 @@ def missing_mandatory(account: Account) -> list[dict]:
                 missing.append({"section": "Shareholders / UBOs", "field": "parties",
                                 "label": f"Shareholding must total 100% (currently {total}%)"})
 
-    # §10 KYC / AML
-    need("AML Classification", "risk_rating", "CDD/AML Risk Level")
-    need("AML Classification", "aml_classification", "AML Classification (Standard / SDD / EDD)")
-    need("AML Classification", "edd_reason", "Reason for EDD", when=account.aml_classification == "EDD")
-    need("AML Classification", "kyc_verified_by", "KYC Verification performed by")
-    need("AML Classification", "cdd_completion_date", "CDD Completion Date")
+    # §10 KYC / AML is completed by Compliance after submission — see missing_cdd.
 
     # §11 engagement
     need("Profile Status & Engagement", "engagement_letter_valid_until", "Engagement Letter valid upto",
          when=account.engagement_letter_signed)
+    return missing
+
+
+def missing_cdd(account: Account) -> list[dict]:
+    """Triam BRD mark-up §10 — the CDD section Compliance (MLRO) must complete before approving.
+    (The AML Risk Level Standard / SDD / EDD was removed; EDD applies to High-risk clients.)"""
+    missing: list[dict] = []
+
+    def need(field, label, when=True):
+        if when and _blank(getattr(account, field)):
+            missing.append({"section": "Customer Risk Assessment / KYC & AML", "field": field, "label": label})
+
+    need("risk_rating", "CDD/AML Risk Level")
+    need("edd_reason", "Reason for EDD", when=account.risk_rating == "High")
+    need("kyc_verified_by", "KYC Verification performed by")
+    need("cdd_completion_date", "CDD Completion Date")
     return missing

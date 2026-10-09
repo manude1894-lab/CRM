@@ -28,8 +28,8 @@ const NAV = [
   { key: "prospects", label: "Prospects", icon: "kanban", component: ProspectsPage, group: "Clients & Cases" },
   { key: "cases", label: "Cases", icon: "cases", component: CasesPage, group: "Clients & Cases" },
   // Compliance review desk: new clients, client amendments, new cases and case changes awaiting
-  // CO / MLRO approval (BRD §12, §13, §15). Shown to anyone with the client.approve permission.
-  { key: "approvals", label: "Compliance", icon: "shield", component: ApprovalsPage, perm: "client.approve", group: "Compliance" },
+  // Compliance (MLRO) and Approver decisions (BRD §12, §13, §15; Triam mark-up §10).
+  { key: "approvals", label: "Compliance", icon: "shield", component: ApprovalsPage, perm: ["client.approve", "client.final_approve"], group: "Compliance" },
   { key: "cdd", label: "CDD / Screening", icon: "cdd", component: CDDPage, roles: ["admin", "screening", "rm"], group: "Compliance" },
   // Licence renewal / ESR / Annual Return / ROM-RBO due dates (BVI process).
   { key: "compliance", label: "Filing Calendar", icon: "calendar", component: CompliancePage, group: "Compliance" },
@@ -56,7 +56,7 @@ export default function App() {
 
   if (!isAuthenticated) return <LoginPage />;
 
-  const navItems = NAV.filter((n) => (!n.roles || n.roles.includes(user?.role)) && (!n.perm || can(n.perm)));
+  const navItems = NAV.filter((n) => (!n.roles || n.roles.includes(user?.role)) && (!n.perm || [].concat(n.perm).some((f) => can(f))));
   const activeItem = navItems.find((n) => n.key === page) || navItems[0];
   const PageComponent = activeItem.component;
 

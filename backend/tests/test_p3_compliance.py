@@ -15,12 +15,13 @@ from app.services import (account_party_service, account_service, amendment_serv
                           case_approval_service as case_ok, case_service, client_workflow_service as wf,
                           document_service)
 from tests.test_p2_workflow import complete_client, people  # noqa: F401  (fixture)
+from tests import flow
 
 
 def approved_client(db, people):
     acc = complete_client(db, people["maker"])
-    wf.submit(db, acc, people["maker"])
-    wf.approve(db, acc, people["checker"])
+    flow.submit(db, acc, people["maker"])
+    flow.approve_all(db, acc, people["checker"], people["approver"])
     wf.change_status(db, acc, people["maker"], "activate")
     return acc
 
@@ -190,7 +191,7 @@ def test_document_removal_rules(db, people, seed_master, make_role, make_user):
     document_service.delete(db, d1.id, maker)  # not yet submitted: uploader may remove
 
     d2 = _upload(db, acc, maker)
-    wf.submit(db, acc, maker)
+    flow.submit(db, acc, maker)
     wf.withdraw(db, acc, maker)
     with pytest.raises(HTTPException) as e:
         document_service.delete(db, d2.id, maker)
@@ -203,8 +204,8 @@ def test_document_removal_rules(db, people, seed_master, make_role, make_user):
     d3 = _upload(db, acc, maker)
     acc.spoc_id = maker.id
     db.commit()
-    wf.submit(db, acc, maker)
-    wf.approve(db, acc, people["checker"])
+    flow.submit(db, acc, maker)
+    flow.approve_all(db, acc, people["checker"], people["approver"])
     with pytest.raises(HTTPException) as e:
         document_service.delete(db, d3.id, people["checker"])
     assert "no longer be removed" in e.value.detail
@@ -285,16 +286,16 @@ def test_client_folder_shows_stage_and_who_can_remove(db, people, seed_master, m
     _upload(db, acc, maker)
     f = document_service.client_folder(db, acc.id, maker)
     [d] = f["documents"]
-    assert f["stage"] == "Draft" and f["client_id"] == "TCPL/00001" and d["can_delete"] is True
+    assert f["stage"] == "Draft" and f["client_id"] is None and f["temp_id"] == acc.account_uid and d["can_delete"] is True
     assert d["uploaded_by_name"] == "Rita RM"
 
     case = case_service.create_case(db, CaseCreate(company_name="Complete Co", account_id=acc.id), maker)
     f = document_service.client_folder(db, acc.id, maker)
     assert f["case_documents"] == []  # nothing uploaded on the case yet
 
-    wf.submit(db, acc, maker)
+    flow.submit(db, acc, maker)
     f = document_service.client_folder(db, acc.id, checker)
     assert f["stage"] == "Submitted" and f["documents"][0]["can_delete"] is False  # locked while under review
-    wf.approve(db, acc, checker)
+    flow.approve_all(db, acc, checker, people["approver"])
     f = document_service.client_folder(db, acc.id, checker)
     assert f["stage"] == "Locked" and "no longer be removed" in f["documents"][0]["lock_reason"]

@@ -6,7 +6,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app.auth.dependencies import get_current_user, require_permission
+from app.auth.dependencies import get_current_user, require_any_permission, require_permission
 from app.database import get_db
 from app.models import User
 from app.schemas.account import AccountRead
@@ -24,6 +24,7 @@ def _state(db: Session, acc, user: User) -> WorkflowState:
     updater = db.get(User, acc.status_updated_by_id) if acc.status_updated_by_id else None
     return WorkflowState(
         status=acc.profile_status,
+        stage=wf.stage_of(wf.pending_request(db, acc.id)) if acc.profile_status == wf.AWAITING else None,
         status_updated_at=acc.status_updated_at,
         status_updated_by=updater.name if updater else None,
         locked=acc.profile_status in (wf.AWAITING, wf.EXITED),
@@ -40,7 +41,7 @@ def get_workflow(account_id: int, db: Session = Depends(get_db), user: User = De
 @router.post("/accounts/{account_id}/submit", response_model=WorkflowState)
 def submit(account_id: int, data: SubmitRequest, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     acc = account_service.get_account(db, account_id, user)
-    wf.submit(db, acc, user, data.comment)
+    wf.submit(db, acc, user, data.comment, data.kyc_declared)
     return _state(db, acc, user)
 
 
@@ -74,7 +75,7 @@ def status_action(account_id: int, data: StatusActionRequest, db: Session = Depe
 
 @router.get("/approvals", response_model=list[ApprovalRead], summary="Compliance inbox (all request types)")
 def approvals_inbox(status: str = "Pending", request_type: Optional[str] = None, db: Session = Depends(get_db),
-                    user: User = Depends(require_permission("client.approve"))):
+                    user: User = Depends(require_any_permission("client.approve", "client.final_approve"))):
     return [ApprovalRead.from_row(r) for r in wf.inbox(db, user, status, request_type)]
 
 

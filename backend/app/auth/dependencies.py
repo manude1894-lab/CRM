@@ -58,6 +58,15 @@ def require_permission(flag: str):
     return checker
 
 
+def require_any_permission(*flags: str):
+    """Dependency factory: the user needs at least one of these permission flags."""
+    def checker(user: User = Depends(get_current_user)) -> User:
+        if not any(has_permission(user, f) for f in flags):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"Action requires one of: {', '.join(flags)}")
+        return user
+    return checker
+
+
 # Convenience dependencies
 require_admin = require_roles(UserRole.ADMIN)
 require_rm = require_roles(UserRole.ADMIN, UserRole.RM)

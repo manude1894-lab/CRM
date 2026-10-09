@@ -13,7 +13,7 @@ P3 — the same table is the Compliance inbox for every kind of review (request_
 """
 import enum
 
-from sqlalchemy import Column, Integer, String, Text, DateTime, JSON, ForeignKey
+from sqlalchemy import Boolean, Column, Integer, String, Text, DateTime, JSON, ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -52,7 +52,15 @@ class ApprovalRequest(Base):
     changes = Column(JSON, nullable=True)  # before/after diff shown to the checker
     previous_request_id = Column(Integer, nullable=True)  # the rejected/withdrawn request this draft continues
 
+    # New-client onboarding (Triam BRD mark-up §7–§10): RM → Compliance (MLRO) → Approver.
+    stage = Column(String(20), nullable=True)  # "Compliance" | "Approver" while Pending
+    kyc_declared = Column(Boolean, nullable=True)  # submitter confirmed KYC verification is done
+    compliance_checker_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    compliance_comment = Column(Text, nullable=True)
+    compliance_decided_at = Column(DateTime(timezone=True), nullable=True)
+
     account = relationship("Account")
     case = relationship("Case")
     maker = relationship("User", foreign_keys=[maker_id])
     checker = relationship("User", foreign_keys=[checker_id])
+    compliance_checker = relationship("User", foreign_keys=[compliance_checker_id])

@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { accountsApi } from "../../api/endpoints";
+import React, { useEffect, useState } from "react";
+import { accountsApi, workflowApi } from "../../api/endpoints";
 import { Icon, Modal, Field, Input, Select, MultiSelect, CountrySelect, Textarea, DateInput } from "../ui";
 import NameLookup from "./NameLookup";
 import CompletenessChecklist from "./CompletenessChecklist";
@@ -11,7 +11,7 @@ import { MONTHS, parseFYE, toFYE, fmtFYE, daysIn } from "../../utils/fye";
 import { toast } from "../../store/toast";
 import {
   fmtDate, REGULATOR_OPTIONS, TAG_OPTIONS, SERVICES_OBTAINED_OPTIONS,
-  PROFILE_STATUS_OPTIONS, AML_CLASSIFICATION_OPTIONS, COUNTRY_CALLING_CODES, TRIAM_ENTITY_OPTIONS, isUAE,
+  PROFILE_STATUS_OPTIONS, COUNTRY_CALLING_CODES, TRIAM_ENTITY_OPTIONS, isUAE,
 } from "../../utils/constants";
 import {
   PRIORITY_OPTIONS, RISK_OPTIONS, KYC_STATUS_OPTIONS, BLANK_ADDRESS, SECTION_FIELDS,
@@ -102,6 +102,15 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
   const myDraft = amendment?.request?.status === "Draft" && amendment.actions.includes("submit");
   const amendLocked = !!form._id && approvedClient && !myDraft;
   const locked = ["Awaiting Approval", "Exited"].includes(form.profile_status) || amendLocked;
+  // Triam mark-up §7/§11: only Compliance completes the CDD section — before submission, while the
+  // client is with Compliance, or in an amendment of an approved client.
+  const canCdd = useAuthStore((st) => st.can("client.cdd_edit"));
+  const [stage, setStage] = useState(null);
+  useEffect(() => {
+    if (form._id && form.profile_status === "Awaiting Approval") workflowApi.get(form._id).then((w) => setStage(w.stage)).catch(() => setStage(null));
+    else setStage(null);
+  }, [form._id, form.profile_status, refreshKey]);
+  const cddEditable = canCdd && (!locked || (form.profile_status === "Awaiting Approval" && stage === "Compliance"));
   const onAmendmentState = (s) => {
     setAmendment(s);
     // Show the maker their staged values (once per draft; later saves keep the form as typed).
@@ -312,12 +321,6 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
           </div>
         )}
         <div className="grid grid-cols-2 gap-3">
-          <Field label="Risk Rating">
-            <Select value={form.risk_rating || ""} onChange={set("risk_rating")}>
-              <option value="">— Not set —</option>
-              {RISK_OPTIONS.map((r) => <option key={r}>{r}</option>)}
-            </Select>
-          </Field>
           <Field label="KYC Status">
             <Select value={form.kyc_status} onChange={set("kyc_status")}>
               {KYC_STATUS_OPTIONS.map((s) => <option key={s}>{s}</option>)}
@@ -501,12 +504,18 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
           </label>
         </Section>
 
-        <Section title="AML Classification" hasData={!!(form.aml_classification || form.cdd_completion_date)} {...sectionProps("aml")}>
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="AML Classification">
-              <Select value={form.aml_classification || ""} onChange={set("aml_classification")}>
-                <option value="">— select —</option>
-                {AML_CLASSIFICATION_OPTIONS.map((o) => <option key={o}>{o}</option>)}
+        <Section title="Customer Risk Assessment / KYC & AML (Compliance)" hasData={!!(form.risk_rating || form.cdd_completion_date)}
+          {...sectionProps("aml")} onSave={cddEditable ? () => saveSection("aml") : undefined}>
+          {!cddEditable && (
+            <p className="text-xs text-gray-500 mb-2">
+              {canCdd ? "Editable while the client is with Compliance." : "Completed by Compliance (MLRO) after the client is submitted."}
+            </p>
+          )}
+          <fieldset disabled={!cddEditable} className="grid grid-cols-2 gap-3 disabled:opacity-70">
+            <Field label="CDD/AML Risk Level">
+              <Select value={form.risk_rating || ""} onChange={set("risk_rating")}>
+                <option value="">— Not set —</option>
+                {RISK_OPTIONS.map((r) => <option key={r}>{r}</option>)}
               </Select>
             </Field>
             <Field label="CDD Completion Date"><DateInput value={form.cdd_completion_date || ""} onChange={set("cdd_completion_date")} /></Field>
@@ -516,10 +525,10 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
                 {[...new Set([...(form.kyc_verified_by ? [form.kyc_verified_by] : []), ...rms.map((u) => u.name)])].map((n) => <option key={n} value={n}>{n}</option>)}
               </Select>
             </Field>
-          </div>
-          {form.aml_classification === "EDD" && (
-            <Field label="Reason for EDD"><Input value={form.edd_reason} onChange={set("edd_reason")} maxLength={25} /></Field>
-          )}
+            {form.risk_rating === "High" && (
+              <Field label="Reason for EDD" required><Input value={form.edd_reason} onChange={set("edd_reason")} maxLength={25} /></Field>
+            )}
+          </fieldset>
           {form.next_aml_review_date && (
             <p className="text-xs text-gray-400">Next AML Review Date: <span className="font-medium text-gray-600">{fmtDate(form.next_aml_review_date)}</span> (auto-calculated from Risk Rating + CDD Completion Date)</p>
           )}
