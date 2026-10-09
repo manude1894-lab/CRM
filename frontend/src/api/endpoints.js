@@ -341,6 +341,9 @@ export const feedbackApi = {
 
 // ─── Reports (PDF) ─────────────────────────────────────────────────────
 export const reportsApi = {
+  // Triam BRD mark-up §20a — standard reports (JSON, shown on screen / exported to CSV)
+  standardList: () => api.get("/reports/standard").then((r) => r.data),
+  standard: (key, params = {}) => api.get(`/reports/standard/${key}`, { params }).then((r) => r.data),
   download: async (reportType) => {
     const res = await api.get(`/reports/${reportType}`, { responseType: "blob" });
     const url = window.URL.createObjectURL(new Blob([res.data], { type: "application/pdf" }));

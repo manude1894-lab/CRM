@@ -4,6 +4,7 @@ import { dashboardApi, reportsApi } from "../api/endpoints";
 import { MetricCard, CustomTooltip, Badge, Icon, Spinner, ErrorBanner, PageHeader } from "../components/ui";
 import { fmtDate } from "../utils/constants";
 import { toast } from "../store/toast";
+import StandardReports from "../components/reports/StandardReports";
 
 const REPORT_TYPES = [
   { id: "case-stage-summary", title: "Case Stage Summary", desc: "Pipeline overview + stage breakdown + upcoming compliance" },
@@ -50,6 +51,8 @@ export default function ReportsPage() {
     <div className="space-y-6">
       <PageHeader title="Reports & Analytics"
         subtitle={<>Entity servicing · Download PDFs or view inline analytics</>} />
+
+      <StandardReports />
 
       {/* PDF Downloads */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">

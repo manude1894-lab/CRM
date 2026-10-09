@@ -1,4 +1,5 @@
-"""Reports router: PDF downloads."""
+"""Reports router: PDF downloads and the standard reports."""
+from typing import Optional
 from fastapi import APIRouter, Depends
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
@@ -24,6 +25,19 @@ def _pdf_response(content: bytes, filename: str) -> Response:
         media_type="application/pdf",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
+
+
+@router.get("/standard", summary="Standard reports available (Triam mark-up §20a)")
+def standard_reports(user: User = Depends(get_current_user)):
+    from app.services import standard_reports_service
+    return [{"key": k, "title": t} for k, t in standard_reports_service.REPORTS.items()]
+
+
+@router.get("/standard/{key}", summary="Run a standard report (Triam mark-up §20a)")
+def run_standard_report(key: str, days: int = 30, date_from: Optional[date] = None, date_to: Optional[date] = None,
+                        db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    from app.services import standard_reports_service
+    return standard_reports_service.run(db, user, key, days, date_from, date_to)
 
 
 @router.get("/case-stage-summary", summary="Case Stage Summary PDF")
