@@ -66,7 +66,7 @@ export default function ClientProfilePage({ accountId, initialTab = "overview", 
       <PageHeader
         back={{ label: "Clients", onClick: onBack }}
         title={a.company_name}
-        subtitle={[a.client_id || `Temporary ID ${a.account_uid}`, individual ? "Individual" : "Corporate", a.anchor_entity, userName(a.spoc_id) && `Anchor RM: ${userName(a.spoc_id)}`].filter(Boolean).join(" · ")}
+        subtitle={[a.client_id || `Temporary ID ${a.temp_id || a.account_uid}`, individual ? "Individual" : "Corporate", a.anchor_entity, userName(a.spoc_id) && `Anchor RM: ${userName(a.spoc_id)}`].filter(Boolean).join(" · ")}
         actions={<>
           <Button onClick={() => setTab("profile")}>Edit profile</Button>
           <MoreMenu items={[

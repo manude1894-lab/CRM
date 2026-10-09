@@ -5,6 +5,8 @@ import DuplicateWarning from "../components/DuplicateWarning";
 import { PROSPECT_STATUS_OPTIONS, CASE_SOURCE_OPTIONS, JURISDICTION_OPTIONS, SERVICE_TYPE_OPTIONS, fmtFull, fmtDate } from "../utils/constants";
 import { toast } from "../store/toast";
 import { confirmDialog } from "../store/confirm";
+import { useAuthStore } from "../store/auth";
+import { wordCount } from "../components/accounts/WorkflowBar";
 
 const empty = {
   company_name: "", contact_name: "", contact_email: "", contact_phone: "",
@@ -13,7 +15,12 @@ const empty = {
   lost_reason: "", notes: "",
 };
 
-export default function ProspectsPage() {
+/**
+ * Triam BRD mark-up §4A — every new client starts here. The Prospecting Team Coordinator assigns the RM
+ * (with optional Assignor's comments) or an RM takes an unassigned prospect; the RM then creates the
+ * client from the prospect, whose Prospect ID is the client's temporary ID until Compliance approves.
+ */
+export default function ProspectsPage({ onNavigate } = {}) {
   const [items, setItems] = useState([]);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -22,6 +29,9 @@ export default function ProspectsPage() {
   const [form, setForm] = useState({});
   const [convertProspect, setConvertProspect] = useState(null);
   const [convertForm, setConvertForm] = useState({ jurisdiction: "BVI", service_type: "Company Formation", rm_id: "" });
+  const [assign, setAssign] = useState(null); // { prospect, rm_id, comments }
+  const me = useAuthStore((s) => s.user);
+  const coordinator = useAuthStore((s) => s.can("prospect.assign"));
 
   const load = async () => {
     try {
@@ -59,7 +69,9 @@ export default function ProspectsPage() {
     };
     try {
       if (form.id) {
-        const { id, prospect_uid, converted_case_id, created_at, updated_at, ...patch } = payload;
+        const { id, prospect_uid, converted_case_id, converted_account_id, assigned_by_id, assigned_by_name, assigned_at,
+          assignor_comments, owner_name, created_at, updated_at, ...patch } = payload;
+        if (!coordinator) delete patch.owner_id;  // assignment goes through Assign
         await prospectsApi.update(form.id, patch);
       } else {
         await prospectsApi.create(payload);
@@ -78,6 +90,15 @@ export default function ProspectsPage() {
     try { await prospectsApi.delete(p.id); load(); }
     catch (e) { toast.error(e.response?.data?.detail || "Delete failed"); }
   };
+
+  const doAssign = async () => {
+    try {
+      await prospectsApi.assign(assign.prospect.id, { rm_id: Number(assign.rm_id), comments: assign.comments || null });
+      toast.success("Prospect assigned");
+      setAssign(null); load();
+    } catch (e) { toast.error(e.response?.data?.detail || "Assignment failed"); }
+  };
+  const createClient = (p) => onNavigate?.({ page: "accounts", prospectId: p.id });
 
   const openConvert = (p) => {
     setConvertForm({ jurisdiction: "BVI", service_type: "Company Formation", rm_id: p.owner_id || "" });
@@ -126,18 +147,31 @@ export default function ProspectsPage() {
                     <div className="text-[11px] text-gray-400 mt-1">{p.prospect_uid}</div>
                     {p.contact_name && <div className="text-xs text-gray-500 mt-1">{p.contact_name}</div>}
                     <div className="text-[11px] text-gray-400 mt-1 space-y-0.5">
-                      {p.owner_id && <div>{userById[p.owner_id]?.name || `User #${p.owner_id}`}</div>}
+                      {p.owner_id
+                        ? <div>RM: <span className="text-gray-600">{p.owner_name || userById[p.owner_id]?.name || `User #${p.owner_id}`}</span></div>
+                        : <div className="text-amber-700 font-medium">Not yet assigned</div>}
+                      {p.assignor_comments && <div className="italic line-clamp-2" title={p.assignor_comments}>“{p.assignor_comments}”</div>}
                       {p.proposal_amount && <div>{fmtFull(p.proposal_amount)}</div>}
                       {p.next_follow_up_date && <div>Follow up {fmtDate(p.next_follow_up_date)}</div>}
                     </div>
-                    {p.converted_case_id && (
-                      <div className="mt-1"><Badge text="Converted" /></div>
+                    {p.converted_account_id && (
+                      <button onClick={() => onNavigate?.({ page: "accounts", accountId: p.converted_account_id })}
+                        className="mt-1 text-[11px] text-emerald-700 hover:underline">Client created — open</button>
                     )}
+                    {p.converted_case_id && !p.converted_account_id && <div className="mt-1"><Badge text="Converted" /></div>}
                     <div className="flex items-center gap-1 mt-2 flex-wrap" onClick={(e) => e.stopPropagation()}>
-                      {p.status === "Won" && !p.converted_case_id && (
-                        <button onClick={() => openConvert(p)} className="text-xs px-2 py-0.5 rounded border border-gray-200 text-green-600 hover:bg-green-50">Convert to Case</button>
+                      {!p.converted_account_id && coordinator && (
+                        <button onClick={() => setAssign({ prospect: p, rm_id: p.owner_id || "", comments: p.assignor_comments || "" })}
+                          className="text-xs px-2 py-0.5 rounded border border-brand-200 text-brand-700 hover:bg-brand-50">{p.owner_id ? "Reassign" : "Assign"}</button>
                       )}
-                      {!p.converted_case_id && PROSPECT_STATUS_OPTIONS.filter((s) => s !== p.status).map((s) => (
+                      {!p.converted_account_id && !coordinator && !p.owner_id && (
+                        <button onClick={() => setAssign({ prospect: p, rm_id: me?.id, comments: "", self: true })}
+                          className="text-xs px-2 py-0.5 rounded border border-brand-200 text-brand-700 hover:bg-brand-50">Assign to me</button>
+                      )}
+                      {!p.converted_account_id && p.owner_id && p.status !== "Lost" && (coordinator || p.owner_id === me?.id || me?.role === "admin") && (
+                        <button onClick={() => createClient(p)} className="text-xs px-2 py-0.5 rounded border border-emerald-300 text-emerald-700 hover:bg-emerald-50">Create client</button>
+                      )}
+                      {!p.converted_case_id && !p.converted_account_id && PROSPECT_STATUS_OPTIONS.filter((s) => s !== p.status).map((s) => (
                         <button key={s} onClick={() => move(p, s)} className="text-xs px-2 py-0.5 rounded border border-gray-200 text-gray-500 hover:bg-gray-50">{s}</button>
                       ))}
                       <button onClick={() => remove(p)} className="ml-auto p-1 rounded hover:bg-red-50 text-gray-400 hover:text-red-500">
@@ -165,12 +199,16 @@ export default function ProspectsPage() {
                 {CASE_SOURCE_OPTIONS.map((x) => <option key={x}>{x}</option>)}
               </Select>
             </Field>
-            <Field label="Owner">
-              <Select value={form.owner_id || ""} onChange={(e) => setForm((p) => ({ ...p, owner_id: e.target.value }))}>
-                <option value="">— Unassigned —</option>
-                {users.filter((u) => u.role === "rm").map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
-              </Select>
-            </Field>
+            {coordinator ? (
+              <Field label="Assigned RM">
+                <Select value={form.owner_id || ""} onChange={(e) => setForm((p) => ({ ...p, owner_id: e.target.value }))}>
+                  <option value="">— Not yet assigned —</option>
+                  {users.filter((u) => u.role === "rm" && u.is_active !== false).map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+                </Select>
+              </Field>
+            ) : (
+              <Field label="Assigned RM"><Input disabled value={form.id ? (form.owner_name || "Not yet assigned") : `${me?.name || "You"} (you)`} /></Field>
+            )}
             <Field label="Status">
               <Select value={form.status || "New"} onChange={(e) => setForm((p) => ({ ...p, status: e.target.value }))}>
                 {PROSPECT_STATUS_OPTIONS.map((x) => <option key={x}>{x}</option>)}
@@ -188,6 +226,29 @@ export default function ProspectsPage() {
           <div className="flex justify-end gap-3 mt-4">
             <button onClick={() => setModal(false)} className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
             <button onClick={save} className="px-4 py-2 text-sm text-white rounded-lg" style={{ background: "#1a3a5c" }}>Save</button>
+          </div>
+        </Modal>
+      )}
+
+      {assign && (
+        <Modal title={`${assign.self ? "Assign to me" : "Assign RM"} — ${assign.prospect.company_name}`} onClose={() => setAssign(null)}>
+          <div className="text-xs text-gray-500 mb-3">Prospect <span className="font-mono">{assign.prospect.prospect_uid}</span></div>
+          {!assign.self && (
+            <Field label="Relationship Manager" required>
+              <Select value={assign.rm_id || ""} onChange={(e) => setAssign((a) => ({ ...a, rm_id: e.target.value }))}>
+                <option value="">— choose —</option>
+                {users.filter((u) => u.role === "rm" && u.is_active !== false).map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+              </Select>
+            </Field>
+          )}
+          <Field label="Assignor's comments (optional)">
+            <Textarea rows={4} value={assign.comments} onChange={(e) => setAssign((a) => ({ ...a, comments: e.target.value }))} maxLength={4000} />
+            <div className={`text-[11px] text-right mt-0.5 ${wordCount(assign.comments) > 250 ? "text-red-600" : "text-gray-400"}`}>{wordCount(assign.comments)} / 250 words</div>
+          </Field>
+          <div className="flex justify-end gap-3 mt-2">
+            <button onClick={() => setAssign(null)} className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
+            <button onClick={doAssign} disabled={!assign.rm_id || wordCount(assign.comments) > 250}
+              className="px-4 py-2 text-sm text-white rounded-lg disabled:opacity-50" style={{ background: "#1a3a5c" }}>Assign</button>
           </div>
         </Modal>
       )}

@@ -98,7 +98,7 @@ export default function ClientDocumentsFolder({ accountId, onChange, onboarding 
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2 text-xs">
         <span className="text-gray-500">Client folder</span>
-        <span className="font-mono font-semibold text-gray-800">{folder.client_id || "—"}</span>
+        <span className="font-mono font-semibold text-gray-800">{folder.client_id || folder.temp_id || "—"}</span>
         <span className={`px-2 py-0.5 rounded font-semibold ${stage.style}`}>{folder.stage}</span>
         <span className="text-gray-400">{folder.documents.length} document{folder.documents.length === 1 ? "" : "s"}</span>
         {!locked && !uploading && (

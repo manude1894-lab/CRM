@@ -307,6 +307,7 @@ export const prospectsApi = {
   update: (id, data) => api.patch(`/prospects/${id}`, data).then((r) => r.data),
   delete: (id) => api.delete(`/prospects/${id}`),
   convert: (id, data = {}) => api.post(`/prospects/${id}/convert`, data).then((r) => r.data),
+  assign: (id, data) => api.post(`/prospects/${id}/assign`, data).then((r) => r.data),
   checkDuplicate: (name, excludeId) => api.get("/prospects/check-duplicate", { params: { name, exclude_id: excludeId || undefined } }).then((r) => r.data),
 };
 

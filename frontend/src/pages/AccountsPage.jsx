@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
-import { accountsApi, casesApi, usersApi, amlApi } from "../api/endpoints";
-import { Badge, Button, EmptyState, ErrorBanner, FilterBar, Icon, PageHeader, SearchInput, Select, Spinner } from "../components/ui";
+import { accountsApi, casesApi, usersApi, amlApi, prospectsApi } from "../api/endpoints";
+import { Badge, Button, EmptyState, ErrorBanner, FilterBar, Icon, Modal, PageHeader, SearchInput, Select, Spinner } from "../components/ui";
 import AccountCard from "../components/accounts/AccountCard";
 import AccountFormModal from "../components/accounts/AccountFormModal";
 import BulkActionBar from "../components/accounts/BulkActionBar";
@@ -18,7 +18,7 @@ const VIEW_KEY = "triam.clients.view";
 
 const readView = () => { try { return localStorage.getItem(VIEW_KEY) || "table"; } catch { return "table"; } };
 
-export default function AccountsPage({ initialAccountId, initialOpenForm, onNavigate } = {}) {
+export default function AccountsPage({ initialAccountId, initialOpenForm, initialProspectId, onNavigate } = {}) {
   const appliedInitialRef = useRef(false);
   const [accounts, setAccounts] = useState([]);
   const [cases, setCases] = useState([]);
@@ -31,7 +31,11 @@ export default function AccountsPage({ initialAccountId, initialOpenForm, onNavi
   const [riskFilter, setRiskFilter] = useState("");
   const [view, setView] = useState(readView);
   const [open, setOpen] = useState(null); // { id, tab } — the client page being shown
-  const [newClient, setNewClient] = useState(null); // key of the New Client form while open
+  const [newClient, setNewClient] = useState(null); // { key, prospect } while the New Client flow is open
+  // "Create client" on a prospect lands here with the prospect chosen.
+  useEffect(() => {
+    if (initialProspectId) prospectsApi.get(initialProspectId).then((p) => setNewClient({ key: Date.now(), prospect: p })).catch(() => {});
+  }, [initialProspectId]);
   const [importPreview, setImportPreview] = useState(null);
   const [importing, setImporting] = useState(false);
   const [selectedIds, setSelectedIds] = useState(() => new Set());
@@ -137,7 +141,7 @@ export default function AccountsPage({ initialAccountId, initialOpenForm, onNavi
 
   // Matches legal name, Unique Search Name (BRD §3) or Client ID (BRD §19).
   const q = search.toLowerCase();
-  const filtered = accounts.filter((a) => (!q || [a.company_name, a.search_name, a.client_id, a.account_uid].some((v) => (v || "").toLowerCase().includes(q)))
+  const filtered = accounts.filter((a) => (!q || [a.company_name, a.search_name, a.client_id, a.temp_id, a.account_uid].some((v) => (v || "").toLowerCase().includes(q)))
     && (!statusFilter || (a.profile_status || "New") === statusFilter)
     && (!riskFilter || a.risk_rating === riskFilter));
   const ids = filtered.map((a) => a.id);
@@ -156,7 +160,7 @@ export default function AccountsPage({ initialAccountId, initialOpenForm, onNavi
               <Button onClick={() => fileInputRef.current?.click()} disabled={importing}>{importing ? "Reading…" : "Import CSV"}</Button>
             </>
           )}
-          <Button variant="primary" onClick={() => setNewClient(Date.now())}><Icon name="plus" size={15} /> New Client</Button>
+          <Button variant="primary" onClick={() => setNewClient({})}><Icon name="plus" size={15} /> New Client</Button>
         </>}
       />
 
@@ -189,7 +193,7 @@ export default function AccountsPage({ initialAccountId, initialOpenForm, onNavi
         <EmptyState
           title={accounts.length === 0 ? "No clients yet" : "No clients match these filters"}
           text={accounts.length === 0 ? "Add your first client to get started." : "Try a different search or clear the filters."}
-          action={accounts.length === 0 && <Button variant="primary" onClick={() => setNewClient(Date.now())}>New Client</Button>} />
+          action={accounts.length === 0 && <Button variant="primary" onClick={() => setNewClient({})}>New Client</Button>} />
       ) : view === "table" ? (
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-x-auto">
           <table className="w-full text-sm">
@@ -209,7 +213,7 @@ export default function AccountsPage({ initialAccountId, initialOpenForm, onNavi
                   <td className="py-2.5 px-3" onClick={(e) => e.stopPropagation()}>
                     <input type="checkbox" checked={selectedIds.has(a.id)} onChange={() => toggleSelected(a.id)} />
                   </td>
-                  <td className="py-2.5 px-3 font-mono text-xs text-gray-600">{a.client_id || <span className="text-gray-400" title="Temporary ID until Compliance approves">{a.account_uid}</span>}</td>
+                  <td className="py-2.5 px-3 font-mono text-xs text-gray-600">{a.client_id || <span className="text-gray-400" title="Temporary ID until Compliance approves">{a.temp_id || a.account_uid}</span>}</td>
                   <td className="py-2.5 px-3">
                     <div className="font-medium text-gray-800">{a.company_name}</div>
                     <div className="text-xs text-gray-400">{a.account_type === "Individual" ? "Individual" : (a.industry || "Corporate")}{a.is_pep ? " · PEP" : ""}</div>
@@ -234,8 +238,16 @@ export default function AccountsPage({ initialAccountId, initialOpenForm, onNavi
         </div>
       )}
 
-      {newClient && (
-        <AccountFormModal key={newClient} initialForm={BLANK_ACCOUNT_FORM} users={users} countries={countries}
+      {newClient && !newClient.prospect && (
+        <ProspectPicker isAdmin={isAdmin} onClose={() => setNewClient(null)}
+          onPick={(p) => setNewClient({ key: Date.now(), prospect: p })}
+          onGoToProspects={() => { setNewClient(null); onNavigate?.({ page: "prospects" }); }} />
+      )}
+      {newClient && newClient.prospect && (
+        <AccountFormModal key={newClient.key} users={users} countries={countries}
+          initialForm={newClient.prospect === "none" ? BLANK_ACCOUNT_FORM
+            : { ...BLANK_ACCOUNT_FORM, company_name: newClient.prospect.company_name, prospect_id: newClient.prospect.id,
+                _prospect_uid: newClient.prospect.prospect_uid, spoc_id: newClient.prospect.owner_id ? String(newClient.prospect.owner_id) : "" }}
           onClose={() => setNewClient(null)} onChanged={() => load({ silent: true })}
           onOpenExisting={(a) => { setNewClient(null); openClient(a); }} />
       )}
@@ -249,3 +261,39 @@ export default function AccountsPage({ initialAccountId, initialOpenForm, onNavi
 }
 
 
+
+
+/** Triam BRD mark-up §4A — every new client is created from an assigned prospect. */
+function ProspectPicker({ isAdmin, onPick, onClose, onGoToProspects }) {
+  const [items, setItems] = useState(null);
+  useEffect(() => {
+    prospectsApi.list().then((ps) => setItems(ps.filter((p) => p.owner_id && !p.converted_account_id && p.status !== "Lost")))
+      .catch(() => setItems([]));
+  }, []);
+  return (
+    <Modal title="New client — choose the prospect" onClose={onClose}>
+      <p className="text-xs text-gray-500 mb-3">Every new client starts as a prospect assigned to an RM. Choose the prospect this client is for.</p>
+      {items === null ? <Spinner /> : items.length === 0 ? (
+        <div className="text-sm text-gray-500 text-center py-6">
+          No assigned prospects are waiting for a client.
+          <div className="mt-2"><Button onClick={onGoToProspects}>Go to Prospects</Button></div>
+        </div>
+      ) : (
+        <div className="space-y-1.5 max-h-80 overflow-y-auto">
+          {items.map((p) => (
+            <button key={p.id} type="button" onClick={() => onPick(p)}
+              className="w-full text-left px-3 py-2 rounded-lg border border-gray-100 hover:border-brand-300 hover:bg-brand-50/40">
+              <div className="text-sm font-medium text-gray-800">{p.company_name}</div>
+              <div className="text-[11px] text-gray-500"><span className="font-mono">{p.prospect_uid}</span> · {p.status} · RM {p.owner_name || "—"}</div>
+            </button>
+          ))}
+        </div>
+      )}
+      {isAdmin && (
+        <div className="mt-3 pt-3 border-t border-gray-100 text-right">
+          <button type="button" onClick={() => onPick("none")} className="text-xs text-gray-500 hover:underline">Administrator: create without a prospect</button>
+        </div>
+      )}
+    </Modal>
+  );
+}

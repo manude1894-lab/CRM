@@ -154,6 +154,7 @@ export default function App() {
             initialStage={jumpTo?.page === "cases" ? jumpTo.stage : undefined}
             initialAccountId={jumpTo?.page === "accounts" ? jumpTo.accountId : undefined}
             initialOpenForm={jumpTo?.page === "accounts" ? !!jumpTo.openForm : undefined}
+            initialProspectId={jumpTo?.page === "accounts" ? jumpTo.prospectId : undefined}
             initialCaseId={jumpTo?.page === "cases" ? jumpTo.caseId : undefined}
           />
           </PageErrorBoundary>

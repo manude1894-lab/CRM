@@ -126,6 +126,7 @@ class Account(Base):
     total_invoiced_amount = Column(Numeric(14, 2), default=0, nullable=False)
 
     owner_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    prospect_id = Column(Integer, ForeignKey("prospects.id", ondelete="SET NULL"), nullable=True)  # Triam mark-up §4A
     # Anchor RM (labelled "Anchor RM (SPOC)" in the UI) — the staff member who owns this client;
     # drives RM-scoped access control (see access_control.py).
     spoc_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
@@ -137,6 +138,13 @@ class Account(Base):
 
     owner = relationship("User", back_populates="accounts", foreign_keys=[owner_id])
     spoc = relationship("User", foreign_keys=[spoc_id])
+    prospect = relationship("Prospect", foreign_keys=[prospect_id])
+
+    @property
+    def temp_id(self):
+        """Shown until the Client ID is issued at Compliance approval: the Prospect ID the client came
+        from, or the internal record number for clients created before prospects were required."""
+        return self.prospect.prospect_uid if self.prospect is not None else self.account_uid
     cases = relationship("Case", back_populates="account")
     parties = relationship("AccountParty", back_populates="account", cascade="all, delete-orphan")
     documents = relationship("Document", back_populates="account", cascade="all, delete-orphan")

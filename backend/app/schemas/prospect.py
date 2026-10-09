@@ -56,10 +56,21 @@ class DuplicateMatch(BaseModel):
     source: Optional[str] = None  # "prospect" | "client"
 
 
+class ProspectAssignRequest(BaseModel):
+    rm_id: int
+    comments: Optional[str] = Field(None, max_length=4000)  # "Assignor's comments", up to 250 words, optional
+
+
 class ProspectRead(ProspectBase):
     id: int
     prospect_uid: str
     converted_case_id: Optional[int] = None
+    converted_account_id: Optional[int] = None
+    assigned_by_id: Optional[int] = None
+    assigned_by_name: Optional[str] = None
+    assigned_at: Optional[datetime] = None
+    assignor_comments: Optional[str] = None
+    owner_name: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 

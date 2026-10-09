@@ -57,6 +57,7 @@ class ApprovalRead(BaseModel):
     # Inbox convenience
     company_name: Optional[str] = None
     client_id: Optional[str] = None
+    temp_id: Optional[str] = None
     account_type: Optional[str] = None
     case_uid: Optional[str] = None
     case_name: Optional[str] = None
@@ -71,6 +72,7 @@ class ApprovalRead(BaseModel):
         out.compliance_checker_name = r.compliance_checker.name if r.compliance_checker else None
         if r.account is not None:
             out.company_name, out.client_id, out.account_type = r.account.company_name, r.account.client_id, r.account.account_type
+            out.temp_id = r.account.temp_id
         if r.case is not None:
             out.case_uid, out.case_name = r.case.case_uid, r.case.company_name
             out.company_name = out.company_name or r.case.company_name

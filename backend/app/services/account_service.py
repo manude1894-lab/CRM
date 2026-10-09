@@ -271,8 +271,15 @@ def create_account(db: Session, data: AccountCreate, user: User) -> Account:
     if any(getattr(data, f, None) not in (None, "") for f in CDD_FIELDS) and not has_permission(user, "client.cdd_edit"):
         raise HTTPException(status_code=403, detail="Only Compliance (MLRO) can complete the CDD / risk assessment section")
 
+    prospect = None
+    if data.prospect_id:
+        from app.services import prospect_service
+        prospect = prospect_service.assert_ready_for_client(db, data.prospect_id, user)
+
     owner_id = data.owner_id or user.id
-    payload = data.model_dump(exclude={"owner_id", "allow_duplicate", "duplicate_reason", "search_name"})
+    payload = data.model_dump(exclude={"owner_id", "allow_duplicate", "duplicate_reason", "search_name", "prospect_id"})
+    if prospect is not None and not payload.get("spoc_id"):
+        payload["spoc_id"] = prospect.owner_id  # the RM the prospect was assigned to
     payload["profile_status"] = client_workflow_service.NEW  # BRD §11 — status only moves via the workflow
     _validate_master_fields(db, payload)
     acc = Account(
@@ -285,8 +292,16 @@ def create_account(db: Session, data: AccountCreate, user: User) -> Account:
     _set_status(acc, user)
     _compute_next_aml_review_date(acc)
     _normalize_non_anchor_rms(acc)
+    if prospect is not None:
+        acc.prospect_id = prospect.id
     db.add(acc)
     db.flush()
+    if prospect is not None:
+        from app.models import ProspectStatus
+        prospect.converted_account_id = acc.id
+        prospect.status = ProspectStatus.WON.value
+        log_event(db, "create", f"Client {acc.company_name} created from prospect {prospect.prospect_uid}",
+                  subject_type="Account", subject_id=acc.id, account_id=acc.id, changes={"prospect": prospect.prospect_uid})
     if override_reason:
         log_event(db, "duplicate_override", f"Duplicate client '{acc.company_name}' created by exception: {override_reason}",
                   subject_type="Account", subject_id=acc.id, account_id=acc.id,

@@ -192,7 +192,7 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
         if (!isCore) throw new Error("Save Client Info first.");
         const invalid = validateCoreFields(form) || duplicateBlock();
         if (invalid) throw new Error(invalid);
-        const created = await accountsApi.create(withOverride(patch));
+        const created = await accountsApi.create(withOverride({ ...patch, prospect_id: form.prospect_id || null }));
         setSearchTouched(true);
         setForm((f) => ({ ...f, _id: created.id, search_name: created.search_name, _client_id: created.client_id, _status_updated_at: created.status_updated_at }));
         setMode("edit");
@@ -225,6 +225,12 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
           <AmendmentBar accountId={form._id} refreshKey={refreshKey} onState={onAmendmentState} onDecided={onAmendmentDecided} />
         )}
         {!locked && !approvedClient && <CompletenessChecklist accountId={form._id} refreshKey={refreshKey} />}
+        {mode === "new" && form._prospect_uid && (
+          <div className="mb-3 text-xs rounded-lg bg-brand-50 text-brand-700 px-3 py-2">
+            Creating the client from prospect <span className="font-mono font-semibold">{form._prospect_uid}</span>. This is the client's
+            temporary ID until Compliance approves it and the Client ID is issued.
+          </div>
+        )}
         <Field label="Client Type">
           <Select value={form.account_type} onChange={set("account_type")}>
             <option>Corporate</option>
@@ -250,7 +256,7 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
         {!isIndividual && (
           <>
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Industry *">
+              <Field label="Industry">
                 <Input value={form.industry} onChange={set("industry")} placeholder="e.g. Fintech" />
               </Field>
               <Field label="Country of Incorporation / Registration">

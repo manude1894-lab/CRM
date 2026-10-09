@@ -266,6 +266,7 @@ class AccountBase(_ClientFieldRules):
 
 
 class AccountCreate(AccountBase):
+    prospect_id: Optional[int] = None  # Triam mark-up §4A — the prospect this client is created from
     # BRD §3 duplicate exception — only honoured for users with client.approve.
     allow_duplicate: bool = False
     duplicate_reason: Optional[str] = Field(None, max_length=255)
@@ -355,6 +356,8 @@ class AccountRead(AccountBase):
     id: int
     account_uid: str
     client_id: Optional[str] = None
+    temp_id: Optional[str] = None
+    prospect_id: Optional[int] = None
     status_updated_at: Optional[datetime] = None
     status_updated_by_id: Optional[int] = None
     duplicate_override_reason: Optional[str] = None

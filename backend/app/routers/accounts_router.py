@@ -1,11 +1,11 @@
 """Accounts router."""
-from fastapi import APIRouter, Depends, status, Response
+from fastapi import APIRouter, Depends, HTTPException, status, Response
 from sqlalchemy.orm import Session
 from typing import Optional
 
 from app.database import get_db
 from app.auth.dependencies import get_current_user, require_admin, require_rm
-from app.models import User
+from app.models import User, UserRole
 from app.schemas import AccountCreate, AccountRead, AccountUpdate, AccountImportRequest, AccountImportResponse
 from app.schemas.account import DuplicateMatch, AccountBulkUpdateRequest, BulkUpdateResult
 from app.schemas.account_report import TrackRecordRead
@@ -84,6 +84,10 @@ def download_track_record(account_id: int, db: Session = Depends(get_db), user: 
 
 @router.post("", response_model=AccountRead, status_code=status.HTTP_201_CREATED)
 def create_account(data: AccountCreate, db: Session = Depends(get_db), user: User = Depends(require_rm)):
+    # Triam mark-up §4A — every new client is routed through the Prospect module (administrators may
+    # still create one directly, e.g. to correct data).
+    if not data.prospect_id and user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=400, detail="New clients are created from a prospect — open the prospect and choose 'Create client'")
     return account_service.create_account(db, data, user)
 
 

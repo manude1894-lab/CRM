@@ -86,7 +86,7 @@ describe("validateCoreFields", () => {
   });
 
   it("requires industry for corporate clients only", () => {
-    expect(validateCoreFields({ company_name: "Acme", anchor_entity: "TCPL", account_type: "Corporate", industry: "" })).toBe("Industry is required");
+    expect(validateCoreFields({ company_name: "Acme", anchor_entity: "TCPL", account_type: "Corporate", industry: "" })).toBe(null);  // Industry dropped
     expect(validateCoreFields({ company_name: "Jane", anchor_entity: "TCPL", account_type: "Individual", industry: "" })).toBeNull();
   });
 

@@ -100,7 +100,7 @@ const toSpocId = (v) => (v ? +v : null);
 // Full-form payload for create/update. `_id` and the server-computed next_aml_review_date are stripped.
 export function buildAccountPayload(form) {
   // profile_status is never sent: it changes only through Submit / Approve / status actions (BRD §11).
-  const { next_aml_review_date, tags, _id, _client_id, _status_updated_at, profile_status, ...rest } = form;
+  const { next_aml_review_date, tags, _id, _client_id, _status_updated_at, profile_status, _prospect_uid, ...rest } = form;
   const payload = cleanPayload({ ...rest, tags: (tags || []).join(", ") || null });
   return { ...payload, spoc_id: toSpocId(payload.spoc_id) };
 }
@@ -120,6 +120,5 @@ export function validateCoreFields(form) {
   if (!form.company_name?.trim()) return "Company name is required";
   // BRD §19 — the Client ID is built from the Anchor Triam Entity.
   if (!form.anchor_entity) return "Anchor Triam Entity is required (it determines the Client ID)";
-  if (form.account_type !== "Individual" && !form.industry?.trim()) return "Industry is required";
   return null;
 }

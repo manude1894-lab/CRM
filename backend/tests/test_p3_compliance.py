@@ -286,7 +286,7 @@ def test_client_folder_shows_stage_and_who_can_remove(db, people, seed_master, m
     _upload(db, acc, maker)
     f = document_service.client_folder(db, acc.id, maker)
     [d] = f["documents"]
-    assert f["stage"] == "Draft" and f["client_id"] is None and f["temp_id"] == acc.account_uid and d["can_delete"] is True
+    assert f["stage"] == "Draft" and f["client_id"] is None and f["temp_id"] == acc.temp_id and d["can_delete"] is True
     assert d["uploaded_by_name"] == "Rita RM"
 
     case = case_service.create_case(db, CaseCreate(company_name="Complete Co", account_id=acc.id), maker)

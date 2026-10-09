@@ -97,7 +97,7 @@ export default function ApprovalsPage({ onNavigate }) {
                   <td className="py-2.5 px-4">
                     <div className="font-medium text-gray-800">{r.case_name || r.company_name}</div>
                     <div className="text-xs text-gray-400">
-                      <span className="font-mono">{r.case_uid || r.client_id || "Temporary ID"}</span>
+                      <span className="font-mono">{r.case_uid || r.client_id || r.temp_id || "—"}</span>
                       {r.case_uid && r.client_id && <> · client <span className="font-mono">{r.client_id}</span></>}
                       {!r.case_uid && r.account_type && <> · {r.account_type}</>}
                     </div>
