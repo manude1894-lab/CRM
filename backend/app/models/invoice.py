@@ -16,6 +16,7 @@ from app.database import Base
 
 
 class InvoiceLedgerStatus(str, enum.Enum):
+    REQUESTED = "Requested"  # Triam mark-up §16: RM / Sales instruction to Accounts
     DRAFT = "Draft"
     RAISED = "Raised"
     PAID = "Paid"
@@ -26,7 +27,12 @@ class Invoice(Base):
     __tablename__ = "invoices"
 
     id = Column(Integer, primary_key=True, index=True)
-    case_id = Column(Integer, ForeignKey("cases.id", ondelete="CASCADE"), nullable=False, index=True)
+    account_id = Column(Integer, ForeignKey("accounts.id", ondelete="CASCADE"), nullable=True, index=True)
+    case_id = Column(Integer, ForeignKey("cases.id", ondelete="CASCADE"), nullable=True, index=True)
+    currency = Column(String(3), default="AED", server_default="AED", nullable=False)
+    requested_by_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    requested_at = Column(DateTime(timezone=True), nullable=True)
+    raised_by_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
     invoice_number = Column(String(50), nullable=True)
     description = Column(Text, nullable=True)
@@ -43,4 +49,7 @@ class Invoice(Base):
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     case = relationship("Case", back_populates="invoices")
+    account = relationship("Account")
+    requested_by = relationship("User", foreign_keys=[requested_by_id])
+    raised_by = relationship("User", foreign_keys=[raised_by_id])
     instructions = relationship("Instruction", back_populates="invoice")

@@ -150,6 +150,17 @@ export const invoicesApi = {
   create: (data) => api.post("/invoices", data).then((r) => r.data),
   update: (id, data) => api.patch(`/invoices/${id}`, data).then((r) => r.data),
   delete: (id) => api.delete(`/invoices/${id}`),
+  // Triam BRD mark-up §16
+  request: (data) => api.post("/invoices/request", data).then((r) => r.data),
+  raise: (id, data) => api.post(`/invoices/${id}/raise`, data).then((r) => r.data),
+  paid: (id, data = {}) => api.post(`/invoices/${id}/paid`, data).then((r) => r.data),
+  attachments: (id) => api.get(`/invoices/${id}/attachments`).then((r) => r.data),
+  attach: (id, file, kind) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    fd.append("kind", kind);
+    return api.post(`/invoices/${id}/attachments`, fd, { headers: { "Content-Type": "multipart/form-data" } }).then((r) => r.data);
+  },
 };
 
 // ─── AML Risk ──────────────────────────────────────────────────────────

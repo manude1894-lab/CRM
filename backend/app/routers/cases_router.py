@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from typing import Optional
 
 from app.database import get_db
-from app.auth.dependencies import get_current_user, require_admin
+from app.auth.dependencies import get_current_user, require_admin, require_permission
 from app.models import User
 from app.schemas import CaseCreate, CaseRead, CaseUpdate, CaseStageChangeRequest, AdditionalRMRequest
 from app.schemas.case import InvoiceRaiseRequest, CaseBulkUpdateRequest, ImportRequest
@@ -70,12 +70,12 @@ def change_stage(
 
 
 @router.post("/{case_id}/invoice/raise", response_model=CaseRead, summary="Raise invoice (requires CDD approved)")
-def raise_invoice(case_id: int, body: InvoiceRaiseRequest, db: Session = Depends(get_db), user: User = Depends(require_admin)):
+def raise_invoice(case_id: int, body: InvoiceRaiseRequest, db: Session = Depends(get_db), user: User = Depends(require_permission("invoice.manage"))):
     return case_service.raise_invoice(db, case_id, user, amount=body.amount)
 
 
 @router.post("/{case_id}/invoice/mark-paid", response_model=CaseRead, summary="Mark invoice paid")
-def mark_invoice_paid(case_id: int, db: Session = Depends(get_db), user: User = Depends(require_admin)):
+def mark_invoice_paid(case_id: int, db: Session = Depends(get_db), user: User = Depends(require_permission("invoice.manage"))):
     return case_service.mark_invoice_paid(db, case_id, user)
 
 

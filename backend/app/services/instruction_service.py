@@ -124,21 +124,25 @@ def update_instruction(db: Session, instruction_id: int, data: InstructionUpdate
     for field, value in payload.items():
         setattr(inst, field, value)
 
-    # Auto-generate a Draft invoice when a charged request is completed — still requires a human
-    # to review/raise it. Invoices hang off a case, so requests without one are invoiced manually.
-    if payload.get("status") == "Completed" and inst.charge_amount and not inst.invoice_id and inst.case_id:
-        invoice = Invoice(
-            case_id=inst.case_id,
-            description=inst.instruction_type,
-            amount=inst.charge_amount,
-            status="Draft",
-        )
-        db.add(invoice)
+    # Triam mark-up §16: a completed, charged service request is an instruction to Accounts to invoice it.
+    new_invoice = None
+    if payload.get("status") == "Completed" and inst.charge_amount and not inst.invoice_id and inst.account_id:
+        from datetime import datetime, timezone
+        new_invoice = Invoice(account_id=inst.account_id, case_id=inst.case_id, description=inst.instruction_type,
+                              amount=inst.charge_amount, status="Requested", requested_by_id=user.id,
+                              requested_at=datetime.now(timezone.utc))
+        db.add(new_invoice)
         db.flush()
-        inst.invoice_id = invoice.id
+        inst.invoice_id = new_invoice.id
 
     db.commit()
     db.refresh(inst)
+    if new_invoice is not None:
+        from app.services import invoice_service, notification_service
+        for u in invoice_service._accounts_team(db):
+            if u.id != user.id:
+                notification_service.notify_user(db, u.id, f"Invoice instruction: service request '{inst.instruction_type}' completed — "
+                                                 f"{new_invoice.currency} {new_invoice.amount} to invoice.", "invoice_requested")
     return inst
 
 

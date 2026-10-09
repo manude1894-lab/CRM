@@ -86,9 +86,10 @@ def test_service_request_for_client_without_case(db, make_user, make_account, se
     assert sr.account_id == acc.id and sr.case_id is None
     with pytest.raises(HTTPException):
         instruction_service.create_instruction(db, InstructionCreate(account_id=acc.id, instruction_type="Made up"), rm)
-    # Completing a charged request without a case doesn't try to create a case invoice.
+    # Triam mark-up §16: completing a charged request is an instruction to Accounts to invoice the client.
     instruction_service.update_instruction(db, sr.id, InstructionUpdate(status="Completed"), rm)
-    assert db.query(Invoice).count() == 0
+    [inv] = db.query(Invoice).all()
+    assert (inv.account_id, inv.case_id, inv.status, inv.amount) == (acc.id, None, "Requested", Decimal("500"))
     items, total = instruction_service.list_instructions(db, rm, search="Falcon")
     assert total == 1
 

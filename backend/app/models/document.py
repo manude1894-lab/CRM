@@ -37,6 +37,7 @@ class Document(Base):
     account_id = Column(Integer, ForeignKey("accounts.id", ondelete="CASCADE"), nullable=True, index=True)
     case_document_id = Column(Integer, ForeignKey("case_documents.id", ondelete="SET NULL"), nullable=True)
     instruction_id = Column(Integer, ForeignKey("instructions.id", ondelete="SET NULL"), nullable=True)
+    invoice_id = Column(Integer, ForeignKey("invoices.id", ondelete="CASCADE"), nullable=True, index=True)  # pricing approval / invoice file
 
     category = Column(String(40), default=DocumentCategory.OTHER.value, nullable=False)
     filename = Column(String(255), nullable=False)

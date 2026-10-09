@@ -145,6 +145,21 @@ def list_for_account(db: Session, account_id: int, user: User) -> list[Document]
     )
 
 
+def read_upload(upload: UploadFile) -> tuple[str, bytes]:
+    """Checks a file upload against the allowed types and the size limit; returns (filename, bytes)."""
+    filename = _safe_filename(upload.filename)
+    if _ext(filename) not in _ALLOWED_EXT:
+        raise HTTPException(status_code=400, detail=f"File type not allowed: {filename}. Allowed: {ALLOWED_TYPES_LABEL}")
+    if upload.content_type and upload.content_type not in ALLOWED_CONTENT_TYPES:
+        raise HTTPException(status_code=400, detail=f"Content type not allowed: {upload.content_type}")
+    data = upload.file.read()
+    if len(data) == 0:
+        raise HTTPException(status_code=400, detail="Empty file")
+    if len(data) > settings.MAX_UPLOAD_MB * 1024 * 1024:
+        raise HTTPException(status_code=413, detail=f"File exceeds the {settings.MAX_UPLOAD_MB} MB limit")
+    return filename, data
+
+
 def create_for_account(
     db: Session,
     account_id: int,
@@ -334,7 +349,7 @@ def client_folder(db: Session, account_id: int, user: User) -> dict:
         return out
 
     client_docs = []
-    for d in db.query(Document).filter(Document.account_id == account.id).order_by(Document.id.desc()).all():
+    for d in db.query(Document).filter(Document.account_id == account.id, Document.invoice_id.is_(None)).order_by(Document.id.desc()).all():
         allowed, stage, reason = client_document_removal(db, d, account, user)
         client_docs.append(item(d, can_delete=allowed, stage=stage, lock_reason=reason))
     case_docs = [item(d, can_delete=False, stage=None, lock_reason="Managed on the case", case_uid=d.case.case_uid)
