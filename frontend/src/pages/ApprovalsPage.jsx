@@ -51,8 +51,7 @@ export default function ApprovalsPage({ onNavigate }) {
   return (
     <div className="space-y-4">
       <PageHeader title="Compliance"
-        subtitle={<>New clients, changes to approved clients, new cases and changes to cases waiting for Compliance approval.
-          You can't approve anything you submitted yourself.</>} />
+        subtitle={tab === "Pending" ? `${rows.length} waiting for a decision` : undefined} />
       <div className="flex gap-1 border-b border-gray-200">
         {TABS.map((t) => (
           <button key={t} onClick={() => setTab(t)}

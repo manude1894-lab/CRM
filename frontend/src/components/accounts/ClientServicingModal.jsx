@@ -145,7 +145,6 @@ export default function ClientServicingModal({ account, cases = [], onClose, sta
                 </tbody>
               </table>
             )}
-          <p className="text-[11px] text-gray-400">Update progress, costs and invoices from the Service Requests page.</p>
         </div>
       ))}
     </Modal>

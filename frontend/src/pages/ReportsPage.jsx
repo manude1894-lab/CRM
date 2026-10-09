@@ -49,8 +49,7 @@ export default function ReportsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Reports & Analytics"
-        subtitle={<>Entity servicing · Download PDFs or view inline analytics</>} />
+      <PageHeader title="Reports" />
 
       <StandardReports />
 

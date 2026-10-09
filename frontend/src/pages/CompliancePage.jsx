@@ -59,7 +59,7 @@ export default function CompliancePage() {
   return (
     <div className="space-y-4">
       <PageHeader title="Filing Calendar"
-        subtitle={<>{rows.length} renewals / filings due in the next {days} days</>}
+        subtitle={`${rows.length} due in the next ${days} days`}
         actions={<>
 <div className="flex items-center gap-2">
           <div className="flex border border-gray-200 rounded-lg overflow-hidden">
@@ -94,7 +94,7 @@ export default function CompliancePage() {
               <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500">Company</th>
               <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500">Item</th>
               <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500">Due Date</th>
-              <th className="text-right py-3 px-4 text-xs font-semibold text-gray-500">Days Left</th>
+              <th className="text-right py-3 px-4 text-xs font-semibold text-gray-500">Due in</th>
               <th className="py-3 px-4 text-xs font-semibold text-gray-500">Actions</th>
             </tr>
           </thead>
@@ -121,7 +121,7 @@ export default function CompliancePage() {
                 </td>
                 <td className="py-3 px-4 text-xs text-gray-600">{fmtDate(r.due_date)}</td>
                 <td className={`py-3 px-4 text-xs text-right font-medium ${r.days_remaining <= (r.item === "bo_filing" ? 14 : 7) ? "text-red-600" : r.days_remaining <= 30 ? "text-amber-600" : "text-gray-600"}`}>
-                  {r.days_remaining}
+                  {r.days_remaining < 0 ? `${-r.days_remaining} days overdue` : r.days_remaining === 0 ? "Today" : `${r.days_remaining} day${r.days_remaining === 1 ? "" : "s"}`}
                 </td>
                 <td className="py-3 px-4">
                   <button onClick={() => markDone(r)}

@@ -64,7 +64,7 @@ export default function ActivitiesPage() {
   return (
     <div className="space-y-4">
       <PageHeader title="Activities"
-        subtitle={<>Visit Reports, Call Reports and other client activities · {activities.length} in total</>}
+        subtitle={`${activities.length} activit${activities.length === 1 ? "y" : "ies"}`}
         actions={<>
 <div className="flex gap-2">
           <button onClick={() => openNew("Visit Report")} className="px-3 py-2 text-sm text-white rounded-lg font-medium flex items-center gap-1.5 hover:opacity-90" style={{ background: "#1a3a5c" }}>

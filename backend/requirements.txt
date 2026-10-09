@@ -14,3 +14,4 @@ reportlab==4.2.5
 python-dateutil==2.9.0
 fastapi-mail==1.4.1
 apscheduler==3.10.4
+tzdata>=2024.1  # UAE business dates in reports (zoneinfo on slim images)

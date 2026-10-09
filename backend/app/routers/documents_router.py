@@ -43,7 +43,7 @@ def list_account_documents(account_id: int, db: Session = Depends(get_db), user:
     return document_service.list_for_account(db, account_id, user)
 
 
-@router.get("/accounts/{account_id}/folder", response_model=ClientFolder, summary="Client document folder (BRD §16)")
+@router.get("/accounts/{account_id}/folder", response_model=ClientFolder, summary="Client document folder")
 def client_folder(account_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     return document_service.client_folder(db, account_id, user)
 
@@ -61,7 +61,7 @@ def upload_account_document(
 
 
 @router.post("/accounts/{account_id}/documents/link", response_model=DocumentRead, status_code=status.HTTP_201_CREATED,
-             summary="File a link (e.g. SharePoint) instead of a file (Triam mark-up §14)")
+             summary="File a link (e.g. SharePoint) instead of a file")
 def add_account_document_link(account_id: int, data: LinkDocumentCreate, db: Session = Depends(get_db),
                               user: User = Depends(get_current_user)):
     return document_service.create_link_for_account(db, account_id, data.category, data.url, data.title, user, notes=data.notes)

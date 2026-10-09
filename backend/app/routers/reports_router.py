@@ -27,13 +27,13 @@ def _pdf_response(content: bytes, filename: str) -> Response:
     )
 
 
-@router.get("/standard", summary="Standard reports available (Triam mark-up §20a)")
+@router.get("/standard", summary="Standard reports available")
 def standard_reports(user: User = Depends(get_current_user)):
     from app.services import standard_reports_service
     return [{"key": k, "title": t} for k, t in standard_reports_service.REPORTS.items()]
 
 
-@router.get("/standard/{key}", summary="Run a standard report (Triam mark-up §20a)")
+@router.get("/standard/{key}", summary="Run a standard report")
 def run_standard_report(key: str, days: int = 30, date_from: Optional[date] = None, date_to: Optional[date] = None,
                         db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     from app.services import standard_reports_service

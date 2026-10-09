@@ -18,12 +18,6 @@ const TABS = [
   { key: "health", label: "System Health" },
 ];
 
-const ROLE_RESPONSIBILITIES = [
-  { role: "Admin", desc: "User management, invoicing (raise/mark paid), full case access" },
-  { role: "Relationship Manager (RM)", desc: "Owns client relationship — intake through docs collection, sees own cases" },
-  { role: "Ops", desc: "Owns regulator application, license tracking, compliance/tax filings" },
-  { role: "Screening", desc: "Reviews and approves/rejects CDD/KYC submissions" },
-];
 
 export default function AdminPage() {
   const isAdmin = useAuthStore((s) => s.isAdmin());
@@ -124,8 +118,7 @@ export default function AdminPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Admin Panel"
-        subtitle={<>Users · Master data · Roles · Audit log · System health</>}
+      <PageHeader title="Administration"
         actions={<>
 {tab === "users" && <button onClick={() => { setForm({ name: "", email: "", password: "", role: "rm", is_active: true, department_id: "", title: "", mobile: "", supervisor_id: "", business_role_id: "", extra_role_ids: [] }); setModal("new"); }}
           className="px-3 py-2 text-sm text-white rounded-lg font-medium flex items-center gap-1.5 hover:opacity-90" style={{ background: "#1a3a5c" }}>
@@ -176,7 +169,15 @@ export default function AdminPage() {
                 </td>
                 <td className="py-3 px-4 text-sm text-gray-600">{u.email}</td>
                 <td className="py-3 px-4 text-sm text-gray-600">{departmentName(u.department_id)}</td>
-                <td className="py-3 px-4"><Badge text={u.role} />{[u.business_role_id, ...(u.extra_role_ids || [])].map(roleName).filter(Boolean).map((n) => <span key={n} className="ml-1.5 text-[11px] px-1.5 py-0.5 rounded bg-brand-50 text-brand-700">{n}</span>)}</td>
+                <td className="py-3 px-4">
+                  <div className="flex flex-wrap gap-1">
+                    {[u.business_role_id, ...(u.extra_role_ids || [])].map(roleName).filter(Boolean).map((n) => <span key={n} className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-brand-50 text-brand-700">{n}</span>)}
+                    {u.role === "admin" && <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-red-50 text-red-700">Administrator</span>}
+                  </div>
+                  {u.role !== "admin" && !u.business_role_id && !(u.extra_role_ids || []).length && (
+                    <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">{ROLE_LABEL[u.role] || u.role}</span>
+                  )}
+                </td>
                 <td className="py-3 px-4">
                   <span className={`text-xs font-medium ${u.is_active ? "text-green-600" : "text-gray-400"}`}>
                     {u.is_active ? "● Active" : "○ Inactive"}
@@ -201,7 +202,7 @@ export default function AdminPage() {
         </table>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="bg-white rounded-xl border border-gray-100 p-5 shadow-sm">
           <h3 className="text-sm font-semibold text-gray-700 mb-3">Departments</h3>
           <div className="space-y-1.5 mb-3">
@@ -241,27 +242,6 @@ export default function AdminPage() {
             <button onClick={addDepartment} className="px-2.5 py-1.5 text-xs text-white rounded-lg" style={{ background: "#1a3a5c" }}>Add</button>
           </div>
         </div>
-        <div className="bg-white rounded-xl border border-gray-100 p-5 shadow-sm">
-          <h3 className="text-sm font-semibold text-gray-700 mb-3">System Information</h3>
-          <div className="space-y-2 text-xs text-gray-600">
-            <div className="flex justify-between py-2 border-b border-gray-50"><span>Version</span><span className="font-medium">TRIAM CRM v1.0.0</span></div>
-            <div className="flex justify-between py-2 border-b border-gray-50"><span>Backend</span><span className="font-medium">FastAPI + PostgreSQL</span></div>
-            <div className="flex justify-between py-2 border-b border-gray-50"><span>Auth</span><span className="font-medium">JWT with refresh tokens</span></div>
-            <div className="flex justify-between py-2 border-b border-gray-50"><span>Active Users</span><span className="font-medium">{users.filter((u) => u.is_active).length}</span></div>
-            <div className="flex justify-between py-2"><span>Roles</span><span className="font-medium">Admin, RM, Ops, Screening</span></div>
-          </div>
-        </div>
-        <div className="bg-white rounded-xl border border-gray-100 p-5 shadow-sm">
-          <h3 className="text-sm font-semibold text-gray-700 mb-3">Roles & Responsibilities</h3>
-          <div className="space-y-3">
-            {ROLE_RESPONSIBILITIES.map((r) => (
-              <div key={r.role} className="text-xs">
-                <span className="font-semibold text-gray-800">{r.role}</span>
-                <p className="text-gray-500 mt-0.5">{r.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
       </div>
       </>)}
 
@@ -280,7 +260,7 @@ export default function AdminPage() {
               <option value="screening">Screening</option>
             </Select>
           </Field>
-          <Field label="Business Role (BRD §15)">
+          <Field label="Business role">
             <Select value={form.business_role_id || ""} onChange={(e) => setForm((p) => ({ ...p, business_role_id: e.target.value }))}>
               <option value="">— None —</option>
               {roles.filter((r) => r.is_active || r.id === form.business_role_id).map((r) => <option key={r.id} value={r.id}>{r.name}{r.description ? ` — ${r.description}` : ""}</option>)}

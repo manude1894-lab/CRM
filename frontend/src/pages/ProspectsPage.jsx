@@ -122,7 +122,7 @@ export default function ProspectsPage({ onNavigate } = {}) {
   return (
     <div className="space-y-4">
       <PageHeader title="Prospects"
-        subtitle={<>{items.length} tracked leads / proposals — not yet onboarded clients</>}
+        subtitle={`${items.length} prospect${items.length === 1 ? "" : "s"}`}
         actions={<>
 <button onClick={openNew} className="px-3 py-2 text-sm text-white rounded-lg font-medium flex items-center gap-1.5 hover:opacity-90" style={{ background: "#1a3a5c" }}>
           <Icon name="plus" size={14} /> Add Prospect

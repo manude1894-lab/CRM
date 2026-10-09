@@ -66,16 +66,15 @@ export default function App() {
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden">
       {/* Sidebar */}
-      <aside className={`flex-shrink-0 flex flex-col border-r border-gray-100 bg-white transition-all duration-200 ${sidebarOpen ? "w-56" : "w-16"}`}>
+      <aside className={`flex-shrink-0 flex flex-col border-r border-gray-100 bg-white transition-all duration-200 ${sidebarOpen ? "w-60" : "w-16"}`}>
         {/* Brand: cropped wordmark when open, gold trident mark when collapsed. */}
         <div className={`flex items-center h-20 border-b border-gray-100 ${sidebarOpen ? "px-5" : "justify-center px-2"}`}>
           {sidebarOpen ? (
             <div>
-              <img src="/triam-wordmark.png" alt="TRIAM" className="h-9 w-auto" />
-              <div className="mt-1.5 text-[11px] text-gray-400">Entity Servicing &amp; Compliance</div>
+              <img src="/triam-wordmark.png" alt="TRIAM" className="h-11 w-auto" />
             </div>
           ) : (
-            <img src="/triam-trident.png" alt="TRIAM" className="h-9 w-auto" />
+            <img src="/triam-trident.png" alt="TRIAM" className="h-10 w-auto" />
           )}
         </div>
 
@@ -96,31 +95,15 @@ export default function App() {
           ))}
         </nav>
 
-        <div className="border-t border-gray-100 p-3">
-          <div className={`flex items-center gap-3 ${sidebarOpen ? "" : "justify-center"}`}>
-            <div className="w-8 h-8 rounded-full text-white text-xs font-bold flex items-center justify-center flex-shrink-0" style={{ background: "#1a3a5c" }}>
-              {avatar}
-            </div>
-            {sidebarOpen && (
-              <>
-                <div className="flex-1 min-w-0">
-                  <div className="text-xs font-semibold text-gray-800 truncate">{user?.name}</div>
-                  <div className="text-xs text-gray-400 truncate">{user?.business_role_name || ROLE_LABEL[user?.role] || user?.role}</div>
-                  {user?.last_login_at && (
-                    <div className="text-[10px] text-gray-400 truncate" title={user.previous_login_at ? `Last login ${formatTimestamp(user.previous_login_at)}` : "First login"}>
-                      Logged in {formatTimestamp(user.last_login_at)}
-                    </div>
-                  )}
-                </div>
-                <button onClick={() => setPasswordOpen(true)} className="text-gray-400 hover:text-brand-600 text-[11px]" title="Change password">
-                  Password
-                </button>
-                <button onClick={logout} className="text-gray-400 hover:text-red-500" title="Logout">
-                  <Icon name="logout" size={16} />
-                </button>
-              </>
-            )}
-          </div>
+        <div className={`border-t border-gray-100 p-2 ${sidebarOpen ? "flex gap-1" : "space-y-1"}`}>
+          <button onClick={() => setPasswordOpen(true)} title="Change password"
+            className="flex-1 flex items-center justify-center gap-2 px-2 py-2 rounded-lg text-xs text-gray-500 hover:bg-gray-50 hover:text-gray-800">
+            <Icon name="key" size={15} />{sidebarOpen && "Password"}
+          </button>
+          <button onClick={logout} title="Sign out"
+            className="flex-1 flex items-center justify-center gap-2 px-2 py-2 rounded-lg text-xs text-gray-500 hover:bg-red-50 hover:text-red-600">
+            <Icon name="logout" size={15} />{sidebarOpen && "Sign out"}
+          </button>
         </div>
       </aside>
 
@@ -148,7 +131,14 @@ export default function App() {
             </div>
             <NotificationBell />
             {user && (
-              <span className="text-xs font-medium text-gray-600 bg-gray-100 px-2.5 py-1.5 rounded-lg">{user.business_role_name || ROLE_LABEL[user.role] || user.role}</span>
+              <div className="flex items-center gap-2.5 pl-3 border-l border-gray-100"
+                title={[user.last_login_at && `Logged in ${formatTimestamp(user.last_login_at)}`, user.previous_login_at && `Last login ${formatTimestamp(user.previous_login_at)}`].filter(Boolean).join("\n")}>
+                <div className="w-8 h-8 rounded-full text-white text-xs font-bold flex items-center justify-center" style={{ background: "#1a3a5c" }}>{avatar}</div>
+                <div className="hidden md:block leading-tight">
+                  <div className="text-sm font-semibold text-gray-800">{user.name}</div>
+                  <div className="text-[11px] text-gray-500">{user.business_role_name || ROLE_LABEL[user.role] || user.role}</div>
+                </div>
+              </div>
             )}
           </div>
         </header>

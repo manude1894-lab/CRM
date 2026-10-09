@@ -272,7 +272,7 @@ function ProspectPicker({ isAdmin, onPick, onClose, onGoToProspects }) {
   }, []);
   return (
     <Modal title="New client — choose the prospect" onClose={onClose}>
-      <p className="text-xs text-gray-500 mb-3">Every new client starts as a prospect assigned to an RM. Choose the prospect this client is for.</p>
+      <p className="text-xs text-gray-500 mb-3">Choose the prospect for this client.</p>
       {items === null ? <Spinner /> : items.length === 0 ? (
         <div className="text-sm text-gray-500 text-center py-6">
           No assigned prospects are waiting for a client.

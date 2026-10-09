@@ -10,7 +10,7 @@ from app.services import dashboard_service
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
 
 
-@router.get("/my-work", summary="Work waiting for this user, by role (Triam mark-up §2)")
+@router.get("/my-work", summary="Work waiting for this user, by role")
 def my_work(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     from app.services import my_work_service
     return my_work_service.my_work(db, user)

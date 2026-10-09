@@ -157,7 +157,6 @@ function RequestModal({ onClose, onDone }) {
 
   return (
     <Modal title="Request an invoice" onClose={onClose}>
-      <p className="text-xs text-gray-500 -mt-2 mb-3">Accounts is notified and raises the invoice. Attach the pricing approval for the amount.</p>
       <Field label="Client" required>
         <Select value={form.account_id} onChange={(e) => setForm((f) => ({ ...f, account_id: e.target.value, instruction_id: "" }))}>
           <option value="">— choose —</option>

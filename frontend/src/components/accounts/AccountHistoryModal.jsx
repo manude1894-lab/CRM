@@ -19,9 +19,8 @@ export default function AccountHistoryModal({ account, onClose }) {
 
   return (
     <Modal title={`History — ${account.company_name}`} onClose={onClose}>
-      <p className="text-xs text-gray-400 mb-3">Every change to this client, its shareholders/directors/signatories and its documents, with who made it and when.</p>
       <div className="max-h-[60vh] overflow-y-auto pr-1">
-        <AuditTrail entries={entries} loading={loading} emptyText="No changes recorded since the audit trail was switched on." />
+        <AuditTrail entries={entries} loading={loading} emptyText="No changes recorded yet." />
       </div>
     </Modal>
   );

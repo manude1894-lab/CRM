@@ -47,7 +47,7 @@ def update_prospect(prospect_id: int, data: ProspectUpdate, db: Session = Depend
     return _read(prospect_service.update_prospect(db, prospect_id, data, user))
 
 
-@router.post("/{prospect_id}/assign", response_model=ProspectRead, summary="Assign the prospect to an RM (Triam mark-up §4A)")
+@router.post("/{prospect_id}/assign", response_model=ProspectRead, summary="Assign the prospect to an RM")
 def assign_prospect(prospect_id: int, data: ProspectAssignRequest, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     return _read(prospect_service.assign_prospect(db, prospect_id, data.rm_id, data.comments, user))
 

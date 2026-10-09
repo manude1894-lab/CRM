@@ -221,8 +221,7 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
   return (
     <Modal title={mode === "edit" ? "Edit Client" : "New Client"} onClose={onClose}>
       <div className="space-y-3">
-        {form._id && (
-          // BRD §11 "status visible on every client profile screen" + §19 Client ID
+        {form._id && !hideWorkflow && (
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 px-3 py-2 rounded-lg bg-gray-50 border border-gray-100 text-xs text-gray-600">
             <span>Client ID <span className="font-mono font-semibold text-gray-800">{form._client_id || "—"}</span></span>
             {form._status_updated_at && <span>Status last updated {fmtDate(form._status_updated_at)}</span>}

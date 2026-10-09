@@ -218,7 +218,7 @@ export default function CasesPage({ initialCaseId, initialStage } = {}) {
   return (
     <div className="space-y-4">
       <PageHeader title="Cases"
-        subtitle={<>{filtered.length} onboarding cases</>}
+        subtitle={`${filtered.length} case${filtered.length === 1 ? "" : "s"}`}
         actions={<>
 <div className="flex gap-2 flex-wrap">
           <div className="flex border border-gray-200 rounded-lg overflow-hidden">
@@ -463,7 +463,7 @@ export default function CasesPage({ initialCaseId, initialStage } = {}) {
       {modal && (
         <Modal title={modal === "new" ? "New Case" : `Edit ${form.case_uid}`} onClose={() => setModal(null)}>
           {modal === "edit" && <CaseComplianceBar caseId={form.id} onChanged={() => { setModal(null); load(); }} />}
-          {modal === "new" && <p className="text-xs text-gray-500 mb-3">A new case is sent to Compliance for approval before it can move through the pipeline.</p>}
+          {modal === "new" && <p className="text-xs text-gray-500 mb-3">New cases go to Compliance for approval.</p>}
           {modal === "new" && (
             <div className="rounded-lg border border-gray-100 bg-gray-50 p-3 mb-3">
               <Field label="Engagement route" required>

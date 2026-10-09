@@ -98,9 +98,10 @@ export default function WorkflowBar({ accountId, refreshKey, onChanged }) {
           ))}
         </div>
       </div>
-      {state.actions.some((a) => !a.allowed && a.reason) && (
+      {/* Why an action is unavailable (missing mandatory fields are listed by the checklist instead). */}
+      {state.actions.some((a) => !a.allowed && a.reason && a.action !== "submit") && (
         <div className="px-3 pb-2 text-[11px] text-gray-500">
-          {state.actions.filter((a) => !a.allowed && a.reason).map((a) => <div key={a.action}>{a.label}: {a.reason}</div>)}
+          {state.actions.filter((a) => !a.allowed && a.reason && a.action !== "submit").map((a) => <div key={a.action}>{a.label}: {a.reason}</div>)}
         </div>
       )}
       {state.locked && state.status === "Awaiting Approval" && (
@@ -151,7 +152,7 @@ export default function WorkflowBar({ accountId, refreshKey, onChanged }) {
                 <input type="checkbox" className="mt-0.5" checked={kycDeclared} onChange={(e) => setKycDeclared(e.target.checked)} />
                 <span>I confirm that the client's KYC verification is done as per the extant verification procedures.</span>
               </label>
-              <p className="text-xs text-gray-500 mb-3">The profile goes to Compliance (MLRO) and then to the Approver, and is locked meanwhile.</p>
+              <p className="text-xs text-gray-500 mb-3">Goes to Compliance, then to the Approver.</p>
             </>
           )}
           {dialog.action === "approve" && (

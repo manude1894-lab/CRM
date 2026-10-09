@@ -5,6 +5,7 @@ Custom reports and favourites (§20b) follow once Triam gives the details.
 """
 from datetime import date, datetime, timezone
 from typing import Optional
+from zoneinfo import ZoneInfo
 
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
@@ -33,6 +34,17 @@ def _accounts(db: Session, user: User) -> list[Account]:
     return (q.filter(clause) if clause is not None else q).all()
 
 
+BUSINESS_TZ = ZoneInfo("Asia/Dubai")  # Triam works on UAE time; stored timestamps are UTC
+
+
+def _local_date(dt: datetime) -> date:
+    return (dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)).astimezone(BUSINESS_TZ).date()
+
+
+def _today() -> date:
+    return datetime.now(BUSINESS_TZ).date()
+
+
 def _iso(d) -> Optional[str]:
     return d.isoformat() if d else None
 
@@ -58,7 +70,7 @@ def _dated_documents(db: Session, user: User) -> list[dict]:
 
 
 def documents_expiring(db: Session, user: User, days: int = 30) -> dict:
-    today = date.today()
+    today = _today()
     rows = [r for r in _dated_documents(db, user) if 0 <= (r["expiry"] - today).days <= days]
     rows.sort(key=lambda r: r["expiry"])
     return {"title": f"Documents expiring in the next {days} days",
@@ -67,7 +79,7 @@ def documents_expiring(db: Session, user: User, days: int = 30) -> dict:
 
 
 def documents_expired(db: Session, user: User) -> dict:
-    today = date.today()
+    today = _today()
     rows = [r for r in _dated_documents(db, user) if r["expiry"] < today]
     rows.sort(key=lambda r: r["expiry"])
     return {"title": "Documents with expired status",
@@ -76,7 +88,7 @@ def documents_expired(db: Session, user: User) -> dict:
 
 
 def clients_risk(db: Session, user: User) -> dict:
-    today = date.today()
+    today = _today()
     accs = sorted(_accounts(db, user), key=lambda a: (a.next_aml_review_date or date.max, a.company_name))
     return {"title": "Clients with their risk levels and AML review dates",
             "columns": ["Client", "Client ID", "Status", "Risk level", "PEP", "CDD completed", "Next AML review", "Review overdue"],
@@ -95,7 +107,7 @@ def prospects_assigned(db: Session, user: User, date_from: Optional[date], date_
     for p in _prospects(db, user):
         if not p.assigned_at:
             continue
-        d = p.assigned_at.date()
+        d = _local_date(p.assigned_at)
         if (date_from and d < date_from) or (date_to and d > date_to):
             continue
         rows.append([p.prospect_uid, p.company_name, p.owner.name if p.owner else "—", p.assigned_by.name if p.assigned_by else "—",
@@ -113,7 +125,7 @@ def prospects_unassigned(db: Session, user: User) -> dict:
         if p.owner_id or p.status == "Lost":
             continue
         created = p.created_at if p.created_at.tzinfo else p.created_at.replace(tzinfo=timezone.utc)
-        rows.append([p.prospect_uid, p.company_name, p.source or "—", _iso(created.date()), (now - created).days])
+        rows.append([p.prospect_uid, p.company_name, p.source or "—", _iso(_local_date(created)), (now - created).days])
     rows.sort(key=lambda r: r[4], reverse=True)
     return {"title": "Unassigned prospects — ageing", "columns": ["Prospect ID", "Company", "Source", "Created", "Days waiting"], "rows": rows}
 
@@ -132,7 +144,7 @@ def rejected_with_rm(db: Session, user: User) -> dict:
         decided = last.decided_at if last.decided_at.tzinfo else last.decided_at.replace(tzinfo=timezone.utc)
         rm = db.get(User, a.spoc_id) if a.spoc_id else None
         rows.append([a.company_name, _client_ref(a), rm.name if rm else "—", last.checker.name if last.checker else "—",
-                     _iso(decided.date()), last.reason_text or "", (now - decided).days])
+                     _iso(_local_date(decided)), last.reason_text or "", (now - decided).days])
     rows.sort(key=lambda r: r[6], reverse=True)
     return {"title": "Cases pending with RM in Rejected status — ageing",
             "columns": ["Client", "Temporary / Client ID", "RM", "Rejected by", "Rejected on", "Reason", "Days pending"], "rows": rows}

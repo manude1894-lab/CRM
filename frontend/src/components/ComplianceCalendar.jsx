@@ -63,7 +63,6 @@ export default function ComplianceCalendar({ rows, itemLabel, onMarkDone, onSetA
             <Icon name="chevronRight" size={16} />
           </button>
         </div>
-        <p className="text-[11px] text-gray-400 mb-2">Only shows items within the selected day-window above — browsing past that range will look empty.</p>
 
         <div className="grid grid-cols-7 gap-1">
           {DAY_LABELS.map((d) => (

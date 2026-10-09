@@ -42,7 +42,7 @@ def check_duplicate_account(name: str, exclude_id: Optional[int] = None, db: Ses
     ]
 
 
-@router.get("/lookup", summary="BRD §3 — existing clients matching the first 3+ letters of a name")
+@router.get("/lookup", summary="Existing clients matching the first 3+ letters of a name")
 def lookup_accounts(q: str, exclude_id: Optional[int] = None, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     return account_service.lookup_by_name(db, user, q, exclude_id)
 
@@ -57,7 +57,7 @@ def get_account(account_id: int, db: Session = Depends(get_db), user: User = Dep
     return account_service.get_account(db, account_id, user)
 
 
-@router.get("/{account_id}/completeness", summary="Mandatory fields still missing (BRD §5/§9/§10)")
+@router.get("/{account_id}/completeness", summary="Mandatory fields still missing")
 def account_completeness(account_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     account = account_service.get_account(db, account_id, user)
     missing = account_service.missing_mandatory(account)

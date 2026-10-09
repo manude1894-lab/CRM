@@ -10,7 +10,7 @@ from tests.test_p2_workflow import complete_client, people  # noqa: F401  (fixtu
 
 def test_document_expiry_reports(db, make_user, make_account):
     rm = make_user("Rita RM")
-    today = date.today()
+    today = rpt._today()
     make_account(name="Soon Ltd", spoc=rm, license_expiry_date=today + timedelta(days=10), lei_expiry_date=today + timedelta(days=90))
     make_account(name="Late Ltd", spoc=rm, license_expiry_date=today - timedelta(days=5))
     make_account(name="Hidden Ltd", spoc=make_user("Otto RM"), license_expiry_date=today + timedelta(days=3))
@@ -26,9 +26,9 @@ def test_prospect_reports(db, make_user, make_role):
     a = prospect_service.create_prospect(db, ProspectCreate(company_name="Assigned Ltd"), coord)
     prospect_service.assign_prospect(db, a.id, rm.id, None, coord)
     prospect_service.create_prospect(db, ProspectCreate(company_name="Waiting Ltd"), coord)
-    assigned = rpt.prospects_assigned(db, coord, date.today(), date.today())
+    assigned = rpt.prospects_assigned(db, coord, rpt._today(), rpt._today())
     assert [r[1] for r in assigned["rows"]] == ["Assigned Ltd"] and assigned["rows"][0][2] == "Rita RM"
-    assert rpt.prospects_assigned(db, coord, date.today() + timedelta(days=1), None)["rows"] == []
+    assert rpt.prospects_assigned(db, coord, rpt._today() + timedelta(days=1), None)["rows"] == []
     assert [r[1] for r in rpt.prospects_unassigned(db, coord)["rows"]] == ["Waiting Ltd"]
 
 

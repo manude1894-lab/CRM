@@ -51,7 +51,6 @@ export default function RolesPanel({ departments, users, onChanged }) {
       <div className="flex items-center justify-between p-4 border-b border-gray-100">
         <div>
           <h3 className="text-sm font-semibold text-gray-700">Business Roles</h3>
-          <p className="text-xs text-gray-400">Roles add permissions on top of a user's system access (Admin / RM / Ops / Screening). Admins have every permission.</p>
         </div>
         <button onClick={() => setForm({ ...BLANK })} className="px-3 py-1.5 text-xs text-white rounded-lg flex items-center gap-1" style={{ background: "#1a3a5c" }}>
           <Icon name="plus" size={14} /> Add Role

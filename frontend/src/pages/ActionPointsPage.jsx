@@ -73,7 +73,7 @@ export default function ActionPointsPage() {
   return (
     <div className="space-y-4">
       <PageHeader title="Action Points"
-        subtitle={<>{items.length} open operational tasks (WIP board)</>}
+        subtitle={`${items.length} open`}
         actions={<>
 <button onClick={openNew} className="px-3 py-2 text-sm text-white rounded-lg font-medium flex items-center gap-1.5 hover:opacity-90" style={{ background: "#1a3a5c" }}>
           <Icon name="plus" size={14} /> Add
@@ -90,6 +90,7 @@ export default function ActionPointsPage() {
                 <span className="text-xs text-gray-400 bg-gray-100 rounded-full px-2 py-0.5">{colItems.length}</span>
               </div>
               <div className="space-y-2 min-h-16">
+                {colItems.length === 0 && <div className="text-xs text-gray-400 text-center py-6 border border-dashed border-gray-200 rounded-xl">Nothing here</div>}
                 {colItems.map((ap) => (
                   <div key={ap.id} className="bg-white border border-gray-100 rounded-xl p-3 shadow-sm">
                     <div className="flex items-start justify-between gap-2">

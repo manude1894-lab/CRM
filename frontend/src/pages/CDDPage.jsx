@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { casesApi, cddApi, directorsApi, shareholdersApi, ubosApi } from "../api/endpoints";
 import { useAuthStore } from "../store/auth";
-import { Icon, Badge, Modal, Field, Input, Select, Spinner, ErrorBanner, PageHeader, DateInput } from "../components/ui";
+import { Icon, Badge, Modal, Field, Input, Select, Spinner, ErrorBanner, PageHeader, DateInput, EmptyState } from "../components/ui";
 import AMLAssessmentPanel from "../components/AMLAssessmentPanel";
 import PEPAssessmentPanel from "../components/PEPAssessmentPanel";
 import DocumentsPanel from "../components/DocumentsPanel";
@@ -176,11 +176,11 @@ export default function CDDPage() {
   return (
     <div className="space-y-4">
       <PageHeader title="CDD / KYC Screening"
-        subtitle={<>{queue.length} cases awaiting screening review</>} />
+        subtitle={`${queue.length} awaiting screening`} />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      {queue.length === 0 && <EmptyState title="Nothing to screen" text="Cases appear here when their documents are submitted for CDD / KYC review." />}
+      <div className={`grid grid-cols-1 lg:grid-cols-3 gap-4 ${queue.length === 0 ? "hidden" : ""}`}>
         <div className="lg:col-span-1 space-y-2">
-          {queue.length === 0 && <p className="text-sm text-gray-400 text-center py-8">No cases awaiting screening.</p>}
           {queue.map((c) => {
             const cdd = cddByCase[c.id];
             return (

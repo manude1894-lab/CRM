@@ -19,6 +19,13 @@ def _rbac_case_query(db: Session, user: User):
     return q
 
 
+def _unpaid_ledger_invoices(db: Session, user: User) -> int:
+    from app.services import invoice_service
+    _, total = invoice_service.list_invoices(db, user, limit=1, status="Raised")
+    _, overdue = invoice_service.list_invoices(db, user, limit=1, status="Overdue")
+    return total + overdue
+
+
 def build_dashboard(db: Session, user: User) -> dict:
     cases = _rbac_case_query(db, user).all()
     today = date.today()
@@ -63,7 +70,8 @@ def build_dashboard(db: Session, user: User) -> dict:
         "open_cases": len(open_cases),
         "docs_pending": len(docs_pending),
         "cdd_awaiting_screening": len(cdd_awaiting_screening),
-        "invoices_unpaid": len(invoices_unpaid),
+        # onboarding-pipeline invoices + raised invoices in the Invoice module, as the user can see them
+        "invoices_unpaid": len(invoices_unpaid) + _unpaid_ledger_invoices(db, user),
         "upcoming_compliance_60d": len(upcoming_compliance),
     }
 

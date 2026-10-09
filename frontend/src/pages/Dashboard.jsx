@@ -157,7 +157,6 @@ export default function Dashboard({ onNavigate = () => {} } = {}) {
       <div className="flex flex-wrap items-end justify-between gap-2">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 tracking-tight">{greeting()}{user?.name ? `, ${user.name.split(" ")[0]}` : ""}</h1>
-          <p className="text-sm text-gray-500">Here's what needs attention across onboarding and compliance.</p>
           {user?.previous_login_at && <p className="text-xs text-gray-400 mt-0.5">Last login {formatTimestamp(user.previous_login_at)}</p>}
         </div>
         <button onClick={load} className="text-xs text-gray-400 hover:text-brand-600">
@@ -191,7 +190,7 @@ export default function Dashboard({ onNavigate = () => {} } = {}) {
         <StatCard label={`Due in ${DUE_SOON_DAYS} days`} value={due.length} attention hint="See due soon" icon="compliance" onClick={() => onNavigate({ page: "compliance" })} />
       </div>
 
-      <Panel title="Onboarding pipeline" right={<span className="text-xs text-gray-400">Click a stage to open those cases</span>}>
+      <Panel title="Onboarding pipeline" >
         <div className="px-3 py-2">
           <Pipeline stages={data.stage_breakdown || []} onStage={(stage) => onNavigate({ page: "cases", stage })} />
         </div>
@@ -247,7 +246,7 @@ export default function Dashboard({ onNavigate = () => {} } = {}) {
         </Panel>
       </div>
 
-      <Panel title="Portfolio by RM / Ops" right={<span className="text-xs text-gray-400">Click a name to see their companies</span>}>
+      <Panel title="Portfolio by RM / Ops" >
         {people.length === 0 ? <EmptyState text="No RM or Ops users yet." /> : (
           <ul className="divide-y divide-gray-50">
             {people.map((r) => (

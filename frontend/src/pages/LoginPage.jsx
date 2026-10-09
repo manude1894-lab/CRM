@@ -45,10 +45,10 @@ export default function LoginPage() {
         </div>
         <div className="relative">
           <h1 className="text-4xl font-bold text-white leading-tight mb-4 tracking-tight">
-            Entity Servicing &amp;<br />Compliance Platform
+            Client Relationship<br />Management
           </h1>
           <p className="text-brand-200 text-base max-w-sm">
-            Formation, CDD/KYC, AML risk assessment and compliance tracking for BVI and offshore entities — end to end, in one place.
+            Clients, onboarding, compliance and servicing for the Triam group.
           </p>
         </div>
         <div className="relative flex items-center gap-6 text-brand-200 text-xs">
@@ -63,11 +63,10 @@ export default function LoginPage() {
             <div className="inline-flex items-center justify-center bg-white rounded-2xl p-4 shadow-md border border-gray-100 mb-3">
               <img src="/triam-logo.png" alt="TRIAM" className="h-20 w-auto" />
             </div>
-            <p className="text-gray-500 text-sm">Entity Servicing &amp; Compliance Platform</p>
+            <p className="text-gray-500 text-sm">Client Relationship Management</p>
           </div>
 
-          <h2 className="text-2xl font-bold text-gray-900 mb-1">Welcome back</h2>
-          <p className="text-sm text-gray-500 mb-6">Sign in to your account to continue</p>
+          <h2 className="text-2xl font-bold text-gray-900 mb-6">Sign in</h2>
 
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-600 text-sm rounded-lg px-4 py-3 mb-4">
