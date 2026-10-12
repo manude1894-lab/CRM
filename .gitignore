@@ -33,3 +33,6 @@ dist/
 
 # Generated field screenshots (scripts/field-screenshots)
 screenshots/
+
+# database address for the backup job — never commit
+scripts/backup.config

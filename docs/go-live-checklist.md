@@ -33,6 +33,7 @@ Five wrong passwords in a row lock an account for 15 minutes. An administrator c
 
 - [ ] Turn on daily backups for the database on the hosting platform, with weekly copies kept.
 - [ ] Or run `scripts/backup_db.sh` once a day from a scheduled job (keeps 14 daily and 8 weekly backups).
+- [ ] On a Windows machine/server: put the Railway public database address in `scripts/backup.config` (`DATABASE_URL=postgresql://...`, never committed), then run `scripts/register_backup_task.ps1 -PgDump "<path to pg_dump.exe>"` once. It backs up daily at 02:00 to `D:\Backups\TriamCRM` (14 daily + 8 weekly copies). Test a restore into an empty database once.
 - [ ] **Test a restore** into a spare database before go-live, and note how long it took.
 
 ## 5. Master data (Admin → Master Data)
