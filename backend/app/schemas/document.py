@@ -18,6 +18,7 @@ class DocumentRead(BaseModel):
     notes: Optional[str] = None
     generated_from: Optional[str] = None
     link_url: Optional[str] = None
+    party_id: Optional[int] = None
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
@@ -49,6 +50,7 @@ class FolderDocument(DocumentRead):
     stage: Optional[str] = None  # Draft / Submitted / Locked (BRD §16)
     lock_reason: Optional[str] = None
     case_uid: Optional[str] = None  # set for documents that belong to one of the client's cases
+    party_name: Optional[str] = None  # the UBO / director / signatory / joint holder it was filed for
     link_url: Optional[str] = None
 
 
@@ -64,6 +66,7 @@ class LinkDocumentCreate(BaseModel):
     url: str = Field(..., max_length=1000)
     title: Optional[str] = Field(None, max_length=255)
     notes: Optional[str] = Field(None, max_length=500)
+    party_id: Optional[int] = None
 
 
 class ClientFolder(BaseModel):
@@ -79,3 +82,4 @@ class ClientFolder(BaseModel):
     case_documents: list[FolderDocument]
     removed: list[RemovedDocument] = []
     compliance_can_file: bool = False
+    parties: list[dict] = []  # the client's people, for filing their documents

@@ -8,6 +8,7 @@ import { INSTRUCTION_TYPE_OPTIONS, fmtDate } from "../../utils/constants";
 import ActivityForm, { activityPayload, activityProblem, blankActivity } from "../activities/ActivityForm";
 import ActivityCard from "../activities/ActivityCard";
 
+const SERVICEABLE = ["Approved", "Active", "Inactive", "Marked for Exit"];
 const STATUS_STYLE = { Pending: "bg-amber-50 text-amber-700", "In Progress": "bg-blue-50 text-blue-700", Completed: "bg-emerald-50 text-emerald-700", "On Hold": "bg-gray-100 text-gray-600" };
 
 /**
@@ -123,8 +124,10 @@ export default function ClientServicingModal({ account, cases = [], onClose, sta
         </div>
       ) : (
         <div className="space-y-2">
-          <button onClick={() => setSr({ instruction_type: "", case_id: "", date_received: new Date().toISOString().split("T")[0], charge_amount: "", comments: "" })}
-            className="px-2.5 py-1 text-xs text-white rounded-lg" style={{ background: "#1a3a5c" }}>+ New Service Request</button>
+          {SERVICEABLE.includes(account.profile_status) ? (
+            <button onClick={() => setSr({ instruction_type: "", case_id: "", date_received: new Date().toISOString().split("T")[0], charge_amount: "", comments: "" })}
+              className="px-2.5 py-1 text-xs text-white rounded-lg" style={{ background: "#1a3a5c" }}>+ New Service Request</button>
+          ) : <p className="text-xs text-gray-500">Service requests open once the client is approved.</p>}
           {requests === null ? <Spinner /> : requests.length === 0
             ? <p className="text-sm text-gray-400 text-center py-6">No service requests for this client yet.</p>
             : (

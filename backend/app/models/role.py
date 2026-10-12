@@ -23,6 +23,7 @@ PERMISSIONS = {
     "client.cdd_edit": "Complete the CDD / risk assessment section of a client (Compliance)",
     "invoice.manage": "Raise invoices: invoice number, date, currency, amount and the invoice file (Accounts)",
     "prospect.assign": "Assign prospects to RMs (Prospecting Team Coordinator)",
+    "read_only": "Read-only: can view and run reports but not change anything (Inquiry & Reports)",
 }
 
 

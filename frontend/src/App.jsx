@@ -136,7 +136,11 @@ export default function App() {
                 <div className="w-8 h-8 rounded-full text-white text-xs font-bold flex items-center justify-center" style={{ background: "#1a3a5c" }}>{avatar}</div>
                 <div className="hidden md:block leading-tight">
                   <div className="text-sm font-semibold text-gray-800">{user.name}</div>
-                  <div className="text-[11px] text-gray-500">{user.business_role_name || ROLE_LABEL[user.role] || user.role}</div>
+                  <div className="text-[11px] text-gray-500">
+                    {user.business_role_name || ROLE_LABEL[user.role] || user.role}
+                    {(user.permissions || []).includes("read_only") && <span className="ml-1 px-1 rounded bg-gray-100 text-gray-500">Read-only</span>}
+                  </div>
+                  {user.last_login_at && <div className="text-[10px] text-gray-400">Logged in {formatTimestamp(user.last_login_at)}</div>}
                 </div>
               </div>
             )}

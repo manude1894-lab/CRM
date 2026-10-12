@@ -597,6 +597,9 @@ def missing_mandatory(account: Account) -> list[dict]:
              when=account.licensing_authority == "Other")
         need("Licensing & Regulatory", "license_start_date", "License Start / Registration Date", when=not forming)
         need("Licensing & Regulatory", "license_expiry_date", "License Expiry Date", when=not forming)
+        if not forming and account.license_expiry_date and account.license_expiry_date < date.today():
+            missing.append({"section": "Licensing & Regulatory", "field": "license_expiry_date",
+                            "label": "Trade licence has expired — a valid licence is needed to onboard"})
         need("Licensing & Regulatory", "license_activities", "License Activities", when=not forming)
         need("Licensing & Regulatory", "is_regulated", "Is entity regulated (Yes / No)")
         need("Licensing & Regulatory", "regulator_name", "Name of Regulator", when=account.is_regulated)
@@ -611,7 +614,6 @@ def missing_mandatory(account: Account) -> list[dict]:
                 missing.append({"section": label, "field": key, "label": f"{label} (line 1, city and country)"})
         need("Tax", "financial_year_end", "Financial Year End")
         need("Tax", "corp_tax_registered", "Corporate Tax Registered (Yes / No)")
-        need("Tax", "corp_tax_registration_number", "Corp Tax Registration No.", when=account.corp_tax_registered)
         need("Introducer", "has_introducer", "Introducer (Yes / No)")
         need("Introducer", "introducer_name", "Introducer Name", when=account.has_introducer)
 
@@ -627,7 +629,8 @@ def missing_mandatory(account: Account) -> list[dict]:
 
     # §10 KYC / AML is completed by Compliance after submission — see missing_cdd.
 
-    # §11 engagement
+    # §9 engagement — a Yes / No answer, then the validity date when signed
+    need("Profile Status & Engagement", "engagement_letter_signed", "Engagement Letter Signed (Yes / No)")
     need("Profile Status & Engagement", "engagement_letter_valid_until", "Engagement Letter valid upto",
          when=account.engagement_letter_signed)
     return missing

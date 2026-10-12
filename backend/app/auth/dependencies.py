@@ -34,7 +34,15 @@ def get_current_user(
         raise credentials_exception
     # Every change written through this request's session is attributed to this user (app.audit).
     set_actor(db, user.id, request.client.host if request.client else None)
+    # Read-only users (Inquiry & Reports) may look and run reports, but not change anything.
+    if request.method not in ("GET", "HEAD", "OPTIONS") and has_permission(user, "read_only") \
+            and not any(request.url.path.endswith(p) for p in READ_ONLY_ALLOWED):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Your role is read-only")
     return user
+
+
+# Personal actions a read-only user may still take.
+READ_ONLY_ALLOWED = ("/auth/change-password", "/auth/logout", "/read", "/read-all", "/mark-all-read")
 
 
 def require_roles(*allowed_roles: UserRole):

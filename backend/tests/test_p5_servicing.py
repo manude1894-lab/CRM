@@ -23,7 +23,7 @@ def visit(**kw):
 
 def test_visit_report_on_client_without_case(db, make_user, make_account):
     rm = make_user("Rita RM")
-    acc = make_account(name="Falcon Trading LLC", spoc=rm)
+    acc = make_account(name="Falcon Trading LLC", spoc=rm, profile_status="Active")
     act = activity_service.create_activity(db, visit(account_id=acc.id), rm)
     assert act.account_id == acc.id and act.case_id is None and act.company_name == "Falcon Trading LLC"
     items, total = activity_service.list_activities(db, rm, account_id=acc.id)
@@ -32,7 +32,7 @@ def test_visit_report_on_client_without_case(db, make_user, make_account):
 
 def test_report_templates_require_their_fields(db, make_user, make_account):
     rm = make_user()
-    acc = make_account(spoc=rm)
+    acc = make_account(spoc=rm, profile_status="Active")
     with pytest.raises(HTTPException) as e:
         activity_service.create_activity(db, visit(account_id=acc.id, location=None), rm)
     assert "Location" in e.value.detail
@@ -46,7 +46,7 @@ def test_report_templates_require_their_fields(db, make_user, make_account):
 
 def test_activity_needs_a_client_or_case_and_access(db, make_user, make_account):
     rm, other = make_user("Rita"), make_user("Otto")
-    acc = make_account(spoc=rm)
+    acc = make_account(spoc=rm, profile_status="Active")
     with pytest.raises(HTTPException) as e:
         activity_service.create_activity(db, visit(), rm)
     assert "Choose the client" in e.value.detail
@@ -57,11 +57,11 @@ def test_activity_needs_a_client_or_case_and_access(db, make_user, make_account)
 
 def test_case_activity_is_filed_against_its_client(db, make_user, make_account):
     rm = make_user()
-    acc = make_account(name="Nova Holdings", spoc=rm)
+    acc = make_account(name="Nova Holdings", spoc=rm, profile_status="Active")
     case = case_service.create_case(db, CaseCreate(company_name="Nova BVI", account_id=acc.id, rm_id=rm.id), rm)
     act = activity_service.create_activity(db, visit(case_id=case.id, activity_type="Call Report", location=None), rm)
     assert act.account_id == acc.id
-    other = make_account(name="Other Co", spoc=rm)
+    other = make_account(name="Other Co", spoc=rm, profile_status="Active")
     with pytest.raises(HTTPException) as e:
         activity_service.create_activity(db, visit(case_id=case.id, account_id=other.id), rm)
     assert "different client" in e.value.detail
@@ -69,7 +69,7 @@ def test_case_activity_is_filed_against_its_client(db, make_user, make_account):
 
 def test_anchor_rm_sees_colleagues_reports_on_their_client(db, make_user, make_account, make_role):
     anchor, colleague, stranger = make_user("Anchor"), make_user("Colleague"), make_user("Stranger")
-    acc = make_account(spoc=anchor, non_anchor=[colleague])
+    acc = make_account(spoc=anchor, non_anchor=[colleague], profile_status="Active")
     activity_service.create_activity(db, visit(account_id=acc.id), colleague)
     assert activity_service.list_activities(db, anchor, account_id=acc.id)[1] == 1
     assert activity_service.list_activities(db, stranger)[1] == 0
@@ -80,7 +80,7 @@ def test_anchor_rm_sees_colleagues_reports_on_their_client(db, make_user, make_a
 def test_service_request_for_client_without_case(db, make_user, make_account, seed_master):
     seed_master("service_request_type", ["Change of Address", "AR Filing"])
     rm = make_user()
-    acc = make_account(name="Falcon Trading LLC", spoc=rm)
+    acc = make_account(name="Falcon Trading LLC", spoc=rm, profile_status="Active")
     sr = instruction_service.create_instruction(db, InstructionCreate(account_id=acc.id, instruction_type="Change of Address",
                                                                       charge_amount=Decimal("500")), rm)
     assert sr.account_id == acc.id and sr.case_id is None
@@ -96,7 +96,7 @@ def test_service_request_for_client_without_case(db, make_user, make_account, se
 
 def test_service_request_visibility(db, make_user, make_account):
     rm, stranger = make_user("Rita"), make_user("Stranger")
-    acc = make_account(spoc=rm)
+    acc = make_account(spoc=rm, profile_status="Active")
     sr = instruction_service.create_instruction(db, InstructionCreate(account_id=acc.id, instruction_type="Other"), rm)
     assert instruction_service.list_instructions(db, stranger)[1] == 0
     with pytest.raises(HTTPException):
@@ -105,7 +105,7 @@ def test_service_request_visibility(db, make_user, make_account):
 
 def test_case_service_request_still_invoices(db, make_user, make_account):
     rm = make_user()
-    acc = make_account(spoc=rm)
+    acc = make_account(spoc=rm, profile_status="Active")
     case = case_service.create_case(db, CaseCreate(company_name="BVI Co", account_id=acc.id, rm_id=rm.id), rm)
     sr = instruction_service.create_instruction(db, InstructionCreate(case_id=case.id, instruction_type="AR Filing",
                                                                       charge_amount=Decimal("750")), rm)
@@ -136,3 +136,13 @@ def test_sms_sent_only_for_chosen_types(db, make_user, monkeypatch):
 
 def test_sms_disabled_by_default_never_raises():
     assert sms_service.send_sms("+971501234567", "hello") is False
+
+
+def test_service_requests_open_once_the_client_is_approved(db, make_user, make_account, seed_master):
+    """Triam mark-up §8: once approved, the client is available for service requests."""
+    seed_master("service_request_type", ["Change of Address"])
+    rm = make_user()
+    acc = make_account(name="Still Onboarding Ltd", spoc=rm, profile_status="WIP")
+    with pytest.raises(HTTPException) as e:
+        instruction_service.create_instruction(db, InstructionCreate(account_id=acc.id, instruction_type="Change of Address"), rm)
+    assert "once the client is approved" in e.value.detail

@@ -216,7 +216,7 @@ export default function AccountsPage({ initialAccountId, initialOpenForm, initia
                   <td className="py-2.5 px-3 font-mono text-xs text-gray-600">{a.client_id || <span className="text-gray-400" title="Temporary ID until Compliance approves">{a.temp_id || a.account_uid}</span>}</td>
                   <td className="py-2.5 px-3">
                     <div className="font-medium text-gray-800">{a.company_name}</div>
-                    <div className="text-xs text-gray-400">{a.account_type === "Individual" ? "Individual" : (a.industry || "Corporate")}{a.is_pep ? " · PEP" : ""}</div>
+                    <div className="text-xs text-gray-400">{a.account_type === "Individual" ? "Individual" : [a.client_category, a.country].filter(Boolean).join(" · ") || "Corporate"}{a.is_pep ? " · PEP" : ""}</div>
                   </td>
                   <td className="py-2.5 px-3"><Badge text={a.profile_status || "New"} /></td>
                   <td className="py-2.5 px-3 text-xs text-gray-600">{a.risk_rating || "—"}</td>

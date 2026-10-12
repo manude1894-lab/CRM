@@ -15,6 +15,8 @@ export default function MasterDataPanel() {
   const [newCode, setNewCode] = useState("");
   const [editingId, setEditingId] = useState(null);
   const [editingLabel, setEditingLabel] = useState("");
+  const [entities, setEntities] = useState([]);
+  useEffect(() => { mastersApi.list("triam_entity").then((r) => setEntities(r.filter((e) => e.is_active))).catch(() => {}); }, []);
 
   useEffect(() => {
     mastersApi.types().then((t) => { setTypes(t); setListType((cur) => cur || t[0]?.list_type); })
@@ -74,7 +76,7 @@ export default function MasterDataPanel() {
 
       <div className="md:col-span-3 bg-white rounded-xl border border-gray-100 p-5 shadow-sm">
         <h3 className="text-sm font-semibold text-gray-700 mb-1">{types.find((t) => t.list_type === listType)?.title}</h3>
-        <p className="text-xs text-gray-400 mb-3">Deactivate instead of deleting — records that already use a value keep it. The code is what's stored and can't be changed.</p>
+        <p className="text-xs text-gray-400 mb-3">Deactivate a value instead of deleting it.{listType === "service" && " Tick the Triam entities that offer each service."}</p>
 
         {loading ? <p className="text-xs text-gray-400">Loading…</p> : (
           <div className="space-y-1 mb-4">
@@ -92,6 +94,20 @@ export default function MasterDataPanel() {
                   {item.code !== item.label && <span className="text-[10px] font-mono text-gray-400 flex-shrink-0">{item.code}</span>}
                   {item.meta?.opens_free_text && <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 flex-shrink-0">opens free text</span>}
                   {!item.is_active && <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-200 text-gray-500 flex-shrink-0">Inactive</span>}
+                  {listType === "service" && (
+                    <span className="flex flex-wrap gap-1 ml-2">
+                      {entities.map((e) => {
+                        const on = (item.meta?.entities || []).includes(e.code);
+                        return (
+                          <button key={e.code} type="button" title={e.label}
+                            onClick={() => patch(item, { meta: { ...(item.meta || {}), entities: on ? item.meta.entities.filter((x) => x !== e.code) : [...(item.meta?.entities || []), e.code] } })}
+                            className={`text-[10px] px-1.5 py-0.5 rounded border ${on ? "border-brand-600 bg-brand-600 text-white" : "border-gray-200 text-gray-400 hover:border-gray-300"}`}>
+                            {e.code}
+                          </button>
+                        );
+                      })}
+                    </span>
+                  )}
                 </div>
                 <div className="flex gap-1 flex-shrink-0">
                   <button onClick={() => move(i, -1)} disabled={i === 0} title="Move up" className="p-1 rounded hover:bg-gray-100 text-gray-400 disabled:opacity-30">▲</button>

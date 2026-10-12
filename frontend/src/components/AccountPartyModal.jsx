@@ -214,7 +214,7 @@ function PartyForm({ form, setForm, countries, onCancel, onSave }) {
       </Field>
       <Field label="Contact Email" required={contactRequired}><Input type="email" value={form.email || ""} onChange={set(setForm, "email")} /></Field>
 
-      <Field label="Nationality" required>
+      <Field label="Nationality" required={!isEntity}>
         <CountrySelect value={form.nationality} onChange={set(setForm, "nationality")} countries={countries} />
       </Field>
       <Field label="Country of Residence" required>

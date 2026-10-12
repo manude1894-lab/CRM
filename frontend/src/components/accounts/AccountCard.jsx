@@ -24,7 +24,7 @@ export default function AccountCard({ account: a, anchorRm, isSelected, onOpen, 
           </div>
           <p className="text-[11px] font-mono text-gray-400">{a.client_id || `Temp ${a.temp_id || a.account_uid}`}</p>
           <p className="text-xs text-gray-500 truncate">
-            {a.account_type === "Individual" ? `Individual · ${a.nationality || "—"}` : `${a.industry || "—"} · ${a.country || "—"}`}
+            {a.account_type === "Individual" ? `Individual · ${a.nationality || "—"}` : `${a.client_category || "Corporate"} · ${a.country || "—"}`}
           </p>
         </div>
       </div>

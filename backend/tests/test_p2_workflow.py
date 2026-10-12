@@ -37,7 +37,7 @@ def complete_client(db, maker):
         nature_of_services_sought=["Accounting & Bookkeeping"],
         registered_address={"line1": "Office 1201, Tower A", "city": "Dubai", "country": "United Arab Emirates"},
         operating_address={"line1": "Office 1201, Tower A", "city": "Dubai", "country": "United Arab Emirates"},
-        is_regulated=False, corp_tax_registered=False, has_introducer=False,
+        is_regulated=False, corp_tax_registered=False, has_introducer=False, engagement_letter_signed=False,
     ), maker)
     account_party_service.create_party(db, acc.id, AccountPartyCreate(
         party_role="Shareholder", country_of_residence="United Arab Emirates", nationality="United Arab Emirates", full_name="Jane Owner", mobile_country_code="+971", mobile_number="501234567",

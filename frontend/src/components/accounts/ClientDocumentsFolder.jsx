@@ -31,6 +31,7 @@ export default function ClientDocumentsFolder({ accountId, onChange, onboarding 
   const [mode, setMode] = useState("file"); // "file" | "link" (Triam mark-up §14: URLs are allowed)
   const [linkUrl, setLinkUrl] = useState("");
   const [linkTitle, setLinkTitle] = useState("");
+  const [partyId, setPartyId] = useState("");
   const [openCats, setOpenCats] = useState({});
   const fileRef = useRef(null);
   const cats = useMasters("document_category", DOCUMENT_CATEGORY_OPTIONS);
@@ -50,6 +51,9 @@ export default function ClientDocumentsFolder({ accountId, onChange, onboarding 
     .filter((c) => !complianceOnly(c) || folder.compliance_can_file)
     .filter((c) => !statusLocked || complianceOnly(c));
   const sectionOf = (code) => cats.items.find((i) => i.code === code)?.meta?.section;
+  // Passport / EID / Visa and similar are filed for one of the client's people (Triam mark-up §14).
+  const forPeople = (code) => /UBO|Director|Signatory|Individual/.test(sectionOf(code) || "");
+  const parties = folder.parties || [];
 
   const upload = async () => {
     if (mode === "link") return addLink();
@@ -62,11 +66,12 @@ export default function ClientDocumentsFolder({ accountId, onChange, onboarding 
       const fd = new FormData();
       fd.append("file", file);
       fd.append("category", category);
+      if (partyId) fd.append("party_id", partyId);
       if (notes.trim()) fd.append("notes", notes.trim());
       await documentsApi.uploadForAccount(accountId, fd);
       toast.success(`Uploaded to ${cats.labelOf(category)}`);
       setOpenCats((o) => ({ ...o, [category]: true }));
-      fileRef.current.value = ""; setNotes(""); setCategory(""); setUploading(false);
+      fileRef.current.value = ""; setNotes(""); setCategory(""); setPartyId(""); setUploading(false);
       await load();
       onChange?.();
     } catch (e) {
@@ -79,7 +84,7 @@ export default function ClientDocumentsFolder({ accountId, onChange, onboarding 
     if (!/^https:\/\/\S+$/i.test(linkUrl.trim())) return toast.error("Enter a valid https:// link");
     setBusy(true);
     try {
-      await documentsApi.addLink(accountId, { category, url: linkUrl.trim(), title: linkTitle.trim() || null, notes: notes.trim() || null });
+      await documentsApi.addLink(accountId, { category, url: linkUrl.trim(), title: linkTitle.trim() || null, notes: notes.trim() || null, party_id: partyId ? Number(partyId) : null });
       toast.success(`Link added to ${cats.labelOf(category)}`);
       setOpenCats((o) => ({ ...o, [category]: true }));
       setLinkUrl(""); setLinkTitle(""); setNotes(""); setCategory(""); setUploading(false);
@@ -110,6 +115,7 @@ export default function ClientDocumentsFolder({ accountId, onChange, onboarding 
         )}
         <div className="text-[10px] text-gray-400">
           {d.link_url ? "Link" : fmtBytes(d.size_bytes)} · {fmtDate(d.created_at)}{d.uploaded_by_name ? ` · ${d.uploaded_by_name}` : ""}
+          {d.party_name && <> · <span className="text-gray-600">{d.party_name}</span></>}
           {d.case_uid && <> · case <span className="font-mono">{d.case_uid}</span></>}
           {d.notes && <> · {d.notes}</>}
         </div>
@@ -170,6 +176,13 @@ export default function ClientDocumentsFolder({ accountId, onChange, onboarding 
               <option value="">— document category —</option>
               {categoryOptions.map((c) => <option key={c} value={c}>{cats.labelOf(c)}{sectionOf(c) ? ` — ${sectionOf(c)}` : ""}</option>)}
             </select>
+            {forPeople(category) && parties.length > 0 && (
+              <select value={partyId} onChange={(e) => setPartyId(e.target.value)}
+                className="border border-gray-200 rounded-lg px-2 py-1 text-xs bg-white focus:outline-none focus:border-brand-400">
+                <option value="">— belongs to (client) —</option>
+                {parties.map((pt) => <option key={pt.id} value={pt.id}>{pt.name}</option>)}
+              </select>
+            )}
             {mode === "file" ? (
               <input ref={fileRef} type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.bmp"
                 className="text-xs file:mr-2 file:py-1 file:px-2 file:rounded file:border file:border-gray-200 file:text-xs file:bg-white" />

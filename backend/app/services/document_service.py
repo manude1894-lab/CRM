@@ -167,10 +167,12 @@ def create_for_account(
     category: str,
     user: User,
     notes: str | None = None,
+    party_id: int | None = None,
 ) -> Document:
     account = _account_for_read(db, account_id, user)
     category = _normalise_category(db, category)
     _assert_can_file(db, account, category, user)
+    _assert_party(db, account, party_id)
 
     filename = _safe_filename(upload.filename)
     if _ext(filename) not in _ALLOWED_EXT:
@@ -194,6 +196,7 @@ def create_for_account(
         content=data,
         uploaded_by_id=user.id,
         notes=(notes or None),
+        party_id=party_id,
     )
     db.add(doc)
     db.flush()
@@ -230,19 +233,29 @@ def _assert_can_file(db: Session, account, category: str, user: User) -> None:
     wf.assert_editable(account)
 
 
+def _assert_party(db: Session, account, party_id) -> None:
+    if party_id is None:
+        return
+    from app.models import AccountParty
+    party = db.get(AccountParty, party_id)
+    if party is None or party.account_id != account.id:
+        raise HTTPException(status_code=400, detail="That person is not one of this client's parties")
+
+
 def create_link_for_account(db: Session, account_id: int, category: str, url: str, title: str | None,
-                            user: User, notes: str | None = None) -> Document:
+                            user: User, notes: str | None = None, party_id: int | None = None) -> Document:
     """Triam BRD mark-up §14 — a document can be a URL instead of a file, e.g. the KYC verification
     video kept on SharePoint."""
     account = _account_for_read(db, account_id, user)
     category = _normalise_category(db, category)
     _assert_can_file(db, account, category, user)
+    _assert_party(db, account, party_id)
     url = (url or "").strip()
     if not url.lower().startswith("https://") or len(url) > 1000 or any(c.isspace() for c in url):
         raise HTTPException(status_code=400, detail="Enter a valid https:// link")
     name = (title or "").strip()[:255] or url.rsplit("/", 1)[-1][:255] or "Link"
     doc = Document(account_id=account_id, category=category, filename=name, content_type="text/uri-list",
-                   size_bytes=0, content=None, link_url=url, uploaded_by_id=user.id, notes=(notes or None))
+                   size_bytes=0, content=None, link_url=url, uploaded_by_id=user.id, notes=(notes or None), party_id=party_id)
     db.add(doc)
     db.flush()
     log_event(db, "document_upload", f"{_category_label(db, category)}: link '{name}' filed for {account.company_name}",
@@ -339,12 +352,14 @@ def client_folder(db: Session, account_id: int, user: User) -> dict:
     from app.models import User as UserModel
     account = _account_for_read(db, account_id, user)
     names = {u.id: u.name for u in db.query(UserModel.id, UserModel.name).all()}
+    parties = {p.id: f"{p.full_name} ({p.party_role})" for p in account.parties}
 
     def item(d: Document, **extra) -> dict:
         out = {c: getattr(d, c) for c in ("id", "case_id", "account_id", "case_document_id", "instruction_id", "category",
                                           "filename", "content_type", "size_bytes", "uploaded_by_id", "notes",
-                                          "generated_from", "created_at", "link_url")}
+                                          "generated_from", "created_at", "link_url", "party_id")}
         out["uploaded_by_name"] = names.get(d.uploaded_by_id)
+        out["party_name"] = parties.get(d.party_id) if d.party_id else None
         out.update(extra)
         return out
 
@@ -361,6 +376,7 @@ def client_folder(db: Session, account_id: int, user: User) -> dict:
         "max_upload_mb": settings.MAX_UPLOAD_MB, "documents": client_docs, "case_documents": case_docs,
         "removed": _removed_history(db, account.id, names),
         "compliance_can_file": _compliance_can_file(db, account, user),
+        "parties": [{"id": pid, "name": name} for pid, name in parties.items()],
     }
 
 

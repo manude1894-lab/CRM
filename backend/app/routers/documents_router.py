@@ -54,17 +54,18 @@ def upload_account_document(
     file: UploadFile = File(...),
     category: str = Form("Other"),
     notes: Optional[str] = Form(None),
+    party_id: Optional[int] = Form(None),
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    return document_service.create_for_account(db, account_id, file, category, user, notes=notes)
+    return document_service.create_for_account(db, account_id, file, category, user, notes=notes, party_id=party_id)
 
 
 @router.post("/accounts/{account_id}/documents/link", response_model=DocumentRead, status_code=status.HTTP_201_CREATED,
              summary="File a link (e.g. SharePoint) instead of a file")
 def add_account_document_link(account_id: int, data: LinkDocumentCreate, db: Session = Depends(get_db),
                               user: User = Depends(get_current_user)):
-    return document_service.create_link_for_account(db, account_id, data.category, data.url, data.title, user, notes=data.notes)
+    return document_service.create_link_for_account(db, account_id, data.category, data.url, data.title, user, notes=data.notes, party_id=data.party_id)
 
 
 @router.get("/documents/{document_id}/download")

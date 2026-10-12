@@ -88,7 +88,7 @@ class Account(Base):
     status_updated_by_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
     # Engagement Letter — client-level (§26-27), distinct from Case's onboarding-pipeline dates
-    engagement_letter_signed = Column(Boolean, default=False, nullable=False)
+    engagement_letter_signed = Column(Boolean, nullable=True)  # mandatory Yes / No — None = not answered (BRD §9)
     engagement_letter_valid_until = Column(Date, nullable=True)
 
     # AML classification (§24.1, 24.3, 24.5-24.6) — distinct from risk_rating (High/Med/Low)

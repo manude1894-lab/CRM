@@ -20,7 +20,7 @@ import {
 import { useMasters } from "../../hooks/useMasters";
 import { selectableCodes, servicesForEntities } from "../../hooks/masterUtils";
 
-const Section = ({ title, children, hasData, onSave, status, error, dirty = true }) => {
+const Section = ({ title, children, hasData, onSave, status, error, dirty }) => {
   const [open, setOpen] = useState(!!hasData);
   return (
     <div className="mb-2 border border-gray-100 rounded-lg overflow-hidden">
@@ -29,6 +29,7 @@ const Section = ({ title, children, hasData, onSave, status, error, dirty = true
         <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide flex items-center gap-1.5">
           {title}
           {hasData && <span className="w-1.5 h-1.5 rounded-full bg-brand-500 flex-shrink-0" />}
+          {onSave && dirty && <span className="normal-case tracking-normal text-[10px] font-semibold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">Unsaved changes</span>}
         </span>
         <Icon name="chevronRight" size={14} className={`text-gray-400 transition-transform flex-shrink-0 ${open ? "rotate-90" : ""}`} />
       </button>
@@ -37,8 +38,8 @@ const Section = ({ title, children, hasData, onSave, status, error, dirty = true
           {children}
           {onSave && (
             <div className="flex items-center gap-2 mt-3 pt-3 border-t border-gray-100">
-              <button type="button" onClick={onSave} disabled={status === "saving" || !dirty} title={dirty ? "" : "No changes to save"}
-                className={`px-3 py-1.5 text-xs rounded-lg border disabled:cursor-not-allowed ${dirty
+              <button type="button" onClick={onSave} disabled={status === "saving" || dirty === false} title={dirty === false ? "No changes to save" : ""}
+                className={`px-3 py-1.5 text-xs rounded-lg border disabled:cursor-not-allowed ${dirty !== false
                   ? "border-brand-600 bg-brand-600 text-white hover:bg-brand-700" : "border-gray-200 text-gray-400 bg-white"}`}>
                 {status === "saving" ? "Saving…" : `Save ${title}`}
               </button>
@@ -542,15 +543,14 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
           <MultiSelect options={selectableCodes(servicesForEntities(services.items, [form.anchor_entity, ...(form.non_anchor_entities || [])]), form.services_obtained)} value={form.services_obtained} onChange={setValue("services_obtained")} />
         </Section>
 
-        <Section title="Engagement" hasData={!!form.engagement_letter_signed || !!form.engagement_letter_valid_until}
+        <Section title="Engagement" hasData={form.engagement_letter_signed != null || !!form.engagement_letter_valid_until}
           {...sectionProps("profileStatus")}>
-          <p className="text-[11px] text-gray-400 mb-2">Profile status ({form.profile_status}) changes only through Submit / Approve and the status buttons at the top.</p>
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Engagement Letter Valid Until"><DateInput value={form.engagement_letter_valid_until || ""} onChange={set("engagement_letter_valid_until")} /></Field>
+            <YesNo label="Engagement Letter Signed" value={form.engagement_letter_signed} onChange={setValue("engagement_letter_signed")} />
+            {form.engagement_letter_signed && (
+              <Field label="Engagement Letter Valid Until *"><DateInput value={form.engagement_letter_valid_until || ""} onChange={set("engagement_letter_valid_until")} /></Field>
+            )}
           </div>
-          <label className="flex items-center gap-2 text-xs text-gray-700">
-            <input type="checkbox" checked={!!form.engagement_letter_signed} onChange={setChecked("engagement_letter_signed")} /> Engagement Letter Signed
-          </label>
         </Section>
 
         <Section title="Customer Risk Assessment / KYC & AML (Compliance)" hasData={!!(form.risk_rating || form.cdd_completion_date)}

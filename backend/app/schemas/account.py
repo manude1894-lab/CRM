@@ -263,7 +263,7 @@ class AccountBase(_ClientFieldRules):
 
     profile_status: str = "New"
 
-    engagement_letter_signed: bool = False
+    engagement_letter_signed: Optional[bool] = None
     engagement_letter_valid_until: Optional[date] = None
 
     aml_classification: Optional[str] = None

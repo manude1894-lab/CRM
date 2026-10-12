@@ -274,7 +274,8 @@ export default function InstructionsPage() {
             <Field label="Client" required>
               <Select value={form.account_id || ""} disabled={modal === "edit"} onChange={(e) => setForm((p) => ({ ...p, account_id: e.target.value, case_id: "" }))}>
                 <option value="">— choose client —</option>
-                {accounts.map((a) => <option key={a.id} value={a.id}>{a.client_id ? `${a.client_id} – ` : ""}{a.company_name}</option>)}
+                {accounts.filter((a) => modal === "edit" || ["Approved", "Active", "Inactive", "Marked for Exit"].includes(a.profile_status))
+                  .map((a) => <option key={a.id} value={a.id}>{a.client_id ? `${a.client_id} – ` : ""}{a.company_name}</option>)}
               </Select>
             </Field>
             <Field label="Case / entity (optional)">

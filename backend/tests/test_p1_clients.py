@@ -244,8 +244,10 @@ def test_yes_no_questions_must_be_answered(db, make_user):
     admin = make_user(role=UserRole.ADMIN)
     acc = create(db, admin)
     labels = {m["label"] for m in account_service.missing_mandatory(acc)}
-    assert {"Is entity regulated (Yes / No)", "Corporate Tax Registered (Yes / No)", "Introducer (Yes / No)"} <= labels
-    account_service.update_account(db, acc.id, AccountUpdate(is_regulated=False, corp_tax_registered=False, has_introducer=False), admin)
+    assert {"Is entity regulated (Yes / No)", "Corporate Tax Registered (Yes / No)", "Introducer (Yes / No)",
+            "Engagement Letter Signed (Yes / No)"} <= labels
+    account_service.update_account(db, acc.id, AccountUpdate(is_regulated=False, corp_tax_registered=False, has_introducer=False,
+                                                             engagement_letter_signed=False), admin)
     labels = {m["label"] for m in account_service.missing_mandatory(acc)}
     assert not any("(Yes / No)" in l for l in labels)  # "No" is an answer
 
@@ -317,3 +319,15 @@ def test_individual_clients_have_joint_holders(db, make_user):
     with pytest.raises(HTTPException) as e:
         account_party_service.create_party(db, corp.id, AccountPartyCreate(**holder), admin)
     assert "Individual clients only" in e.value.detail
+
+
+def test_expired_licence_blocks_onboarding_and_tax_number_is_optional(db, make_user):
+    """Triam mark-up §5: no onboarding with an expired trade licence; Corp Tax Registration No. is optional."""
+    from datetime import date as _d, timedelta
+    admin = make_user(role=UserRole.ADMIN)
+    acc = create(db, admin, client_category="Existing", corp_tax_registered=True)
+    acc.license_expiry_date = _d.today() - timedelta(days=1)  # lapsed after it was entered
+    db.commit()
+    labels = {m["label"] for m in account_service.missing_mandatory(acc)}
+    assert "Trade licence has expired — a valid licence is needed to onboard" in labels
+    assert "Corp Tax Registration No." not in labels

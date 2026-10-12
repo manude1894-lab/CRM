@@ -104,8 +104,20 @@ def _resolve_links(db: Session, account_id: Optional[int], case_id: Optional[int
     return account_id, case_id
 
 
+SERVICEABLE = {"Approved", "Active", "Inactive", "Marked for Exit"}
+
+
+def _assert_client_serviceable(db: Session, account_id) -> None:
+    """Triam mark-up §8: a client is available for service requests once it is approved."""
+    from app.models import Account
+    acc = db.get(Account, account_id) if account_id else None
+    if acc is not None and acc.profile_status not in SERVICEABLE:
+        raise HTTPException(status_code=400, detail=f"{acc.company_name} is {acc.profile_status} — service requests open once the client is approved")
+
+
 def create_instruction(db: Session, data: InstructionCreate, user: User) -> Instruction:
     account_id, case_id = _resolve_links(db, data.account_id, data.case_id, user)
+    _assert_client_serviceable(db, account_id)
     master_service.assert_valid(db, "service_request_type", data.instruction_type, "Request type")
     inst = Instruction(**data.model_dump(exclude={"account_id", "case_id"}), account_id=account_id, case_id=case_id)
     db.add(inst)

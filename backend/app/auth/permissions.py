@@ -17,7 +17,7 @@ IMPLIED = {
 
 def user_permissions(user: User) -> set[str]:
     if user.role == UserRole.ADMIN:
-        return set(PERMISSIONS)
+        return set(PERMISSIONS) - {"read_only"}
     granted = {p for role in user.all_business_roles for p in (role.permissions or []) if p in PERMISSIONS}
     for p in list(granted):
         granted |= IMPLIED.get(p, set())
