@@ -2,17 +2,19 @@ import React, { useEffect, useState } from "react";
 import SystemHealthPanel from "../components/admin/SystemHealthPanel";
 import { usersApi, departmentsApi, rolesApi } from "../api/endpoints";
 import MasterDataPanel from "../components/admin/MasterDataPanel";
+import CountriesPanel from "../components/admin/CountriesPanel";
 import RolesPanel from "../components/admin/RolesPanel";
 import AuditLogPanel from "../components/admin/AuditLogPanel";
 import { useAuthStore } from "../store/auth";
 import { Icon, Badge, Modal, Field, Input, Select, Spinner, ErrorBanner, PageHeader, MultiSelect } from "../components/ui";
-import { ROLE_LABEL } from "../utils/constants";
+import { USER_TYPE_LABEL } from "../utils/constants";
 import { toast } from "../store/toast";
 import { confirmDialog } from "../store/confirm";
 
 const TABS = [
   { key: "users", label: "Users & Departments" },
   { key: "masters", label: "Master Data" },
+  { key: "countries", label: "Countries" },
   { key: "roles", label: "Roles" },
   { key: "audit", label: "Audit Log" },
   { key: "health", label: "System Health" },
@@ -21,6 +23,7 @@ const TABS = [
 
 export default function AdminPage() {
   const isAdmin = useAuthStore((s) => s.isAdmin());
+  const me = useAuthStore((s) => s.user);
   const [users, setUsers] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [roles, setRoles] = useState([]);
@@ -59,12 +62,6 @@ export default function AdminPage() {
     if (!editingDeptName.trim()) return;
     try { await departmentsApi.update(id, { name: editingDeptName.trim() }); setEditingDeptId(null); load(); }
     catch (e) { toast.error(e.response?.data?.detail || "Failed to rename department"); }
-  };
-
-  const removeDepartment = async (id) => {
-    if (!(await confirmDialog("Delete this department? Users assigned to it will become unassigned."))) return;
-    try { await departmentsApi.delete(id); load(); }
-    catch (e) { toast.error(e.response?.data?.detail || "Failed to delete department"); }
   };
 
   const toggleDepartmentActive = async (d) => {
@@ -107,10 +104,12 @@ export default function AdminPage() {
     }
   };
 
-  const remove = async (id) => {
-    if (!(await confirmDialog("Delete this user?"))) return;
-    try { await usersApi.delete(id); load(); }
-    catch (e) { toast.error(e.response?.data?.detail || "Delete failed"); }
+  // Users are never deleted: deactivating ends their access and keeps their history.
+  const toggleActive = async (u) => {
+    if (u.is_active && !(await confirmDialog({ title: "Deactivate user", confirmLabel: "Deactivate", danger: true,
+      message: `${u.name} will no longer be able to sign in. Their history is kept, and they can be reactivated later.` }))) return;
+    try { await usersApi.update(u.id, { is_active: !u.is_active }); load(); }
+    catch (e) { toast.error(e.response?.data?.detail || "Update failed"); }
   };
 
   if (loading) return <Spinner />;
@@ -136,6 +135,7 @@ export default function AdminPage() {
       </div>
 
       {tab === "masters" && <MasterDataPanel />}
+      {tab === "countries" && <CountriesPanel />}
       {tab === "roles" && <RolesPanel departments={departments} users={users} onChanged={load} />}
       {tab === "audit" && <AuditLogPanel users={users} />}
       {tab === "health" && <SystemHealthPanel />}
@@ -175,7 +175,7 @@ export default function AdminPage() {
                     {u.role === "admin" && <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-red-50 text-red-700">Administrator</span>}
                   </div>
                   {u.role !== "admin" && !u.business_role_id && !(u.extra_role_ids || []).length && (
-                    <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">{ROLE_LABEL[u.role] || u.role}</span>
+                    <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">{USER_TYPE_LABEL[u.role] || u.role}</span>
                   )}
                 </td>
                 <td className="py-3 px-4">
@@ -191,10 +191,10 @@ export default function AdminPage() {
                     className="p-1.5 rounded hover:bg-brand-50 text-gray-400 hover:text-brand-600 mr-1">
                     <Icon name="edit" size={14} />
                   </button>
-                  <button onClick={() => remove(u.id)}
-                    className="p-1.5 rounded hover:bg-red-50 text-gray-400 hover:text-red-500">
-                    <Icon name="del" size={14} />
-                  </button>
+                  {u.id !== me?.id && <button onClick={() => toggleActive(u)}
+                    className={`px-2 py-1 rounded text-[11px] border ${u.is_active ? "border-gray-200 text-gray-500 hover:text-red-600 hover:border-red-200" : "border-green-200 text-green-700 hover:bg-green-50"}`}>
+                    {u.is_active ? "Deactivate" : "Activate"}
+                  </button>}
                 </td>
               </tr>
             ))}
@@ -228,9 +228,6 @@ export default function AdminPage() {
                   <button onClick={() => { setEditingDeptId(d.id); setEditingDeptName(d.name); }} className="p-1 rounded hover:bg-brand-50 text-gray-400 hover:text-brand-600">
                     <Icon name="edit" size={12} />
                   </button>
-                  <button onClick={() => removeDepartment(d.id)} className="p-1 rounded hover:bg-red-50 text-gray-400 hover:text-red-500">
-                    <Icon name="del" size={12} />
-                  </button>
                 </div>
               </div>
             ))}
@@ -249,18 +246,15 @@ export default function AdminPage() {
         <Modal title={modal === "new" ? "Add User" : `Edit ${form.name}`} onClose={() => setModal(null)}>
           <Field label="Full Name" required><Input value={form.name || ""} onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))} /></Field>
           <Field label="Email" required><Input type="email" value={form.email || ""} onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))} /></Field>
-          <Field label={modal === "new" ? "Password (required, min 6)" : "Password (leave blank to keep current)"}>
+          <Field label={modal === "new" ? "Password (at least 10 characters, letters and numbers)" : "Password (leave blank to keep current)"}>
             <Input type="password" value={form.password || ""} onChange={(e) => setForm((p) => ({ ...p, password: e.target.value }))} />
           </Field>
-          <Field label="Role">
+          <Field label="User type">
             <Select value={form.role || "rm"} onChange={(e) => setForm((p) => ({ ...p, role: e.target.value }))}>
-              <option value="admin">Admin</option>
-              <option value="rm">Relationship Manager</option>
-              <option value="ops">Ops</option>
-              <option value="screening">Screening</option>
+              {Object.entries(USER_TYPE_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
             </Select>
           </Field>
-          <Field label="Business role">
+          <Field label="Main role (permissions)">
             <Select value={form.business_role_id || ""} onChange={(e) => setForm((p) => ({ ...p, business_role_id: e.target.value }))}>
               <option value="">— None —</option>
               {roles.filter((r) => r.is_active || r.id === form.business_role_id).map((r) => <option key={r.id} value={r.id}>{r.name}{r.description ? ` — ${r.description}` : ""}</option>)}

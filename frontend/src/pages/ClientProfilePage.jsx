@@ -11,7 +11,6 @@ import WorkflowBar from "../components/accounts/WorkflowBar";
 import CompletenessChecklist from "../components/accounts/CompletenessChecklist";
 import { accountToForm } from "../components/accounts/accountForm";
 import { useAuthStore } from "../store/auth";
-import { confirmDialog } from "../store/confirm";
 import { toast } from "../store/toast";
 import { fmt, fmtDate } from "../utils/constants";
 import { fmtFYE } from "../utils/fye";
@@ -48,12 +47,6 @@ export default function ClientProfilePage({ accountId, initialTab = "overview", 
   const existing = ["Approved", "Active", "Inactive", "Marked for Exit", "Exited"].includes(a.profile_status);
   const [servicingStart, setServicingStart] = [tabStart, setTabStart];
 
-  const remove = async () => {
-    if (!(await confirmDialog(`Delete ${a.company_name}? This cannot be undone.`))) return;
-    try { await accountsApi.delete(a.id); onChanged?.(); onBack(); }
-    catch (e) { toast.error(e.response?.data?.detail || "Failed to delete client"); }
-  };
-
   const tabs = [
     { key: "overview", label: "Overview" },
     { key: "profile", label: "Profile" },
@@ -77,7 +70,6 @@ export default function ClientProfilePage({ accountId, initialTab = "overview", 
           <Button onClick={() => setTab("profile")}>Edit profile</Button>
           <MoreMenu items={[
             { label: "Track record", onClick: () => setTrackRecord(true) },
-            { label: "Delete client", onClick: remove, danger: true, hidden: !isAdmin },
           ]} />
         </>}
       />

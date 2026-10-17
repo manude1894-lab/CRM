@@ -9,6 +9,7 @@ from app.models import User
 from app.schemas import CaseCreate, CaseRead, CaseUpdate, CaseStageChangeRequest, AdditionalRMRequest
 from app.schemas.case import InvoiceRaiseRequest, CaseBulkUpdateRequest, ImportRequest
 from app.schemas.account import BulkUpdateResult
+from app.schemas.common import CancelRequest
 from app.services import case_service, engagement_service
 
 router = APIRouter(prefix="/cases", tags=["Cases"])
@@ -79,9 +80,10 @@ def mark_invoice_paid(case_id: int, db: Session = Depends(get_db), user: User = 
     return case_service.mark_invoice_paid(db, case_id, user)
 
 
-@router.delete("/{case_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_case(case_id: int, db: Session = Depends(get_db), user: User = Depends(require_admin)):
-    case_service.delete_case(db, case_id, user)
+@router.post("/{case_id}/cancel", status_code=status.HTTP_204_NO_CONTENT,
+             summary="Cancel with a reason (records are never deleted)")
+def cancel_case(case_id: int, data: CancelRequest, db: Session = Depends(get_db), user: User = Depends(require_admin)):
+    case_service.cancel_case(db, case_id, data.reason, user)
     return None
 
 

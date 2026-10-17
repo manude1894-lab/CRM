@@ -25,6 +25,14 @@ export default function AuditLogPanel({ users }) {
   }, [filters, page]);
 
   const set = (k) => (e) => { setPage(0); setFilters((f) => ({ ...f, [k]: e.target.value })); };
+  // Activity report (BRD §2): everything matching the filters, as a spreadsheet
+  const [exporting, setExporting] = useState(false);
+  const exportCsv = async () => {
+    setExporting(true);
+    try { await auditApi.exportCsv(Object.fromEntries(Object.entries(filters).filter(([, v]) => v !== ""))); }
+    catch { toast.error("Export failed"); }
+    finally { setExporting(false); }
+  };
   const pages = Math.max(1, Math.ceil(data.total / PAGE));
 
   return (
@@ -45,6 +53,10 @@ export default function AuditLogPanel({ users }) {
         <DateInput value={filters.date_from} onChange={set("date_from")} className="text-xs !w-auto" title="From" />
         <DateInput value={filters.date_to} onChange={set("date_to")} className="text-xs !w-auto" title="To" />
         <span className="text-xs text-gray-400 ml-auto">{data.total} entr{data.total === 1 ? "y" : "ies"}</span>
+        <button onClick={exportCsv} disabled={exporting || !data.total}
+          className="px-2.5 py-1.5 text-xs border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600 disabled:opacity-40">
+          {exporting ? "Exporting…" : "Export CSV"}
+        </button>
       </div>
       <AuditTrail entries={data.items} loading={loading} emptyText="No audit entries match these filters." />
       {pages > 1 && (

@@ -27,7 +27,3 @@ def update_department(department_id: int, data: DepartmentUpdate, db: Session = 
     return department_service.update_department(db, department_id, data)
 
 
-@router.delete("/{department_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_department(department_id: int, db: Session = Depends(get_db), user: User = Depends(require_admin)):
-    department_service.delete_department(db, department_id)
-    return None

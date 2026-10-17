@@ -53,10 +53,14 @@ class Document(Base):
     # The template code when this file was produced by generation_service; null = uploaded.
     generated_from = Column(String(60), nullable=True)
 
+    # Never deleted (Triam: no delete in the CRM) — a removal is recorded here and the record is kept.
+    removed_at = Column(DateTime(timezone=True), nullable=True)
+    removed_by_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    removed_reason = Column(String(500), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     case = relationship("Case", back_populates="documents")
     account = relationship("Account", back_populates="documents")
     case_document = relationship("CaseDocument", back_populates="attachments")
     instruction = relationship("Instruction", back_populates="attachments")
-    uploaded_by = relationship("User")
+    uploaded_by = relationship("User", foreign_keys=[uploaded_by_id])

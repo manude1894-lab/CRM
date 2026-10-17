@@ -34,9 +34,3 @@ def update_department(db: Session, department_id: int, data: DepartmentUpdate) -
     db.commit()
     db.refresh(dept)
     return dept
-
-
-def delete_department(db: Session, department_id: int) -> None:
-    dept = get_department(db, department_id)
-    db.delete(dept)
-    db.commit()

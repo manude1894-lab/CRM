@@ -29,7 +29,3 @@ def update_pep_assessment(assessment_id: int, data: PEPAssessmentUpdate, db: Ses
     return pep_service.update_assessment(db, assessment_id, data, user)
 
 
-@router.delete("/pep-assessments/{assessment_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_pep_assessment(assessment_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    pep_service.delete_assessment(db, assessment_id, user)
-    return None

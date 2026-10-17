@@ -8,7 +8,7 @@ from sqlalchemy import or_, select
 from fastapi import HTTPException
 from typing import Optional
 
-from app.models import Account, Activity, ActivityType, Case, User, UserRole
+from app.models import Account, Activity, ActivityStatus, ActivityType, Case, User, UserRole
 from app.schemas.activity import ActivityCreate, ActivityUpdate
 from app.utils.uid import next_uid
 from app.services import access_control
@@ -146,9 +146,11 @@ def update_activity(db: Session, activity_id: int, data: ActivityUpdate, user: U
     return act
 
 
-def delete_activity(db: Session, activity_id: int, user: User) -> None:
+def cancel_activity(db: Session, activity_id: int, reason: str, user: User) -> None:
     act = get_activity(db, activity_id, user)
     if _restricted(user) and act.owner_id not in access_control.team_user_ids(db, user.id):
-        raise HTTPException(status_code=403, detail="Only the owner (or their supervisor) can delete this activity")
-    db.delete(act)
+        raise HTTPException(status_code=403, detail="Only the owner (or their supervisor) can cancel this activity")
+    if act.status == ActivityStatus.CANCELLED:
+        raise HTTPException(status_code=400, detail="This activity is already cancelled")
+    act.status, act.cancel_reason = ActivityStatus.CANCELLED, reason.strip()
     db.commit()

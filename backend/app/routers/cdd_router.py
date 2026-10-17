@@ -63,7 +63,3 @@ def update_document(document_id: int, data: CaseDocumentUpdate, db: Session = De
     return cdd_service.update_document(db, document_id, data)
 
 
-@router.delete("/documents/{document_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_document(document_id: int, db: Session = Depends(get_db), user: User = Depends(require_screening)):
-    cdd_service.delete_document(db, document_id)
-    return None

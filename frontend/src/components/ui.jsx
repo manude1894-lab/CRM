@@ -562,21 +562,32 @@ export const ToastHost = () => {
 export const ConfirmDialogHost = () => {
   const pending = useConfirmStore((s) => s.pending);
   const resolve = useConfirmStore((s) => s.resolve);
+  const [reason, setReason] = React.useState("");
+  React.useEffect(() => { setReason(""); }, [pending]);
   if (!pending) return null;
+  const reasonOk = !pending.askReason || pending.optional || reason.trim().length >= 3;
+  const answer = (ok) => resolve(pending.askReason ? (ok ? reason.trim() : null) : ok);
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center" style={{ background: "rgba(0,0,0,0.4)" }}>
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm mx-4 p-6">
         <h3 className="text-base font-semibold text-gray-800 mb-2">{pending.title}</h3>
-        <p className="text-sm text-gray-500 mb-6">{pending.message}</p>
+        <p className={`text-sm text-gray-500 ${pending.askReason ? "mb-3" : "mb-6"}`}>{pending.message}</p>
+        {pending.askReason && (
+          <div className="mb-5">
+            <label className="block text-xs font-medium text-gray-600 mb-1">Reason{pending.optional ? " (optional)" : " *"}</label>
+            <textarea autoFocus value={reason} onChange={(e) => setReason(e.target.value)} rows={3} maxLength={500}
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-400 resize-none" />
+          </div>
+        )}
         <div className="flex justify-end gap-3">
-          <button onClick={() => resolve(false)}
+          <button onClick={() => answer(false)}
             className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600">
-            Cancel
+            Back
           </button>
-          <button onClick={() => resolve(true)}
-            className={`px-4 py-2 text-sm text-white rounded-lg font-medium ${pending.danger ? "bg-red-600 hover:bg-red-700" : ""}`}
+          <button onClick={() => answer(true)} disabled={!reasonOk}
+            className={`px-4 py-2 text-sm text-white rounded-lg font-medium disabled:opacity-40 ${pending.danger ? "bg-red-600 hover:bg-red-700" : ""}`}
             style={pending.danger ? {} : { background: "#1a3a5c" }}>
-            {pending.danger ? "Delete" : "Confirm"}
+            {pending.confirmLabel || "Confirm"}
           </button>
         </div>
       </div>

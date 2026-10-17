@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { accountPartiesApi, amlApi } from "../api/endpoints";
 import { Icon, Modal, Field, Input, Select, CountrySelect, Spinner, ErrorBanner, DateInput } from "./ui";
-import { COUNTRY_CALLING_CODES, isUAE } from "../utils/constants";
+import { COUNTRY_CALLING_CODES, fmtDate, isUAE } from "../utils/constants";
 import { toast } from "../store/toast";
-import { confirmDialog } from "../store/confirm";
+import { reasonDialog } from "../store/confirm";
 
 const CORPORATE_ROLES = ["Shareholder", "Director", "Authorised Signatory"];
 const INDIVIDUAL_ROLES = ["Joint Holder"];  // Triam BRD mark-up: individual clients have joint holders
@@ -42,6 +42,8 @@ export default function AccountPartyModal({ account, onClose }) {
   const ROLES = account.account_type === "Individual" ? INDIVIDUAL_ROLES : CORPORATE_ROLES;
   const [tab, setTab] = useState(ROLES[0]);
   const [parties, setParties] = useState([]);
+  const [removed, setRemoved] = useState([]);
+  const [showRemoved, setShowRemoved] = useState(false);
   const [countries, setCountries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -51,11 +53,13 @@ export default function AccountPartyModal({ account, onClose }) {
   const load = async () => {
     try {
       setLoading(true); setError(null);
-      const [ps, cs] = await Promise.all([
+      const [ps, cs, rm] = await Promise.all([
         accountPartiesApi.list(account.id),
         amlApi.countryRisk().catch(() => []),
+        accountPartiesApi.removed(account.id).catch(() => []),
       ]);
       setParties(ps || []);
+      setRemoved(rm || []);
       setCountries(cs || []);
     } catch (e) {
       setError(e.response?.data?.detail || "Failed to load parties");
@@ -80,10 +84,14 @@ export default function AccountPartyModal({ account, onClose }) {
     }
   };
 
+  // Parties are never deleted: a removed party is kept on record with the reason (and, on an approved
+  // client, the removal goes to Compliance with the amendment).
   const remove = async (row) => {
-    if (!(await confirmDialog(`Remove ${row.full_name}?`))) return;
-    try { await accountPartiesApi.delete(row.id, account.id); load(); }
-    catch (e) { toast.error(e.response?.data?.detail || "Delete failed"); }
+    const reason = await reasonDialog({ title: `Remove ${row.full_name}`, confirmLabel: "Remove",
+      message: "The person stays on record as removed, with your reason. Their documents keep their name." });
+    if (!reason) return;
+    try { await accountPartiesApi.remove(row.id, account.id, reason); load(); }
+    catch (e) { toast.error(e.response?.data?.detail || "Remove failed"); }
   };
 
   const switchTab = (t) => { setTab(t); cancelForm(); };
@@ -135,7 +143,7 @@ export default function AccountPartyModal({ account, onClose }) {
                       </div>
                       <div className="flex gap-1">
                         <button onClick={() => startEdit(p)} className="p-1.5 rounded hover:bg-brand-50 text-gray-400 hover:text-brand-600"><Icon name="edit" size={14} /></button>
-                        <button onClick={() => remove(p)} className="p-1.5 rounded hover:bg-red-50 text-gray-400 hover:text-red-500"><Icon name="del" size={14} /></button>
+                        <button onClick={() => remove(p)} title="Remove" className="p-1.5 rounded hover:bg-red-50 text-gray-400 hover:text-red-500"><Icon name="close" size={14} /></button>
                       </div>
                     </div>
                   ))}
@@ -143,6 +151,25 @@ export default function AccountPartyModal({ account, onClose }) {
               <button onClick={startNew} className="w-full px-3 py-2 text-xs border border-dashed border-gray-300 rounded-lg hover:border-brand-300 hover:text-brand-600 text-gray-500 flex items-center justify-center gap-1">
                 <Icon name="plus" size={13} /> Add {partyLabel(tab)}
               </button>
+              {removed.length > 0 && (
+                <div className="mt-3">
+                  <button onClick={() => setShowRemoved((v) => !v)} className="text-xs text-gray-500 hover:text-brand-600">
+                    {showRemoved ? "Hide" : "Show"} removed ({removed.length})
+                  </button>
+                  {showRemoved && (
+                    <div className="mt-2 space-y-1.5">
+                      {removed.map((r) => (
+                        <div key={r.id} className="p-2 rounded-lg border border-gray-100 text-xs text-gray-500">
+                          <span className="line-through text-gray-600">{r.full_name}</span> · {r.party_role}
+                          <div className="text-[11px] text-gray-400">
+                            Removed {fmtDate(r.removed_at)}{r.removed_by_name ? ` by ${r.removed_by_name}` : ""}{r.removed_reason ? ` — ${r.removed_reason}` : ""}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </>
           )}
 

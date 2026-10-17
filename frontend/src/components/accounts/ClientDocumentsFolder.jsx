@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { documentsApi } from "../../api/endpoints";
 import { Icon } from "../ui";
 import { toast } from "../../store/toast";
-import { confirmDialog } from "../../store/confirm";
+import { reasonDialog } from "../../store/confirm";
 import { useMasters } from "../../hooks/useMasters";
 import { selectableCodes } from "../../hooks/masterUtils";
 import { DOCUMENT_CATEGORY_OPTIONS, fmtDate } from "../../utils/constants";
@@ -96,8 +96,10 @@ export default function ClientDocumentsFolder({ accountId, onChange, onboarding 
   };
 
   const remove = async (d) => {
-    if (!(await confirmDialog(`Remove "${d.filename}" from the client folder?`))) return;
-    try { await documentsApi.remove(d.id); await load(); onChange?.(); }
+    const reason = await reasonDialog({ title: "Remove document", confirmLabel: "Remove", optional: true,
+      message: `"${d.filename}" leaves the folder. It is kept on record and listed in the folder's history.` });
+    if (reason === null) return;
+    try { await documentsApi.remove(d.id, reason); await load(); onChange?.(); }
     catch (e) { toast.error(e.response?.data?.detail || "Could not remove the document"); }
   };
 
@@ -133,6 +135,12 @@ export default function ClientDocumentsFolder({ accountId, onChange, onboarding 
     </div>
   );
 
+  // BRD open item 17 — the Upload button stands out only when an upload is actually pending: the folder
+  // is still empty during onboarding, or Compliance has yet to file its CDD Form / AML Risk Assessment.
+  const filed = new Set(folder.documents.map((d) => d.category));
+  const uploadPending = (onboarding && folder.documents.length === 0)
+    || (statusLocked && folder.compliance_can_file && !(filed.has("CDD_FORM") && filed.has("AML_RISK")));
+
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2 text-xs">
@@ -141,7 +149,9 @@ export default function ClientDocumentsFolder({ accountId, onChange, onboarding 
         <span className={`px-2 py-0.5 rounded font-semibold ${stage.style}`}>{folder.stage}</span>
         <span className="text-gray-400">{folder.documents.length} document{folder.documents.length === 1 ? "" : "s"}</span>
         {!locked && !uploading && (
-          <button onClick={() => setUploading(true)} className="ml-auto px-2.5 py-1 text-xs text-white rounded-lg flex items-center gap-1" style={{ background: "#1a3a5c" }}>
+          <button onClick={() => setUploading(true)}
+            className={`ml-auto px-2.5 py-1 text-xs rounded-lg flex items-center gap-1 ${uploadPending ? "text-white" : "border border-gray-200 text-gray-600 hover:bg-gray-50"}`}
+            style={uploadPending ? { background: "#1a3a5c" } : {}}>
             <Icon name="plus" size={12} /> Upload document
           </button>
         )}

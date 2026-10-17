@@ -4,7 +4,7 @@ import { Button, EmptyState, ErrorBanner, Field, FilterBar, Icon, Input, Modal, 
 import { fmtDate } from "../utils/constants";
 import { useAuthStore } from "../store/auth";
 import { toast } from "../store/toast";
-import { confirmDialog } from "../store/confirm";
+import { confirmDialog, reasonDialog } from "../store/confirm";
 
 const CURRENCIES = ["AED", "USD", "EUR", "GBP", "INR", "SGD"];
 const STATUSES = ["Requested", "Draft", "Raised", "Paid", "Overdue"];
@@ -48,10 +48,13 @@ export default function InvoicesPage() {
     try { await invoicesApi.paid(inv.id, {}); toast.success("Payment recorded"); load(); }
     catch (e) { toast.error(e.response?.data?.detail || "Could not record the payment"); }
   };
-  const remove = async (inv) => {
-    if (!(await confirmDialog(`Delete this invoice ${inv.status === "Requested" ? "request" : ""}?`))) return;
-    try { await invoicesApi.delete(inv.id); load(); }
-    catch (e) { toast.error(e.response?.data?.detail || "Could not delete"); }
+  // Invoices are never deleted: cancelled with a reason and kept on record with their attachments.
+  const cancelInvoice = async (inv) => {
+    const reason = await reasonDialog({ title: `Cancel invoice${inv.status === "Requested" ? " request" : ""}`, confirmLabel: "Cancel invoice",
+      message: `${inv.invoice_number || inv.description} will be marked Cancelled and kept on record.` });
+    if (!reason) return;
+    try { await invoicesApi.cancel(inv.id, reason); toast.success("Invoice cancelled"); load(); }
+    catch (e) { toast.error(e.response?.data?.detail || "Could not cancel"); }
   };
 
   return (
@@ -104,8 +107,8 @@ export default function InvoicesPage() {
                       {accountsTeam && ["Raised", "Overdue"].includes(i.status) && (
                         <button onClick={() => markPaid(i)} className="px-2 py-1 text-xs border border-emerald-300 text-emerald-700 rounded-lg hover:bg-emerald-50">Mark paid</button>
                       )}
-                      {i.status !== "Paid" && (accountsTeam || ["Requested", "Draft"].includes(i.status)) && (
-                        <button onClick={() => remove(i)} title="Delete" className="p-1 rounded hover:bg-red-50 text-gray-400 hover:text-red-500"><Icon name="del" size={13} /></button>
+                      {!["Paid", "Cancelled"].includes(i.status) && (accountsTeam || ["Requested", "Draft"].includes(i.status)) && (
+                        <button onClick={() => cancelInvoice(i)} title="Cancel invoice" className="p-1 rounded hover:bg-red-50 text-gray-400 hover:text-red-500"><Icon name="close" size={13} /></button>
                       )}
                     </div>
                   </td>

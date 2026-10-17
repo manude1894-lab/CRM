@@ -34,7 +34,3 @@ def update_user(user_id: int, data: UserUpdate, db: Session = Depends(get_db), _
     return user_service.update_user(db, user_id, data)
 
 
-@router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_user(user_id: int, db: Session = Depends(get_db), _=Depends(require_admin)):
-    user_service.delete_user(db, user_id)
-    return None

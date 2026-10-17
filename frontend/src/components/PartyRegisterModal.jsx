@@ -2,7 +2,6 @@ import React, { useEffect, useState } from "react";
 import { directorsApi, shareholdersApi, ubosApi, amlApi } from "../api/endpoints";
 import { Icon, Modal, Field, Input, Select, Textarea, Spinner, ErrorBanner, DateInput } from "./ui";
 import { toast } from "../store/toast";
-import { confirmDialog } from "../store/confirm";
 import {
   PARTY_TYPE_OPTIONS, SHAREHOLDER_TYPE_OPTIONS, OWNERSHIP_NATURE_OPTIONS, SOURCE_OF_WEALTH_OPTIONS,
   ENTITY_DETAIL_TYPE_OPTIONS, CHARGE_STATUS_OPTIONS, DIRECTOR_ROLE_OPTIONS, fmtDate,
@@ -112,13 +111,6 @@ export default function PartyRegisterModal({ caseItem, onClose }) {
     }
   };
 
-  const remove = async (row) => {
-    const label = tab === "directors" ? directorName(row) : tab === "ubos" ? uboName(row) : row.name;
-    if (!(await confirmDialog(`Remove ${label}?`))) return;
-    try { await api.delete(row.id); load(); }
-    catch (e) { toast.error(e.response?.data?.detail || "Delete failed"); }
-  };
-
   const switchTab = (t) => { setTab(t); cancelForm(); };
 
   const TABS = [
@@ -157,7 +149,7 @@ export default function PartyRegisterModal({ caseItem, onClose }) {
                           {d.cessation_date && ` · Ceased ${fmtDate(d.cessation_date)}`}
                         </div>
                       </div>
-                      <RowActions onEdit={() => startEdit(d)} onDelete={() => remove(d)} />
+                      <RowActions onEdit={() => startEdit(d)} />
                     </div>
                   )))}
 
@@ -178,7 +170,7 @@ export default function PartyRegisterModal({ caseItem, onClose }) {
                           {s.share_class && ` · ${s.share_class}`}
                         </div>
                       </div>
-                      <RowActions onEdit={() => startEdit(s)} onDelete={() => remove(s)} />
+                      <RowActions onEdit={() => startEdit(s)} />
                     </div>
                   )))}
 
@@ -199,7 +191,7 @@ export default function PartyRegisterModal({ caseItem, onClose }) {
                           {u.cessation_date && ` · Ceased ${fmtDate(u.cessation_date)}`}
                         </div>
                       </div>
-                      <RowActions onEdit={() => startEdit(u)} onDelete={() => remove(u)} />
+                      <RowActions onEdit={() => startEdit(u)} />
                     </div>
                   )))}
               </div>
@@ -225,10 +217,10 @@ export default function PartyRegisterModal({ caseItem, onClose }) {
   );
 }
 
-const RowActions = ({ onEdit, onDelete }) => (
+// Registers keep everyone who held a position: someone who leaves gets a cessation date (edit), never deleted.
+const RowActions = ({ onEdit }) => (
   <div className="flex gap-1">
     <button onClick={onEdit} className="p-1.5 rounded hover:bg-brand-50 text-gray-400 hover:text-brand-600"><Icon name="edit" size={14} /></button>
-    <button onClick={onDelete} className="p-1.5 rounded hover:bg-red-50 text-gray-400 hover:text-red-500"><Icon name="del" size={14} /></button>
   </div>
 );
 

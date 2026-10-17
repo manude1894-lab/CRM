@@ -7,6 +7,7 @@ from app.database import get_db
 from app.auth.dependencies import get_current_user
 from app.models import User
 from app.schemas import AccountPartyCreate, AccountPartyRead, AccountPartyUpdate
+from app.schemas.common import CancelRequest
 from app.services import account_party_service
 
 router = APIRouter(tags=["Client Parties"])
@@ -30,8 +31,14 @@ def update_party(party_id: int, data: AccountPartyUpdate, account_id: Optional[i
     return account_party_service.update_party(db, party_id, data, user, account_id=account_id)
 
 
-@router.delete("/account-parties/{party_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_party(party_id: int, account_id: Optional[int] = None,
+@router.get("/accounts/{account_id}/removed-parties", summary="Parties removed from the client (kept on record)")
+def removed_parties(account_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    return account_party_service.list_removed_parties(db, account_id, user)
+
+
+@router.post("/account-parties/{party_id}/remove", status_code=status.HTTP_204_NO_CONTENT,
+             summary="Remove a party (kept on record with the reason; through an amendment once the client is approved)")
+def remove_party(party_id: int, data: CancelRequest, account_id: Optional[int] = None,
                  db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    account_party_service.delete_party(db, party_id, user, account_id=account_id)
+    account_party_service.remove_party(db, party_id, data.reason, user, account_id=account_id)
     return None

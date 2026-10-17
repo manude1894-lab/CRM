@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { activitiesApi, accountsApi, casesApi } from "../api/endpoints";
 import { Icon, Modal, Spinner, ErrorBanner, PageHeader } from "../components/ui";
 import { toast } from "../store/toast";
-import { confirmDialog } from "../store/confirm";
+import { reasonDialog } from "../store/confirm";
 import ActivityForm, { ACTIVITY_TYPES, REPORT_TYPES, activityPayload, activityProblem, blankActivity } from "../components/activities/ActivityForm";
 import ActivityCard from "../components/activities/ActivityCard";
 
@@ -52,10 +52,13 @@ export default function ActivitiesPage() {
     }
   };
 
-  const remove = async (id) => {
-    if (!(await confirmDialog("Delete this activity?"))) return;
-    try { await activitiesApi.delete(id); load(); }
-    catch (e) { toast.error(e.response?.data?.detail || "Delete failed"); }
+  // Visit / Call Reports are never deleted: cancelled with a reason and kept on record.
+  const cancelActivity = async (a) => {
+    const reason = await reasonDialog({ title: "Cancel activity", confirmLabel: "Cancel activity",
+      message: "The activity will be marked Cancelled and kept on record." });
+    if (!reason) return;
+    try { await activitiesApi.cancel(a.id, reason); load(); }
+    catch (e) { toast.error(e.response?.data?.detail || "Cancel failed"); }
   };
 
   if (loading) return <Spinner />;
@@ -98,7 +101,7 @@ export default function ActivitiesPage() {
         {filtered.length === 0 && <p className="text-sm text-gray-400 text-center py-8">No activities.</p>}
         {filtered.map((a) => (
           <ActivityCard key={a.id} activity={a} onEdit={() => { setForm({ ...blankActivity(), ...a, account_id: a.account_id || "", case_id: a.case_id || "" }); setModal("edit"); }}
-            onDelete={() => remove(a.id)} />
+            onCancel={a.status !== "Cancelled" ? () => cancelActivity(a) : undefined} />
         ))}
       </div>
 

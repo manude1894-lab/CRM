@@ -12,7 +12,7 @@ import FormationModal from "../components/FormationModal";
 import ServiceSubscriptionsModal from "../components/ServiceSubscriptionsModal";
 import { STAGES, STAGE_COLORS, CASE_SOURCE_OPTIONS, JURISDICTION_OPTIONS, SERVICE_TYPE_OPTIONS, CASE_STATUS_OPTIONS, CLOSED_REL_STATUSES, fmt, exportFilename, csvDate } from "../utils/constants";
 import { toast } from "../store/toast";
-import { confirmDialog } from "../store/confirm";
+import { reasonDialog } from "../store/confirm";
 
 const NEXT_STAGE = STAGES.reduce((acc, s, i) => {
   if (i < STAGES.length - 1) acc[s] = STAGES[i + 1];
@@ -160,10 +160,13 @@ export default function CasesPage({ initialCaseId, initialStage } = {}) {
     catch (e) { toast.error(e.response?.data?.detail || "Update failed"); }
   };
 
-  const remove = async (id) => {
-    if (!(await confirmDialog("Delete this case?"))) return;
-    try { await casesApi.delete(id); load(); }
-    catch (e) { toast.error(e.response?.data?.detail || "Delete failed"); }
+  // Cases are never deleted: Admin cancels one with a reason and it stays on record.
+  const cancelCase = async (c) => {
+    const reason = await reasonDialog({ title: "Cancel case", confirmLabel: "Cancel case",
+      message: `${c.company_name} leaves the pipeline. The case and its history stay on record.` });
+    if (!reason) return;
+    try { await casesApi.cancel(c.id, reason); toast.success("Case cancelled"); load(); }
+    catch (e) { toast.error(e.response?.data?.detail || "Cancel failed"); }
   };
 
   const toggleSelected = (id) => setSelectedIds((prev) => {
@@ -271,7 +274,7 @@ export default function CasesPage({ initialCaseId, initialStage } = {}) {
             <select value={bulkValues.status} onChange={(e) => setBulkValues((p) => ({ ...p, status: e.target.value }))}
               className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none">
               <option value="">Status…</option>
-              {CASE_STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
+              {CASE_STATUS_OPTIONS.filter((s) => s !== "Cancelled").map((s) => <option key={s} value={s}>{s}</option>)}
             </select>
             <button disabled={!bulkValues.status || bulkApplying} onClick={() => applyBulkField("status")}
               className="px-2.5 py-1.5 text-xs border border-brand-300 rounded-lg bg-white hover:bg-brand-100 disabled:opacity-40">Apply</button>
@@ -398,10 +401,12 @@ export default function CasesPage({ initialCaseId, initialStage } = {}) {
                         className="p-1.5 rounded hover:bg-brand-50 text-gray-400 hover:text-brand-600">
                         <Icon name="edit" size={14} />
                       </button>
-                      <button onClick={() => remove(c.id)}
-                        className="p-1.5 rounded hover:bg-red-50 text-gray-400 hover:text-red-500">
-                        <Icon name="del" size={14} />
-                      </button>
+                      {isAdmin && c.status !== "Cancelled" && (
+                        <button onClick={() => cancelCase(c)} title="Cancel case"
+                          className="p-1.5 rounded hover:bg-red-50 text-gray-400 hover:text-red-500">
+                          <Icon name="close" size={14} />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>

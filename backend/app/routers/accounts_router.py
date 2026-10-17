@@ -99,10 +99,6 @@ def update_account(
     return account_service.update_account(db, account_id, data, user)
 
 
-@router.delete("/{account_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_account(account_id: int, db: Session = Depends(get_db), user: User = Depends(require_admin)):
-    account_service.delete_account(db, account_id, user)
-    return None
 
 
 @router.post("/import", response_model=AccountImportResponse, summary="Bulk import clients (Admin only)")

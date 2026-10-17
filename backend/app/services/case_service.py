@@ -144,6 +144,8 @@ def update_case(db: Session, case_id: int, data: CaseUpdate, user: User) -> Case
     live case is unchanged until it is approved (see case_approval_service)."""
     case = get_case(db, case_id, user)
     update_data = data.model_dump(exclude_unset=True)
+    if update_data.get("status") == CaseStatus.CANCELLED.value or case.status == CaseStatus.CANCELLED.value:
+        raise HTTPException(status_code=400, detail="A case is cancelled only with Cancel case (Admin, with a reason), and a cancelled case can't be changed")
     if user.role == UserRole.RM:
         update_data.pop("rm_id", None)
     if case.compliance_status != case_approval_service.RETURNED:
@@ -325,16 +327,19 @@ def bulk_update_cases(db: Session, user: User, data: CaseBulkUpdateRequest) -> l
     return results
 
 
-def delete_case(db: Session, case_id: int, user: User) -> None:
+def cancel_case(db: Session, case_id: int, reason: str, user: User) -> None:
+    """Cases are never deleted: Admin cancels one with a reason. It drops out of the pipeline and the
+    open-case counts but stays on record with its documents and history."""
     if user.role != UserRole.ADMIN:
-        raise HTTPException(status_code=403, detail="Only Admin can delete cases")
+        raise HTTPException(status_code=403, detail="Only Admin can cancel a case")
     case = db.query(Case).filter(Case.id == case_id).first()
     if not case:
         raise HTTPException(status_code=404, detail="Case not found")
-    account_id = case.account_id
-    db.delete(case)
+    if case.status == CaseStatus.CANCELLED.value:
+        raise HTTPException(status_code=400, detail="This case is already cancelled")
+    case.status, case.cancel_reason = CaseStatus.CANCELLED.value, reason.strip()
     db.commit()
-    _refresh_account_stats(db, account_id)
+    _refresh_account_stats(db, case.account_id)
 
 
 def add_relationship_manager(db: Session, case_id: int, rm_user_id: int, user: User) -> Case:
@@ -367,7 +372,7 @@ def _refresh_account_stats(db: Session, account_id: Optional[int]) -> None:
     stats = db.query(
         func.count(Case.id).label("cnt"),
         func.coalesce(func.sum(Case.invoice_amount), 0).label("total"),
-    ).filter(Case.account_id == account_id).first()
+    ).filter(Case.account_id == account_id, Case.status != CaseStatus.CANCELLED.value).first()
     account.total_cases = stats.cnt or 0
     account.total_invoiced_amount = stats.total or 0
     db.commit()

@@ -156,14 +156,6 @@ def update_document(db: Session, document_id: int, data: CaseDocumentUpdate) -> 
     return doc
 
 
-def delete_document(db: Session, document_id: int) -> None:
-    doc = db.query(CaseDocument).filter(CaseDocument.id == document_id).first()
-    if not doc:
-        raise HTTPException(status_code=404, detail="Document not found")
-    db.delete(doc)
-    db.commit()
-
-
 def generate_director_documents(db: Session, director: Director) -> list[CaseDocument]:
     """Seed the CDD checklist items required for a newly-added director.
 

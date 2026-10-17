@@ -7,7 +7,7 @@ import DocumentsPanel from "../components/DocumentsPanel";
 import FeedbackPanel from "../components/FeedbackPanel";
 import { INSTRUCTION_STATUS_OPTIONS, INSTRUCTION_TYPE_OPTIONS, fmtFull, fmtDate } from "../utils/constants";
 import { toast } from "../store/toast";
-import { confirmDialog } from "../store/confirm";
+import { reasonDialog } from "../store/confirm";
 import { useAuthStore } from "../store/auth";
 import CsvImportModal from "../components/CsvImportModal";
 
@@ -130,16 +130,19 @@ export default function InstructionsPage() {
     catch (e) { toast.error(e.response?.data?.detail || "Update failed"); }
   };
 
-  const remove = async (id) => {
-    if (!(await confirmDialog("Delete this service request?"))) return;
-    try { await instructionsApi.delete(id); load(); }
-    catch (e) { toast.error(e.response?.data?.detail || "Delete failed"); }
+  // Service requests are never deleted: they are cancelled with a reason and stay on record.
+  const cancelRequest = async (i) => {
+    const reason = await reasonDialog({ title: "Cancel service request", confirmLabel: "Cancel request",
+      message: `${i.instruction_type} will be marked Cancelled and kept on record.` });
+    if (!reason) return;
+    try { await instructionsApi.cancel(i.id, reason); toast.success("Service request cancelled"); load(); }
+    catch (e) { toast.error(e.response?.data?.detail || "Cancel failed"); }
   };
 
   if (loading) return <Spinner />;
   if (error) return <ErrorBanner message={error} onRetry={load} />;
 
-  const counts = INSTRUCTION_STATUS_OPTIONS.reduce((acc, s) => {
+  const counts = [...INSTRUCTION_STATUS_OPTIONS, "Cancelled"].reduce((acc, s) => {
     acc[s] = instructions.filter((i) => i.status === s).length;
     return acc;
   }, {});
@@ -172,7 +175,7 @@ export default function InstructionsPage() {
           <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search company, type, invoice ref..."
             className="w-full pl-8 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-brand-400" />
         </div>
-        {["All", ...INSTRUCTION_STATUS_OPTIONS].map((s) => (
+        {["All", ...INSTRUCTION_STATUS_OPTIONS, "Cancelled"].map((s) => (
           <button key={s} onClick={() => setStatusFilter(s)}
             className={`px-3 py-1.5 text-xs rounded-lg border transition-colors ${statusFilter === s ? "text-white border-transparent" : "border-gray-200 text-gray-600 hover:bg-gray-50"}`}
             style={statusFilter === s ? { background: "#1a3a5c" } : {}}>
@@ -232,10 +235,14 @@ export default function InstructionsPage() {
                 </td>
                 <td className="py-3 px-4 text-xs text-gray-600">{i.instruction_type}</td>
                 <td className="py-3 px-4">
-                  <select value={i.status} onChange={(e) => quickSetStatus(i, e.target.value)}
-                    className="text-xs border-0 bg-transparent focus:outline-none cursor-pointer">
-                    {INSTRUCTION_STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
-                  </select>
+                  {i.status === "Cancelled" ? (
+                    <span className="text-xs text-gray-400" title={i.cancel_reason || ""}>Cancelled</span>
+                  ) : (
+                    <select value={i.status} onChange={(e) => quickSetStatus(i, e.target.value)}
+                      className="text-xs border-0 bg-transparent focus:outline-none cursor-pointer">
+                      {INSTRUCTION_STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  )}
                 </td>
                 <td className="py-3 px-4 text-xs text-gray-500">{fmtDate(i.date_received) || "—"}</td>
                 <td className="py-3 px-4 text-xs text-gray-500">{fmtDate(i.date_completed) || "—"}</td>
@@ -249,12 +256,14 @@ export default function InstructionsPage() {
                 <td className="py-3 px-4 text-xs text-gray-500">{i.invoice_reference || "—"}</td>
                 <td className="py-3 px-4">
                   <div className="flex gap-1">
-                    <button onClick={() => openEdit(i)} className="p-1.5 rounded hover:bg-brand-50 text-gray-400 hover:text-brand-600">
-                      <Icon name="edit" size={14} />
-                    </button>
-                    <button onClick={() => remove(i.id)} className="p-1.5 rounded hover:bg-red-50 text-gray-400 hover:text-red-500">
-                      <Icon name="del" size={14} />
-                    </button>
+                    {!["Cancelled", "Completed"].includes(i.status) && (<>
+                      <button onClick={() => openEdit(i)} className="p-1.5 rounded hover:bg-brand-50 text-gray-400 hover:text-brand-600">
+                        <Icon name="edit" size={14} />
+                      </button>
+                      <button onClick={() => cancelRequest(i)} title="Cancel request" className="p-1.5 rounded hover:bg-red-50 text-gray-400 hover:text-red-500">
+                        <Icon name="close" size={14} />
+                      </button>
+                    </>)}
                   </div>
                 </td>
               </tr>

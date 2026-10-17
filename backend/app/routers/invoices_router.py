@@ -9,6 +9,7 @@ from app.database import get_db
 from app.models import User
 from app.schemas import DocumentRead
 from app.schemas.invoice import InvoiceCreate, InvoicePaid, InvoiceRaise, InvoiceRead, InvoiceRequest, InvoiceUpdate, invoice_read
+from app.schemas.common import CancelRequest
 from app.services import invoice_service
 
 router = APIRouter(prefix="/invoices", tags=["Invoices"])
@@ -73,7 +74,8 @@ def update_invoice(invoice_id: int, data: InvoiceUpdate, db: Session = Depends(g
     return invoice_read(invoice_service.update_invoice(db, invoice_id, data, user), db)
 
 
-@router.delete("/{invoice_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_invoice(invoice_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    invoice_service.delete_invoice(db, invoice_id, user)
+@router.post("/{invoice_id}/cancel", status_code=status.HTTP_204_NO_CONTENT,
+             summary="Cancel with a reason (records are never deleted)")
+def cancel_invoice(invoice_id: int, data: CancelRequest, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    invoice_service.cancel_invoice(db, invoice_id, data.reason, user)
     return None

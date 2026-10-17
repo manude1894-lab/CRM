@@ -7,6 +7,7 @@ from app.database import get_db
 from app.auth.dependencies import get_current_user
 from app.models import User
 from app.schemas import ActionPointCreate, ActionPointUpdate, ActionPointRead
+from app.schemas.common import CancelRequest
 from app.services import action_point_service
 
 router = APIRouter(prefix="/action-points", tags=["Action Points"])
@@ -27,7 +28,8 @@ def update_action_point(ap_id: int, data: ActionPointUpdate, db: Session = Depen
     return action_point_service.update_action_point(db, ap_id, data, user)
 
 
-@router.delete("/{ap_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_action_point(ap_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    action_point_service.delete_action_point(db, ap_id, user)
+@router.post("/{ap_id}/cancel", status_code=status.HTTP_204_NO_CONTENT,
+             summary="Cancel with a reason (records are never deleted)")
+def cancel_action_point(ap_id: int, data: CancelRequest, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    action_point_service.cancel_action_point(db, ap_id, data.reason, user)
     return None

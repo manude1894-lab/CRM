@@ -427,7 +427,8 @@ def build_track_record(db: Session, account: Account) -> dict:
 
     ledger = db.query(Invoice).filter(Invoice.case_id.in_(case_ids)).all() if case_ids else []
     ledger_paid = sum((inv.amount for inv in ledger if inv.status == InvoiceLedgerStatus.PAID.value), start=0)
-    ledger_outstanding = sum((inv.amount for inv in ledger if inv.status != InvoiceLedgerStatus.PAID.value), start=0)
+    ledger_outstanding = sum((inv.amount for inv in ledger
+                              if inv.status not in (InvoiceLedgerStatus.PAID.value, InvoiceLedgerStatus.CANCELLED.value)), start=0)
 
     case_rows = []
     for c in cases:
@@ -475,16 +476,6 @@ def build_track_record(db: Session, account: Account) -> dict:
         "cases": case_rows,
         "parties": party_rows,
     }
-
-
-def delete_account(db: Session, account_id: int, user: User) -> None:
-    if user.role != UserRole.ADMIN:
-        raise HTTPException(status_code=403, detail="Only Admin can delete accounts")
-    acc = db.query(Account).filter(Account.id == account_id).first()
-    if not acc:
-        raise HTTPException(status_code=404, detail="Account not found")
-    db.delete(acc)
-    db.commit()
 
 
 def import_accounts(

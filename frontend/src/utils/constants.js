@@ -40,11 +40,11 @@ export const CASE_STATUS_COLORS = {
 
 export const CASE_STATUS_OPTIONS = [
   "Active", "Docs Pending", "On Hold", "Rejected",
-  "In Closure", "Struck Off", "Dissolved", "Transferred Out",
+  "In Closure", "Struck Off", "Dissolved", "Transferred Out", "Cancelled",
 ];
 
 // The exited statuses — hidden from the default Cases view, shown as "Closed RELs".
-export const CLOSED_REL_STATUSES = ["Struck Off", "Dissolved", "Transferred Out"];
+export const CLOSED_REL_STATUSES = ["Struck Off", "Dissolved", "Transferred Out", "Cancelled"];
 
 export const CLOSURE_METHOD_OPTIONS = [
   "Voluntary Liquidation",
@@ -283,6 +283,15 @@ export const ROLE_LABEL = {
   rm: "Relationship Manager",
   ops: "Ops",
   screening: "Screening",
+};
+
+// Labels for the system role on the user form: what kind of user, separate from the business role
+// (MLRO, Approver, Accountant …) that carries the permissions.
+export const USER_TYPE_LABEL = {
+  rm: "Standard user",
+  ops: "Operations",
+  screening: "Screening",
+  admin: "Administrator",
 };
 
 export const PROSPECT_STATUS_OPTIONS = ["New", "Proposal Sent", "Negotiating", "Won", "Lost"];

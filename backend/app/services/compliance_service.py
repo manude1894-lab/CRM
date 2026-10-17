@@ -24,6 +24,7 @@ DORMANT_CASE_STATUSES = {
     CaseStatus.STRUCK_OFF.value,
     CaseStatus.DISSOLVED.value,
     CaseStatus.TRANSFERRED_OUT.value,
+    CaseStatus.CANCELLED.value,
 }
 
 # item -> (due_field, last_completed_field, cadence_field) — the ComplianceSchedule
@@ -209,7 +210,7 @@ def set_ar_status(db: Session, case_id: int, status: str) -> ComplianceSchedule:
             .filter(
                 Instruction.case_id == case_id,
                 Instruction.instruction_type == "AR Filing",
-                Instruction.status != "Completed",
+                Instruction.status.notin_(("Completed", "Cancelled")),
             )
             .first()
         )

@@ -62,7 +62,11 @@ class AccountParty(Base):
 
     notes = Column(Text, nullable=True)
 
+    # Never deleted (Triam: no delete in the CRM) — a removal is recorded here and the record is kept.
+    removed_at = Column(DateTime(timezone=True), nullable=True)
+    removed_by_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    removed_reason = Column(String(500), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
-    account = relationship("Account", back_populates="parties")
+    account = relationship("Account", overlaps="parties,removed_parties")

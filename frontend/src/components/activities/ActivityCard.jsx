@@ -8,7 +8,7 @@ const TYPE_COLORS = {
 };
 
 /** One activity / Visit Report / Call Report in a list. */
-export default function ActivityCard({ activity: a, onEdit, onDelete, compact = false }) {
+export default function ActivityCard({ activity: a, onEdit, onCancel, compact = false }) {
   const report = a.activity_type === "Visit Report" || a.activity_type === "Call Report";
   return (
     <div className={`bg-white border border-gray-100 rounded-xl ${compact ? "p-3" : "p-4 shadow-sm hover:shadow-md"} transition-shadow flex gap-3`}>
@@ -31,8 +31,8 @@ export default function ActivityCard({ activity: a, onEdit, onDelete, compact = 
             {onEdit && (
               <button onClick={onEdit} title="Edit" className="p-1 rounded hover:bg-brand-50 text-gray-400 hover:text-brand-600"><Icon name="edit" size={13} /></button>
             )}
-            {onDelete && (
-              <button onClick={onDelete} title="Delete" className="p-1 rounded hover:bg-red-50 text-gray-400 hover:text-red-500"><Icon name="del" size={13} /></button>
+            {onCancel && (
+              <button onClick={onCancel} title="Cancel" className="p-1 rounded hover:bg-red-50 text-gray-400 hover:text-red-500"><Icon name="close" size={13} /></button>
             )}
           </div>
         </div>

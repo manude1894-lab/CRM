@@ -11,6 +11,7 @@ from app.auth.dependencies import get_current_user
 from app.models import User
 from app.schemas import DocumentRead
 from app.schemas.document import ClientFolder, LinkDocumentCreate
+from app.schemas.common import OptionalReason
 from app.services import document_service
 
 router = APIRouter(tags=["Documents"])
@@ -78,7 +79,9 @@ def download_document(document_id: int, db: Session = Depends(get_db), user: Use
     )
 
 
-@router.delete("/documents/{document_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_document(document_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    document_service.delete(db, document_id, user)
+@router.post("/documents/{document_id}/remove", status_code=status.HTTP_204_NO_CONTENT,
+             summary="Remove a document from the folder (kept on record, shown in the folder history)")
+def remove_document(document_id: int, data: OptionalReason = OptionalReason(), db: Session = Depends(get_db),
+                    user: User = Depends(get_current_user)):
+    document_service.delete(db, document_id, user, data.reason)
     return None

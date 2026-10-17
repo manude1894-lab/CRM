@@ -3,7 +3,6 @@ import { feedbackApi } from "../api/endpoints";
 import { Select, Textarea } from "./ui";
 import { FEEDBACK_CHANNEL_OPTIONS, fmtDate } from "../utils/constants";
 import { toast } from "../store/toast";
-import { confirmDialog } from "../store/confirm";
 
 /**
  * Staff-logged client feedback for a single instruction — not a client-facing form.
@@ -44,12 +43,6 @@ export default function FeedbackPanel({ caseId, instructionId }) {
     } finally { setBusy(false); }
   };
 
-  const remove = async (id) => {
-    if (!(await confirmDialog("Remove this feedback entry?"))) return;
-    try { await feedbackApi.remove(id); load(); }
-    catch (e) { toast.error(e.response?.data?.detail || "Delete failed"); }
-  };
-
   return (
     <div className="space-y-2">
       {!loading && filtered.length === 0 && <p className="text-xs text-gray-400">No feedback logged for this instruction yet.</p>}
@@ -62,7 +55,7 @@ export default function FeedbackPanel({ caseId, instructionId }) {
             </div>
             {f.comments && <div className="text-xs text-gray-600 mt-0.5">{f.comments}</div>}
           </div>
-          <button onClick={() => remove(f.id)} className="text-xs text-gray-400 hover:text-red-500 flex-shrink-0">✕</button>
+
         </div>
       ))}
 

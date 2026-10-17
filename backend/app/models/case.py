@@ -47,6 +47,7 @@ class CaseStatus(str, enum.Enum):
     STRUCK_OFF = "Struck Off"
     DISSOLVED = "Dissolved"
     TRANSFERRED_OUT = "Transferred Out"
+    CANCELLED = "Cancelled"  # replaces delete; reason in cancel_reason
 
 
 class CaseSource(str, enum.Enum):
@@ -139,6 +140,7 @@ class Case(Base):
     engagement_letter_sent_date = Column(Date, nullable=True)
     engagement_letter_signed_date = Column(Date, nullable=True)
 
+    cancel_reason = Column(String(500), nullable=True)  # set when cancelled — records are never deleted
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 

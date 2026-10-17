@@ -4,7 +4,6 @@ import { useAuthStore } from "../store/auth";
 import { Icon, Badge, Modal, Field, Input, Select, Textarea, DateInput } from "./ui";
 import { fmtDate } from "../utils/constants";
 import { toast } from "../store/toast";
-import { confirmDialog } from "../store/confirm";
 
 // ─── Client-side mirror of backend app/services/aml_matrix.calculate ──────────
 // Keep in sync with that module. Gives instant preview; server recomputes on save.
@@ -62,7 +61,6 @@ export default function AMLAssessmentPanel({ caseId, entityName, parties = [] })
   const user = useAuthStore((s) => s.user);
   const canAssess = ["admin", "screening", "rm"].includes(user?.role);
   const canAmend = ["admin", "screening"].includes(user?.role);
-  const canDelete = user?.role === "admin";
 
   const [catalog, setCatalog] = useState(null);
   const [countries, setCountries] = useState([]);
@@ -176,12 +174,6 @@ export default function AMLAssessmentPanel({ caseId, entityName, parties = [] })
     }
   };
 
-  const remove = async (id) => {
-    if (!(await confirmDialog("Delete this AML assessment?"))) return;
-    try { await amlApi.deleteAssessment(id); load(); }
-    catch (e) { toast.error(e.response?.data?.detail || "Delete failed"); }
-  };
-
   if (loading || !catalog) return null;
 
   const factorDefs = form
@@ -222,7 +214,7 @@ export default function AMLAssessmentPanel({ caseId, entityName, parties = [] })
                   ? <span className="flex items-center gap-1"><span className="text-[11px] text-gray-400 line-through">{a.calculated_rating}</span><RatingBadge rating={a.amended_rating} /></span>
                   : <RatingBadge rating={a.calculated_rating} />}
                 <button onClick={() => openEdit(a)} className="p-1 rounded hover:bg-brand-50 text-gray-400 hover:text-brand-600"><Icon name="edit" size={13} /></button>
-                {canDelete && <button onClick={() => remove(a.id)} className="p-1 rounded hover:bg-red-50 text-gray-400 hover:text-red-500"><Icon name="del" size={13} /></button>}
+
               </div>
             </div>
           ))}

@@ -5,7 +5,7 @@ import { Icon } from "./ui";
 import { DOCUMENT_CATEGORY_OPTIONS, fmtDate } from "../utils/constants";
 import GenerateDocModal from "./GenerateDocModal";
 import { toast } from "../store/toast";
-import { confirmDialog } from "../store/confirm";
+import { reasonDialog } from "../store/confirm";
 import { useMasters } from "../hooks/useMasters";
 import { selectableCodes } from "../hooks/masterUtils";
 
@@ -86,9 +86,11 @@ export default function DocumentsPanel({ caseId, accountId, scope = null, compac
   };
 
   const doDelete = async (d) => {
-    if (!(await confirmDialog(`Delete "${d.filename}"?`))) return;
-    try { await documentsApi.remove(d.id); await load(); onChange?.(); }
-    catch (e) { toast.error(e.response?.data?.detail || "Delete failed"); }
+    const reason = await reasonDialog({ title: "Remove document", confirmLabel: "Remove", optional: true,
+      message: `"${d.filename}" leaves the list. It is kept on record.` });
+    if (reason === null) return;
+    try { await documentsApi.remove(d.id, reason); await load(); onChange?.(); }
+    catch (e) { toast.error(e.response?.data?.detail || "Remove failed"); }
   };
 
   return (

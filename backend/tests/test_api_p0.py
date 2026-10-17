@@ -99,5 +99,5 @@ def test_user_can_hold_several_roles(client, db, make_user, make_role):
     me = client.get("/api/v1/auth/me", headers=auth(person)).json()
     assert {"client.approve", "client.final_approve"} <= set(me["permissions"])
     assert me["business_role_name"] == "MLRO · Approver"
-    # a role still held as an additional role can't be deleted
-    assert client.delete(f"/api/v1/roles/{approver.id}", headers=auth(admin)).status_code == 400
+    # roles are never deleted (no delete in the CRM) — they are deactivated
+    assert client.delete(f"/api/v1/roles/{approver.id}", headers=auth(admin)).status_code == 405

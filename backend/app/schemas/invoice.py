@@ -90,5 +90,5 @@ def invoice_read(inv, db=None) -> "InvoiceRead":
         out.company_name = inv.case.company_name
     if db is not None:
         from app.models import Document
-        out.attachment_count = db.query(Document).filter(Document.invoice_id == inv.id).count()
+        out.attachment_count = db.query(Document).filter(Document.invoice_id == inv.id, Document.removed_at.is_(None)).count()
     return out

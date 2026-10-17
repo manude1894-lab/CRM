@@ -27,7 +27,3 @@ def update_service_subscription(sub_id: int, data: ServiceSubscriptionUpdate, db
     return service_subscription_service.update(db, sub_id, data, user)
 
 
-@router.delete("/service-subscriptions/{sub_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_service_subscription(sub_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    service_subscription_service.delete(db, sub_id, user)
-    return None

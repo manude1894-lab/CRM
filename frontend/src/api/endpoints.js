@@ -13,14 +13,12 @@ export const usersApi = {
   get: (id) => api.get(`/users/${id}`).then((r) => r.data),
   create: (data) => api.post("/users", data).then((r) => r.data),
   update: (id, data) => api.patch(`/users/${id}`, data).then((r) => r.data),
-  delete: (id) => api.delete(`/users/${id}`),
 };
 
 export const departmentsApi = {
   list: () => api.get("/departments").then((r) => r.data),
   create: (data) => api.post("/departments", data).then((r) => r.data),
   update: (id, data) => api.patch(`/departments/${id}`, data).then((r) => r.data),
-  delete: (id) => api.delete(`/departments/${id}`),
 };
 
 // ─── Master data, roles, audit (BRD §15, §18) ─────────────────────────
@@ -37,13 +35,24 @@ export const rolesApi = {
   list: () => api.get("/roles").then((r) => r.data),
   create: (data) => api.post("/roles", data).then((r) => r.data),
   update: (id, data) => api.patch(`/roles/${id}`, data).then((r) => r.data),
-  delete: (id) => api.delete(`/roles/${id}`),
 };
 
 export const auditApi = {
   list: (params = {}) => api.get("/audit", { params }).then((r) => ({ items: r.data, total: +(r.headers["x-total-count"] || r.data.length) })),
   forAccount: (accountId, params = {}) =>
     api.get(`/accounts/${accountId}/audit`, { params }).then((r) => ({ items: r.data, total: +(r.headers["x-total-count"] || r.data.length) })),
+  // Activity report (BRD §2): the log with the same filters, as a CSV file
+  exportCsv: async (params = {}) => {
+    const res = await api.get("/audit/export", { params, responseType: "blob" });
+    const url = window.URL.createObjectURL(new Blob([res.data], { type: "text/csv" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `triam-crm-activity-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
+  },
 };
 
 // ─── Client workflow / maker-checker (BRD §11, §12, §15) ──────────────
@@ -82,7 +91,7 @@ export const casesApi = {
   importEntities: (rows, dryRun) => api.post("/cases/import", { rows, dry_run: dryRun }).then((r) => r.data),
   raiseInvoice: (id, amount = 0) => api.post(`/cases/${id}/invoice/raise`, { amount }).then((r) => r.data),
   markInvoicePaid: (id) => api.post(`/cases/${id}/invoice/mark-paid`).then((r) => r.data),
-  delete: (id) => api.delete(`/cases/${id}`),
+  cancel: (id, reason) => api.post(`/cases/${id}/cancel`, { reason }),
   addRM: (id, userId) => api.post(`/cases/${id}/relationship-managers`, { user_id: userId }).then((r) => r.data),
   removeRM: (id, userId) => api.delete(`/cases/${id}/relationship-managers/${userId}`).then((r) => r.data),
   bulkUpdate: (payload) => api.patch("/cases/bulk", payload).then((r) => r.data),
@@ -99,7 +108,6 @@ export const cddApi = {
   revokeException: (caseId) => api.post(`/cdd/${caseId}/revoke-exception`).then((r) => r.data),
   addDocument: (caseId, data) => api.post(`/cdd/${caseId}/documents`, data).then((r) => r.data),
   updateDocument: (documentId, data) => api.patch(`/cdd/documents/${documentId}`, data).then((r) => r.data),
-  deleteDocument: (documentId) => api.delete(`/cdd/documents/${documentId}`),
 };
 
 // ─── Directors & Shareholders ──────────────────────────────────────────
@@ -107,21 +115,18 @@ export const directorsApi = {
   list: (caseId) => api.get(`/cases/${caseId}/directors`).then((r) => r.data),
   create: (caseId, data) => api.post(`/cases/${caseId}/directors`, data).then((r) => r.data),
   update: (id, data) => api.patch(`/directors/${id}`, data).then((r) => r.data),
-  delete: (id) => api.delete(`/directors/${id}`),
 };
 
 export const shareholdersApi = {
   list: (caseId) => api.get(`/cases/${caseId}/shareholders`).then((r) => r.data),
   create: (caseId, data) => api.post(`/cases/${caseId}/shareholders`, data).then((r) => r.data),
   update: (id, data) => api.patch(`/shareholders/${id}`, data).then((r) => r.data),
-  delete: (id) => api.delete(`/shareholders/${id}`),
 };
 
 export const ubosApi = {
   list: (caseId) => api.get(`/cases/${caseId}/ubos`).then((r) => r.data),
   create: (caseId, data) => api.post(`/cases/${caseId}/ubos`, data).then((r) => r.data),
   update: (id, data) => api.patch(`/ubos/${id}`, data).then((r) => r.data),
-  delete: (id) => api.delete(`/ubos/${id}`),
 };
 
 // ─── Client Parties (Shareholders/Directors/Authorised Signatories on an Account) ──
@@ -130,7 +135,8 @@ export const accountPartiesApi = {
   create: (accountId, data) => api.post(`/accounts/${accountId}/parties`, data).then((r) => r.data),
   // accountId is only needed for a party added in an open amendment (negative id, not saved yet).
   update: (id, data, accountId) => api.patch(`/account-parties/${id}`, data, { params: { account_id: accountId } }).then((r) => r.data),
-  delete: (id, accountId) => api.delete(`/account-parties/${id}`, { params: { account_id: accountId } }),
+  remove: (id, accountId, reason) => api.post(`/account-parties/${id}/remove`, { reason }, { params: { account_id: accountId } }),
+  removed: (accountId) => api.get(`/accounts/${accountId}/removed-parties`).then((r) => r.data),
 };
 
 // ─── Instructions (service-request tracker) ───────────────────────────
@@ -140,7 +146,7 @@ export const instructionsApi = {
   get: (id) => api.get(`/instructions/${id}`).then((r) => r.data),
   create: (data) => api.post("/instructions", data).then((r) => r.data),
   update: (id, data) => api.patch(`/instructions/${id}`, data).then((r) => r.data),
-  delete: (id) => api.delete(`/instructions/${id}`),
+  cancel: (id, reason) => api.post(`/instructions/${id}/cancel`, { reason }),
 };
 
 // ─── Invoices (running ledger of charges) ─────────────────────────────
@@ -149,7 +155,7 @@ export const invoicesApi = {
   get: (id) => api.get(`/invoices/${id}`).then((r) => r.data),
   create: (data) => api.post("/invoices", data).then((r) => r.data),
   update: (id, data) => api.patch(`/invoices/${id}`, data).then((r) => r.data),
-  delete: (id) => api.delete(`/invoices/${id}`),
+  cancel: (id, reason) => api.post(`/invoices/${id}/cancel`, { reason }),
   // Triam BRD mark-up §16
   request: (data) => api.post("/invoices/request", data).then((r) => r.data),
   raise: (id, data) => api.post(`/invoices/${id}/raise`, data).then((r) => r.data),
@@ -168,10 +174,11 @@ export const amlApi = {
   catalog: () => api.get("/aml/catalog").then((r) => r.data),
   prefill: (caseId) => api.get("/aml/prefill", { params: { case_id: caseId } }).then((r) => r.data),
   countryRisk: () => api.get("/aml/country-risk").then((r) => r.data),
+  createCountry: (data) => api.post("/aml/country-risk", data).then((r) => r.data),
+  updateCountry: (id, data) => api.patch(`/aml/country-risk/${id}`, data).then((r) => r.data),
   listAssessments: (caseId) => api.get("/aml/assessments", { params: caseId ? { case_id: caseId } : {} }).then((r) => r.data),
   createAssessment: (data) => api.post("/aml/assessments", data).then((r) => r.data),
   updateAssessment: (id, data) => api.patch(`/aml/assessments/${id}`, data).then((r) => r.data),
-  deleteAssessment: (id) => api.delete(`/aml/assessments/${id}`),
 };
 
 // ─── Compliance ────────────────────────────────────────────────────────
@@ -187,7 +194,7 @@ export const actionPointsApi = {
   list: (params = {}) => api.get("/action-points", { params }).then((r) => r.data),
   create: (data) => api.post("/action-points", data).then((r) => r.data),
   update: (id, data) => api.patch(`/action-points/${id}`, data).then((r) => r.data),
-  remove: (id) => api.delete(`/action-points/${id}`),
+  cancel: (id, reason) => api.post(`/action-points/${id}/cancel`, { reason }),
 };
 
 // ─── Document generation (templated PDFs) ────────────────────────────
@@ -202,7 +209,6 @@ export const pepApi = {
   list: (caseId) => api.get(`/cases/${caseId}/pep-assessments`).then((r) => r.data),
   create: (caseId, data) => api.post(`/cases/${caseId}/pep-assessments`, data).then((r) => r.data),
   update: (id, data) => api.patch(`/pep-assessments/${id}`, data).then((r) => r.data),
-  remove: (id) => api.delete(`/pep-assessments/${id}`),
 };
 
 // ─── Company profile (formation / statutory detail) ────────────────────
@@ -239,7 +245,7 @@ export const documentsApi = {
   addLink: (accountId, data) => api.post(`/accounts/${accountId}/documents/link`, data).then((r) => r.data),
   uploadForAccount: (accountId, formData) =>
     api.post(`/accounts/${accountId}/documents`, formData, { headers: { "Content-Type": undefined } }).then((r) => r.data),
-  remove: (id) => api.delete(`/documents/${id}`),
+  remove: (id, reason) => api.post(`/documents/${id}/remove`, { reason: reason || null }),
   download: async (id, filename) => {
     const res = await api.get(`/documents/${id}/download`, { responseType: "blob" });
     const url = window.URL.createObjectURL(new Blob([res.data]));
@@ -275,7 +281,6 @@ export const accountsApi = {
   get: (id) => api.get(`/accounts/${id}`).then((r) => r.data),
   create: (data) => api.post("/accounts", data).then((r) => r.data),
   update: (id, data) => api.patch(`/accounts/${id}`, data).then((r) => r.data),
-  delete: (id) => api.delete(`/accounts/${id}`),
   import: (rows, dryRun) => api.post("/accounts/import", { rows, dry_run: dryRun }).then((r) => r.data),
   // BRD §3 — names matching the first 3+ letters (all clients; can_open says whether the user may open it)
   lookup: (q, excludeId) => api.get("/accounts/lookup", { params: { q, exclude_id: excludeId || undefined } }).then((r) => r.data),
@@ -303,7 +308,7 @@ export const activitiesApi = {
   get: (id) => api.get(`/activities/${id}`).then((r) => r.data),
   create: (data) => api.post("/activities", data).then((r) => r.data),
   update: (id, data) => api.patch(`/activities/${id}`, data).then((r) => r.data),
-  delete: (id) => api.delete(`/activities/${id}`),
+  cancel: (id, reason) => api.post(`/activities/${id}/cancel`, { reason }),
 };
 
 // ─── Dashboard ─────────────────────────────────────────────────────────
@@ -318,7 +323,6 @@ export const prospectsApi = {
   get: (id) => api.get(`/prospects/${id}`).then((r) => r.data),
   create: (data) => api.post("/prospects", data).then((r) => r.data),
   update: (id, data) => api.patch(`/prospects/${id}`, data).then((r) => r.data),
-  delete: (id) => api.delete(`/prospects/${id}`),
   convert: (id, data = {}) => api.post(`/prospects/${id}/convert`, data).then((r) => r.data),
   assign: (id, data) => api.post(`/prospects/${id}/assign`, data).then((r) => r.data),
   checkDuplicate: (name, excludeId) => api.get("/prospects/check-duplicate", { params: { name, exclude_id: excludeId || undefined } }).then((r) => r.data),
@@ -329,14 +333,12 @@ export const serviceSubscriptionsApi = {
   list: (caseId) => api.get(`/cases/${caseId}/service-subscriptions`).then((r) => r.data),
   create: (caseId, data) => api.post(`/cases/${caseId}/service-subscriptions`, data).then((r) => r.data),
   update: (id, data) => api.patch(`/service-subscriptions/${id}`, data).then((r) => r.data),
-  remove: (id) => api.delete(`/service-subscriptions/${id}`),
 };
 
 // ─── Client feedback ────────────────────────────────────────────────────
 export const feedbackApi = {
   list: (caseId) => api.get(`/cases/${caseId}/feedback`).then((r) => r.data),
   create: (caseId, data) => api.post(`/cases/${caseId}/feedback`, data).then((r) => r.data),
-  remove: (id) => api.delete(`/feedback/${id}`),
 };
 
 // ─── Reports (PDF) ─────────────────────────────────────────────────────

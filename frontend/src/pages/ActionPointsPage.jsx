@@ -4,7 +4,7 @@ import { useAuthStore } from "../store/auth";
 import { Icon, Badge, Modal, Field, Input, Select, Textarea, Spinner, ErrorBanner, PageHeader, DateInput } from "../components/ui";
 import { ACTION_POINT_STATUS_OPTIONS, ACTION_POINT_PRIORITY_OPTIONS, fmtDate } from "../utils/constants";
 import { toast } from "../store/toast";
-import { confirmDialog } from "../store/confirm";
+import { reasonDialog } from "../store/confirm";
 
 const NEXT = { Open: "In Progress", "In Progress": "Done", Done: null };
 const PREV = { Done: "In Progress", "In Progress": "Open", Open: null };
@@ -61,10 +61,13 @@ export default function ActionPointsPage() {
     catch (e) { toast.error(e.response?.data?.detail || "Update failed"); }
   };
 
-  const remove = async (ap) => {
-    if (!(await confirmDialog(`Delete "${ap.title}"?`))) return;
-    try { await actionPointsApi.remove(ap.id); load(); }
-    catch (e) { toast.error(e.response?.data?.detail || "Delete failed"); }
+  // Action points are never deleted: cancelled with a reason and kept on record.
+  const cancelPoint = async (ap) => {
+    const reason = await reasonDialog({ title: "Cancel action point", confirmLabel: "Cancel action point",
+      message: `"${ap.title}" will be marked Cancelled and kept on record.` });
+    if (!reason) return;
+    try { await actionPointsApi.cancel(ap.id, reason); load(); }
+    catch (e) { toast.error(e.response?.data?.detail || "Cancel failed"); }
   };
 
   if (loading) return <Spinner />;
@@ -112,9 +115,11 @@ export default function ActionPointsPage() {
                       {NEXT[ap.status] && (
                         <button onClick={() => move(ap, NEXT[ap.status])} className="text-xs px-2 py-0.5 rounded border border-gray-200 text-gray-500 hover:bg-gray-50">{NEXT[ap.status]} ›</button>
                       )}
-                      <button onClick={() => remove(ap)} className="ml-auto p-1 rounded hover:bg-red-50 text-gray-400 hover:text-red-500">
-                        <Icon name="del" size={12} />
-                      </button>
+                      {ap.status !== "Done" && (
+                        <button onClick={() => cancelPoint(ap)} title="Cancel" className="ml-auto p-1 rounded hover:bg-red-50 text-gray-400 hover:text-red-500">
+                          <Icon name="close" size={12} />
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))}

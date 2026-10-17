@@ -4,7 +4,6 @@ import { useAuthStore } from "../store/auth";
 import { Badge, Modal, Field, Input, Select, Textarea, DateInput } from "./ui";
 import { PEP_TYPE_OPTIONS, PEP_RISK_CONCLUSION_OPTIONS } from "../utils/constants";
 import { toast } from "../store/toast";
-import { confirmDialog } from "../store/confirm";
 
 const clean = (o) => Object.fromEntries(Object.entries(o).map(([k, v]) => [k, v === "" ? null : v]));
 
@@ -68,12 +67,6 @@ export default function PEPAssessmentPanel({ caseId, parties = [] }) {
     } catch (e) { toast.error(e.response?.data?.detail || "Save failed"); }
   };
 
-  const remove = async (a) => {
-    if (!(await confirmDialog(`Delete the PEP assessment for ${a.subject_name}?`))) return;
-    try { await pepApi.remove(a.id); load(); }
-    catch (e) { toast.error(e.response?.data?.detail || "Delete failed"); }
-  };
-
   return (
     <div className="border-t border-gray-100 pt-4">
       <div className="flex items-center justify-between mb-2">
@@ -96,7 +89,7 @@ export default function PEPAssessmentPanel({ caseId, parties = [] }) {
               <div className="flex items-center gap-2">
                 {a.risk_conclusion && <Badge text={a.risk_conclusion} />}
                 {a.senior_management_approved && <span className="text-[11px] text-emerald-600">approved</span>}
-                <button onClick={() => remove(a)} className="text-gray-400 hover:text-red-500 text-xs">✕</button>
+
               </div>
             </div>
           ))}

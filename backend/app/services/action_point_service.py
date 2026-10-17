@@ -48,7 +48,10 @@ def create_action_point(db: Session, data: ActionPointCreate, user: User) -> Act
 
 def update_action_point(db: Session, ap_id: int, data: ActionPointUpdate, user: User) -> ActionPoint:
     ap = get_action_point(db, ap_id)
-    for field, value in data.model_dump(exclude_unset=True).items():
+    payload = data.model_dump(exclude_unset=True)
+    if payload.get("status") == "Cancelled" or ap.status == "Cancelled":
+        raise HTTPException(status_code=400, detail="Use Cancel (with a reason) to cancel; a cancelled action point can't be changed")
+    for field, value in payload.items():
         setattr(ap, field, value)
     _apply_status_side_effects(ap)
     db.commit()
@@ -56,9 +59,11 @@ def update_action_point(db: Session, ap_id: int, data: ActionPointUpdate, user: 
     return ap
 
 
-def delete_action_point(db: Session, ap_id: int, user: User) -> None:
+def cancel_action_point(db: Session, ap_id: int, reason: str, user: User) -> None:
     ap = get_action_point(db, ap_id)
     if user.role != UserRole.ADMIN and user.id not in (ap.created_by_id, ap.owner_id):
-        raise HTTPException(status_code=403, detail="Only the creator, owner or an Admin can delete this action point")
-    db.delete(ap)
+        raise HTTPException(status_code=403, detail="Only the creator, owner or an Admin can cancel this action point")
+    if ap.status in (ActionPointStatus.DONE.value, ActionPointStatus.CANCELLED.value):
+        raise HTTPException(status_code=400, detail=f"This action point is already {ap.status.lower()}")
+    ap.status, ap.cancel_reason = ActionPointStatus.CANCELLED.value, reason.strip()
     db.commit()

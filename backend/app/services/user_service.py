@@ -74,6 +74,10 @@ def _extra_roles(db: Session, role_ids) -> list[Role]:
 def update_user(db: Session, user_id: int, data: UserUpdate) -> User:
     user = get_user(db, user_id)
     update_data = data.model_dump(exclude_unset=True)
+    losing_admin = user.role == UserRole.ADMIN and user.is_active and (
+        update_data.get("is_active") is False or update_data.get("role", UserRole.ADMIN) != UserRole.ADMIN)
+    if losing_admin and db.query(User).filter(User.role == UserRole.ADMIN, User.is_active == True).count() <= 1:  # noqa: E712
+        raise HTTPException(status_code=400, detail="This is the only active administrator — add another administrator first")
     if "supervisor_id" in update_data:
         sup = update_data["supervisor_id"]
         if sup == user_id or access_control.would_create_supervisor_cycle(db, user_id, sup):
@@ -95,13 +99,3 @@ def update_user(db: Session, user_id: int, data: UserUpdate) -> User:
     db.commit()
     db.refresh(user)
     return user
-
-
-def delete_user(db: Session, user_id: int) -> None:
-    user = get_user(db, user_id)
-    if user.role == UserRole.ADMIN:
-        admin_count = db.query(User).filter(User.role == UserRole.ADMIN, User.is_active == True).count()
-        if admin_count <= 1:
-            raise HTTPException(status_code=400, detail="Cannot delete the last admin")
-    db.delete(user)
-    db.commit()

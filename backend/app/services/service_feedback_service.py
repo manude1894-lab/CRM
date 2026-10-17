@@ -38,12 +38,3 @@ def create(db: Session, case_id: int, data: ServiceFeedbackCreate, user: User) -
     db.commit()
     db.refresh(fb)
     return fb
-
-
-def delete(db: Session, feedback_id: int, user: User) -> None:
-    fb = db.query(ServiceFeedback).filter(ServiceFeedback.id == feedback_id).first()
-    if not fb:
-        raise HTTPException(status_code=404, detail="Feedback entry not found")
-    _get_case_for_write(db, fb.case_id, user)
-    db.delete(fb)
-    db.commit()

@@ -134,12 +134,6 @@ def update_prospect(db: Session, prospect_id: int, data: ProspectUpdate, user: U
     return p
 
 
-def delete_prospect(db: Session, prospect_id: int, user: User) -> None:
-    p = get_prospect(db, prospect_id, user)
-    db.delete(p)
-    db.commit()
-
-
 def convert_to_case(db: Session, prospect_id: int, data: ProspectConvertRequest, user: User):
     p = get_prospect(db, prospect_id, user)
     if p.converted_case_id:

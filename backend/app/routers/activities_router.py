@@ -7,6 +7,7 @@ from app.database import get_db
 from app.auth.dependencies import get_current_user
 from app.models import User
 from app.schemas import ActivityCreate, ActivityRead, ActivityUpdate
+from app.schemas.common import CancelRequest
 from app.services import activity_service
 
 router = APIRouter(prefix="/activities", tags=["Activities"])
@@ -50,7 +51,8 @@ def update_activity(
     return activity_service.update_activity(db, activity_id, data, user)
 
 
-@router.delete("/{activity_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_activity(activity_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    activity_service.delete_activity(db, activity_id, user)
+@router.post("/{activity_id}/cancel", status_code=status.HTTP_204_NO_CONTENT,
+             summary="Cancel with a reason (records are never deleted)")
+def cancel_activity(activity_id: int, data: CancelRequest, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    activity_service.cancel_activity(db, activity_id, data.reason, user)
     return None

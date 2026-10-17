@@ -114,10 +114,14 @@ def _replay(db: Session, acc: Account, payload: dict, user: User) -> dict[int, A
             for k, v in AccountPartyUpdate(**op["data"]).model_dump(exclude_unset=True).items():
                 setattr(p, k, v)
             account_party_service.validate_party(acc, p)
-        elif op["op"] == "delete":
+        elif op["op"] == "delete":  # "remove": the party is kept on record, marked removed
             p = by_id.get(op["party_id"])
             if p is not None:
-                acc.parties.remove(p)
+                p.removed_at, p.removed_by_id = datetime.now(timezone.utc), op.get("by") or user.id
+                p.removed_reason = op.get("reason")
+                db.flush()
+                db.expire(acc, ["parties"])  # later ops (and the checks) see only the current parties
+    db.flush()
     if acc.account_type != "Individual":
         acc.is_pep = any(p.is_pep for p in acc.parties)
     db.flush()
@@ -317,7 +321,7 @@ def stage_party_update(db: Session, acc: Account, party_id: int, data: AccountPa
     return next(p for p in after["parties"] if p["id"] == party_id)
 
 
-def stage_party_delete(db: Session, acc: Account, party_id: int, user: User) -> None:
+def stage_party_remove(db: Session, acc: Account, party_id: int, reason: str, user: User) -> None:
     def mutate(payload):
         ops = payload["parties"]
         if party_id < 0:
@@ -325,7 +329,8 @@ def stage_party_delete(db: Session, acc: Account, party_id: int, user: User) -> 
             return
         if party_id not in {p.id for p in acc.parties}:
             raise HTTPException(status_code=404, detail="Party not found")
-        payload["parties"] = [o for o in ops if o.get("party_id") != party_id] + [{"op": "delete", "party_id": party_id}]
+        payload["parties"] = [o for o in ops if o.get("party_id") != party_id] + [
+            {"op": "delete", "party_id": party_id, "reason": reason, "by": user.id}]
     _stage(db, acc, user, mutate)
 
 

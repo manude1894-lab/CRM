@@ -83,11 +83,3 @@ def update_assessment(db: Session, assessment_id: int, data: PEPAssessmentUpdate
     db.commit()
     db.refresh(a)
     return a
-
-
-def delete_assessment(db: Session, assessment_id: int, user: User) -> None:
-    a = get_assessment(db, assessment_id)
-    if user.role != UserRole.ADMIN and a.assessed_by_id != user.id:
-        raise HTTPException(status_code=403, detail="Only the assessor or an Admin can delete a PEP assessment")
-    db.delete(a)
-    db.commit()

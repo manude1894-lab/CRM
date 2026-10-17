@@ -45,13 +45,14 @@ export default function ServiceSubscriptionsModal({ caseItem, onClose }) {
     } finally { setSaving(false); }
   };
 
-  const remove = async (id) => {
-    if (!(await confirmDialog("Remove this service subscription?"))) return;
+  const cancelSub = async (s) => {
+    if (!(await confirmDialog({ title: "Cancel subscription", confirmLabel: "Cancel subscription", danger: true,
+      message: `${s.service_name} stops billing. It stays on file as Cancelled.` }))) return;
     try {
-      await serviceSubscriptionsApi.remove(id);
+      await serviceSubscriptionsApi.update(s.id, { status: "Cancelled" });
       load();
     } catch (e) {
-      toast.error(e.response?.data?.detail || "Delete failed");
+      toast.error(e.response?.data?.detail || "Update failed");
     }
   };
 
@@ -79,7 +80,9 @@ export default function ServiceSubscriptionsModal({ caseItem, onClose }) {
               <div className="flex items-center gap-2 flex-shrink-0">
                 <Badge text={s.status} />
                 <button onClick={() => setForm(s)} className="text-xs px-2 py-0.5 rounded border border-gray-200 hover:border-brand-300 hover:text-brand-600 text-gray-500">Edit</button>
-                <button onClick={() => remove(s.id)} className="text-xs px-2 py-0.5 rounded border border-gray-200 hover:border-red-300 hover:text-red-500 text-gray-500">Remove</button>
+                {s.status !== "Cancelled" && (
+                  <button onClick={() => cancelSub(s)} className="text-xs px-2 py-0.5 rounded border border-gray-200 hover:border-red-300 hover:text-red-500 text-gray-500">Cancel</button>
+                )}
               </div>
             </div>
           ))}

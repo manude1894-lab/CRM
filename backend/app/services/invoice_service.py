@@ -19,7 +19,7 @@ from sqlalchemy.orm import Session
 
 from app.audit import log_event
 from app.auth.permissions import has_permission
-from app.models import Account, Case, Document, Instruction, Invoice, User
+from app.models import Account, Case, Document, Instruction, Invoice, InvoiceLedgerStatus, User
 from app.schemas.invoice import InvoiceCreate, InvoiceRaise, InvoiceRequest, InvoiceUpdate
 from app.services import access_control, notification_service
 
@@ -147,6 +147,8 @@ def create_invoice(db: Session, data: InvoiceCreate, user: User) -> Invoice:
 def update_invoice(db: Session, invoice_id: int, data: InvoiceUpdate, user: User) -> Invoice:
     inv = get_invoice(db, invoice_id, user)
     payload = data.model_dump(exclude_unset=True)
+    if payload.get("status") == "Cancelled" or inv.status == "Cancelled":
+        raise HTTPException(status_code=400, detail="Use Cancel (with a reason) to cancel; a cancelled invoice can't be changed")
     if not _can_manage(user):
         # The requester may still correct their request while Accounts hasn't raised it.
         if inv.status not in OPEN or inv.requested_by_id != user.id or set(payload) - {"description", "amount", "currency", "notes"}:
@@ -228,15 +230,17 @@ def attach(db: Session, invoice_id: int, upload: UploadFile, kind: str, user: Us
 
 def attachments(db: Session, invoice_id: int, user: User) -> list[Document]:
     get_invoice(db, invoice_id, user)
-    return db.query(Document).filter(Document.invoice_id == invoice_id).order_by(Document.id).all()
+    return db.query(Document).filter(Document.invoice_id == invoice_id, Document.removed_at.is_(None)).order_by(Document.id).all()
 
 
-def delete_invoice(db: Session, invoice_id: int, user: User) -> None:
+def cancel_invoice(db: Session, invoice_id: int, reason: str, user: User) -> None:
+    """Invoices are never deleted. The requester may cancel their own open request; Accounts may cancel
+    any invoice that is not paid. The invoice and its attachments stay on record."""
     inv = get_invoice(db, invoice_id, user)
     if not (_can_manage(user) or (inv.status in OPEN and inv.requested_by_id == user.id)):
-        raise HTTPException(status_code=403, detail="Only Accounts can delete an invoice")
-    if inv.status == PAID:
-        raise HTTPException(status_code=400, detail="A paid invoice can't be deleted")
+        raise HTTPException(status_code=403, detail="Only Accounts can cancel this invoice")
+    if inv.status in (PAID, InvoiceLedgerStatus.CANCELLED.value):
+        raise HTTPException(status_code=400, detail=f"A {inv.status.lower()} invoice can't be cancelled")
     db.query(Instruction).filter(Instruction.invoice_id == inv.id).update({Instruction.invoice_id: None})
-    db.delete(inv)
+    inv.status, inv.cancel_reason = InvoiceLedgerStatus.CANCELLED.value, reason.strip()
     db.commit()

@@ -50,13 +50,6 @@ def update_director(db: Session, director_id: int, data: DirectorUpdate, user: U
     return d
 
 
-def delete_director(db: Session, director_id: int, user: User) -> None:
-    d = get_director(db, director_id)
-    _get_case_for_write(db, d.case_id, user)
-    db.delete(d)
-    db.commit()
-
-
 # ─── Shareholders ────────────────────────────────────────────────────────
 def list_shareholders(db: Session, case_id: int) -> list[Shareholder]:
     return db.query(Shareholder).filter(Shareholder.case_id == case_id).order_by(Shareholder.id).all()
@@ -91,13 +84,6 @@ def update_shareholder(db: Session, shareholder_id: int, data: ShareholderUpdate
     return s
 
 
-def delete_shareholder(db: Session, shareholder_id: int, user: User) -> None:
-    s = get_shareholder(db, shareholder_id)
-    _get_case_for_write(db, s.case_id, user)
-    db.delete(s)
-    db.commit()
-
-
 # ─── UBOs ────────────────────────────────────────────────────────────────
 def list_ubos(db: Session, case_id: int) -> list[UBO]:
     return db.query(UBO).filter(UBO.case_id == case_id).order_by(UBO.id).all()
@@ -130,10 +116,3 @@ def update_ubo(db: Session, ubo_id: int, data: UBOUpdate, user: User) -> UBO:
     db.refresh(u)
     compliance_service.flag_bo_filing_due(db, u.case_id)
     return u
-
-
-def delete_ubo(db: Session, ubo_id: int, user: User) -> None:
-    u = get_ubo(db, ubo_id)
-    _get_case_for_write(db, u.case_id, user)
-    db.delete(u)
-    db.commit()

@@ -44,10 +44,6 @@ def update_country_risk(country_id: int, data: CountryRiskUpdate, db: Session = 
     return aml_service.update_country_risk(db, country_id, data)
 
 
-@router.delete("/country-risk/{country_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_country_risk(country_id: int, db: Session = Depends(get_db), user: User = Depends(require_admin)):
-    aml_service.delete_country_risk(db, country_id)
-    return None
 
 
 # ─── Assessments ────────────────────────────────────────────────────────
@@ -71,7 +67,3 @@ def update_assessment(assessment_id: int, data: AMLAssessmentUpdate, db: Session
     return aml_service.update_assessment(db, assessment_id, data, user)
 
 
-@router.delete("/assessments/{assessment_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_assessment(assessment_id: int, db: Session = Depends(get_db), user: User = Depends(require_admin)):
-    aml_service.delete_assessment(db, assessment_id, user)
-    return None

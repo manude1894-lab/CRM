@@ -1,5 +1,6 @@
 """Service layer: AccountParty (Shareholders/Directors/Authorised Signatories on a Client)."""
 import re
+from datetime import datetime, timezone
 from decimal import Decimal
 
 from sqlalchemy.orm import Session
@@ -73,7 +74,8 @@ def _recompute_pep(db: Session, account: Account) -> None:
 
 
 def list_parties(db: Session, account_id: int) -> list[AccountParty]:
-    return db.query(AccountParty).filter(AccountParty.account_id == account_id).order_by(AccountParty.id).all()
+    return (db.query(AccountParty).filter(AccountParty.account_id == account_id, AccountParty.removed_at.is_(None))
+            .order_by(AccountParty.id).all())
 
 
 def list_parties_for(db: Session, account_id: int, user: User) -> list:
@@ -81,6 +83,16 @@ def list_parties_for(db: Session, account_id: int, user: User) -> list:
     account = account_service.get_account(db, account_id, user)  # visibility check
     staged = amendment_service.my_draft_preview(db, account, user)
     return staged["parties"] if staged else list_parties(db, account_id)
+
+
+def list_removed_parties(db: Session, account_id: int, user: User) -> list[dict]:
+    """Parties removed from the client, with who removed them, when and why (kept on record)."""
+    from app.models import User as UserModel
+    account = account_service.get_account(db, account_id, user)  # visibility check
+    names = {u.id: u.name for u in db.query(UserModel.id, UserModel.name).all()}
+    return [{"id": p.id, "full_name": p.full_name, "party_role": p.party_role, "constitution": p.constitution,
+             "removed_at": p.removed_at, "removed_by_name": names.get(p.removed_by_id), "removed_reason": p.removed_reason}
+            for p in account.removed_parties]
 
 
 def get_party(db: Session, party_id: int) -> AccountParty:
@@ -119,6 +131,8 @@ def create_party(db: Session, account_id: int, data: AccountPartyCreate, user: U
 def update_party(db: Session, party_id: int, data: AccountPartyUpdate, user: User, account_id: int | None = None):
     # A negative id is a party added in the open amendment and not approved yet.
     p = None if party_id < 0 else get_party(db, party_id)
+    if p is not None and p.removed_at is not None:
+        raise HTTPException(status_code=400, detail="This party has been removed and can't be changed")
     amendments, staged_on = _amendment_target(db, p.account_id if p else account_id, user)
     if staged_on is not None:
         return amendments.stage_party_update(db, staged_on, party_id, data, user)
@@ -140,18 +154,23 @@ def update_party(db: Session, party_id: int, data: AccountPartyUpdate, user: Use
     return p
 
 
-def delete_party(db: Session, party_id: int, user: User, account_id: int | None = None) -> None:
+def remove_party(db: Session, party_id: int, reason: str, user: User, account_id: int | None = None) -> None:
+    """Parties are never deleted: a removed party is marked with who, when and why and kept on record
+    (and its documents keep its name). On an approved client the removal goes through an amendment."""
     p = None if party_id < 0 else get_party(db, party_id)
+    if p is not None and p.removed_at is not None:
+        raise HTTPException(status_code=400, detail="This party has already been removed")
     amendments, staged_on = _amendment_target(db, p.account_id if p else account_id, user)
     if staged_on is not None:
-        amendments.stage_party_delete(db, staged_on, party_id, user)
+        amendments.stage_party_remove(db, staged_on, party_id, reason.strip(), user)
         return
     if p is None:
         raise HTTPException(status_code=404, detail="Party not found")
     account = _get_account_for_write(db, p.account_id, user)
     was_pep = p.is_pep
-    db.delete(p)
+    p.removed_at, p.removed_by_id, p.removed_reason = datetime.now(timezone.utc), user.id, reason.strip()
     db.commit()
+    db.expire(account, ["parties"])
     if was_pep:
         db.refresh(account)
         _recompute_pep(db, account)

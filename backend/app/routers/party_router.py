@@ -32,10 +32,6 @@ def update_director(director_id: int, data: DirectorUpdate, db: Session = Depend
     return party_service.update_director(db, director_id, data, user)
 
 
-@router.delete("/directors/{director_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_director(director_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    party_service.delete_director(db, director_id, user)
-    return None
 
 
 # ─── Shareholders ────────────────────────────────────────────────────────
@@ -54,10 +50,6 @@ def update_shareholder(shareholder_id: int, data: ShareholderUpdate, db: Session
     return party_service.update_shareholder(db, shareholder_id, data, user)
 
 
-@router.delete("/shareholders/{shareholder_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_shareholder(shareholder_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    party_service.delete_shareholder(db, shareholder_id, user)
-    return None
 
 
 # ─── UBOs ────────────────────────────────────────────────────────────────
@@ -76,7 +68,3 @@ def update_ubo(ubo_id: int, data: UBOUpdate, db: Session = Depends(get_db), user
     return party_service.update_ubo(db, ubo_id, data, user)
 
 
-@router.delete("/ubos/{ubo_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_ubo(ubo_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    party_service.delete_ubo(db, ubo_id, user)
-    return None

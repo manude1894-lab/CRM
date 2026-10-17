@@ -33,10 +33,12 @@ export default function RolesPanel({ departments, users, onChanged }) {
     } catch (e) { toast.error(e.response?.data?.detail || "Save failed"); }
   };
 
-  const remove = async (role) => {
-    if (!(await confirmDialog(`Delete role "${role.name}"?`))) return;
-    try { await rolesApi.delete(role.id); load(); onChanged?.(); }
-    catch (e) { toast.error(e.response?.data?.detail || "Delete failed"); }
+  // Roles are never deleted: an inactive role gives no permissions and drops out of the role lists.
+  const toggleActive = async (role) => {
+    if (role.is_active && !(await confirmDialog({ title: "Deactivate role", confirmLabel: "Deactivate", danger: true,
+      message: `Users holding "${role.name}" lose its permissions until it is reactivated.` }))) return;
+    try { await rolesApi.update(role.id, { is_active: !role.is_active }); load(); onChanged?.(); }
+    catch (e) { toast.error(e.response?.data?.detail || "Update failed"); }
   };
 
   const togglePerm = (key) => setForm((f) => ({
@@ -85,7 +87,10 @@ export default function RolesPanel({ departments, users, onChanged }) {
                 <td className="py-2.5 px-4 whitespace-nowrap text-right">
                   <button onClick={() => setForm({ ...r, department_id: r.department_id || "", description: r.description || "" })}
                     className="p-1.5 rounded hover:bg-brand-50 text-gray-400 hover:text-brand-600 mr-1"><Icon name="edit" size={14} /></button>
-                  <button onClick={() => remove(r)} className="p-1.5 rounded hover:bg-red-50 text-gray-400 hover:text-red-500"><Icon name="del" size={14} /></button>
+                  <button onClick={() => toggleActive(r)}
+                    className={`px-2 py-1 rounded text-[11px] border ${r.is_active ? "border-gray-200 text-gray-500 hover:text-red-600 hover:border-red-200" : "border-green-200 text-green-700 hover:bg-green-50"}`}>
+                    {r.is_active ? "Deactivate" : "Activate"}
+                  </button>
                 </td>
               </tr>
             ))}

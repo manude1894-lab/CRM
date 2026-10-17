@@ -5,7 +5,7 @@ reads/writes those bytes lives here — the swap point for a future volume/S3 ba
 """
 import re
 from typing import Optional
-from datetime import date
+from datetime import date, datetime, timezone
 
 from fastapi import HTTPException, UploadFile
 from sqlalchemy.orm import Session
@@ -67,7 +67,7 @@ def list_for_case(db: Session, case_id: int, user: User) -> list[Document]:
     _case_for_read(db, case_id, user)
     return (
         db.query(Document)
-        .filter(Document.case_id == case_id)
+        .filter(Document.case_id == case_id, Document.removed_at.is_(None))
         .order_by(Document.id.desc())
         .all()
     )
@@ -139,7 +139,7 @@ def list_for_account(db: Session, account_id: int, user: User) -> list[Document]
     _account_for_read(db, account_id, user)
     return (
         db.query(Document)
-        .filter(Document.account_id == account_id)
+        .filter(Document.account_id == account_id, Document.removed_at.is_(None))
         .order_by(Document.id.desc())
         .all()
     )
@@ -283,8 +283,10 @@ def stream_content(db: Session, document_id: int, user: User) -> tuple[bytes, st
     return doc.content, doc.filename, doc.content_type or "application/octet-stream"
 
 
-def delete(db: Session, document_id: int, user: User) -> None:
-    doc = db.query(Document).filter(Document.id == document_id).first()
+def delete(db: Session, document_id: int, user: User, reason: str | None = None) -> None:
+    """Controlled removal (BRD §14). The document is only marked removed — the file and the record are
+    kept, and the removal shows in the folder's history."""
+    doc = db.query(Document).filter(Document.id == document_id, Document.removed_at.is_(None)).first()
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
     if doc.account_id is not None:
@@ -297,7 +299,8 @@ def delete(db: Session, document_id: int, user: User) -> None:
                   user_id=user.id, subject_type="Document", subject_id=doc.id, account_id=doc.account_id,
                   changes={"category": doc.category, "filename": doc.filename, "uploaded_by_id": doc.uploaded_by_id,
                            "uploaded_at": doc.created_at.isoformat() if doc.created_at else None})
-    db.delete(doc)
+    doc.removed_at, doc.removed_by_id = datetime.now(timezone.utc), user.id
+    doc.removed_reason = (reason or "").strip()[:500] or None
     db.commit()
 
 
@@ -353,23 +356,26 @@ def client_folder(db: Session, account_id: int, user: User) -> dict:
     account = _account_for_read(db, account_id, user)
     names = {u.id: u.name for u in db.query(UserModel.id, UserModel.name).all()}
     parties = {p.id: f"{p.full_name} ({p.party_role})" for p in account.parties}
+    # documents filed for a party who was later removed keep that person's name
+    labels = {**{p.id: f"{p.full_name} ({p.party_role}, removed)" for p in account.removed_parties}, **parties}
 
     def item(d: Document, **extra) -> dict:
         out = {c: getattr(d, c) for c in ("id", "case_id", "account_id", "case_document_id", "instruction_id", "category",
                                           "filename", "content_type", "size_bytes", "uploaded_by_id", "notes",
                                           "generated_from", "created_at", "link_url", "party_id")}
         out["uploaded_by_name"] = names.get(d.uploaded_by_id)
-        out["party_name"] = parties.get(d.party_id) if d.party_id else None
+        out["party_name"] = labels.get(d.party_id) if d.party_id else None
         out.update(extra)
         return out
 
     client_docs = []
-    for d in db.query(Document).filter(Document.account_id == account.id, Document.invoice_id.is_(None)).order_by(Document.id.desc()).all():
+    for d in db.query(Document).filter(Document.account_id == account.id, Document.invoice_id.is_(None),
+                                     Document.removed_at.is_(None)).order_by(Document.id.desc()).all():
         allowed, stage, reason = client_document_removal(db, d, account, user)
         client_docs.append(item(d, can_delete=allowed, stage=stage, lock_reason=reason))
     case_docs = [item(d, can_delete=False, stage=None, lock_reason="Managed on the case", case_uid=d.case.case_uid)
                  for d in (db.query(Document).join(Case, Document.case_id == Case.id)
-                           .filter(Case.account_id == account.id).order_by(Document.id.desc()).all())]
+                           .filter(Case.account_id == account.id, Document.removed_at.is_(None)).order_by(Document.id.desc()).all())]
     return {
         "account_id": account.id, "client_id": account.client_id, "temp_id": account.temp_id, "company_name": account.company_name,
         "profile_status": account.profile_status, "stage": _client_document_stage(db, account),

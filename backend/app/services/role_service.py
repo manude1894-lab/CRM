@@ -48,13 +48,3 @@ def update_role(db: Session, role_id: int, data: RoleUpdate) -> Role:
     db.commit()
     db.refresh(role)
     return role
-
-
-def delete_role(db: Session, role_id: int) -> None:
-    role = get_role(db, role_id)
-    in_use = db.query(User).filter(User.business_role_id == role_id).count() + \
-        db.query(User).filter(User.extra_roles.any(Role.id == role_id)).count()
-    if in_use:
-        raise HTTPException(status_code=400, detail=f"Role is assigned to {in_use} user(s) — deactivate it instead")
-    db.delete(role)
-    db.commit()

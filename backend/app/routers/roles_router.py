@@ -31,7 +31,3 @@ def update_role(role_id: int, data: RoleUpdate, db: Session = Depends(get_db), u
     return role_service.update_role(db, role_id, data)
 
 
-@router.delete("/{role_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_role(role_id: int, db: Session = Depends(get_db), user: User = Depends(require_admin)):
-    role_service.delete_role(db, role_id)
-    return None

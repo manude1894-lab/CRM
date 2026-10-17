@@ -21,6 +21,7 @@ class InvoiceLedgerStatus(str, enum.Enum):
     RAISED = "Raised"
     PAID = "Paid"
     OVERDUE = "Overdue"
+    CANCELLED = "Cancelled"
 
 
 class Invoice(Base):
@@ -45,6 +46,7 @@ class Invoice(Base):
 
     notes = Column(Text, nullable=True)
 
+    cancel_reason = Column(String(500), nullable=True)  # set when cancelled — records are never deleted
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 

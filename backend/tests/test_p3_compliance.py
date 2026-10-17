@@ -141,7 +141,7 @@ def test_submit_refuses_incomplete_or_empty_amendment(db, people):
     with pytest.raises(HTTPException) as e:
         amend.submit(db, acc, maker)
     assert "no changes" in e.value.detail
-    account_party_service.delete_party(db, acc.parties[0].id, maker)  # removes the only shareholder
+    account_party_service.remove_party(db, acc.parties[0].id, "Added in error", maker)  # removes the only shareholder
     with pytest.raises(HTTPException) as e:
         amend.submit(db, acc, maker)
     assert "incomplete" in e.value.detail and "Shareholder" in e.value.detail

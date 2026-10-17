@@ -15,6 +15,7 @@ class ActionPointStatus(str, enum.Enum):
     OPEN = "Open"
     IN_PROGRESS = "In Progress"
     DONE = "Done"
+    CANCELLED = "Cancelled"
 
 
 class ActionPoint(Base):
@@ -35,6 +36,7 @@ class ActionPoint(Base):
     due_date = Column(Date, nullable=True)
     completed_date = Column(Date, nullable=True)
 
+    cancel_reason = Column(String(500), nullable=True)  # set when cancelled — records are never deleted
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 

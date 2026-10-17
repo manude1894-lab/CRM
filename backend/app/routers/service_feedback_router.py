@@ -22,7 +22,3 @@ def create_feedback(case_id: int, data: ServiceFeedbackCreate, db: Session = Dep
     return service_feedback_service.create(db, case_id, data, user)
 
 
-@router.delete("/feedback/{feedback_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_feedback(feedback_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    service_feedback_service.delete(db, feedback_id, user)
-    return None

@@ -50,9 +50,3 @@ def update(db: Session, sub_id: int, data: ServiceSubscriptionUpdate, user: User
     db.commit()
     db.refresh(sub)
     return sub
-
-
-def delete(db: Session, sub_id: int, user: User) -> None:
-    sub = _get(db, sub_id, user)
-    db.delete(sub)
-    db.commit()

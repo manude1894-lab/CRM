@@ -52,10 +52,6 @@ def assign_prospect(prospect_id: int, data: ProspectAssignRequest, db: Session =
     return _read(prospect_service.assign_prospect(db, prospect_id, data.rm_id, data.comments, user))
 
 
-@router.delete("/{prospect_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_prospect(prospect_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    prospect_service.delete_prospect(db, prospect_id, user)
-    return None
 
 
 @router.post("/{prospect_id}/convert", response_model=CaseRead, summary="Convert a Won prospect into an onboarding Case")

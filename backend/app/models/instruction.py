@@ -18,6 +18,7 @@ class InstructionStatus(str, enum.Enum):
     IN_PROGRESS = "In Progress"
     COMPLETED = "Completed"
     ON_HOLD = "On Hold"
+    CANCELLED = "Cancelled"
 
 
 class Instruction(Base):
@@ -52,6 +53,7 @@ class Instruction(Base):
 
     comments = Column(Text, nullable=True)
 
+    cancel_reason = Column(String(500), nullable=True)  # set when cancelled — records are never deleted
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 

@@ -77,14 +77,6 @@ def update_country_risk(db: Session, country_id: int, data: CountryRiskUpdate) -
     return c
 
 
-def delete_country_risk(db: Session, country_id: int) -> None:
-    c = db.query(CountryRisk).filter(CountryRisk.id == country_id).first()
-    if not c:
-        raise HTTPException(status_code=404, detail="Country not found")
-    db.delete(c)
-    db.commit()
-
-
 # ─── AML assessments ────────────────────────────────────────────────────
 def _get_case_for_write(db: Session, case_id: int, user: User) -> Case:
     case = db.query(Case).filter(Case.id == case_id).first()
@@ -186,17 +178,6 @@ def update_assessment(db: Session, assessment_id: int, data: AMLAssessmentUpdate
     if a.subject_type == AMLSubjectType.ENTITY.value:
         _sync_cdd_rating(db, a.case_id)
     return a
-
-
-def delete_assessment(db: Session, assessment_id: int, user: User) -> None:
-    a = get_assessment(db, assessment_id)
-    if user.role != UserRole.ADMIN:
-        raise HTTPException(status_code=403, detail="Only Admin can delete an AML assessment")
-    case_id, was_entity = a.case_id, a.subject_type == AMLSubjectType.ENTITY.value
-    db.delete(a)
-    db.commit()
-    if was_entity:
-        _sync_cdd_rating(db, case_id)
 
 
 def selections_of(assessment: AMLRiskAssessment) -> dict[str, str]:

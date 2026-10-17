@@ -27,7 +27,7 @@ def _unpaid_ledger_invoices(db: Session, user: User) -> int:
 
 
 def build_dashboard(db: Session, user: User) -> dict:
-    cases = _rbac_case_query(db, user).all()
+    cases = [c for c in _rbac_case_query(db, user).all() if c.status != CaseStatus.CANCELLED.value]
     today = date.today()
 
     open_cases = [c for c in cases if c.stage != CaseStage.ACTIVE]

@@ -8,7 +8,7 @@ from sqlalchemy import or_, select
 from fastapi import HTTPException
 from typing import Optional
 
-from app.models import Account, Instruction, Case, User, UserRole
+from app.models import Account, Instruction, InstructionStatus, Case, User, UserRole
 from app.schemas.instruction import InstructionCreate, InstructionUpdate
 from app.services import access_control, master_service
 
@@ -131,6 +131,8 @@ def update_instruction(db: Session, instruction_id: int, data: InstructionUpdate
 
     inst = get_instruction(db, instruction_id, user)
     payload = data.model_dump(exclude_unset=True)
+    if payload.get("status") == "Cancelled" or inst.status == "Cancelled":
+        raise HTTPException(status_code=400, detail="Use Cancel (with a reason) to cancel; a cancelled request can't be changed")
     if "instruction_type" in payload and payload["instruction_type"] != inst.instruction_type:
         master_service.assert_valid(db, "service_request_type", payload["instruction_type"], "Request type")
     for field, value in payload.items():
@@ -158,7 +160,10 @@ def update_instruction(db: Session, instruction_id: int, data: InstructionUpdate
     return inst
 
 
-def delete_instruction(db: Session, instruction_id: int, user: User) -> None:
+def cancel_instruction(db: Session, instruction_id: int, reason: str, user: User) -> None:
+    """Service requests are never deleted: they are cancelled with a reason and stay on record."""
     inst = get_instruction(db, instruction_id, user)
-    db.delete(inst)
+    if inst.status in (InstructionStatus.COMPLETED.value, InstructionStatus.CANCELLED.value):
+        raise HTTPException(status_code=400, detail=f"A {inst.status.lower()} service request can't be cancelled")
+    inst.status, inst.cancel_reason = InstructionStatus.CANCELLED.value, reason.strip()
     db.commit()

@@ -4,7 +4,6 @@ import { Icon, Badge, Modal, Field, Input, Select, Textarea, Spinner, ErrorBanne
 import DuplicateWarning from "../components/DuplicateWarning";
 import { PROSPECT_STATUS_OPTIONS, CASE_SOURCE_OPTIONS, JURISDICTION_OPTIONS, SERVICE_TYPE_OPTIONS, fmtFull, fmtDate } from "../utils/constants";
 import { toast } from "../store/toast";
-import { confirmDialog } from "../store/confirm";
 import { useAuthStore } from "../store/auth";
 import { wordCount } from "../components/accounts/WorkflowBar";
 
@@ -83,12 +82,6 @@ export default function ProspectsPage({ onNavigate } = {}) {
   const move = async (p, status) => {
     try { await prospectsApi.update(p.id, { status }); load(); }
     catch (e) { toast.error(e.response?.data?.detail || "Update failed"); }
-  };
-
-  const remove = async (p) => {
-    if (!(await confirmDialog(`Delete prospect "${p.company_name}"?`))) return;
-    try { await prospectsApi.delete(p.id); load(); }
-    catch (e) { toast.error(e.response?.data?.detail || "Delete failed"); }
   };
 
   const doAssign = async () => {
@@ -174,9 +167,6 @@ export default function ProspectsPage({ onNavigate } = {}) {
                       {!p.converted_case_id && !p.converted_account_id && PROSPECT_STATUS_OPTIONS.filter((s) => s !== p.status).map((s) => (
                         <button key={s} onClick={() => move(p, s)} className="text-xs px-2 py-0.5 rounded border border-gray-200 text-gray-500 hover:bg-gray-50">{s}</button>
                       ))}
-                      <button onClick={() => remove(p)} className="ml-auto p-1 rounded hover:bg-red-50 text-gray-400 hover:text-red-500">
-                        <Icon name="del" size={12} />
-                      </button>
                     </div>
                   </div>
                 ))}

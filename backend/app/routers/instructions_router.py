@@ -8,6 +8,7 @@ from app.auth.dependencies import get_current_user, require_admin
 from app.models import User
 from app.schemas import InstructionCreate, InstructionRead, InstructionUpdate
 from app.schemas.case import ImportRequest
+from app.schemas.common import CancelRequest
 from app.services import instruction_service, engagement_service
 
 router = APIRouter(prefix="/instructions", tags=["Instructions"])
@@ -56,7 +57,8 @@ def update_instruction(
     return instruction_service.update_instruction(db, instruction_id, data, user)
 
 
-@router.delete("/{instruction_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_instruction(instruction_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    instruction_service.delete_instruction(db, instruction_id, user)
+@router.post("/{instruction_id}/cancel", status_code=status.HTTP_204_NO_CONTENT,
+             summary="Cancel with a reason (records are never deleted)")
+def cancel_instruction(instruction_id: int, data: CancelRequest, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    instruction_service.cancel_instruction(db, instruction_id, data.reason, user)
     return None

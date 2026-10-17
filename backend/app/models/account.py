@@ -155,5 +155,9 @@ class Account(Base):
         from, or the internal record number for clients created before prospects were required."""
         return self.prospect.prospect_uid if self.prospect is not None else self.account_uid
     cases = relationship("Case", back_populates="account")
-    parties = relationship("AccountParty", back_populates="account", cascade="all, delete-orphan")
+    # Current parties only; removed ones stay in the table (removed_at set) and are listed by removed_parties.
+    parties = relationship("AccountParty", primaryjoin="and_(Account.id == AccountParty.account_id, AccountParty.removed_at.is_(None))",
+                           cascade="all, delete-orphan", order_by="AccountParty.id", overlaps="removed_parties")
+    removed_parties = relationship("AccountParty", primaryjoin="and_(Account.id == AccountParty.account_id, AccountParty.removed_at.isnot(None))",
+                                   viewonly=True, order_by="AccountParty.removed_at")
     documents = relationship("Document", back_populates="account", cascade="all, delete-orphan")
