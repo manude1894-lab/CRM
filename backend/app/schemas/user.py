@@ -56,6 +56,7 @@ class UserRead(UserBase):
     id: int
     permissions: list[str] = []
     business_role_name: Optional[str] = None
+    handles_clients: bool = True  # client-facing staff; central desks get a shorter menu
     locked_until: Optional[datetime] = None  # P7 — shown to admins; resetting the password unlocks
     last_login_at: Optional[datetime] = None
     previous_login_at: Optional[datetime] = None

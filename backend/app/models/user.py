@@ -69,6 +69,14 @@ class User(Base):
         return sorted(user_permissions(self))
 
     @property
+    def handles_clients(self) -> bool:
+        """True for client-facing staff (RM, RO, FO, Sales Manager …): no business role, or at least one
+        that carries none of the central-desk permissions. Decides the menu a user gets."""
+        from app.auth.permissions import CENTRAL_PERMISSIONS  # local import: auth imports models
+        roles = self.all_business_roles
+        return not roles or any(not (set(r.permissions or []) & CENTRAL_PERMISSIONS) for r in roles)
+
+    @property
     def business_role_name(self):
         """Shown as the user's role in the app (e.g. "MLRO") instead of the system tier."""
         names = [r.name for r in self.all_business_roles]

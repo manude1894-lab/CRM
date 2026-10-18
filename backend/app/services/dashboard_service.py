@@ -80,13 +80,17 @@ def build_dashboard(db: Session, user: User) -> dict:
         for stage in CaseStage
     ]
 
-    rm_ops_users = db.query(User).filter(User.role.in_([UserRole.RM, UserRole.OPS]), User.is_active == True).all()
+    rm_ops_users = db.query(User).filter(User.role.in_([UserRole.RM, UserRole.OPS]), User.is_active == True).all()  # noqa: E712
     rm_ops_performance = []
     for u in rm_ops_users:
         if u.role == UserRole.RM:
             my_cases = [c for c in cases if c.rm_id == u.id]
         else:
             my_cases = [c for c in cases if c.ops_owner_id == u.id]
+        # Central roles (Compliance, Approver, Accounts, Inquiry, Prospecting Coordinator) aren't RMs:
+        # list them only if they actually handle companies.
+        if not my_cases and not u.handles_clients:
+            continue
         rm_ops_performance.append({
             "user_id": u.id,
             "name": u.name,

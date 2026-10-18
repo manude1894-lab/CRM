@@ -23,21 +23,24 @@ import { ROLE_LABEL, fmtToday } from "./utils/constants";
 import { formatTimestamp } from "./utils/auditFormat";
 
 // The menu, grouped by area of work. Order within the array is the order on screen.
+// `desks`: client-facing staff (RM, RO, FO, Sales Manager), Ops / Screening and Admin always see the item;
+// central-desk users (Compliance, Approver, Accounts, Inquiry, Prospecting Coordinator) see it only with
+// one of these permissions. No `desks` = everyone.
 const NAV = [
   { key: "dashboard", label: "Dashboard", icon: "dashboard", component: Dashboard, group: null },
   { key: "accounts", label: "Clients", icon: "accounts", component: AccountsPage, group: "Clients & Cases" },
-  { key: "prospects", label: "Prospects", icon: "kanban", component: ProspectsPage, group: "Clients & Cases" },
-  { key: "cases", label: "Cases", icon: "cases", component: CasesPage, group: "Clients & Cases" },
+  { key: "prospects", label: "Prospects", icon: "kanban", component: ProspectsPage, desks: ["prospect.assign", "client.approve", "read_only"], group: "Clients & Cases" },
+  { key: "cases", label: "Cases", icon: "cases", component: CasesPage, desks: ["client.approve", "invoice.manage", "read_only"], group: "Clients & Cases" },
   // Compliance review desk: new clients, client amendments, new cases and case changes awaiting
   // Compliance (MLRO) and Approver decisions (BRD §12, §13, §15; Triam mark-up §10).
   { key: "approvals", label: "Compliance", icon: "shield", component: ApprovalsPage, perm: ["client.approve", "client.final_approve"], group: "Compliance" },
-  { key: "cdd", label: "CDD / Screening", icon: "cdd", component: CDDPage, roles: ["admin", "screening", "rm"], group: "Compliance" },
+  { key: "cdd", label: "CDD / Screening", icon: "cdd", component: CDDPage, roles: ["admin", "screening", "rm"], desks: ["client.approve", "read_only"], group: "Compliance" },
   // Licence renewal / ESR / Annual Return / ROM-RBO due dates (BVI process).
-  { key: "compliance", label: "Filing Calendar", icon: "calendar", component: CompliancePage, group: "Compliance" },
-  { key: "activities", label: "Activities", icon: "activities", component: ActivitiesPage, group: "Servicing" },
-  { key: "instructions", label: "Service Requests", icon: "instructions", component: InstructionsPage, group: "Servicing" },
-  { key: "action-points", label: "Action Points", icon: "check", component: ActionPointsPage, group: "Servicing" },
-  { key: "invoices", label: "Invoices", icon: "invoices", component: InvoicesPage, group: "Finance & Reports" },
+  { key: "compliance", label: "Filing Calendar", icon: "calendar", component: CompliancePage, desks: ["client.approve", "read_only"], group: "Compliance" },
+  { key: "activities", label: "Activities", icon: "activities", component: ActivitiesPage, desks: ["client.approve", "read_only", "prospect.assign"], group: "Servicing" },
+  { key: "instructions", label: "Service Requests", icon: "instructions", component: InstructionsPage, desks: ["client.approve", "invoice.manage", "read_only"], group: "Servicing" },
+  { key: "action-points", label: "Action Points", icon: "check", component: ActionPointsPage, desks: ["client.approve", "prospect.assign"], group: "Servicing" },
+  { key: "invoices", label: "Invoices", icon: "invoices", component: InvoicesPage, desks: ["client.approve", "invoice.manage", "read_only"], group: "Finance & Reports" },
   { key: "reports", label: "Reports", icon: "reports", component: ReportsPage, group: "Finance & Reports" },
   { key: "admin", label: "Admin", icon: "admin", component: AdminPage, roles: ["admin"], group: "Administration" },
 ];
@@ -57,7 +60,9 @@ export default function App() {
 
   if (!isAuthenticated) return <LoginPage />;
 
-  const navItems = NAV.filter((n) => (!n.roles || n.roles.includes(user?.role)) && (!n.perm || [].concat(n.perm).some((f) => can(f))));
+  const fullMenu = user?.role !== "rm" || user?.handles_clients !== false;
+  const navItems = NAV.filter((n) => (!n.roles || n.roles.includes(user?.role)) && (!n.perm || [].concat(n.perm).some((f) => can(f)))
+    && (!n.desks || fullMenu || n.desks.some((f) => can(f))));
   const activeItem = navItems.find((n) => n.key === page) || navItems[0];
   const PageComponent = activeItem.component;
 
