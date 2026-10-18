@@ -49,7 +49,11 @@ export default function CompanyDetailsModal({ caseItem, onClose }) {
     try {
       const { id, case_id, created_at, updated_at, ...patch } = form;
       await companyProfileApi.update(caseItem.id, cleanPayload(patch));
-      await casesApi.update(caseItem.id, cleanPayload(el));
+      // The engagement letter dates belong to the case itself: only send them when they changed, so saving
+      // company details works while the case is locked for Compliance review.
+      const elChanged = el.engagement_letter_sent_date !== (caseItem.engagement_letter_sent_date || "")
+        || el.engagement_letter_signed_date !== (caseItem.engagement_letter_signed_date || "");
+      if (elChanged) await casesApi.update(caseItem.id, cleanPayload(el));
       onClose(true);
     } catch (e) {
       toast.error(e.response?.data?.detail || "Save failed");
