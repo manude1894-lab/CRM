@@ -10,6 +10,7 @@ from app.models.case import CaseStage, CaseStatus, CaseSource, InvoiceStatus, Ju
 class CaseBase(BaseModel):
     company_name: str = Field(..., min_length=1, max_length=255)
     source: CaseSource = CaseSource.OTHER
+    source_other: Optional[str] = Field(None, max_length=100)
     stage: CaseStage = CaseStage.NEW_INQUIRY
     status: CaseStatus = CaseStatus.ACTIVE
     introducer: Optional[str] = Field(None, max_length=150)
@@ -49,6 +50,7 @@ class ImportRequest(BaseModel):
 class CaseUpdate(BaseModel):
     company_name: Optional[str] = None
     source: Optional[CaseSource] = None
+    source_other: Optional[str] = Field(None, max_length=100)
     introducer: Optional[str] = Field(None, max_length=150)
     onboarding_date: Optional[date] = None
     jurisdiction: Optional[Jurisdiction] = None

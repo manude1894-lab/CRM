@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { lifecycleApi, jurisdictionsApi } from "../api/endpoints";
-import { Modal, Field, Input, Select, Textarea, Spinner, ErrorBanner, DateInput } from "./ui";
+import { Modal, Field, Input, Select, Textarea, Spinner, ErrorBanner, DateInput, SelectWithOther } from "./ui";
 import DocumentsPanel from "./DocumentsPanel";
 import { toast } from "../store/toast";
 import {
@@ -117,10 +117,8 @@ export default function LifecycleModal({ caseItem, onClose }) {
               <Field label="Initiated Date"><DateInput value={form.restoration_initiated_date || ""} onChange={set("restoration_initiated_date")} /></Field>
               <Field label="Completed Date"><DateInput value={form.restoration_completed_date || ""} onChange={set("restoration_completed_date")} /></Field>
               <Field label="Strike-off Cause">
-                <Select value={form.strike_off_cause || ""} onChange={set("strike_off_cause")}>
-                  <option value="">— select —</option>
-                  {STRIKE_OFF_CAUSE_OPTIONS.map((o) => <option key={o}>{o}</option>)}
-                </Select>
+                <SelectWithOther value={form.strike_off_cause} options={STRIKE_OFF_CAUSE_OPTIONS} otherValue={form.strike_off_cause_other}
+                  onChange={set("strike_off_cause")} onOtherChange={set("strike_off_cause_other")} otherPlaceholder="Cause of the strike-off" />
               </Field>
             </div>
 
@@ -146,16 +144,10 @@ export default function LifecycleModal({ caseItem, onClose }) {
           <Section title="Registered-Agent Transfer">
             <div className="grid grid-cols-2 gap-x-3">
               <Field label="From Agent">
-                <Select value={form.transfer_from_agent || ""} onChange={set("transfer_from_agent")}>
-                  <option value="">— select —</option>
-                  {REGISTERED_AGENT_OPTIONS.map((o) => <option key={o}>{o}</option>)}
-                </Select>
+                <SelectWithOther value={form.transfer_from_agent} options={REGISTERED_AGENT_OPTIONS} maxLength={50} onChange={set("transfer_from_agent")} otherPlaceholder="Name of the agent" />
               </Field>
               <Field label="To Agent">
-                <Select value={form.transfer_to_agent || ""} onChange={set("transfer_to_agent")}>
-                  <option value="">— select —</option>
-                  {REGISTERED_AGENT_OPTIONS.map((o) => <option key={o}>{o}</option>)}
-                </Select>
+                <SelectWithOther value={form.transfer_to_agent} options={REGISTERED_AGENT_OPTIONS} maxLength={50} onChange={set("transfer_to_agent")} otherPlaceholder="Name of the agent" />
               </Field>
               <Field label="Initiated Date"><DateInput value={form.transfer_initiated_date || ""} onChange={set("transfer_initiated_date")} /></Field>
               <Field label="Completed Date"><DateInput value={form.transfer_completed_date || ""} onChange={set("transfer_completed_date")} /></Field>

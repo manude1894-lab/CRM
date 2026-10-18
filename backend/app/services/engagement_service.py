@@ -27,6 +27,22 @@ from app import jurisdictions
 from app.audit import log_event
 from app.models import Account, Case, CaseDocument, CaseStage, ComplianceSchedule, CDDRecord, Instruction, User
 from app.models.case import Jurisdiction
+from app.models.company_profile import RegisteredAgent
+
+
+def set_registered_agent(profile, name) -> None:
+    """An agent on the company's list is stored as is; any other name is stored as "Other" with the
+    name alongside, which is how the company details screen records it."""
+    name = (name or "").strip()
+    if not name:
+        return
+    known = next((a.value for a in RegisteredAgent if a.value.lower() == name.lower()), None)
+    if known and known != RegisteredAgent.OTHER.value:
+        profile.registered_agent, profile.registered_agent_other = known, None
+    else:
+        profile.registered_agent = RegisteredAgent.OTHER.value
+        if not known:
+            profile.registered_agent_other = name[:100]
 from app.services import compliance_service, company_service, master_service
 from app.utils.uid import next_uid
 
@@ -79,8 +95,7 @@ def apply_route(db: Session, case: Case, data) -> None:
     profile.incorporation_date = data.incorporation_date
     if data.company_number:
         profile.company_number = data.company_number
-    if data.registered_agent:
-        profile.registered_agent = data.registered_agent[:50]
+    set_registered_agent(profile, data.registered_agent)
     if route == EXISTING:
         case.stage = CaseStage.ACTIVE  # already serviced by Triam; the pipeline doesn't apply
     if route == TRANSFER:
@@ -246,7 +261,7 @@ def import_entities(db: Session, user: User, rows: list[dict], dry_run: bool) ->
             profile = company_service.get_or_create(db, case.id)
             profile.incorporation_date = incorporation
             profile.company_number = r.get("company_number") or None
-            profile.registered_agent = (r.get("registered_agent") or "")[:50] or None
+            set_registered_agent(profile, r.get("registered_agent"))
             db.flush()
             build_calendar(db, case)
             log_event(db, "import", f"Existing entity {case.case_uid} ({name}) imported", subject_type="Case",

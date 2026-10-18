@@ -15,6 +15,7 @@ class CompanyProfileBase(BaseModel):
     chinese_name: Optional[str] = None
     company_number: Optional[str] = None
     registered_agent: Optional[RegisteredAgent] = None
+    registered_agent_other: Optional[str] = Field(None, max_length=100)
     incorporation_date: Optional[date] = None
     entity_category: Optional[str] = None
     regulator: Optional[str] = None
@@ -33,6 +34,7 @@ class CompanyProfileBase(BaseModel):
     source_of_funds: Optional[SourceOfFunds] = None
     source_of_funds_description: Optional[str] = None
     nature_of_business: Optional[NatureOfBusiness] = None
+    nature_of_business_other: Optional[str] = Field(None, max_length=100)
     business_description: Optional[str] = None
     business_countries: Optional[str] = None
     key_counterparties: Optional[str] = None

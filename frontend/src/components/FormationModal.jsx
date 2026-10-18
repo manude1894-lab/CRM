@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { formationApi } from "../api/endpoints";
 import { useAuthStore } from "../store/auth";
-import { Modal, Field, Input, Select, Textarea, Spinner, ErrorBanner, DateInput } from "./ui";
+import { Modal, Field, Input, Select, Textarea, Spinner, ErrorBanner, DateInput, SelectWithOther } from "./ui";
 import { toast } from "../store/toast";
 import {
   SCREENING_STATUS_OPTIONS, MLRO_SIGNOFF_STATUS_OPTIONS, VISTRA_STATUS_OPTIONS,
@@ -74,10 +74,7 @@ export default function FormationModal({ caseItem, users = [], onClose }) {
               </Field>
               <Field label="Screening Date"><DateInput value={form.screening_date || ""} onChange={set("screening_date")} /></Field>
               <Field label="Tool">
-                <Select value={form.screening_tool || ""} onChange={set("screening_tool")}>
-                  <option value="">— select —</option>
-                  {SCREENING_TOOL_OPTIONS.map((o) => <option key={o}>{o}</option>)}
-                </Select>
+                <SelectWithOther value={form.screening_tool} options={SCREENING_TOOL_OPTIONS} maxLength={60} onChange={set("screening_tool")} otherPlaceholder="Name of the screening tool" />
               </Field>
             </div>
             <Field label="World-Check / Reference"><Input value={form.world_check_reference || ""} onChange={set("world_check_reference")} /></Field>

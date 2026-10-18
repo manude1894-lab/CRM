@@ -4,7 +4,7 @@ import CsvImportModal from "../components/CsvImportModal";
 import { ROUTES, ROUTE_HELP, REGISTERED_AGENTS, routeFields, stageLabel } from "../components/cases/engagement";
 import { useAuthStore } from "../store/auth";
 import { casesApi, usersApi, accountsApi } from "../api/endpoints";
-import { Icon, Badge, Modal, Field, Input, Select, Textarea, Spinner, ErrorBanner, MoreMenu, PageHeader, Button, SearchInput, FilterBar, DateInput } from "../components/ui";
+import { Icon, Badge, Modal, Field, Input, Select, Textarea, Spinner, ErrorBanner, MoreMenu, PageHeader, Button, SearchInput, FilterBar, DateInput, SelectWithOther } from "../components/ui";
 import PartyRegisterModal from "../components/PartyRegisterModal";
 import CompanyDetailsModal from "../components/CompanyDetailsModal";
 import LifecycleModal from "../components/LifecycleModal";
@@ -99,7 +99,7 @@ export default function CasesPage({ initialCaseId, initialStage } = {}) {
   }), [cases, search, stageFilter, statusFilter]);
 
   const openNew = () => {
-    setForm({ company_name: "", source: "Other", introducer: "", onboarding_date: "", jurisdiction: "BVI", service_type: "Company Formation", account_id: null, rm_id: null, tags: "", notes: "",
+    setForm({ company_name: "", source: "", source_other: "", introducer: "", onboarding_date: "", jurisdiction: "BVI", service_type: "Company Formation", account_id: null, rm_id: null, tags: "", notes: "",
       engagement_route: "Formation", previous_agent: "", incorporation_date: "", company_number: "", registered_agent: "",
       last_renewal_date: "", last_esr_date: "", last_ar_date: "" });
     setModal("new");
@@ -111,7 +111,8 @@ export default function CasesPage({ initialCaseId, initialStage } = {}) {
 
   const save = async () => {
     try {
-      const clean = (o) => ({ ...o, onboarding_date: o.onboarding_date || null, introducer: o.introducer || null });
+      const clean = (o) => ({ ...o, onboarding_date: o.onboarding_date || null, introducer: o.introducer || null,
+        source: o.source || "Other", source_other: o.source === "Other" ? (o.source_other || null) : null });
       if (modal === "new") {
         const { engagement_route, previous_agent, incorporation_date, company_number, registered_agent,
           last_renewal_date, last_esr_date, last_ar_date, ...base } = form;
@@ -495,10 +496,8 @@ export default function CasesPage({ initialCaseId, initialStage } = {}) {
                     <Input value={form.company_number || ""} onChange={(e) => setForm((p) => ({ ...p, company_number: e.target.value }))} />
                   </Field>
                   <Field label="Registered agent">
-                    <Select value={form.registered_agent || ""} onChange={(e) => setForm((p) => ({ ...p, registered_agent: e.target.value }))}>
-                      <option value="">—</option>
-                      {REGISTERED_AGENTS.map((a) => <option key={a}>{a}</option>)}
-                    </Select>
+                    <SelectWithOther value={form.registered_agent} options={REGISTERED_AGENTS} maxLength={50} otherPlaceholder="Name of the registered agent"
+                      onChange={(e) => setForm((p) => ({ ...p, registered_agent: e.target.value }))} />
                   </Field>
                   <Field label="Last licence renewal"><DateInput value={form.last_renewal_date || ""} onChange={(e) => setForm((p) => ({ ...p, last_renewal_date: e.target.value }))} /></Field>
                   <Field label="Last ESR filing"><DateInput value={form.last_esr_date || ""} onChange={(e) => setForm((p) => ({ ...p, last_esr_date: e.target.value }))} /></Field>
@@ -527,15 +526,15 @@ export default function CasesPage({ initialCaseId, initialStage } = {}) {
               )}
             </Field>
             <Field label="Source">
-              <Select value={form.source || "Other"} onChange={(e) => setForm((p) => ({ ...p, source: e.target.value }))}>
-                {CASE_SOURCE_OPTIONS.map((s) => <option key={s}>{s}</option>)}
-              </Select>
+              <SelectWithOther value={form.source} options={CASE_SOURCE_OPTIONS} otherValue={form.source_other}
+                onChange={(e) => setForm((p) => ({ ...p, source: e.target.value }))}
+                onOtherChange={(e) => setForm((p) => ({ ...p, source_other: e.target.value }))} otherPlaceholder="Where did the case come from?" />
             </Field>
             <Field label="Introduced By"><Input value={form.introducer || ""} onChange={(e) => setForm((p) => ({ ...p, introducer: e.target.value }))} placeholder="e.g. Vistra, Rosemont, a referrer" /></Field>
             <Field label="Onboarding Date"><DateInput value={form.onboarding_date || ""} onChange={(e) => setForm((p) => ({ ...p, onboarding_date: e.target.value }))} /></Field>
             <Field label="Jurisdiction">
               <Select value={form.jurisdiction || ""} onChange={(e) => setForm((p) => ({ ...p, jurisdiction: e.target.value }))}>
-                <option value="">— Select —</option>
+                <option value="">— select —</option>
                 {JURISDICTION_OPTIONS.map((j) => <option key={j}>{j}</option>)}
               </Select>
             </Field>

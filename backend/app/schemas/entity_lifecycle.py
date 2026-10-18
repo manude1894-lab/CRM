@@ -1,5 +1,5 @@
 """Pydantic schemas: EntityLifecycle (closure / restoration / RA transfer)."""
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional, List
 from datetime import date, datetime
 
@@ -32,6 +32,7 @@ class EntityLifecycleBase(BaseModel):
     restoration_initiated_date: Optional[date] = None
     restoration_completed_date: Optional[date] = None
     strike_off_cause: Optional[StrikeOffCause] = None
+    strike_off_cause_other: Optional[str] = Field(None, max_length=100)
     restoration_checklist: Optional[List[ChecklistItem]] = None
 
     # Registered-agent transfer

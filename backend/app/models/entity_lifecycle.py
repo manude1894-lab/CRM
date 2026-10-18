@@ -88,6 +88,7 @@ class EntityLifecycle(Base):
     restoration_initiated_date = Column(Date, nullable=True)
     restoration_completed_date = Column(Date, nullable=True)
     strike_off_cause = Column(String(20), nullable=True)
+    strike_off_cause_other = Column(String(100), nullable=True)  # when "Other"
     restoration_checklist = Column(JSON, nullable=True)  # [{key, label, status, note}, ...]
 
     # ─── Registered-agent transfer ─────────────────────────────────────

@@ -17,3 +17,13 @@ def test_portfolio_lists_only_client_facing_users(db, make_user, make_role):
     admin = make_user(role="admin")
     names = {p["name"] for p in dashboard_service.build_dashboard(db, admin)["rm_ops_performance"]}
     assert rita.name in names and ada.name not in names
+
+
+def test_registered_agent_outside_the_list_is_kept_as_other():
+    from app.models import CompanyProfile
+    from app.services.engagement_service import set_registered_agent
+    p = CompanyProfile()
+    set_registered_agent(p, "vistra")
+    assert (p.registered_agent, p.registered_agent_other) == ("Vistra", None)
+    set_registered_agent(p, "Harneys Corporate Services")
+    assert (p.registered_agent, p.registered_agent_other) == ("Other", "Harneys Corporate Services")

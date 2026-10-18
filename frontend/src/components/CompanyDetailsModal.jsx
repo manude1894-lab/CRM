@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { companyProfileApi, casesApi } from "../api/endpoints";
-import { Modal, Field, Input, Select, Textarea, Spinner, ErrorBanner, DateInput } from "./ui";
+import { Modal, Field, Input, Select, Textarea, Spinner, ErrorBanner, DateInput, SelectWithOther } from "./ui";
 import DocumentsPanel from "./DocumentsPanel";
 import { toast } from "../store/toast";
 import {
@@ -72,10 +72,8 @@ export default function CompanyDetailsModal({ caseItem, onClose }) {
               </Field>
               <Field label="Name Confirmed Date"><DateInput value={form.name_confirmed_date || ""} onChange={set("name_confirmed_date")} /></Field>
               <Field label="Registered Agent">
-                <Select value={form.registered_agent || ""} onChange={set("registered_agent")}>
-                  <option value="">— select —</option>
-                  {REGISTERED_AGENT_OPTIONS.map((o) => <option key={o}>{o}</option>)}
-                </Select>
+                <SelectWithOther value={form.registered_agent} options={REGISTERED_AGENT_OPTIONS} otherValue={form.registered_agent_other}
+                  onChange={set("registered_agent")} onOtherChange={set("registered_agent_other")} otherPlaceholder="Name of the registered agent" />
               </Field>
               <Field label="Incorporation Date"><DateInput value={form.incorporation_date || ""} onChange={set("incorporation_date")} /></Field>
               <Field label="Company Number"><Input value={form.company_number || ""} onChange={set("company_number")} /></Field>
@@ -110,10 +108,8 @@ export default function CompanyDetailsModal({ caseItem, onClose }) {
                 </Select>
               </Field>
               <Field label="Nature of Business">
-                <Select value={form.nature_of_business || ""} onChange={set("nature_of_business")}>
-                  <option value="">— select —</option>
-                  {NATURE_OF_BUSINESS_OPTIONS.map((o) => <option key={o}>{o}</option>)}
-                </Select>
+                <SelectWithOther value={form.nature_of_business} options={NATURE_OF_BUSINESS_OPTIONS} otherValue={form.nature_of_business_other}
+                  onChange={set("nature_of_business")} onOtherChange={set("nature_of_business_other")} otherPlaceholder="Describe the business" />
               </Field>
             </div>
             <Field label="Source of Funds Description"><Textarea value={form.source_of_funds_description || ""} onChange={set("source_of_funds_description")} /></Field>

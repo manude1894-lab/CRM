@@ -67,6 +67,7 @@ class CompanyProfile(Base):
     chinese_name = Column(String(255), nullable=True)
     company_number = Column(String(100), nullable=True)
     registered_agent = Column(String(50), nullable=True)
+    registered_agent_other = Column(String(100), nullable=True)  # when "Other"
     incorporation_date = Column(Date, nullable=True)
     # Entity category is orthogonal to Jurisdiction — e.g. "Foundation" can exist in
     # several jurisdictions; "ADGM/DIFC Regulated" carries its own filing obligations.
@@ -87,6 +88,7 @@ class CompanyProfile(Base):
     source_of_funds = Column(String(50), nullable=True)
     source_of_funds_description = Column(Text, nullable=True)
     nature_of_business = Column(String(60), nullable=True)
+    nature_of_business_other = Column(String(100), nullable=True)  # when "Other"
     business_description = Column(Text, nullable=True)
     # Nature-of-business detail (Vistra KYC Part I)
     business_countries = Column(Text, nullable=True)

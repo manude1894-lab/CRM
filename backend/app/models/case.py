@@ -119,6 +119,7 @@ class Case(Base):
     # withdrawn; fix and resubmit) or "Approved". Only approved cases move through the pipeline.
     # P6 — how the company came to Triam: Formation / Existing Entity / Transfer In.
     engagement_route = Column(String(30), default="Formation", server_default="Formation", nullable=False)
+    source_other = Column(String(100), nullable=True)  # when source is "Other"
     previous_agent = Column(String(150), nullable=True)  # Transfer In: the registered agent it is leaving
     prior_filing_dates = Column(JSON, nullable=True)  # {"renewal": "2026-03-14", "esr_filing": ..., "ar_filing": ...}
     compliance_status = Column(String(30), default="Approved", server_default="Approved", nullable=False)  # create_case sets Pending

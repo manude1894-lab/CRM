@@ -462,6 +462,38 @@ export const CountrySelect = ({ value, onChange, countries }) => {
   ) : <Input value={value || ""} onChange={onChange} placeholder="e.g. UAE" />;
 };
 
+// A drop-down whose "Other" choice opens a text box to say what the other value is.
+// Two ways to store the answer:
+//  - `otherValue` / `onOtherChange` given: the field keeps "Other" and the text goes to its own field;
+//  - otherwise the typed text is stored in the field itself (for fields that are free text).
+// onChange / onOtherChange receive an event-like { target: { value } }, like a normal input.
+export const SelectWithOther = ({ value, onChange, options, otherValue, onOtherChange, placeholder = "— select —",
+  otherPlaceholder = "Please specify", maxLength = 100 }) => {
+  const separate = typeof onOtherChange === "function";
+  const custom = !separate && !!value && (!options.includes(value) || value === "Other");
+  const [typing, setTyping] = React.useState(custom);
+  const emit = (fn, v) => fn && fn({ target: { value: v } });
+  const selected = separate ? (value || "") : (typing || custom ? "Other" : (value || ""));
+  const showText = separate ? value === "Other" : (typing || custom);
+  return (
+    <div className="space-y-2">
+      <Select value={selected} onChange={(e) => {
+        const v = e.target.value;
+        if (separate) { emit(onChange, v); if (v !== "Other") emit(onOtherChange, ""); return; }
+        setTyping(v === "Other");
+        emit(onChange, v === "Other" ? "" : v);
+      }}>
+        <option value="">{placeholder}</option>
+        {options.map((o) => <option key={o}>{o}</option>)}
+      </Select>
+      {showText && (
+        <Input value={(separate ? otherValue : value) || ""} maxLength={maxLength} placeholder={otherPlaceholder}
+          onChange={(e) => emit(separate ? onOtherChange : onChange, e.target.value)} />
+      )}
+    </div>
+  );
+};
+
 export const MultiSelect = ({ options, value, onChange, getLabel = (opt) => opt }) => {
   const selected = value || [];
   const toggle = (opt) => {

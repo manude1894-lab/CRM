@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { prospectsApi, usersApi } from "../api/endpoints";
-import { Icon, Badge, Modal, Field, Input, Select, Textarea, Spinner, ErrorBanner, PageHeader, DateInput } from "../components/ui";
+import { Icon, Badge, Modal, Field, Input, Select, Textarea, Spinner, ErrorBanner, PageHeader, DateInput, SelectWithOther } from "../components/ui";
 import DuplicateWarning from "../components/DuplicateWarning";
 import { PROSPECT_STATUS_OPTIONS, CASE_SOURCE_OPTIONS, JURISDICTION_OPTIONS, SERVICE_TYPE_OPTIONS, fmtFull, fmtDate } from "../utils/constants";
 import { toast } from "../store/toast";
@@ -185,9 +185,8 @@ export default function ProspectsPage({ onNavigate } = {}) {
             <Field label="Contact Email"><Input value={form.contact_email || ""} onChange={(e) => setForm((p) => ({ ...p, contact_email: e.target.value }))} /></Field>
             <Field label="Contact Phone"><Input value={form.contact_phone || ""} onChange={(e) => setForm((p) => ({ ...p, contact_phone: e.target.value }))} /></Field>
             <Field label="Source">
-              <Select value={form.source || "Referral"} onChange={(e) => setForm((p) => ({ ...p, source: e.target.value }))}>
-                {CASE_SOURCE_OPTIONS.map((x) => <option key={x}>{x}</option>)}
-              </Select>
+              <SelectWithOther value={form.source} options={CASE_SOURCE_OPTIONS} maxLength={50} otherPlaceholder="Where did the prospect come from?"
+                onChange={(e) => setForm((p) => ({ ...p, source: e.target.value }))} />
             </Field>
             {coordinator ? (
               <Field label="Assigned RM">
