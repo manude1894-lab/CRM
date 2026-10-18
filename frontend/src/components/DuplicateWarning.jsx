@@ -28,7 +28,7 @@ export default function DuplicateWarning({ name, excludeId, checkFn, active, onS
       <p className="font-medium mb-1">Possible duplicate{matches.length > 1 ? "s" : ""}:</p>
       {matches.map((m) => (
         <div key={`${m.source || ""}-${m.id}`} className="flex items-center justify-between gap-2">
-          <span>{m.company_name} — {m.score}% match{m.source === "client" ? " (existing client)" : ""}</span>
+          <span>{m.company_name} ({m.score}% match){m.source === "client" ? ", existing client" : ""}</span>
           {onSelect && (
             <button type="button" onClick={() => onSelect(m.id)} className="text-amber-800 underline hover:no-underline flex-shrink-0">
               Amend this client

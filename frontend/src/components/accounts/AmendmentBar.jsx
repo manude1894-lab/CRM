@@ -32,9 +32,9 @@ export default function AmendmentBar({ accountId, refreshKey, onState, onDecided
       const next = action === "start" ? await amendmentApi.start(accountId) : await amendmentApi.act(accountId, action, body);
       apply(next);
       const msg = {
-        start: "Amendment started — your changes stay in draft until Compliance approves them.",
+        start: "Amendment started. Your changes stay in draft until Compliance approves them.",
         submit: "Amendment sent to Compliance for approval.", approve: "Amendment approved and applied.",
-        reject: "Amendment rejected and returned to the maker.", withdraw: "Amendment withdrawn — it is back in draft.",
+        reject: "Amendment rejected and returned to the maker.", withdraw: "Amendment withdrawn and returned to draft.",
         discard: "Draft amendment discarded.",
       }[action];
       toast.success(msg);

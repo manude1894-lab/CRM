@@ -198,7 +198,7 @@ def check_recurring_service_billing():
             case = db.query(Case).filter(Case.id == sub.case_id).first()
             if case:
                 msg = (f"Auto-generated Draft invoice ({sub.service_name}, {sub.fee_amount or 0}) "
-                       f"for case {case.case_uid} ({case.company_name}) — recurring billing due.")
+                       f"for case {case.case_uid} ({case.company_name}). Recurring billing is due.")
                 if case.rm_id:
                     notification_service.notify_user(db, case.rm_id, msg, "recurring_invoice_generated", link=f"/cases/{case.id}", case_id=case.id)
                 notification_service.notify_role(db, UserRole.ADMIN, msg, "recurring_invoice_generated", link=f"/cases/{case.id}", case_id=case.id)

@@ -107,7 +107,7 @@ export default function ApprovalsPage({ onNavigate }) {
                   {tab !== "Pending" && (
                     <td className="py-2.5 px-4 text-xs text-gray-600">
                       {r.checker_name || "—"} · {formatTimestamp(r.decided_at)}
-                      {r.reason_code && <div className="text-red-600">{reasons.labelOf(r.reason_code)} — {r.reason_text}</div>}
+                      {r.reason_code && <div className="text-red-600">{reasons.labelOf(r.reason_code)}. {r.reason_text}</div>}
                     </td>
                   )}
                   <td className="py-2.5 px-4 text-right">
@@ -173,7 +173,7 @@ function ReviewModal({ row, onClose, onDecided, onNavigate }) {
   };
 
   return (
-    <Modal title={`${REQUEST_TYPE_LABEL[row.request_type]} — ${row.case_name || row.company_name}`} onClose={onClose}>
+    <Modal title={`${REQUEST_TYPE_LABEL[row.request_type]}: ${row.case_name || row.company_name}`} onClose={onClose}>
       <div className="space-y-3">
         <div className="text-xs text-gray-500">
           Submitted by <strong className="text-gray-700">{row.maker_name || "—"}</strong> {formatTimestamp(row.submitted_at)}
@@ -202,7 +202,7 @@ function ReviewModal({ row, onClose, onDecided, onNavigate }) {
         <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-gray-100">
           <button onClick={goto} className="text-xs text-brand-600 hover:underline">Open the full {isCase ? "case" : "client"}</button>
           {actions.length > 0 && <DecisionButtons actions={actions} busy={busy} onAction={act} />}
-          {isCurrent && actions.length === 0 && <span className="text-[11px] text-gray-400">You submitted this — another approver must review it.</span>}
+          {isCurrent && actions.length === 0 && <span className="text-[11px] text-gray-400">You submitted this, so another approver must review it.</span>}
         </div>
       </div>
     </Modal>

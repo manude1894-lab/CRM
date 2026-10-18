@@ -30,7 +30,7 @@ export default function TrackRecordModal({ account, onClose }) {
   };
 
   return (
-    <Modal title={`Track Record — ${account.company_name}`} onClose={onClose}>
+    <Modal title={`Track Record: ${account.company_name}`} onClose={onClose}>
       {loading ? <Spinner /> : error ? <ErrorBanner message={error} onRetry={load} /> : record && (
         <div className="space-y-5">
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">

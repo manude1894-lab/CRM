@@ -23,7 +23,7 @@ export default function CompletenessChecklist({ accountId, refreshKey }) {
   return (
     <div className="mb-3 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-800">
       <button type="button" onClick={() => setOpen((o) => !o)} className="w-full flex items-center justify-between font-medium">
-        <span>{state.missing.length} mandatory field{state.missing.length !== 1 ? "s" : ""} still missing — needed before the profile can be submitted</span>
+        <span>{state.missing.length} mandatory field{state.missing.length !== 1 ? "s" : ""} still missing before the profile can be submitted</span>
         <span>{open ? "Hide" : "Show"}</span>
       </button>
       {open && (

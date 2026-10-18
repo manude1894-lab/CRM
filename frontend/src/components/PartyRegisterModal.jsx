@@ -120,7 +120,7 @@ export default function PartyRegisterModal({ caseItem, onClose }) {
   ];
 
   return (
-    <Modal title={`Registers — ${caseItem.company_name}`} onClose={onClose}>
+    <Modal title={`Registers: ${caseItem.company_name}`} onClose={onClose}>
       <div className="flex border-b border-gray-100 mb-4 -mt-2">
         {TABS.map(([t, label]) => (
           <button key={t} onClick={() => switchTab(t)}
@@ -242,7 +242,7 @@ const SectionTitle = ({ children }) => (
 function AppendixAFields({ form, setForm }) {
   return (
     <>
-      <SectionTitle>Appendix A — Individual Detail</SectionTitle>
+      <SectionTitle>Appendix A: Individual Detail</SectionTitle>
       <div className="grid grid-cols-3 gap-x-3">
         <Field label="Email"><Input value={form.email || ""} onChange={set(setForm, "email")} /></Field>
         <Field label="Mobile"><Input value={form.mobile || ""} onChange={set(setForm, "mobile")} /></Field>
@@ -285,7 +285,7 @@ function StringListEditor({ label, value = [], onChange }) {
 
 // ─── Vistra KYC Appendix B — entity-variant detail (stored in entity_details JSON) ──
 const ENTITY_FIELDS = {
-  Company: [["regulated", "Regulated? (yes/no)"], ["regulator", "Regulator"], ["listed", "Listed? (yes/no)"], ["exchange", "Exchange"], ["directors_summary", "Directors — summary"], ["ownership_summary", "Ownership — summary"]],
+  Company: [["regulated", "Regulated? (yes/no)"], ["regulator", "Regulator"], ["listed", "Listed? (yes/no)"], ["exchange", "Exchange"], ["directors_summary", "Directors (summary)"], ["ownership_summary", "Ownership (summary)"]],
   Trust: [["trust_name", "Trust name"], ["trust_type", "Trust type"], ["trustee", "Trustee"], ["settlor", "Settlor"], ["protector", "Protector"], ["governing_law", "Governing law"], ["date_established", "Date established"]],
   Foundation: [["foundation_name", "Foundation name"], ["founder", "Founder"], ["guardian", "Guardian"], ["governing_law", "Governing law"], ["date_established", "Date established"]],
   Fund: [["fund_name", "Fund name"], ["fund_manager", "Fund manager"], ["investment_advisor", "Investment advisor"], ["administrator", "Administrator"], ["regulated", "Regulated? (yes/no)"], ["regulator", "Regulator"], ["domicile", "Domicile"]],
@@ -300,7 +300,7 @@ function EntityDetailsFields({ value = {}, onChange }) {
   const lists = { Trust: "beneficiaries", Foundation: "council_members", "Limited Partnership": "limited_partners" };
   return (
     <>
-      <SectionTitle>Appendix B — Entity Detail</SectionTitle>
+      <SectionTitle>Appendix B: Entity Detail</SectionTitle>
       <Field label="Entity Type">
         <Select value={type} onChange={(e) => onChange({ ...d, entity_type: e.target.value })}>
           <option value="">— select —</option>
@@ -528,13 +528,13 @@ function UBOForm({ form, setForm, onCancel, onSave, countries, shareholders }) {
         <Field label="Sector"><Input value={form.sector || ""} onChange={set(setForm, "sector")} /></Field>
         <Field label="Years Employed"><Input value={form.years_employed || ""} onChange={set(setForm, "years_employed")} placeholder="e.g. 3+ years" /></Field>
       </div>
-      <Field label="Source of Wealth — Category">
+      <Field label="Source of Wealth Category">
         <Select value={form.source_of_wealth_category || ""} onChange={set(setForm, "source_of_wealth_category")}>
           <option value="">— select —</option>
           {SOURCE_OF_WEALTH_OPTIONS.map((o) => <option key={o}>{o}</option>)}
         </Select>
       </Field>
-      <Field label="Source of Wealth — Details"><Textarea value={form.source_of_wealth_details || ""} onChange={set(setForm, "source_of_wealth_details")} /></Field>
+      <Field label="Source of Wealth Details"><Textarea value={form.source_of_wealth_details || ""} onChange={set(setForm, "source_of_wealth_details")} /></Field>
       <Field label="Notes"><Textarea value={form.notes || ""} onChange={set(setForm, "notes")} /></Field>
       <FormButtons onCancel={onCancel} onSave={onSave} />
     </div>

@@ -127,7 +127,7 @@ def allowed_actions(db: Session, acc: Account, user: User) -> list[dict]:
             f"{len(missing)} mandatory field{'s' if len(missing) != 1 else ''} still missing", code=400)
     elif status == AWAITING:
         is_maker = req is not None and req.maker_id == user.id
-        own = "You submitted this profile — someone else must review it"
+        own = "You submitted this profile, so someone else must review it"
         if stage_of(req) == STAGE_APPROVER:
             final = has_permission(user, "client.final_approve")
             why = own if is_maker and final else "Needs the Approver"
@@ -224,7 +224,7 @@ def approve(db: Session, acc: Account, user: User, comment: Optional[str] = None
         req.stage = STAGE_APPROVER
         _issue_client_id(db, acc)
         req.snapshot = _snapshot(acc)  # now includes the CDD section Compliance completed
-        log_event(db, "compliance_approve", f"Client {_label(acc)} approved by Compliance — now with the Approver",
+        log_event(db, "compliance_approve", f"Client {_label(acc)} approved by Compliance and passed to the Approver",
                   subject_type="Account", subject_id=acc.id, account_id=acc.id, changes={"request_id": req.id, "comment": comment})
         db.commit()
         for u in _final_approvers(db):
@@ -272,11 +272,11 @@ def reject(db: Session, acc: Account, user: User, reason_code: str, reason_text:
     req.status, req.checker_id, req.decided_at = ApprovalStatus.REJECTED.value, user.id, _now()
     req.reason_code, req.reason_text = reason_code, reason_text
     _set_status(acc, WIP, user)
-    log_event(db, "reject", f"Client {_label(acc)} rejected by {step}: {reason_code} — {reason_text}", subject_type="Account",
+    log_event(db, "reject", f"Client {_label(acc)} rejected by {step}: {reason_code}. {reason_text}", subject_type="Account",
               subject_id=acc.id, account_id=acc.id, changes={"request_id": req.id, "reason_code": reason_code, "reason_text": reason_text})
     db.commit()
     if req.maker_id:
-        notification_service.notify_user(db, req.maker_id, f"{user.name} rejected client {_label(acc)}: {reason_code} — {reason_text}", "client_rejected")
+        notification_service.notify_user(db, req.maker_id, f"{user.name} rejected client {_label(acc)}: {reason_code}. {reason_text}", "client_rejected")
     return req
 
 

@@ -87,7 +87,7 @@ def create_account(data: AccountCreate, db: Session = Depends(get_db), user: Use
     # Triam mark-up §4A — every new client is routed through the Prospect module (administrators may
     # still create one directly, e.g. to correct data).
     if not data.prospect_id and user.role != UserRole.ADMIN:
-        raise HTTPException(status_code=400, detail="New clients are created from a prospect — open the prospect and choose 'Create client'")
+        raise HTTPException(status_code=400, detail="New clients are created from a prospect. Open the prospect and choose 'Create client'.")
     return account_service.create_account(db, data, user)
 
 

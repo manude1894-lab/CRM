@@ -127,7 +127,7 @@ def prospects_unassigned(db: Session, user: User) -> dict:
         created = p.created_at if p.created_at.tzinfo else p.created_at.replace(tzinfo=timezone.utc)
         rows.append([p.prospect_uid, p.company_name, p.source or "—", _iso(_local_date(created)), (now - created).days])
     rows.sort(key=lambda r: r[4], reverse=True)
-    return {"title": "Unassigned prospects — ageing", "columns": ["Prospect ID", "Company", "Source", "Created", "Days waiting"], "rows": rows}
+    return {"title": "Unassigned prospects (ageing)", "columns": ["Prospect ID", "Company", "Source", "Created", "Days waiting"], "rows": rows}
 
 
 def rejected_with_rm(db: Session, user: User) -> dict:
@@ -146,7 +146,7 @@ def rejected_with_rm(db: Session, user: User) -> dict:
         rows.append([a.company_name, _client_ref(a), rm.name if rm else "—", last.checker.name if last.checker else "—",
                      _iso(_local_date(decided)), last.reason_text or "", (now - decided).days])
     rows.sort(key=lambda r: r[6], reverse=True)
-    return {"title": "Cases pending with RM in Rejected status — ageing",
+    return {"title": "Cases pending with RM in Rejected status (ageing)",
             "columns": ["Client", "Temporary / Client ID", "RM", "Rejected by", "Rejected on", "Reason", "Days pending"], "rows": rows}
 
 
@@ -155,8 +155,8 @@ REPORTS = {
     "documents-expired": "Documents with expired status",
     "clients-risk": "Clients with their risk levels and AML review dates",
     "prospects-assigned": "Prospects assigned for a period",
-    "prospects-unassigned": "Unassigned prospects — ageing",
-    "rejected-with-rm": "Cases pending with RM in Rejected status — ageing",
+    "prospects-unassigned": "Unassigned prospects (ageing)",
+    "rejected-with-rm": "Cases pending with RM in Rejected status (ageing)",
 }
 
 

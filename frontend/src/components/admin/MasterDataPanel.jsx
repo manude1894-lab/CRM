@@ -137,7 +137,7 @@ export default function MasterDataPanel() {
           <input value={newLabel} onChange={(e) => setNewLabel(e.target.value)} onKeyDown={(e) => e.key === "Enter" && add()}
             placeholder="New item label" className="flex-1 min-w-48 text-xs border border-gray-200 rounded-lg px-2 py-1.5" />
           <input value={newCode} onChange={(e) => setNewCode(e.target.value)} onKeyDown={(e) => e.key === "Enter" && add()}
-            placeholder="Code (optional — defaults to label)" className="w-56 text-xs border border-gray-200 rounded-lg px-2 py-1.5" />
+            placeholder="Code (optional, defaults to the label)" className="w-56 text-xs border border-gray-200 rounded-lg px-2 py-1.5" />
           <button onClick={add} className="px-3 py-1.5 text-xs text-white rounded-lg" style={{ background: "#1a3a5c" }}>Add</button>
         </div>
       </div>

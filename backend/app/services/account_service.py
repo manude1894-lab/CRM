@@ -88,7 +88,7 @@ def _default_search_name(db: Session, company_name: str, anchor_entity: Optional
     for c in candidates:
         if not _search_name_taken(db, c):
             return c
-    raise HTTPException(status_code=400, detail="Please enter a Unique Search Name — the default is already taken")
+    raise HTTPException(status_code=400, detail="Please enter a Unique Search Name. The default one is already taken.")
 
 
 def next_client_id(db: Session, entity_code: str) -> str:
@@ -263,7 +263,7 @@ def create_account(db: Session, data: AccountCreate, user: User) -> Account:
 
     # BRD §19 — the Client ID is built from the Anchor Triam Entity (issued at Compliance approval).
     if not (data.anchor_entity or "").strip():
-        raise HTTPException(status_code=400, detail="Anchor Triam Entity is required — it determines the Client ID")
+        raise HTTPException(status_code=400, detail="Anchor Triam Entity is required, as it determines the Client ID")
 
     search_name = data.search_name
     if search_name:
@@ -373,7 +373,7 @@ def apply_update(db: Session, acc: Account, data: AccountUpdate, user: User) -> 
     # BRD §11/§15 — status changes only through Submit / Approve / Reject / status actions.
     requested_status = update_data.pop("profile_status", None)
     if requested_status is not None and requested_status != acc.profile_status:
-        raise HTTPException(status_code=400, detail="Status can't be edited directly — use Submit / Approve / Reject or the status actions on the client profile")
+        raise HTTPException(status_code=400, detail="Status can't be edited directly. Use Submit, Approve or Reject, or the status actions on the client profile.")
     cdd_changes = [f for f in CDD_FIELDS if f in update_data and update_data[f] != getattr(acc, f)]
     if cdd_changes and not has_permission(user, "client.cdd_edit"):
         raise HTTPException(status_code=403, detail="Only Compliance (MLRO) can complete the CDD / risk assessment section")
@@ -590,7 +590,7 @@ def missing_mandatory(account: Account) -> list[dict]:
         need("Licensing & Regulatory", "license_expiry_date", "License Expiry Date", when=not forming)
         if not forming and account.license_expiry_date and account.license_expiry_date < date.today():
             missing.append({"section": "Licensing & Regulatory", "field": "license_expiry_date",
-                            "label": "Trade licence has expired — a valid licence is needed to onboard"})
+                            "label": "Trade licence has expired. A valid licence is needed to onboard the client"})
         need("Licensing & Regulatory", "license_activities", "License Activities", when=not forming)
         need("Licensing & Regulatory", "is_regulated", "Is entity regulated (Yes / No)")
         need("Licensing & Regulatory", "regulator_name", "Name of Regulator", when=account.is_regulated)

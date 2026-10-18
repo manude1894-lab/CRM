@@ -271,7 +271,7 @@ function ProspectPicker({ isAdmin, onPick, onClose, onGoToProspects }) {
       .catch(() => setItems([]));
   }, []);
   return (
-    <Modal title="New client — choose the prospect" onClose={onClose}>
+    <Modal title="New client: choose the prospect" onClose={onClose}>
       <p className="text-xs text-gray-500 mb-3">Choose the prospect for this client.</p>
       {items === null ? <Spinner /> : items.length === 0 ? (
         <div className="text-sm text-gray-500 text-center py-6">

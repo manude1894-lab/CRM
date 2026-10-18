@@ -91,7 +91,7 @@ def on_created(db: Session, case: Case, user: User) -> None:
 
 
 def notify_created(db: Session, case: Case, user: User) -> None:
-    _notify_approvers(db, user, f"{user.name} created case {_label(case)} — awaiting Compliance approval.", "case_submitted", case)
+    _notify_approvers(db, user, f"{user.name} created case {_label(case)}. Awaiting Compliance approval.", "case_submitted", case)
 
 
 def assert_can_progress(case: Case) -> None:
@@ -130,7 +130,7 @@ def route_update(db: Session, case: Case, update_data: dict, user: User) -> Opti
     log_event(db, "amend_submit", f"Change to case {_label(case)} sent to Compliance ({len(changes)} field(s))",
               subject_type="Case", subject_id=case.id, account_id=case.account_id, changes={"request_id": req.id})
     db.commit()
-    _notify_approvers(db, user, f"{user.name} changed case {_label(case)} — awaiting Compliance approval.", "case_amendment_submitted", case)
+    _notify_approvers(db, user, f"{user.name} changed case {_label(case)}. Awaiting Compliance approval.", "case_amendment_submitted", case)
     return req
 
 
@@ -147,7 +147,7 @@ def _assert_checker(user: User, req: ApprovalRequest) -> None:
     if not has_permission(user, "client.approve"):
         raise HTTPException(status_code=403, detail="Needs an approver (CO / MLRO)")
     if req.maker_id == user.id:
-        raise HTTPException(status_code=403, detail="You submitted this — another approver must review it")
+        raise HTTPException(status_code=403, detail="You submitted this, so another approver must review it")
 
 
 def approve(db: Session, case: Case, user: User, comment: Optional[str] = None) -> ApprovalRequest:
@@ -188,12 +188,12 @@ def reject(db: Session, case: Case, user: User, reason_code: str, reason_text: s
     req.reason_code, req.reason_text = reason_code, reason_text
     if req.request_type == CREATION:
         case.compliance_status = RETURNED
-    log_event(db, "reject", f"{'Case' if req.request_type == CREATION else 'Change to case'} {_label(case)} rejected by Compliance: {reason_code} — {reason_text}",
+    log_event(db, "reject", f"{'Case' if req.request_type == CREATION else 'Change to case'} {_label(case)} rejected by Compliance: {reason_code}. {reason_text}",
               subject_type="Case", subject_id=case.id, account_id=case.account_id,
               changes={"request_id": req.id, "reason_code": reason_code, "reason_text": reason_text})
     db.commit()
     if req.maker_id:
-        notification_service.notify_user(db, req.maker_id, f"{user.name} rejected {_label(case)}: {reason_code} — {reason_text}", "case_rejected",
+        notification_service.notify_user(db, req.maker_id, f"{user.name} rejected {_label(case)}: {reason_code}. {reason_text}", "case_rejected",
                                          link=f"/cases/{case.id}", case_id=case.id)
     return req
 

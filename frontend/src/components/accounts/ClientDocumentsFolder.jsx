@@ -13,8 +13,8 @@ const isViewable = (ct) => /^(application\/pdf|image\/)/i.test(ct || "");
 
 const STAGE = {
   Draft: { style: "bg-blue-50 text-blue-700", note: "Documents can be added and removed while the client is being prepared." },
-  Submitted: { style: "bg-amber-100 text-amber-800", note: "The client has been submitted — only an Approver can remove documents." },
-  Locked: { style: "bg-gray-200 text-gray-700", note: "The client is approved — documents can be added but no longer removed." },
+  Submitted: { style: "bg-amber-100 text-amber-800", note: "The client has been submitted. Only an Approver can remove documents." },
+  Locked: { style: "bg-gray-200 text-gray-700", note: "The client is approved. Documents can be added but no longer removed." },
 };
 
 /**
@@ -60,7 +60,7 @@ export default function ClientDocumentsFolder({ accountId, onChange, onboarding 
     const file = fileRef.current?.files?.[0];
     if (!category) return toast.error("Choose a document category");
     if (!file) return toast.error("Choose a file to upload");
-    if (file.size > folder.max_upload_mb * 1024 * 1024) return toast.error(`The file is ${fmtBytes(file.size)} — the limit is ${folder.max_upload_mb} MB per document.`);
+    if (file.size > folder.max_upload_mb * 1024 * 1024) return toast.error(`The file is ${fmtBytes(file.size)}. The limit is ${folder.max_upload_mb} MB per document.`);
     setBusy(true);
     try {
       const fd = new FormData();
@@ -158,7 +158,7 @@ export default function ClientDocumentsFolder({ accountId, onChange, onboarding 
       </div>
       <p className="text-[11px] text-gray-500 -mt-1">
         {locked ? "The client is locked; documents can't be changed right now."
-          : statusLocked ? "The client is with Compliance — you can file the Compliance documents (CDD Form, AML Risk Assessment)." : stage.note}
+          : statusLocked ? "The client is with Compliance, who can file the CDD Form and AML Risk Assessment." : stage.note}
       </p>
 
       {/* BRD §14 — prompt for uploads only when it is time: during onboarding, while the folder is empty. */}
@@ -184,7 +184,7 @@ export default function ClientDocumentsFolder({ accountId, onChange, onboarding 
             <select value={category} onChange={(e) => { setCategory(e.target.value); if (cats.items.find((i) => i.code === e.target.value)?.meta?.link_suggested) setMode("link"); }}
               className="border border-gray-200 rounded-lg px-2 py-1 text-xs bg-white focus:outline-none focus:border-brand-400 max-w-md">
               <option value="">— document category —</option>
-              {categoryOptions.map((c) => <option key={c} value={c}>{cats.labelOf(c)}{sectionOf(c) ? ` — ${sectionOf(c)}` : ""}</option>)}
+              {categoryOptions.map((c) => <option key={c} value={c}>{cats.labelOf(c)}{sectionOf(c) ? ` (${sectionOf(c)})` : ""}</option>)}
             </select>
             {forPeople(category) && parties.length > 0 && (
               <select value={partyId} onChange={(e) => setPartyId(e.target.value)}

@@ -279,7 +279,7 @@ def get(db: Session, document_id: int, user: User) -> Document:
 def stream_content(db: Session, document_id: int, user: User) -> tuple[bytes, str, str]:
     doc = get(db, document_id, user)
     if doc.link_url:
-        raise HTTPException(status_code=400, detail="This document is a link — open it from the client folder")
+        raise HTTPException(status_code=400, detail="This document is a link. Open it from the client folder.")
     return doc.content, doc.filename, doc.content_type or "application/octet-stream"
 
 
@@ -328,13 +328,13 @@ def client_document_removal(db: Session, doc: Document, account, user: User) -> 
     from app.services import client_workflow_service as wf
     stage = _client_document_stage(db, account)
     if stage == LOCKED:
-        return False, stage, "The client is approved — its documents can no longer be removed. Upload a newer version instead."
+        return False, stage, "The client is approved, so its documents can no longer be removed. Upload a newer version instead."
     if account.profile_status == wf.AWAITING:
         return False, stage, "The client is with Compliance for review; documents can't be changed until it is decided."
     if stage == SUBMITTED:
         if has_permission(user, "document.delete_submitted"):
             return True, stage, None
-        return False, stage, "This client has been submitted for approval — only an Approver can remove its documents."
+        return False, stage, "This client has been submitted for approval. Only an Approver can remove its documents."
     if user.role == UserRole.ADMIN or doc.uploaded_by_id == user.id:
         return True, stage, None
     return False, stage, "Only the person who uploaded it (or an Admin) can remove it."

@@ -329,5 +329,5 @@ def test_expired_licence_blocks_onboarding_and_tax_number_is_optional(db, make_u
     acc.license_expiry_date = _d.today() - timedelta(days=1)  # lapsed after it was entered
     db.commit()
     labels = {m["label"] for m in account_service.missing_mandatory(acc)}
-    assert "Trade licence has expired — a valid licence is needed to onboard" in labels
+    assert "Trade licence has expired. A valid licence is needed to onboard the client" in labels
     assert "Corp Tax Registration No." not in labels

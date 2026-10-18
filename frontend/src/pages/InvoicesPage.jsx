@@ -153,7 +153,7 @@ function RequestModal({ onClose, onDone }) {
         description: form.description.trim(), amount: form.amount, currency: form.currency, notes: form.notes.trim() || null,
       });
       for (const f of approvals) await invoicesApi.attach(inv.id, f, "Pricing Approval");
-      toast.success("Invoice requested — Accounts has been notified");
+      toast.success("Invoice requested. Accounts has been notified.");
       onDone();
     } catch (e) { toast.error(e.response?.data?.detail || "Request failed"); } finally { setBusy(false); }
   };
@@ -166,13 +166,13 @@ function RequestModal({ onClose, onDone }) {
           {clients.map((c) => <option key={c.id} value={c.id}>{c.company_name}{c.client_id ? ` (${c.client_id})` : ""}</option>)}
         </Select>
       </Field>
-      <Field label="For a service request (optional — leave empty for the onboarding invoice)">
+      <Field label="For a service request (optional; leave empty for the onboarding invoice)">
         <Select value={form.instruction_id} onChange={pickRequest} disabled={!form.account_id}>
           <option value="">— client onboarding / other —</option>
           {requests.map((r) => <option key={r.id} value={r.id}>{r.instruction_type} · {r.status}{r.charge_amount ? ` · ${r.charge_amount}` : ""}</option>)}
         </Select>
       </Field>
-      <Field label="Description" required><Input value={form.description} onChange={set("description")} maxLength={500} placeholder="e.g. Company formation — ADGM SPV" /></Field>
+      <Field label="Description" required><Input value={form.description} onChange={set("description")} maxLength={500} placeholder="e.g. Company formation, ADGM SPV" /></Field>
       <div className="grid grid-cols-2 gap-3">
         <Field label="Amount" required><Input type="number" min="0" step="0.01" value={form.amount} onChange={set("amount")} /></Field>
         <Field label="Currency"><Select value={form.currency} onChange={set("currency")}>{CURRENCIES.map((c) => <option key={c}>{c}</option>)}</Select></Field>
@@ -203,12 +203,12 @@ function RaiseModal({ invoice, onClose, onDone }) {
     try {
       if (file) await invoicesApi.attach(invoice.id, file, "Invoice");
       await invoicesApi.raise(invoice.id, { ...form, due_date: form.due_date || null });
-      toast.success("Invoice raised — the requester can download it");
+      toast.success("Invoice raised. The requester can now download it.");
       onDone();
     } catch (e) { toast.error(e.response?.data?.detail || "Could not raise the invoice"); } finally { setBusy(false); }
   };
   return (
-    <Modal title={`Raise invoice — ${invoice.company_name}`} onClose={onClose}>
+    <Modal title={`Raise invoice: ${invoice.company_name}`} onClose={onClose}>
       <p className="text-xs text-gray-500 -mt-2 mb-3">{invoice.description} · requested {money(invoice.currency, invoice.amount)} by {invoice.requested_by_name || "—"}</p>
       <div className="grid grid-cols-2 gap-3">
         <Field label="Invoice No." required><Input value={form.invoice_number} onChange={set("invoice_number")} maxLength={50} /></Field>
@@ -244,7 +244,7 @@ function FilesModal({ invoice, accountsTeam, onClose }) {
   };
   const groups = useMemo(() => ({ "Invoice": (docs || []).filter((d) => d.category === "Invoice"), "Pricing Approval": (docs || []).filter((d) => d.category === "Pricing Approval") }), [docs]);
   return (
-    <Modal title={`Files — ${invoice.company_name}`} onClose={onClose}>
+    <Modal title={`Files: ${invoice.company_name}`} onClose={onClose}>
       {docs === null ? <Spinner /> : Object.entries(groups).map(([kind, list]) => (
         <div key={kind} className="mb-3">
           <div className="text-xs font-semibold text-gray-600 mb-1">{kind === "Invoice" ? "Invoice" : "Pricing approvals"}</div>

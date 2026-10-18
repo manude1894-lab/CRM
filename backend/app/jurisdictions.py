@@ -41,7 +41,7 @@ _BVI_RESTORATION = (
     ("ci", "Certificate of Incorporation (CI)"),
     ("rom", "Register of Members (ROM)"),
     ("rod", "Register of Directors (ROD)"),
-    ("rod_stamped", "Register of Directors — stamped (ROD Stamped)"),
+    ("rod_stamped", "Register of Directors, stamped (ROD Stamped)"),
     ("moa", "Memorandum & Articles of Association (M&A)"),
     ("resolution_carrying_business", "Resolution on carrying on business"),
     ("es_fy_start_confirmation", "ES financial year start-date confirmation"),

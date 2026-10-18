@@ -214,7 +214,7 @@ def change_stage(db: Session, case_id: int, new_stage: CaseStage, user: User) ->
 
     if target == CaseStage.CDD_APPROVED.value:
         notification_service.notify_case_rm_and_admin(
-            db, case, f"CDD approved for case {case.case_uid} ({case.company_name}) — ready to raise invoice.", "cdd_approved",
+            db, case, f"CDD approved for case {case.case_uid} ({case.company_name}). Ready to raise the invoice.", "cdd_approved",
         )
     else:
         notification_service.notify_case_rm_and_admin(
@@ -242,7 +242,7 @@ def raise_invoice(db: Session, case_id: int, user: User, amount: float = 0.0) ->
     db.commit()
     db.refresh(case)
     notification_service.notify_case_rm_and_admin(
-        db, case, f"Invoice raised for case {case.case_uid} ({case.company_name}) — amount {case.invoice_amount}.", "invoice_raised",
+        db, case, f"Invoice raised for case {case.case_uid} ({case.company_name}), amount {case.invoice_amount}.", "invoice_raised",
     )
     _refresh_account_stats(db, case.account_id)
     return case
@@ -277,7 +277,7 @@ def _assert_cdd_approved(db: Session, case: Case) -> None:
     if cdd and cdd.exception_granted:
         raise HTTPException(
             status_code=400,
-            detail=f"CDD exception expired on {dmy(cdd.exception_expires_on)} — complete CDD or grant a new exception before raising an invoice",
+            detail=f"CDD exception expired on {dmy(cdd.exception_expires_on)} . Complete CDD or grant a new exception before raising an invoice.",
         )
     raise HTTPException(
         status_code=400,

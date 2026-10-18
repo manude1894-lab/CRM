@@ -107,7 +107,7 @@ export default function CasesPage({ initialCaseId, initialStage } = {}) {
 
   // Approved cases change only through Compliance: the edit is sent for approval, not applied.
   const sentToCompliance = (c) => c?.compliance_status === "Approved"
-    && toast.success("Change sent to Compliance — the case updates once a CO / MLRO approves it.");
+    && toast.success("Change sent to Compliance. The case updates once a CO or MLRO approves it.");
 
   const save = async () => {
     try {
@@ -386,11 +386,11 @@ export default function CasesPage({ initialCaseId, initialStage } = {}) {
                         <Icon name="compliance" size={14} />
                       </button>
                       <button onClick={() => setFormationCase(c)}
-                        className="p-1.5 rounded hover:bg-brand-50 text-gray-400 hover:text-brand-600" title="Formation — screening / MLRO / Vistra loop">
+                        className="p-1.5 rounded hover:bg-brand-50 text-gray-400 hover:text-brand-600" title="Formation: screening, MLRO and Vistra">
                         <Icon name="cdd" size={14} />
                       </button>
                       <button onClick={() => setLifecycleCase(c)}
-                        className="p-1.5 rounded hover:bg-brand-50 text-gray-400 hover:text-brand-600" title="Entity Lifecycle — closure / restoration / transfer">
+                        className="p-1.5 rounded hover:bg-brand-50 text-gray-400 hover:text-brand-600" title="Entity lifecycle: closure, restoration, transfer">
                         <Icon name="activities" size={14} />
                       </button>
                       <button onClick={() => setServicesCase(c)}
@@ -417,7 +417,7 @@ export default function CasesPage({ initialCaseId, initialStage } = {}) {
       )}
 
       {invoiceCase && (
-        <Modal title={`Raise Invoice — ${invoiceCase.company_name}`} onClose={() => setInvoiceCase(null)}>
+        <Modal title={`Raise Invoice: ${invoiceCase.company_name}`} onClose={() => setInvoiceCase(null)}>
           <p className="text-sm text-gray-600 mb-4">Enter the invoice amount before raising. This will move the case to <strong>Invoice Raised</strong>.</p>
           <Field label="Invoice Amount (AED)">
             <Input
@@ -568,7 +568,7 @@ export default function CasesPage({ initialCaseId, initialStage } = {}) {
                 {users.filter((u) => u.role === "ops").map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
               </Select>
             </Field>
-            <Field label="Tags"><Input value={form.tags || ""} onChange={(e) => setForm((p) => ({ ...p, tags: e.target.value }))} placeholder="Auto-filled from the selected Client — editable" /></Field>
+            <Field label="Tags"><Input value={form.tags || ""} onChange={(e) => setForm((p) => ({ ...p, tags: e.target.value }))} placeholder="Filled in from the selected client; can be edited" /></Field>
           </div>
           <Field label="Notes"><Textarea value={form.notes || ""} onChange={(e) => setForm((p) => ({ ...p, notes: e.target.value }))} /></Field>
           <div className="flex justify-end gap-3 mt-4">

@@ -16,7 +16,7 @@ const FIELD_LABELS = {
 
 // "license_expiry_date" -> "License expiry date"
 export const fieldLabel = (key) =>
-  FIELD_LABELS[key] || key.replace(/_/g, " ").replace(/^\w/, (c) => c.toUpperCase());
+  FIELD_LABELS[key] || key.replace(/_ids?$/, "").replace(/_/g, " ").replace(/^\w/, (c) => c.toUpperCase());
 
 export function formatValue(v) {
   if (v === null || v === undefined || v === "") return "—";

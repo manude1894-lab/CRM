@@ -149,7 +149,7 @@ export default function ProspectsPage({ onNavigate } = {}) {
                     </div>
                     {p.converted_account_id && (
                       <button onClick={() => onNavigate?.({ page: "accounts", accountId: p.converted_account_id })}
-                        className="mt-1 text-[11px] text-emerald-700 hover:underline">Client created — open</button>
+                        className="mt-1 text-[11px] text-emerald-700 hover:underline">Client created. Open</button>
                     )}
                     {p.converted_case_id && !p.converted_account_id && <div className="mt-1"><Badge text="Converted" /></div>}
                     <div className="flex items-center gap-1 mt-2 flex-wrap" onClick={(e) => e.stopPropagation()}>
@@ -221,7 +221,7 @@ export default function ProspectsPage({ onNavigate } = {}) {
       )}
 
       {assign && (
-        <Modal title={`${assign.self ? "Assign to me" : "Assign RM"} — ${assign.prospect.company_name}`} onClose={() => setAssign(null)}>
+        <Modal title={`${assign.self ? "Assign to me" : "Assign RM"}: ${assign.prospect.company_name}`} onClose={() => setAssign(null)}>
           <div className="text-xs text-gray-500 mb-3">Prospect <span className="font-mono">{assign.prospect.prospect_uid}</span></div>
           {!assign.self && (
             <Field label="Relationship Manager" required>

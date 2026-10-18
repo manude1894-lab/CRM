@@ -61,7 +61,7 @@ export default function NameLookup({ name, excludeId, active, canOverride, overr
           </label>
           {override.allow && (
             <input value={override.reason} onChange={(e) => onOverride({ ...override, reason: e.target.value })} maxLength={255}
-              placeholder="Reason — e.g. separate legal entity registered in ADGM (min 10 characters)"
+              placeholder="Reason, e.g. separate legal entity registered in ADGM (at least 10 characters)"
               className="w-full border border-red-200 rounded px-2 py-1 text-xs bg-white text-gray-800" />
           )}
         </div>

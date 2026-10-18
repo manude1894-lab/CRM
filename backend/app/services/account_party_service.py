@@ -56,7 +56,7 @@ def _validate_party(account: Account, p: AccountParty) -> None:
         others = sum((Decimal(str(o.effective_ownership_percent or 0)) for o in account.parties
                       if o.party_role == "Shareholder" and o is not p and o.id != p.id), Decimal("0"))
         if others + pct > Decimal("100"):
-            raise HTTPException(status_code=400, detail=f"Total shareholding would be {others + pct}% — it can't exceed 100% (other shareholders hold {others}%)")
+            raise HTTPException(status_code=400, detail=f"Total shareholding would be {others + pct}%. It can't exceed 100% (other shareholders hold {others}%).")
     # BRD §6–8: Country of Residence is mandatory for every party; Country of Birth for signatories.
     required = [("Country of Residence", p.country_of_residence)]
     if p.constitution != "Entity":

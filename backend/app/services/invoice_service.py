@@ -118,14 +118,14 @@ def request_invoice(db: Session, data: InvoiceRequest, user: User) -> Invoice:
     db.flush()
     if data.instruction_id:
         db.get(Instruction, data.instruction_id).invoice_id = inv.id
-    log_event(db, "invoice_request", f"Invoice requested for {acc.company_name}: {data.description} — {data.currency} {data.amount}",
+    log_event(db, "invoice_request", f"Invoice requested for {acc.company_name}: {data.description}, {data.currency} {data.amount}",
               user_id=user.id, subject_type="Invoice", subject_id=inv.id, account_id=acc.id)
     db.commit()
     db.refresh(inv)
     for u in _accounts_team(db):
         if u.id != user.id:
             notification_service.notify_user(
-                db, u.id, f"Invoice instruction from {user.name}: {acc.company_name} — {data.description} ({data.currency} {data.amount}).",
+                db, u.id, f"Invoice instruction from {user.name}: {acc.company_name}, {data.description} ({data.currency} {data.amount}).",
                 "invoice_requested")
     return inv
 
@@ -133,7 +133,7 @@ def request_invoice(db: Session, data: InvoiceRequest, user: User) -> Invoice:
 def create_invoice(db: Session, data: InvoiceCreate, user: User) -> Invoice:
     """Accounts entering an invoice directly (e.g. consolidating several charges)."""
     if not _can_manage(user):
-        raise HTTPException(status_code=403, detail="Only Accounts can create invoices — request one instead")
+        raise HTTPException(status_code=403, detail="Only Accounts can create invoices. Please request one instead.")
     if not data.account_id and not data.case_id:
         raise HTTPException(status_code=400, detail="Choose the client")
     account_id = data.account_id or db.get(Case, data.case_id).account_id
@@ -176,7 +176,7 @@ def raise_invoice(db: Session, invoice_id: int, data: InvoiceRaise, user: User) 
     inv.invoice_number, inv.raised_date, inv.currency, inv.amount = data.invoice_number.strip(), data.invoice_date, data.currency, data.amount
     inv.due_date = data.due_date
     inv.status, inv.raised_by_id = RAISED, user.id
-    log_event(db, "invoice_raise", f"{_label(db, inv)} raised: {inv.invoice_number} — {inv.currency} {inv.amount}",
+    log_event(db, "invoice_raise", f"{_label(db, inv)} raised: {inv.invoice_number}, {inv.currency} {inv.amount}",
               user_id=user.id, subject_type="Invoice", subject_id=inv.id, account_id=inv.account_id)
     db.commit()
     db.refresh(inv)

@@ -57,7 +57,7 @@ export default function ServiceSubscriptionsModal({ caseItem, onClose }) {
   };
 
   return (
-    <Modal title={`Services — ${caseItem.company_name}`} onClose={() => onClose(false)}>
+    <Modal title={`Services: ${caseItem.company_name}`} onClose={() => onClose(false)}>
       {loading ? <Spinner /> : error ? <ErrorBanner message={error} /> : (
         <div className="space-y-3">
           <p className="text-xs text-gray-400">

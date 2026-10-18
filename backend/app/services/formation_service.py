@@ -99,7 +99,7 @@ def update(db: Session, case_id: int, data: FormationRecordUpdate, user: User) -
                 notification_service.notify_user(db, case.rm_id, msg, "vistra_query", link=f"/cases/{case_id}", case_id=case_id)
             notification_service.notify_role(db, UserRole.OPS, msg, "vistra_query", link=f"/cases/{case_id}", case_id=case_id)
         elif rec.vistra_status == VistraStatus.APPROVED.value:
-            _notify_rm_and_admin(db, case, f"Vistra compliance approved {case.case_uid} ({case.company_name}) — proceed to incorporation.", "vistra_approved")
+            _notify_rm_and_admin(db, case, f"Vistra compliance approved {case.case_uid} ({case.company_name}). Proceed to incorporation.", "vistra_approved")
         elif rec.vistra_status == VistraStatus.REJECTED.value:
             _notify_rm_and_admin(db, case, f"Vistra compliance rejected {case.case_uid} ({case.company_name}).", "vistra_rejected")
 

@@ -117,7 +117,7 @@ export default function CDDPage() {
     try {
       await cddApi.updateDocument(doc.id, {
         waived: !doc.waived,
-        waived_reason: !doc.waived ? "Professional introducer — evidence not required unless requested by the registered agent" : null,
+        waived_reason: !doc.waived ? "Professional introducer: evidence not required unless requested by the registered agent" : null,
       });
       load();
     } catch (e) {
@@ -224,7 +224,7 @@ export default function CDDPage() {
                     )}
                     <button onClick={applyIntroducerExemption}
                       className="px-3 py-1.5 text-xs border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600"
-                      title="Vistra KYC Appendix C — a professional introducer need not provide supporting evidence unless the RA asks">
+                      title="Vistra KYC Appendix C: a professional introducer need not provide supporting evidence unless the RA asks">
                       Apply introducer exemption
                     </button>
                     <button onClick={() => setReviewModal(true)}
@@ -268,7 +268,7 @@ export default function CDDPage() {
 
               {selectedCdd?.exception_granted && (
                 <div className="bg-amber-50 border border-amber-100 rounded-lg p-3 text-xs text-amber-700">
-                  <strong>CDD exception active</strong> — expires {fmtDate(selectedCdd.exception_expires_on)}.
+                  <strong>CDD exception active</strong>, expires {fmtDate(selectedCdd.exception_expires_on)}.
                   {selectedCdd.exception_reason && <> Reason: {selectedCdd.exception_reason}</>}
                 </div>
               )}
@@ -283,24 +283,24 @@ export default function CDDPage() {
                     { key: "company", label: "Company", docs: companyDocs, note: null },
                     ...directors.map((d) => ({
                       key: `d${d.id}`,
-                      label: `Director — ${directorName(d)}`,
+                      label: `Director: ${directorName(d)}`,
                       docs: allDocs.filter((doc) => doc.director_id === d.id),
                       note: null,
                     })),
                     ...shareholders.map((s) => ({
                       key: `s${s.id}`,
-                      label: `Shareholder — ${s.name}${s.shareholding_percent != null ? ` (${s.shareholding_percent}%)` : ""}`,
+                      label: `Shareholder: ${s.name}${s.shareholding_percent != null ? ` (${s.shareholding_percent}%)` : ""}`,
                       docs: allDocs.filter((doc) => doc.shareholder_id === s.id),
                       note: s.shareholding_percent != null && s.shareholding_percent < 10
-                        ? "CDD optional — below 10% interest threshold"
+                        ? "CDD optional (below the 10% interest threshold)"
                         : null,
                     })),
                     ...ubos.map((u) => ({
                       key: `u${u.id}`,
-                      label: `UBO — ${uboName(u)}${u.percentage_interest != null ? ` (${u.percentage_interest}%)` : ""}`,
+                      label: `UBO: ${uboName(u)}${u.percentage_interest != null ? ` (${u.percentage_interest}%)` : ""}`,
                       docs: allDocs.filter((doc) => doc.ubo_id === u.id),
                       note: u.percentage_interest != null && u.percentage_interest < 10
-                        ? "CDD optional — below 10% interest threshold"
+                        ? "CDD optional (below the 10% interest threshold)"
                         : null,
                     })),
                   ];

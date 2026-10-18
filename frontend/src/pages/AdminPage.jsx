@@ -257,7 +257,7 @@ export default function AdminPage() {
           <Field label="Main role (permissions)">
             <Select value={form.business_role_id || ""} onChange={(e) => setForm((p) => ({ ...p, business_role_id: e.target.value }))}>
               <option value="">— None —</option>
-              {roles.filter((r) => r.is_active || r.id === form.business_role_id).map((r) => <option key={r.id} value={r.id}>{r.name}{r.description ? ` — ${r.description}` : ""}</option>)}
+              {roles.filter((r) => r.is_active || r.id === form.business_role_id).map((r) => <option key={r.id} value={r.id}>{r.name}{r.description ? ` (${r.description})` : ""}</option>)}
             </Select>
           </Field>
           <Field label="Additional roles (one person can hold several, e.g. MLRO and Approver)">

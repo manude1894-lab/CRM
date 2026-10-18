@@ -62,7 +62,7 @@ export default function FormationModal({ caseItem, users = [], onClose }) {
   const nameOf = (uid) => usersById[uid]?.name || (uid ? `User #${uid}` : "—");
 
   return (
-    <Modal title={`Formation — ${caseItem.company_name}`} onClose={() => onClose(false)}>
+    <Modal title={`Formation: ${caseItem.company_name}`} onClose={() => onClose(false)}>
       {loading ? <Spinner /> : error ? <ErrorBanner message={error} /> : form && (
         <div className="space-y-4">
           <Section title="Name / World-Check Screening">
@@ -129,7 +129,7 @@ export default function FormationModal({ caseItem, users = [], onClose }) {
             <Field label="Vistra Query"><Textarea value={form.vistra_query_text || ""} onChange={set("vistra_query_text")} /></Field>
           </Section>
 
-          <Section title="Formation Milestones (§V)">
+          <Section title="Formation Milestones">
             <div className="grid grid-cols-2 gap-x-3">
               {MILESTONES.map(([k, label]) => (
                 <Field key={k} label={label}><DateInput value={form[k] || ""} onChange={set(k)} /></Field>

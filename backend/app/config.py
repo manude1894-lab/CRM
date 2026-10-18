@@ -8,6 +8,8 @@ class Settings(BaseSettings):
     APP_NAME: str = "TRIAM CRM"
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = False
+    # The interactive API documentation (/docs, /redoc) is off unless switched on (e.g. for local development).
+    API_DOCS_ENABLED: bool = False
     API_V1_PREFIX: str = "/api/v1"
 
     # Database

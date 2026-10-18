@@ -74,7 +74,7 @@ export default function ClientServicingModal({ account, cases = [], onClose, sta
   );
 
   return (
-    <Modal title={`Servicing — ${account.company_name}`} onClose={onClose}>
+    <Modal title={`Servicing: ${account.company_name}`} onClose={onClose}>
       <div className="text-xs text-gray-500 -mt-2 mb-2">Client ID <span className="font-mono font-semibold text-gray-700">{account.client_id || "—"}</span></div>
       <div className="flex border-b border-gray-100 mb-3">
         {tabBtn("reports", "Visit & Call Reports", activities?.length)}

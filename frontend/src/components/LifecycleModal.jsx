@@ -64,7 +64,7 @@ export default function LifecycleModal({ caseItem, onClose }) {
   };
 
   return (
-    <Modal title={`Entity Lifecycle — ${caseItem.company_name}`} onClose={() => onClose(false)}>
+    <Modal title={`Entity Lifecycle: ${caseItem.company_name}`} onClose={() => onClose(false)}>
       {loading ? <Spinner /> : error ? <ErrorBanner message={error} /> : form && (
         <div className="space-y-4">
           <p className="text-[11px] text-gray-400">
@@ -86,7 +86,7 @@ export default function LifecycleModal({ caseItem, onClose }) {
             <div className="grid grid-cols-2 gap-x-3 items-end">
               <label className="flex items-center gap-2 text-xs text-gray-700 mb-2">
                 <input type="checkbox" checked={!!form.client_acknowledgement_received} onChange={setBool("client_acknowledgement_received")} />
-                Written client acknowledgement received (§X)
+                Written client acknowledgement received
               </label>
               <Field label="Acknowledgement Date"><DateInput value={form.client_acknowledgement_date || ""} onChange={set("client_acknowledgement_date")} /></Field>
               <label className="flex items-center gap-2 text-xs text-gray-700 mb-2">
@@ -107,7 +107,7 @@ export default function LifecycleModal({ caseItem, onClose }) {
             </div>
           </Section>
 
-          <Section title="Restoration (§XI)">
+          <Section title="Restoration">
             <div className="grid grid-cols-3 gap-x-3">
               <Field label="Restoration Status">
                 <Select value={form.restoration_status || "Not Applicable"} onChange={set("restoration_status")}>

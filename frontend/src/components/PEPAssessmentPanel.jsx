@@ -103,7 +103,7 @@ export default function PEPAssessmentPanel({ caseId, parties = [] }) {
               <Select value={partyValue} onChange={onParty}>
                 <option value="">— Not linked —</option>
                 {parties.map((p) => (
-                  <option key={`${p._kind}${p.id}`} value={`${p._kind[0].toLowerCase()}${p.id}`}>{p._kind} — {p._label}</option>
+                  <option key={`${p._kind}${p.id}`} value={`${p._kind[0].toLowerCase()}${p.id}`}>{p._kind}: {p._label}</option>
                 ))}
               </Select>
             </Field>
@@ -122,8 +122,8 @@ export default function PEPAssessmentPanel({ caseId, parties = [] }) {
             <input type="checkbox" checked={!!form.still_in_office} onChange={setBool("still_in_office")} /> Still in office
           </label>
           <Field label="Family Members & Close Associates"><Textarea value={form.family_and_associates || ""} onChange={set("family_and_associates")} /></Field>
-          <Field label="Source of Wealth — Scrutiny"><Textarea value={form.source_of_wealth_scrutiny || ""} onChange={set("source_of_wealth_scrutiny")} /></Field>
-          <Field label="Source of Funds — Scrutiny"><Textarea value={form.source_of_funds_scrutiny || ""} onChange={set("source_of_funds_scrutiny")} /></Field>
+          <Field label="Source of Wealth Scrutiny"><Textarea value={form.source_of_wealth_scrutiny || ""} onChange={set("source_of_wealth_scrutiny")} /></Field>
+          <Field label="Source of Funds Scrutiny"><Textarea value={form.source_of_funds_scrutiny || ""} onChange={set("source_of_funds_scrutiny")} /></Field>
           <Field label="EDD Measures Applied"><Textarea value={form.edd_measures || ""} onChange={set("edd_measures")} /></Field>
           <Field label="Adverse Media Findings"><Textarea value={form.adverse_media_findings || ""} onChange={set("adverse_media_findings")} /></Field>
           <div className="grid grid-cols-2 gap-x-4">

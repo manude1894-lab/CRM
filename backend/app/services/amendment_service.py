@@ -412,7 +412,7 @@ def _assert_checker(db: Session, acc: Account, user: User, req: ApprovalRequest)
     if not has_permission(user, "client.approve"):
         raise HTTPException(status_code=403, detail="Needs an approver (CO / MLRO)")
     if req.maker_id == user.id:
-        raise HTTPException(status_code=403, detail="You submitted this amendment — another approver must review it")
+        raise HTTPException(status_code=403, detail="You submitted this amendment, so another approver must review it")
 
 
 def approve(db: Session, acc: Account, user: User, comment: Optional[str] = None) -> ApprovalRequest:
@@ -453,12 +453,12 @@ def reject(db: Session, acc: Account, user: User, reason_code: str, reason_text:
     req.status, req.checker_id, req.decided_at = ApprovalStatus.REJECTED.value, user.id, _now()
     req.reason_code, req.reason_text = reason_code, reason_text
     _reopen_for_maker(db, req)
-    log_event(db, "amend_reject", f"Amendment to {_client_label(acc)} rejected: {reason_code} — {reason_text}",
+    log_event(db, "amend_reject", f"Amendment to {_client_label(acc)} rejected: {reason_code}. {reason_text}",
               subject_type="Account", subject_id=acc.id, account_id=acc.id,
               changes={"request_id": req.id, "reason_code": reason_code, "reason_text": reason_text})
     db.commit()
     if req.maker_id:
-        notification_service.notify_user(db, req.maker_id, f"{user.name} rejected your amendment to {_client_label(acc)}: {reason_code} — {reason_text}", "amendment_rejected")
+        notification_service.notify_user(db, req.maker_id, f"{user.name} rejected your amendment to {_client_label(acc)}: {reason_code}. {reason_text}", "amendment_rejected")
     return req
 
 

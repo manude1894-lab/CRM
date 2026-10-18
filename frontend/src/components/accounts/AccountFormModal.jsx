@@ -161,8 +161,8 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
   // Create payload extras + the duplicate gate (BRD §3).
   const duplicateBlock = () => {
     if (!exactMatch) return null;
-    if (!canApprove) return "A client with this exact name already exists — open it instead, or ask an approver to create a duplicate.";
-    if (!override.allow) return "A client with this exact name already exists — tick 'Create anyway' and give a reason to continue.";
+    if (!canApprove) return "A client with this exact name already exists. Open it instead, or ask an approver to create a duplicate.";
+    if (!override.allow) return "A client with this exact name already exists. Tick 'Create anyway' and give a reason to continue.";
     if ((override.reason || "").trim().length < 10) return "Give a meaningful reason (at least 10 characters) for creating a duplicate client.";
     return null;
   };
@@ -449,7 +449,7 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
               {...sectionProps("tax")}>
               <div className="grid grid-cols-2 gap-3">
                 <Field label="TRN / VAT Registration No."><Input value={form.trn_vat_number} onChange={(e) => setForm({ ...form, trn_vat_number: e.target.value.replace(/\D/g, "") })} maxLength={15} inputMode="numeric" /></Field>
-                <Field label={`Financial Year End${form.financial_year_end ? ` — ${fmtFYE(form.financial_year_end)}` : ""}`}>
+                <Field label={`Financial Year End${form.financial_year_end ? ` (${fmtFYE(form.financial_year_end)})` : ""}`}>
                   <div className="flex gap-2">
                     <Select value={parseFYE(form.financial_year_end).day} onChange={(e) => setForm({ ...form, financial_year_end: toFYE(parseFYE(form.financial_year_end).month || "12", e.target.value) })}>
                       <option value="">Day</option>

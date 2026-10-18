@@ -113,6 +113,14 @@ def _diff(obj) -> dict:
     return changes
 
 
+def _field_name(key: str) -> str:
+    """'removed_by_id' -> 'removed by': how a changed field is named in the history summary."""
+    for suffix in ("_ids", "_id"):
+        if key.endswith(suffix):
+            key = key[: -len(suffix)]
+    return key.replace("_", " ")
+
+
 def _rows_for_flush(session: Session) -> list[dict]:
     actor = session.info.get("user_id")
     ip = session.info.get("ip")
@@ -139,7 +147,7 @@ def _rows_for_flush(session: Session) -> list[dict]:
         if label and session.is_modified(obj, include_collections=False):
             changes = _diff(obj)
             if changes:
-                row(obj, "update", changes, f"{label} updated: {_label(obj)} ({', '.join(sorted(changes))})")
+                row(obj, "update", changes, f"{label} updated: {_label(obj)} ({', '.join(sorted(_field_name(k) for k in changes))})")
     for obj in session.deleted:
         label = AUDITED_MODELS.get(type(obj).__name__)
         if label:

@@ -102,7 +102,7 @@ export default function AccountPartyModal({ account, onClose }) {
     .reduce((s, p) => s + Number(p.effective_ownership_percent || 0), 0);
 
   return (
-    <Modal title={`Parties — ${account.company_name}`} onClose={onClose}>
+    <Modal title={`Parties: ${account.company_name}`} onClose={onClose}>
       <div className="flex border-b border-gray-100 mb-4 -mt-2">
         {ROLES.map((r) => (
           <button key={r} onClick={() => switchTab(r)}
@@ -162,7 +162,7 @@ export default function AccountPartyModal({ account, onClose }) {
                         <div key={r.id} className="p-2 rounded-lg border border-gray-100 text-xs text-gray-500">
                           <span className="line-through text-gray-600">{r.full_name}</span> · {r.party_role}
                           <div className="text-[11px] text-gray-400">
-                            Removed {fmtDate(r.removed_at)}{r.removed_by_name ? ` by ${r.removed_by_name}` : ""}{r.removed_reason ? ` — ${r.removed_reason}` : ""}
+                            Removed {fmtDate(r.removed_at)}{r.removed_by_name ? ` by ${r.removed_by_name}` : ""}{r.removed_reason ? `. Reason: ${r.removed_reason}` : ""}
                           </div>
                         </div>
                       ))}

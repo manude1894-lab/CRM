@@ -61,7 +61,7 @@ def review_cdd(db: Session, case_id: int, data: CDDReviewRequest, user: User) ->
             if case.stage == CaseStage.CDD_KYC_IN_REVIEW:
                 case.stage = CaseStage.CDD_APPROVED
                 notification_service.notify_case_rm_and_admin(
-                    db, case, f"CDD approved for case {case.case_uid} ({case.company_name}) — ready to raise invoice.", "cdd_approved",
+                    db, case, f"CDD approved for case {case.case_uid} ({case.company_name}). Ready to raise the invoice.", "cdd_approved",
                 )
     else:
         if not data.rejection_reason:
@@ -96,7 +96,7 @@ def grant_cdd_exception(db: Session, case_id: int, reason: str, days: int, user:
 
     case = db.query(Case).filter(Case.id == case_id).first()
     if case:
-        msg = (f"CDD exception granted on {case.case_uid} ({case.company_name}) — "
+        msg = (f"CDD exception granted on {case.case_uid} ({case.company_name}), "
                f"expires {dmy(cdd.exception_expires_on)}. Reason: {reason}")
         if case.rm_id:
             notification_service.notify_user(db, case.rm_id, msg, "cdd_exception_granted",
@@ -115,7 +115,7 @@ def revoke_cdd_exception(db: Session, case_id: int) -> CDDRecord:
 
 
 _INTRODUCER_WAIVE_REASON = (
-    "Professional introducer — supporting evidence not required unless requested "
+    "Professional introducer: supporting evidence not required unless requested "
     "by the registered agent (Vistra KYC Appendix C)."
 )
 

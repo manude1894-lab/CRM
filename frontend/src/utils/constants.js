@@ -63,7 +63,7 @@ export const RESTORATION_CHECKLIST_ITEMS = [
   { key: "ci", label: "Certificate of Incorporation (CI)" },
   { key: "rom", label: "Register of Members (ROM)" },
   { key: "rod", label: "Register of Directors (ROD)" },
-  { key: "rod_stamped", label: "Register of Directors — stamped (ROD Stamped)" },
+  { key: "rod_stamped", label: "Register of Directors, stamped (ROD Stamped)" },
   { key: "moa", label: "Memorandum & Articles of Association (M&A)" },
   { key: "resolution_carrying_business", label: "Resolution on carrying on business" },
   { key: "es_fy_start_confirmation", label: "ES financial year start-date confirmation" },

@@ -91,7 +91,7 @@ def _b_reference_letter(p: dict, ctx: dict):
     )
     pdf = letter_pdf(
         recipient_lines=[p.get("addressed_to") or _ra(ctx), ctx["spec"].name],
-        subject=f"{subject} — Character / Professional Reference",
+        subject=f"{subject}: Character / Professional Reference",
         body_paragraphs=[
             f"We write in connection with the proposed onboarding of {subject} and the entity "
             f"{ctx['case'].company_name}.",
@@ -140,7 +140,7 @@ def _b_rora(p: dict, ctx: dict):
     office = p.get("registered_office") or f"the offices of {ra}, {s.name}"
     eff = long_date(p.get("effective_date") or date.today())
     return _resolution(
-        ctx, "Written Resolutions of the Directors — Registered Agent and Registered Office",
+        ctx, "Written Resolutions of the Directors: Registered Agent and Registered Office",
         ["The directors wish to confirm the Company's registered agent and registered office."],
         [f"{ra} be and is hereby confirmed as the registered agent of the Company with effect from {eff}.",
          f"The registered office of the Company be situated at {office}.",
@@ -159,7 +159,7 @@ def _b_carrying_business(p: dict, ctx: dict):
     s = ctx["spec"]
     activity = p.get("business_activity") or (ctx["profile"].nature_of_business or "investment holding")
     return _resolution(
-        ctx, "Written Resolutions of the Directors — Carrying on Business",
+        ctx, "Written Resolutions of the Directors: Carrying on Business",
         ["The directors have reviewed the affairs of the Company."],
         [f"The directors confirm that the Company is carrying on the business of {activity} and is not dormant.",
          "The Company shall continue to maintain adequate accounting records and to meet its economic "
@@ -177,7 +177,7 @@ def _b_record_keeping(p: dict, ctx: dict):
     loc = p.get("records_location") or f"the offices of {_ra(ctx)}, {s.name}"
     keeper = p.get("record_keeper") or _ra(ctx)
     return _resolution(
-        ctx, "Written Resolutions of the Directors — Records and Record Keeping",
+        ctx, "Written Resolutions of the Directors: Records and Record Keeping",
         ["The directors wish to confirm the arrangements for keeping the Company's records."],
         [f"The records and underlying documentation of the Company be kept at {loc}.",
          f"{keeper} be and is hereby authorised to hold the Company's records and to provide them to "
@@ -198,7 +198,7 @@ def _b_change_director(p: dict, ctx: dict):
     action = (p.get("action") or "Appointed").lower()
     eff = long_date(p.get("effective_date") or date.today())
     return _resolution(
-        ctx, "Written Resolutions of the Directors — Change of Director",
+        ctx, "Written Resolutions of the Directors: Change of Director",
         ["The directors wish to record a change to the board of the Company."],
         [f"{name} be and is hereby {action} as a director of the Company with effect from {eff}.",
          f"The Register of Directors be updated accordingly and the change filed with the {s.registry_name} "
@@ -216,7 +216,7 @@ def _b_first_board(p: dict, ctx: dict):
     ra = p.get("registered_agent") or _ra(ctx)
     directors = ", ".join(_director_names(ctx)) or "the first director(s) named in the incorporation application"
     return _resolution(
-        ctx, "Written Resolutions of the First Director(s) — Incorporation Matters",
+        ctx, "Written Resolutions of the First Director(s): Incorporation Matters",
         ["The following resolutions are adopted by the first director(s) of the Company on incorporation."],
         [f"The Memorandum and Articles of Association of the Company be and are hereby adopted.",
          f"{directors} be and is/are confirmed as the first director(s) of the Company.",
@@ -240,7 +240,7 @@ def _b_change_shareholding(p: dict, ctx: dict):
     cls = p.get("share_class") or "ordinary"
     eff = long_date(p.get("effective_date") or date.today())
     return _resolution(
-        ctx, "Written Resolutions of the Directors — Change of Shareholding",
+        ctx, "Written Resolutions of the Directors: Change of Shareholding",
         ["The directors wish to record a transfer of shares in the Company."],
         [f"The transfer of {shares} {cls} share(s) from {transferor} to {transferee} with effect from "
          f"{eff} be and is hereby approved.",
@@ -266,7 +266,7 @@ def _b_vistra_cover(p: dict, ctx: dict):
                 "Please do not hesitate to contact us should you require any further information.")
     pdf = letter_pdf(
         recipient_lines=[p.get("addressed_to") or _ra(ctx), ctx["spec"].name],
-        subject=p.get("re_subject") or f"{ctx['case'].company_name} — Service Request",
+        subject=p.get("re_subject") or f"{ctx['case'].company_name}: Service Request",
         body_paragraphs=body,
         signatory_name=p.get("signatory_name") or SIGNATORY_NAME,
         signatory_title=p.get("signatory_title") or SIGNATORY_TITLE,
@@ -276,7 +276,7 @@ def _b_vistra_cover(p: dict, ctx: dict):
 
 def _pf_vistra_cover(ctx: dict) -> dict:
     return {"addressed_to": _ra(ctx),
-            "re_subject": f"{ctx['case'].company_name} — Service Request",
+            "re_subject": f"{ctx['case'].company_name}: Service Request",
             "request_body": "", "enclosures": "",
             "signatory_name": SIGNATORY_NAME, "signatory_title": SIGNATORY_TITLE}
 
@@ -296,7 +296,7 @@ def _b_engagement_letter(p: dict, ctx: dict):
     ]
     pdf = letter_pdf(
         recipient_lines=[p.get("addressed_to") or client_name],
-        subject=f"Engagement Letter — {ctx['case'].company_name}",
+        subject=f"Engagement Letter: {ctx['case'].company_name}",
         body_paragraphs=body,
         signatory_name=p.get("signatory_name") or SIGNATORY_NAME,
         signatory_title=p.get("signatory_title") or SIGNATORY_TITLE,
@@ -341,7 +341,7 @@ TEMPLATE_CATALOG = [
         ],
     },
     {
-        "code": "resolution_rora", "label": "Resolution — Registered Agent & Office",
+        "code": "resolution_rora", "label": "Resolution: Registered Agent & Office",
         "category": "Corporate Document", "builder": _b_rora, "prefill": _pf_rora,
         "fields": [
             {"key": "registered_agent", "label": "Registered agent", "type": _TXT},
@@ -350,7 +350,7 @@ TEMPLATE_CATALOG = [
         ],
     },
     {
-        "code": "resolution_carrying_business", "label": "Resolution — Carrying on Business",
+        "code": "resolution_carrying_business", "label": "Resolution: Carrying on Business",
         "category": "Corporate Document", "builder": _b_carrying_business, "prefill": _pf_carrying_business,
         "fields": [
             {"key": "business_activity", "label": "Business activity", "type": _TXT},
@@ -358,7 +358,7 @@ TEMPLATE_CATALOG = [
         ],
     },
     {
-        "code": "resolution_record_keeping", "label": "Resolution — Records & Record Keeping",
+        "code": "resolution_record_keeping", "label": "Resolution: Records & Record Keeping",
         "category": "Corporate Document", "builder": _b_record_keeping, "prefill": _pf_record_keeping,
         "fields": [
             {"key": "records_location", "label": "Records location", "type": _TXT},
@@ -367,7 +367,7 @@ TEMPLATE_CATALOG = [
         ],
     },
     {
-        "code": "resolution_first_board", "label": "Resolution — First Board / Incorporation",
+        "code": "resolution_first_board", "label": "Resolution: First Board / Incorporation",
         "category": "Corporate Document", "builder": _b_first_board, "prefill": _pf_first_board,
         "fields": [
             {"key": "registered_agent", "label": "Registered agent", "type": _TXT},
@@ -375,7 +375,7 @@ TEMPLATE_CATALOG = [
         ],
     },
     {
-        "code": "resolution_change_director", "label": "Resolution — Change of Director",
+        "code": "resolution_change_director", "label": "Resolution: Change of Director",
         "category": "Corporate Document", "builder": _b_change_director, "prefill": _pf_change_director,
         "fields": [
             {"key": "director_name", "label": "Director", "type": _TXT, "required": True},
@@ -385,7 +385,7 @@ TEMPLATE_CATALOG = [
         ],
     },
     {
-        "code": "resolution_change_shareholding", "label": "Resolution — Change of Shareholding",
+        "code": "resolution_change_shareholding", "label": "Resolution: Change of Shareholding",
         "category": "Corporate Document", "builder": _b_change_shareholding, "prefill": _pf_change_shareholding,
         "fields": [
             {"key": "transferor", "label": "Transferor", "type": _TXT, "required": True},

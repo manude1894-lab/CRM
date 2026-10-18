@@ -251,7 +251,7 @@ export default function AMLAssessmentPanel({ caseId, entityName, parties = [] })
                   <option value="">— Not linked —</option>
                   {parties.map((p) => {
                     const val = `${p._kind[0].toLowerCase()}${p.id}`;
-                    return <option key={val} value={val}>{p._kind} — {p._label}</option>;
+                    return <option key={val} value={val}>{p._kind}: {p._label}</option>;
                   })}
                 </Select>
               </Field>
@@ -303,7 +303,7 @@ export default function AMLAssessmentPanel({ caseId, entityName, parties = [] })
               </div>
               {preview.missing.length > 0 && <div className="text-amber-600">{preview.missing.length} factor(s) not yet selected</div>}
               {preview.overrides.map((o, i) => <div key={i} className="text-amber-700">⚠ {o}</div>)}
-              {preview.blocked && <div className="text-red-600 font-semibold">⛔ A prohibited jurisdiction is selected — onboarding blocked.</div>}
+              {preview.blocked && <div className="text-red-600 font-semibold">A prohibited jurisdiction is selected. Onboarding is blocked.</div>}
             </div>
           )}
 

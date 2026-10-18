@@ -18,7 +18,7 @@ export default function AccountHistoryModal({ account, onClose }) {
   }, [account.id]);
 
   return (
-    <Modal title={`History — ${account.company_name}`} onClose={onClose}>
+    <Modal title={`History: ${account.company_name}`} onClose={onClose}>
       <div className="max-h-[60vh] overflow-y-auto pr-1">
         <AuditTrail entries={entries} loading={loading} emptyText="No changes recorded yet." />
       </div>

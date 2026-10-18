@@ -77,11 +77,11 @@ def update_user(db: Session, user_id: int, data: UserUpdate) -> User:
     losing_admin = user.role == UserRole.ADMIN and user.is_active and (
         update_data.get("is_active") is False or update_data.get("role", UserRole.ADMIN) != UserRole.ADMIN)
     if losing_admin and db.query(User).filter(User.role == UserRole.ADMIN, User.is_active == True).count() <= 1:  # noqa: E712
-        raise HTTPException(status_code=400, detail="This is the only active administrator — add another administrator first")
+        raise HTTPException(status_code=400, detail="This is the only active administrator. Add another administrator first.")
     if "supervisor_id" in update_data:
         sup = update_data["supervisor_id"]
         if sup == user_id or access_control.would_create_supervisor_cycle(db, user_id, sup):
-            raise HTTPException(status_code=400, detail="That supervisor reports to this user — the hierarchy would loop")
+            raise HTTPException(status_code=400, detail="That supervisor reports to this user, so the reporting line would go round in a circle")
     if "business_role_id" in update_data:
         _check_business_role(db, update_data["business_role_id"])
     if update_data.get("email") and update_data["email"] != user.email:

@@ -35,7 +35,7 @@ def create_item(db: Session, list_type: str, data: MasterItemCreate) -> MasterIt
     code = (data.code or data.label).strip()
     exists = db.query(MasterItem).filter(MasterItem.list_type == list_type, MasterItem.code == code).first()
     if exists:
-        raise HTTPException(status_code=400, detail=f"'{code}' already exists in this list" + ("" if exists.is_active else " (inactive — reactivate it instead)"))
+        raise HTTPException(status_code=400, detail=f"'{code}' already exists in this list" + ("" if exists.is_active else " (inactive; reactivate it instead)"))
     if data.sort_order is None:
         last = db.query(MasterItem).filter(MasterItem.list_type == list_type).order_by(MasterItem.sort_order.desc()).first()
         sort_order = (last.sort_order + 10) if last else 10

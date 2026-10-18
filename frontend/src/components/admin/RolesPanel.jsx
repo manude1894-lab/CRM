@@ -100,7 +100,7 @@ export default function RolesPanel({ departments, users, onChanged }) {
       </div>
 
       {form && (
-        <Modal title={form.id ? `Edit role — ${form.name}` : "Add Role"} onClose={() => setForm(null)}>
+        <Modal title={form.id ? `Edit role: ${form.name}` : "Add Role"} onClose={() => setForm(null)}>
           <Field label="Name" required><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. MLRO" /></Field>
           <Field label="Description"><Input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></Field>
           <Field label="Department (optional)">
@@ -114,7 +114,7 @@ export default function RolesPanel({ departments, users, onChanged }) {
               {perms.map((p) => (
                 <label key={p.key} className="flex items-start gap-2 text-xs text-gray-700">
                   <input type="checkbox" className="mt-0.5" checked={form.permissions.includes(p.key)} onChange={() => togglePerm(p.key)} />
-                  <span><span className="font-mono text-[11px] text-gray-500">{p.key}</span> — {p.description}</span>
+                  <span><span className="font-mono text-[11px] text-gray-500">{p.key}</span>: {p.description}</span>
                 </label>
               ))}
             </div>

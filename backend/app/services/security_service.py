@@ -109,6 +109,6 @@ def system_health(db: Session) -> list[dict]:
                "Waiting for Triam's choice of SMS provider (SMS_ENABLED, SMS_PROVIDER, SMS_API_URL, SMS_API_KEY).", severity="low"),
         _check("backups", "Daily database backups confirmed", False,
                "Cannot be checked from inside the application. Confirm daily backups on the hosting platform, with weekly "
-               "copies kept (BRD discussion: daily backups, weekend data retained), and test one restore. See docs/go-live-checklist.md.",
+               "copies kept, and test one restore.",
                severity="medium"),
     ]

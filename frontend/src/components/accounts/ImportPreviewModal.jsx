@@ -12,7 +12,7 @@ export default function ImportPreviewModal({ results, importing, onConfirm, onCl
   const count = (status) => results.filter((r) => r.status === status).length;
   const okCount = count("ok");
   return (
-    <Modal title="Import Clients — Preview" onClose={onClose}>
+    <Modal title="Import Clients: Preview" onClose={onClose}>
       <p className="text-sm text-gray-600 mb-3">
         {okCount} of {results.length} rows will be created.
         {" "}{count("duplicate")} duplicate(s), {" "}

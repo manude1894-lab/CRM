@@ -195,7 +195,7 @@ def test_document_removal_rules(db, people, seed_master, make_role, make_user):
     wf.withdraw(db, acc, maker)
     with pytest.raises(HTTPException) as e:
         document_service.delete(db, d2.id, maker)
-    assert "only an Approver" in e.value.detail
+    assert "Only an Approver" in e.value.detail
     deleter = make_user("Dee", business_role=make_role("Doc approver", ["document.delete_submitted"]))
     acc.spoc_id = deleter.id  # give the deleter visibility
     db.commit()

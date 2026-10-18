@@ -106,7 +106,7 @@ export default function WorkflowBar({ accountId, refreshKey, onChanged }) {
       )}
       {state.locked && state.status === "Awaiting Approval" && (
         <div className="px-3 py-1.5 text-[11px] bg-amber-50 text-amber-800 border-t border-amber-100">
-          Locked for review — editing is disabled until {state.stage === "Approver" ? "the Approver decides" : "Compliance decides or the submission is withdrawn"}.{state.stage !== "Approver" && " Compliance completes the CDD section meanwhile."}
+          Locked for review. Editing is disabled until {state.stage === "Approver" ? "the Approver decides" : "Compliance decides or the submission is withdrawn"}.{state.stage !== "Approver" && " Compliance completes the CDD section meanwhile."}
         </div>
       )}
       {state.history.length > 0 && (
@@ -120,7 +120,7 @@ export default function WorkflowBar({ accountId, refreshKey, onChanged }) {
                 <div key={h.id} className="text-[11px] text-gray-600">
                   <span className="font-semibold">{h.status}</span> · submitted by {h.maker_name || "—"} {formatTimestamp(h.submitted_at)}
                   {h.decided_at && <> · {h.status.toLowerCase()} {h.checker_name ? `by ${h.checker_name} ` : ""}{formatTimestamp(h.decided_at)}</>}
-                  {h.reason_code && <div className="text-red-600">Reason: {reasons.labelOf(h.reason_code)} — {h.reason_text}</div>}
+                  {h.reason_code && <div className="text-red-600">Reason: {reasons.labelOf(h.reason_code)}. {h.reason_text}</div>}
                   {h.maker_comment && <div className="text-gray-500">RM/Sales comments: {h.maker_comment}{h.kyc_declared ? " · KYC verification confirmed" : ""}</div>}
                   {h.compliance_comment && <div className="text-gray-500">Compliance ({h.compliance_checker_name || "—"}, {formatTimestamp(h.compliance_decided_at)}): {h.compliance_comment}</div>}
                   {!h.reason_code && h.reason_text && <div className="text-gray-500">{h.request_type === "client_profile" && h.compliance_comment ? "Approver" : "Comment"}: {h.reason_text}</div>}

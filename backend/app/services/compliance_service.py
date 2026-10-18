@@ -223,7 +223,7 @@ def set_ar_status(db: Session, case_id: int, status: str) -> ComplianceSchedule:
                 instruction_type="Financial Filings",
                 triam_entity="TBVI",
                 status=next(s["code"] for s in instruction_service.options(db, "TBVI")["statuses"] if not s["closed"]),
-                comments=f"Annual Return {year} — auto-created from the Filing Calendar.",
+                comments=f"Annual Return {year}, created from the Filing Calendar.",
             ))
     elif status == "Confirmed":
         schedule.ar_filing_last_completed_date = date.today()
@@ -251,7 +251,7 @@ def flag_bo_filing_due(db: Session, case_id: int) -> None:
     db.commit()
 
     if case:
-        msg = (f"Ownership change on {case.case_uid} ({case.company_name}) — "
+        msg = (f"Ownership change on {case.case_uid} ({case.company_name}). "
                f"ROM/RBO filing due by {dmy(new_due)} (to the registered agent).")
         notification_service.notify_role(db, UserRole.OPS, msg, "bo_filing_flagged",
                                          link=f"/compliance/{case_id}", case_id=case_id)

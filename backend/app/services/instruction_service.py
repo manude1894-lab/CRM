@@ -140,7 +140,7 @@ def _resolve_entity(db: Session, entity: Optional[str], account_id: Optional[int
     if entity:
         master_service.assert_valid(db, "triam_entity", entity, "Triam entity")
         if served_by and entity not in served_by:
-            raise HTTPException(status_code=400, detail=f"{entity} doesn't serve {acc.company_name} — choose one of {', '.join(served_by)}")
+            raise HTTPException(status_code=400, detail=f"{entity} doesn't serve {acc.company_name}. Choose one of {', '.join(served_by)}.")
     return entity
 
 
@@ -171,7 +171,7 @@ def _assert_client_serviceable(db: Session, account_id) -> None:
     from app.models import Account
     acc = db.get(Account, account_id) if account_id else None
     if acc is not None and acc.profile_status not in SERVICEABLE:
-        raise HTTPException(status_code=400, detail=f"{acc.company_name} is {acc.profile_status} — service requests open once the client is approved")
+        raise HTTPException(status_code=400, detail=f"{acc.company_name} is {acc.profile_status}. Service requests open once the client is approved.")
 
 
 def create_instruction(db: Session, data: InstructionCreate, user: User) -> Instruction:
@@ -224,7 +224,7 @@ def update_instruction(db: Session, instruction_id: int, data: InstructionUpdate
         from app.services import invoice_service, notification_service
         for u in invoice_service._accounts_team(db):
             if u.id != user.id:
-                notification_service.notify_user(db, u.id, f"Invoice instruction: service request '{inst.instruction_type}' completed — "
+                notification_service.notify_user(db, u.id, f"Invoice instruction: service request '{inst.instruction_type}' completed: "
                                                  f"{new_invoice.currency} {new_invoice.amount} to invoice.", "invoice_requested")
     return inst
 

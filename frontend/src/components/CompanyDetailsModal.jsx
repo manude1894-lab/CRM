@@ -57,7 +57,7 @@ export default function CompanyDetailsModal({ caseItem, onClose }) {
   };
 
   return (
-    <Modal title={`Company Details — ${caseItem.company_name}`} onClose={() => onClose(false)}>
+    <Modal title={`Company Details: ${caseItem.company_name}`} onClose={() => onClose(false)}>
       {loading ? <Spinner /> : error ? <ErrorBanner message={error} /> : form && (
         <div className="space-y-4">
           <Section title="Formation">
@@ -116,7 +116,7 @@ export default function CompanyDetailsModal({ caseItem, onClose }) {
                 </Select>
               </Field>
             </div>
-            <Field label="Source of Funds — Description"><Textarea value={form.source_of_funds_description || ""} onChange={set("source_of_funds_description")} /></Field>
+            <Field label="Source of Funds Description"><Textarea value={form.source_of_funds_description || ""} onChange={set("source_of_funds_description")} /></Field>
             <Field label="Business Description"><Textarea value={form.business_description || ""} onChange={set("business_description")} /></Field>
             <Field label="Countries of Operation"><Textarea value={form.business_countries || ""} onChange={set("business_countries")} /></Field>
             <Field label="Key Counterparties"><Textarea value={form.key_counterparties || ""} onChange={set("key_counterparties")} /></Field>
@@ -161,7 +161,7 @@ export default function CompanyDetailsModal({ caseItem, onClose }) {
 
           <Section title="Attachments">
             <DocumentsPanel caseId={caseItem.id} scope={null} defaultCategory="Activation Document" />
-            <p className="text-[11px] text-gray-400 mt-1">Activation docs (CI, MOA, stamped ROD, ROM), the reference letter, the KYC form and other corporate documents — pick the category on upload.</p>
+            <p className="text-[11px] text-gray-400 mt-1">Activation docs (CI, MOA, stamped ROD, ROM), the reference letter, the KYC form and other corporate documents. Pick the category on upload.</p>
           </Section>
 
           <div className="flex justify-end gap-3 pt-1">
