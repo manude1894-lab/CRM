@@ -143,7 +143,7 @@ def test_import_service_requests(db, people, make_account, seed_master):
     reqs = db.query(Instruction).filter(Instruction.account_id == acc.id).all()
     assert len(reqs) == 2
     first = next(r for r in reqs if r.instruction_type == "Change of Address")
-    assert first.status == "In Progress" and str(first.charge_amount) == "1500.00" and first.date_received == date(2026, 10, 1)
+    assert first.status == "Applied for service" and str(first.charge_amount) == "1500.00" and first.date_received == date(2026, 10, 1)
 
 
 def test_import_is_admin_only_via_api(db, people):

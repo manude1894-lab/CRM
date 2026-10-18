@@ -143,6 +143,7 @@ export const accountPartiesApi = {
 export const instructionsApi = {
   list: (params = {}) => api.get("/instructions", { params }).then((r) => r.data),
   importRequests: (rows, dryRun) => api.post("/instructions/import", { rows, dry_run: dryRun }).then((r) => r.data),
+  options: (triamEntity) => api.get("/instructions/options", { params: triamEntity ? { triam_entity: triamEntity } : {} }).then((r) => r.data),
   get: (id) => api.get(`/instructions/${id}`).then((r) => r.data),
   create: (data) => api.post("/instructions", data).then((r) => r.data),
   update: (id, data) => api.patch(`/instructions/${id}`, data).then((r) => r.data),

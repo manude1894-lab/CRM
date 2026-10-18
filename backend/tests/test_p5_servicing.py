@@ -97,7 +97,7 @@ def test_service_request_for_client_without_case(db, make_user, make_account, se
 def test_service_request_visibility(db, make_user, make_account):
     rm, stranger = make_user("Rita"), make_user("Stranger")
     acc = make_account(spoc=rm, profile_status="Active")
-    sr = instruction_service.create_instruction(db, InstructionCreate(account_id=acc.id, instruction_type="Other"), rm)
+    sr = instruction_service.create_instruction(db, InstructionCreate(account_id=acc.id, instruction_type="Other", other_description="Courier documents"), rm)
     assert instruction_service.list_instructions(db, stranger)[1] == 0
     with pytest.raises(HTTPException):
         instruction_service.get_instruction(db, sr.id, stranger)

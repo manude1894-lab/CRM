@@ -3,13 +3,13 @@ import { activitiesApi, instructionsApi } from "../../api/endpoints";
 import { Modal, Field, Input, Select, Textarea, Spinner, DateInput } from "../ui";
 import { toast } from "../../store/toast";
 import { useMasters } from "../../hooks/useMasters";
-import { selectableCodes } from "../../hooks/masterUtils";
 import { INSTRUCTION_TYPE_OPTIONS, fmtDate } from "../../utils/constants";
+import { useRequestOptions, requestLabel, clientEntities } from "../../hooks/useRequestOptions";
 import ActivityForm, { activityPayload, activityProblem, blankActivity } from "../activities/ActivityForm";
 import ActivityCard from "../activities/ActivityCard";
 
 const SERVICEABLE = ["Approved", "Active", "Inactive", "Marked for Exit"];
-const STATUS_STYLE = { Pending: "bg-amber-50 text-amber-700", "In Progress": "bg-blue-50 text-blue-700", Completed: "bg-emerald-50 text-emerald-700", "On Hold": "bg-gray-100 text-gray-600" };
+const STATUS_STYLE = { Completed: "bg-emerald-50 text-emerald-700", "On Hold": "bg-gray-100 text-gray-600", Dropped: "bg-gray-100 text-gray-400" };
 
 /**
  * BRD §17 — servicing an existing client: its Visit / Call Reports and activity history, and its
@@ -21,10 +21,15 @@ export default function ClientServicingModal({ account, cases = [], onClose, sta
   const [requests, setRequests] = useState(null);
   const [form, setForm] = useState(null); // activity form, when open
   // service request form, when open (Triam mark-up §11: opened straight from the client, with its details)
-  const [sr, setSr] = useState(startWith === "request"
-    ? { instruction_type: "", case_id: "", date_received: new Date().toISOString().split("T")[0], charge_amount: "", comments: "" } : null);
+  const entities = clientEntities(account);
+  const blankRequest = () => ({ triam_entity: entities[0] || "", instruction_type: "", other_description: "", case_id: "",
+    date_received: new Date().toISOString().split("T")[0], charge_amount: "", comments: "" });
+  const [sr, setSr] = useState(startWith === "request" ? blankRequest() : null);
   const [busy, setBusy] = useState(false);
   const requestTypes = useMasters("service_request_type", INSTRUCTION_TYPE_OPTIONS);
+  const triamEntities = useMasters("triam_entity", []);
+  const optionsFor = useRequestOptions(sr ? [sr.triam_entity] : []);
+  const srOpts = optionsFor(sr?.triam_entity);
   const clientCases = cases.filter((c) => c.account_id === account.id);
 
   const load = () => {
@@ -47,11 +52,13 @@ export default function ClientServicingModal({ account, cases = [], onClose, sta
 
   const saveRequest = async () => {
     if (!sr.instruction_type) return toast.error("Choose the request type");
+    if (sr.instruction_type === "Other" && !sr.other_description.trim()) return toast.error("Describe the request (up to 50 characters)");
     setBusy(true);
     try {
       await instructionsApi.create({
         account_id: account.id, case_id: sr.case_id ? Number(sr.case_id) : null, instruction_type: sr.instruction_type,
-        status: "Pending", date_received: sr.date_received || null, comments: sr.comments || null,
+        triam_entity: sr.triam_entity || null, other_description: sr.other_description || null,
+        date_received: sr.date_received || null, comments: sr.comments || null,
         charge_amount: sr.charge_amount === "" ? null : sr.charge_amount,
       });
       toast.success("Service request created");
@@ -101,12 +108,24 @@ export default function ClientServicingModal({ account, cases = [], onClose, sta
       {tab === "requests" && (sr ? (
         <div>
           <div className="grid grid-cols-2 gap-x-4">
+            <Field label="Triam entity" required>
+              <Select value={sr.triam_entity} onChange={(e) => setSr((p) => ({ ...p, triam_entity: e.target.value, instruction_type: "", other_description: "" }))}>
+                {entities.length === 0 && <option value="">— none set on the client —</option>}
+                {entities.map((e) => <option key={e} value={e}>{triamEntities.labelOf(e) || e}</option>)}
+              </Select>
+            </Field>
             <Field label="Request Type" required>
               <Select value={sr.instruction_type} onChange={(e) => setSr((p) => ({ ...p, instruction_type: e.target.value }))}>
                 <option value="">— choose —</option>
-                {selectableCodes(requestTypes.items, sr.instruction_type).map((t) => <option key={t} value={t}>{requestTypes.labelOf(t)}</option>)}
+                {srOpts.types.map((t) => <option key={t} value={t}>{requestTypes.labelOf(t) || t}</option>)}
               </Select>
             </Field>
+            {sr.instruction_type === "Other" && (
+              <Field label="Describe the request" required>
+                <Input maxLength={50} value={sr.other_description} placeholder="Up to 50 characters"
+                  onChange={(e) => setSr((p) => ({ ...p, other_description: e.target.value }))} />
+              </Field>
+            )}
             <Field label="Case / entity (optional)">
               <Select value={sr.case_id} onChange={(e) => setSr((p) => ({ ...p, case_id: e.target.value }))}>
                 <option value="">— none —</option>
@@ -125,7 +144,7 @@ export default function ClientServicingModal({ account, cases = [], onClose, sta
       ) : (
         <div className="space-y-2">
           {SERVICEABLE.includes(account.profile_status) ? (
-            <button onClick={() => setSr({ instruction_type: "", case_id: "", date_received: new Date().toISOString().split("T")[0], charge_amount: "", comments: "" })}
+            <button onClick={() => setSr(blankRequest())}
               className="px-2.5 py-1 text-xs text-white rounded-lg" style={{ background: "#1a3a5c" }}>+ New Service Request</button>
           ) : <p className="text-xs text-gray-500">Service requests open once the client is approved.</p>}
           {requests === null ? <Spinner /> : requests.length === 0
@@ -139,7 +158,7 @@ export default function ClientServicingModal({ account, cases = [], onClose, sta
                 <tbody>
                   {requests.map((r) => (
                     <tr key={r.id} className="border-b border-gray-50 align-top">
-                      <td className="py-1.5 pr-2 text-gray-700">{r.instruction_type}{r.comments && <div className="text-gray-400">{r.comments}</div>}</td>
+                      <td className="py-1.5 pr-2 text-gray-700">{requestLabel(r)}{r.triam_entity && <span className="text-gray-400"> · {r.triam_entity}</span>}{r.comments && <div className="text-gray-400">{r.comments}</div>}</td>
                       <td className="py-1.5"><span className={`px-1.5 py-0.5 rounded ${STATUS_STYLE[r.status] || "bg-gray-100"}`}>{r.status}</span></td>
                       <td className="py-1.5 text-gray-500">{fmtDate(r.date_received) || "—"}</td>
                       <td className="py-1.5 text-gray-500">{fmtDate(r.date_completed) || "—"}</td>

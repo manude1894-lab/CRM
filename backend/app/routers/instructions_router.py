@@ -39,6 +39,11 @@ def import_service_requests(body: ImportRequest, db: Session = Depends(get_db), 
     return engagement_service.import_service_requests(db, user, body.rows, body.dry_run)
 
 
+@router.get("/options", summary="Request types and statuses offered for a Triam entity")
+def request_options(triam_entity: Optional[str] = None, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    return instruction_service.options(db, triam_entity)
+
+
 @router.get("/{instruction_id}", response_model=InstructionRead)
 def get_instruction(instruction_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     return instruction_service.get_instruction(db, instruction_id, user)

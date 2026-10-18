@@ -6,6 +6,14 @@ import { toast } from "../../store/toast";
 
 // Admin maintenance of the BRD §18 master lists. Items are deactivated, never deleted,
 // so existing records keep their values; the stored code can't be changed after creation.
+// Lists whose values apply to particular Triam entities (none ticked = every entity).
+const ENTITY_LISTS = ["service", "service_request_type", "service_request_status"];
+const ENTITY_HINT = {
+  service: " Tick the Triam entities that offer each service.",
+  service_request_type: " Tick the Triam entities each request type is for; none ticked = every entity.",
+  service_request_status: " Tick the Triam entities each status is used by; none ticked = every entity. The order here is the order in the drop-down.",
+};
+
 export default function MasterDataPanel() {
   const [types, setTypes] = useState([]);
   const [listType, setListType] = useState(null);
@@ -76,7 +84,7 @@ export default function MasterDataPanel() {
 
       <div className="md:col-span-3 bg-white rounded-xl border border-gray-100 p-5 shadow-sm">
         <h3 className="text-sm font-semibold text-gray-700 mb-1">{types.find((t) => t.list_type === listType)?.title}</h3>
-        <p className="text-xs text-gray-400 mb-3">Deactivate a value instead of deleting it.{listType === "service" && " Tick the Triam entities that offer each service."}</p>
+        <p className="text-xs text-gray-400 mb-3">Deactivate a value instead of deleting it.{ENTITY_LISTS.includes(listType) && ENTITY_HINT[listType]}</p>
 
         {loading ? <p className="text-xs text-gray-400">Loading…</p> : (
           <div className="space-y-1 mb-4">
@@ -94,7 +102,7 @@ export default function MasterDataPanel() {
                   {item.code !== item.label && <span className="text-[10px] font-mono text-gray-400 flex-shrink-0">{item.code}</span>}
                   {item.meta?.opens_free_text && <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 flex-shrink-0">opens free text</span>}
                   {!item.is_active && <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-200 text-gray-500 flex-shrink-0">Inactive</span>}
-                  {listType === "service" && (
+                  {ENTITY_LISTS.includes(listType) && (
                     <span className="flex flex-wrap gap-1 ml-2">
                       {entities.map((e) => {
                         const on = (item.meta?.entities || []).includes(e.code);

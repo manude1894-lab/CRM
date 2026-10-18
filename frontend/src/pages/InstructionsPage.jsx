@@ -1,11 +1,11 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { instructionsApi, casesApi, invoicesApi, accountsApi } from "../api/endpoints";
 import { useMasters } from "../hooks/useMasters";
-import { selectableCodes } from "../hooks/masterUtils";
 import { Icon, Badge, Modal, Field, Input, Select, Textarea, Spinner, ErrorBanner, PageHeader, DateInput } from "../components/ui";
 import DocumentsPanel from "../components/DocumentsPanel";
 import FeedbackPanel from "../components/FeedbackPanel";
-import { INSTRUCTION_STATUS_OPTIONS, INSTRUCTION_TYPE_OPTIONS, fmtFull, fmtDate } from "../utils/constants";
+import { INSTRUCTION_TYPE_OPTIONS, fmtFull, fmtDate } from "../utils/constants";
+import { useRequestOptions, pickableStatuses, firstOpenStatus, requestLabel, clientEntities } from "../hooks/useRequestOptions";
 import { toast } from "../store/toast";
 import { reasonDialog } from "../store/confirm";
 import { useAuthStore } from "../store/auth";
@@ -15,8 +15,10 @@ import CsvImportModal from "../components/CsvImportModal";
 const emptyForm = (accountId) => ({
   account_id: accountId || "",
   case_id: "",
+  triam_entity: "",
   instruction_type: "",
-  status: "Pending",
+  other_description: "",
+  status: "",
   document_shared: "",
   date_received: new Date().toISOString().split("T")[0],
   date_sent_to_vistra: "",
@@ -58,6 +60,7 @@ export default function InstructionsPage() {
   const [accounts, setAccounts] = useState([]);
   const [clientFilter, setClientFilter] = useState("");
   const requestTypes = useMasters("service_request_type", INSTRUCTION_TYPE_OPTIONS);
+  const triamEntities = useMasters("triam_entity", []);
   const [invoices, setInvoices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -87,6 +90,18 @@ export default function InstructionsPage() {
 
   const caseById = useMemo(() => Object.fromEntries(cases.map((c) => [c.id, c])), [cases]);
   const accountById = useMemo(() => Object.fromEntries(accounts.map((a) => [a.id, a])), [accounts]);
+  // Request types and statuses follow the Triam entity handling the request.
+  const optionsFor = useRequestOptions([...instructions.map((i) => i.triam_entity), form.triam_entity]);
+  const formOpts = optionsFor(form.triam_entity);
+  const formEntities = (() => {
+    const served = clientEntities(accountById[form.account_id]);
+    return served.length ? served : triamEntities.items.map((e) => e.code);
+  })();
+  const allStatuses = [...new Set(instructions.map((i) => i.status))];
+  // Pick the client's anchor entity; a new entity resets the type and status to that entity's lists.
+  const chooseClient = (accountId) => setForm((p) => ({ ...p, account_id: accountId, case_id: "",
+    triam_entity: clientEntities(accountById[accountId])[0] || "", instruction_type: "", other_description: "", status: "" }));
+  const chooseEntity = (entity) => setForm((p) => ({ ...p, triam_entity: entity, instruction_type: "", other_description: "", status: "" }));
   const clientCases = cases.filter((c) => !form.account_id || c.account_id === Number(form.account_id));
   const caseInvoices = useMemo(
     () => invoices.filter((inv) => inv.case_id === Number(form.case_id)),
@@ -102,21 +117,25 @@ export default function InstructionsPage() {
     return matchStatus && matchSearch && (!clientFilter || i.account_id === Number(clientFilter));
   });
 
-  const openNew = () => { setForm(emptyForm(clientFilter)); setModal("new"); };
-  const openEdit = (i) => { setForm({ ...i, account_id: i.account_id || "", case_id: i.case_id || "", charge_amount: i.charge_amount ?? "", cost_amount: i.cost_amount ?? "" }); setModal("edit"); };
+  const openNew = () => {
+    setForm({ ...emptyForm(clientFilter), triam_entity: clientEntities(accountById[clientFilter])[0] || "" });
+    setModal("new");
+  };
+  const openEdit = (i) => { setForm({ ...i, account_id: i.account_id || "", case_id: i.case_id || "", triam_entity: i.triam_entity || "", other_description: i.other_description || "", charge_amount: i.charge_amount ?? "", cost_amount: i.cost_amount ?? "" }); setModal("edit"); };
 
   const save = async () => {
     if (!form.account_id && !form.case_id) return toast.error("Choose the client for this service request");
     if (!form.instruction_type) return toast.error("Choose the request type");
+    if (form.instruction_type === "Other" && !form.other_description?.trim()) return toast.error("Describe the request (up to 50 characters)");
     try {
-      const payload = cleanPayload(form);
+      const payload = cleanPayload({ ...form, status: form.status || firstOpenStatus(formOpts) });
       if (payload.invoice_id != null) payload.invoice_id = Number(payload.invoice_id);
       if (modal === "new") {
         await instructionsApi.create({ ...payload, account_id: payload.account_id ? Number(payload.account_id) : null,
           case_id: payload.case_id ? Number(payload.case_id) : null });
         toast.success("Service request created");
       } else {
-        const { id, case_id, account_id, created_at, updated_at, ...patch } = payload;
+        const { id, case_id, account_id, created_at, updated_at, cancel_reason, ...patch } = payload;
         await instructionsApi.update(form.id, patch);
       }
       setModal(null); load();
@@ -142,7 +161,7 @@ export default function InstructionsPage() {
   if (loading) return <Spinner />;
   if (error) return <ErrorBanner message={error} onRetry={load} />;
 
-  const counts = [...INSTRUCTION_STATUS_OPTIONS, "Cancelled"].reduce((acc, s) => {
+  const counts = allStatuses.reduce((acc, s) => {
     acc[s] = instructions.filter((i) => i.status === s).length;
     return acc;
   }, {});
@@ -175,13 +194,11 @@ export default function InstructionsPage() {
           <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search company, type, invoice ref..."
             className="w-full pl-8 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-brand-400" />
         </div>
-        {["All", ...INSTRUCTION_STATUS_OPTIONS, "Cancelled"].map((s) => (
-          <button key={s} onClick={() => setStatusFilter(s)}
-            className={`px-3 py-1.5 text-xs rounded-lg border transition-colors ${statusFilter === s ? "text-white border-transparent" : "border-gray-200 text-gray-600 hover:bg-gray-50"}`}
-            style={statusFilter === s ? { background: "#1a3a5c" } : {}}>
-            {s} {s !== "All" && `(${counts[s] || 0})`}
-          </button>
-        ))}
+        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
+          className="border border-gray-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-brand-400">
+          <option value="All">All statuses ({instructions.length})</option>
+          {allStatuses.map((s) => <option key={s} value={s}>{s} ({counts[s] || 0})</option>)}
+        </select>
         <select value={clientFilter} onChange={(e) => setClientFilter(e.target.value)}
           className="border border-gray-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-brand-400">
           <option value="">All clients</option>
@@ -233,14 +250,17 @@ export default function InstructionsPage() {
                     {i.case_id && <> {accountById[i.account_id]?.client_id ? "· " : ""}{caseById[i.case_id]?.case_uid}</>}
                   </div>
                 </td>
-                <td className="py-3 px-4 text-xs text-gray-600">{i.instruction_type}</td>
+                <td className="py-3 px-4 text-xs text-gray-600">
+                  {requestLabel(i)}
+                  {i.triam_entity && <div className="text-[11px] text-gray-400">{i.triam_entity}</div>}
+                </td>
                 <td className="py-3 px-4">
-                  {i.status === "Cancelled" ? (
-                    <span className="text-xs text-gray-400" title={i.cancel_reason || ""}>Cancelled</span>
+                  {["Dropped", "Completed"].includes(i.status) ? (
+                    <span className={`text-xs ${i.status === "Dropped" ? "text-gray-400" : "text-emerald-700"}`} title={i.cancel_reason || ""}>{i.status}</span>
                   ) : (
                     <select value={i.status} onChange={(e) => quickSetStatus(i, e.target.value)}
-                      className="text-xs border-0 bg-transparent focus:outline-none cursor-pointer">
-                      {INSTRUCTION_STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
+                      className="text-xs border-0 bg-transparent focus:outline-none cursor-pointer max-w-[11rem]">
+                      {pickableStatuses(optionsFor(i.triam_entity), i.status).map((s) => <option key={s} value={s}>{s}</option>)}
                     </select>
                   )}
                 </td>
@@ -256,7 +276,7 @@ export default function InstructionsPage() {
                 <td className="py-3 px-4 text-xs text-gray-500">{i.invoice_reference || "—"}</td>
                 <td className="py-3 px-4">
                   <div className="flex gap-1">
-                    {!["Cancelled", "Completed"].includes(i.status) && (<>
+                    {!["Dropped", "Completed"].includes(i.status) && (<>
                       <button onClick={() => openEdit(i)} className="p-1.5 rounded hover:bg-brand-50 text-gray-400 hover:text-brand-600">
                         <Icon name="edit" size={14} />
                       </button>
@@ -281,7 +301,7 @@ export default function InstructionsPage() {
         <Modal title={modal === "new" ? "New Service Request" : "Edit Service Request"} onClose={() => setModal(null)}>
           <div className="grid grid-cols-2 gap-x-4">
             <Field label="Client" required>
-              <Select value={form.account_id || ""} disabled={modal === "edit"} onChange={(e) => setForm((p) => ({ ...p, account_id: e.target.value, case_id: "" }))}>
+              <Select value={form.account_id || ""} disabled={modal === "edit"} onChange={(e) => chooseClient(e.target.value)}>
                 <option value="">— choose client —</option>
                 {accounts.filter((a) => modal === "edit" || ["Approved", "Active", "Inactive", "Marked for Exit"].includes(a.profile_status))
                   .map((a) => <option key={a.id} value={a.id}>{a.client_id ? `${a.client_id} – ` : ""}{a.company_name}</option>)}
@@ -293,15 +313,29 @@ export default function InstructionsPage() {
                 {clientCases.map((c) => <option key={c.id} value={c.id}>{c.case_uid} – {c.company_name}</option>)}
               </Select>
             </Field>
-            <Field label="Request Type" required>
-              <Select value={form.instruction_type || ""} onChange={(e) => setForm((p) => ({ ...p, instruction_type: e.target.value }))}>
+            <Field label="Triam entity" required>
+              <Select value={form.triam_entity || ""} onChange={(e) => chooseEntity(e.target.value)}>
                 <option value="">— choose —</option>
-                {selectableCodes(requestTypes.items, form.instruction_type).map((t) => <option key={t} value={t}>{requestTypes.labelOf(t)}</option>)}
+                {formEntities.map((e) => <option key={e} value={e}>{triamEntities.labelOf(e) || e}</option>)}
               </Select>
             </Field>
+            <Field label="Request Type" required>
+              <Select value={form.instruction_type || ""} disabled={!form.triam_entity}
+                onChange={(e) => setForm((p) => ({ ...p, instruction_type: e.target.value, other_description: e.target.value === "Other" ? p.other_description : "" }))}>
+                <option value="">{form.triam_entity ? "— choose —" : "— choose the entity first —"}</option>
+                {[...new Set([...formOpts.types, ...(form.instruction_type ? [form.instruction_type] : [])])]
+                  .map((t) => <option key={t} value={t}>{requestTypes.labelOf(t) || t}</option>)}
+              </Select>
+            </Field>
+            {form.instruction_type === "Other" && (
+              <Field label="Describe the request" required>
+                <Input maxLength={50} value={form.other_description || ""} placeholder="Up to 50 characters"
+                  onChange={(e) => setForm((p) => ({ ...p, other_description: e.target.value }))} />
+              </Field>
+            )}
             <Field label="Status">
-              <Select value={form.status || "Pending"} onChange={(e) => setForm((p) => ({ ...p, status: e.target.value }))}>
-                {INSTRUCTION_STATUS_OPTIONS.map((s) => <option key={s}>{s}</option>)}
+              <Select value={form.status || firstOpenStatus(formOpts)} onChange={(e) => setForm((p) => ({ ...p, status: e.target.value }))}>
+                {pickableStatuses(formOpts, form.status).map((s) => <option key={s}>{s}</option>)}
               </Select>
             </Field>
             <Field label="Cost (to registered agent)">

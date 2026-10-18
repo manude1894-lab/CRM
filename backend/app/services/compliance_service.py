@@ -198,7 +198,8 @@ def _reset_ar_subworkflow(schedule: ComplianceSchedule) -> None:
 
 
 def set_ar_status(db: Session, case_id: int, status: str) -> ComplianceSchedule:
-    from app.models import Instruction  # local import — avoids a services import cycle
+    from app.models import Instruction  # local imports — avoid a services import cycle
+    from app.services import instruction_service
 
     schedule = get_schedule(db, case_id)
     schedule.ar_filing_status = status
@@ -209,8 +210,8 @@ def set_ar_status(db: Session, case_id: int, status: str) -> ComplianceSchedule:
             db.query(Instruction)
             .filter(
                 Instruction.case_id == case_id,
-                Instruction.instruction_type == "AR Filing",
-                Instruction.status.notin_(("Completed", "Cancelled")),
+                Instruction.instruction_type.in_(("AR Filing", "Financial Filings")),
+                Instruction.status.notin_(("Completed", "Dropped", "Cancelled")),
             )
             .first()
         )
@@ -218,8 +219,10 @@ def set_ar_status(db: Session, case_id: int, status: str) -> ComplianceSchedule:
             db.add(Instruction(
                 case_id=case_id,
                 account_id=schedule.case.account_id if schedule.case else None,
-                instruction_type="AR Filing",
-                status="Pending",
+                # BVI work is Trident's (TBVI): its "Financial Filings" request, first open status
+                instruction_type="Financial Filings",
+                triam_entity="TBVI",
+                status=next(s["code"] for s in instruction_service.options(db, "TBVI")["statuses"] if not s["closed"]),
                 comments=f"Annual Return {year} — auto-created from the Filing Calendar.",
             ))
     elif status == "Confirmed":

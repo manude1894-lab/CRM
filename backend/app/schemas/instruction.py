@@ -4,12 +4,12 @@ from typing import Optional
 from datetime import date, datetime
 from decimal import Decimal
 
-from app.models.instruction import InstructionStatus
-
-
 class InstructionBase(BaseModel):
     instruction_type: str = Field(..., min_length=1, max_length=150)
-    status: InstructionStatus = InstructionStatus.PENDING
+    other_description: Optional[str] = Field(None, max_length=50)
+    triam_entity: Optional[str] = Field(None, max_length=20)
+    # Checked against the entity's statuses (master list); empty = the entity's first status.
+    status: Optional[str] = Field(None, max_length=40)
     document_shared: Optional[str] = None
     date_received: Optional[date] = None
     date_sent_to_vistra: Optional[date] = None
@@ -30,7 +30,9 @@ class InstructionCreate(InstructionBase):
 
 class InstructionUpdate(BaseModel):
     instruction_type: Optional[str] = Field(None, min_length=1, max_length=150)
-    status: Optional[InstructionStatus] = None
+    other_description: Optional[str] = Field(None, max_length=50)
+    triam_entity: Optional[str] = Field(None, max_length=20)
+    status: Optional[str] = Field(None, max_length=40)
     document_shared: Optional[str] = None
     date_received: Optional[date] = None
     date_sent_to_vistra: Optional[date] = None
@@ -45,6 +47,8 @@ class InstructionUpdate(BaseModel):
 
 class InstructionRead(InstructionBase):
     id: int
+    status: str
+    cancel_reason: Optional[str] = None
     case_id: Optional[int] = None
     account_id: Optional[int] = None
     created_at: datetime

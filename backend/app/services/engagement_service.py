@@ -264,11 +264,23 @@ def import_entities(db: Session, user: User, rows: list[dict], dry_run: bool) ->
     return results
 
 
+# Request names used in Triam's old Instruction Tracker -> the request types in Triam's current list.
+LEGACY_REQUEST_TYPES = {
+    "COI Issuance": "Corporate Certificates (COI, COGS)", "COGS Issuance": "Corporate Certificates (COI, COGS)",
+    "COI & COGS Issuance": "Corporate Certificates (COI, COGS)", "LEI Renewal": "LEI – Renewal (Bloomberg)",
+    "AR Filing": "Financial Filings", "ESR Filing": "Financial Filings", "ROM/RBO Filing": "Financial Filings",
+    "Notarization / Apostille": "Notary / Apostille Attestations", "Company Closure / Strike Off": "Strike Off / Liquidation",
+    "Transfer & Restoration to Vistra": "Restoration", "Change in Directors": "Changes in Org / Control Structure",
+    "Change in Shareholding": "Changes in Org / Control Structure",
+}
+LEGACY_STATUSES = {"TBVI": {"pending": "Not started", "in progress": "Initiated"},
+                   None: {"pending": "Received", "in progress": "Applied for service"}}
+
+
 def import_service_requests(db: Session, user: User, rows: list[dict], dry_run: bool) -> list[dict]:
     """Open service requests from the Excel Instruction Tracker, matched to a client (by Client ID
     or exact name) and optionally a case (by Case ID or exact company name)."""
-    active_types = master_service.active_codes(db, "service_request_type")
-    statuses = {"pending": "Pending", "in progress": "In Progress", "completed": "Completed", "on hold": "On Hold"}
+    from app.services import instruction_service
     results = []
     for idx, raw in enumerate(rows):
         r = {k: (v.strip() if isinstance(v, str) else v) for k, v in raw.items()}
@@ -278,11 +290,6 @@ def import_service_requests(db: Session, user: User, rows: list[dict], dry_run: 
             rtype = r.get("request_type") or ""
             if not rtype:
                 raise ValueError("Request type is required")
-            if active_types and rtype not in active_types:
-                raise ValueError(f"Request type '{rtype}' is not in the Service Request Types list")
-            status = statuses.get((r.get("status") or "Pending").lower())
-            if not status:
-                raise ValueError(f"Status '{r.get('status')}' must be Pending, In Progress, Completed or On Hold")
             case = None
             if r.get("case_uid"):
                 case = db.query(Case).filter(func.lower(Case.case_uid) == r["case_uid"].lower()).first()
@@ -297,8 +304,27 @@ def import_service_requests(db: Session, user: User, rows: list[dict], dry_run: 
                 raise ValueError("No matching client or case (give a Client ID, Case ID or the exact company name)")
             if account and case and case.account_id and case.account_id != account.id:
                 raise ValueError("The case belongs to a different client")
+            # Entity: BVI case work is Trident's (TBVI); otherwise the client's anchor entity.
+            entity = "TBVI" if case is not None else (account.anchor_entity if account else None)
+            opts = instruction_service.options(db, entity)
+            other = None
+            if opts["types"] and rtype not in opts["types"]:
+                mapped = LEGACY_REQUEST_TYPES.get(rtype)
+                if mapped in opts["types"]:
+                    rtype = mapped
+                elif "Other" in opts["types"]:
+                    rtype, other = "Other", rtype[:50]
+                else:
+                    raise ValueError(f"Request type '{rtype}' is not a request type for {entity or 'this client'}")
+            codes = [s["code"] for s in opts["statuses"]]
+            given = (r.get("status") or "").strip()
+            status = (LEGACY_STATUSES["TBVI" if entity == "TBVI" else None].get(given.lower())
+                      or next((c for c in codes if c.lower() == given.lower()), None) if given
+                      else next(s["code"] for s in opts["statuses"] if not s["closed"]))
+            if not status or status == "Dropped":
+                raise ValueError(f"Status '{given}' is not a status for {entity or 'this client'} ({', '.join(codes)})")
             values = dict(
-                instruction_type=rtype, status=status,
+                instruction_type=rtype, other_description=other, triam_entity=entity, status=status,
                 date_received=parse_date(r.get("date_received"), "Date received"),
                 date_sent_to_vistra=parse_date(r.get("date_sent_to_vistra"), "Date sent to Vistra"),
                 date_received_from_vistra=parse_date(r.get("date_received_from_vistra"), "Date received from Vistra"),

@@ -32,7 +32,7 @@ def test_service_request_is_cancelled_not_deleted(db, make_user, make_account, s
     sr = instruction_service.create_instruction(db, InstructionCreate(account_id=acc.id, instruction_type="Change of Address"), rm)
     instruction_service.cancel_instruction(db, sr.id, "Client withdrew the request", rm)
     row = db.get(Instruction, sr.id)
-    assert row.status == "Cancelled" and row.cancel_reason == "Client withdrew the request"
+    assert row.status == "Dropped" and row.cancel_reason == "Client withdrew the request"
     with pytest.raises(HTTPException):
         instruction_service.cancel_instruction(db, sr.id, "again", rm)
 

@@ -24,6 +24,7 @@ MASTER_LIST_TYPES = {
     "document_category": "Document Categories",
     "rejection_reason": "Rejection Reasons",
     "service_request_type": "Service Request Types",
+    "service_request_status": "Service Request Statuses",
 }
 
 

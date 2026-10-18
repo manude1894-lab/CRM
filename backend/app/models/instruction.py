@@ -14,11 +14,11 @@ from app.database import Base
 
 
 class InstructionStatus(str, enum.Enum):
-    PENDING = "Pending"
-    IN_PROGRESS = "In Progress"
-    COMPLETED = "Completed"
+    """Statuses the code relies on. The full list is Triam's, per entity, in the
+    service_request_status master list (Received, Applied for service ... / Not started ...)."""
+    COMPLETED = "Completed"  # raises the invoice request to Accounts
     ON_HOLD = "On Hold"
-    CANCELLED = "Cancelled"
+    CANCELLED = "Dropped"    # set only by Cancel, with a reason
 
 
 class Instruction(Base):
@@ -33,7 +33,10 @@ class Instruction(Base):
     # as jurisdiction/service_type on Case (migration 0003): free text is far cheaper
     # to extend than altering a Postgres enum every time Triam adds a new request type.
     instruction_type = Column(String(150), nullable=False)
-    status = Column(String(20), default=InstructionStatus.PENDING.value, nullable=False)
+    other_description = Column(String(50), nullable=True)  # when the type is "Other"
+    # The Triam entity handling the request; decides the request types and statuses offered.
+    triam_entity = Column(String(20), nullable=True)
+    status = Column(String(40), default="Received", nullable=False)
 
     document_shared = Column(Text, nullable=True)
 
