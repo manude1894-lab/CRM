@@ -20,9 +20,10 @@ from tests.test_p3_compliance import approved_client
 
 
 def test_no_delete_endpoints_remain():
-    """Only un-assigning an additional RM from a case uses DELETE (it removes an assignment, not a record)."""
+    """DELETE is used only to un-assign an extra RM from a case (an assignment, not a record) and by the
+    support account to remove a user login."""
     deletes = sorted(r.path for r in app.routes if "DELETE" in getattr(r, "methods", set()))
-    assert deletes == ["/api/v1/cases/{case_id}/relationship-managers/{rm_user_id}"]
+    assert deletes == ["/api/v1/cases/{case_id}/relationship-managers/{rm_user_id}", "/api/v1/users/{user_id}"]
 
 
 def test_service_request_is_cancelled_not_deleted(db, make_user, make_account, seed_master):

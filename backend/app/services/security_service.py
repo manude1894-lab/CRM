@@ -86,7 +86,8 @@ def _check(key, label, ok, fix, severity="high", detail=None):
 def system_health(db: Session) -> list[dict]:
     users = db.query(User).filter(User.is_active == True).all()  # noqa: E712
     admins = [u for u in users if u.role == UserRole.ADMIN]
-    default_admins = [u.email for u in admins if verify_password("admin123", u.hashed_password)]
+    default_admins = [("the support account" if u.is_super_admin else u.email)
+                      for u in admins if verify_password("admin123", u.hashed_password)]
     approvers = [u for u in users if has_permission(u, "client.approve") and u.role != UserRole.ADMIN]
     cors = settings.CORS_ALLOW_ALL
     return [

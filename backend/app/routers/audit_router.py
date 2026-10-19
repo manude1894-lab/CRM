@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from app.auth.dependencies import get_current_user, require_permission
 from app.database import get_db
 from app.models import User
-from app.schemas.audit import AuditEntryRead
+from app.schemas.audit import AuditEntryRead, support_name
 from app.services import audit_service, account_service
 
 router = APIRouter(tags=["Audit"])
@@ -37,7 +37,7 @@ def list_audit(
         action=action, date_from=date_from, date_to=date_to, skip=skip, limit=limit,
     )
     response.headers["X-Total-Count"] = str(total)
-    return [AuditEntryRead.from_row(r) for r in rows]
+    return [AuditEntryRead.from_row(r, user) for r in rows]
 
 
 EXPORT_LIMIT = 50000
@@ -78,7 +78,7 @@ def export_audit(
     w.writerow(["Date and time (UAE)", "User", "Action", "Record type", "Record ID", "Client record", "Summary", "Changes"])
     for r in rows:
         w.writerow([r.occurred_at.astimezone(_TZ).strftime("%d %m %Y %H:%M:%S") if r.occurred_at else "",
-                    r.user.name if r.user else "System", r.action, r.subject_type, r.subject_id or "",
+                    support_name(r.user, user) or "System", r.action, r.subject_type, r.subject_id or "",
                     r.account_id or "", r.summary or "", _changes_text(r.changes)])
     return Response(content="﻿" + buf.getvalue(), media_type="text/csv; charset=utf-8",
                     headers={"Content-Disposition": f'attachment; filename="triam-crm-activity-{date.today():%Y-%m-%d}.csv"'})
@@ -97,4 +97,4 @@ def account_history(
     account_service.get_account(db, account_id, user)
     rows, total = audit_service.list_entries(db, account_id=account_id, skip=skip, limit=limit)
     response.headers["X-Total-Count"] = str(total)
-    return [AuditEntryRead.from_row(r) for r in rows]
+    return [AuditEntryRead.from_row(r, user) for r in rows]

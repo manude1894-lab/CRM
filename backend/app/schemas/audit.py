@@ -20,7 +20,16 @@ class AuditEntryRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     @classmethod
-    def from_row(cls, row) -> "AuditEntryRead":
+    def from_row(cls, row, viewer=None) -> "AuditEntryRead":
         out = cls.model_validate(row)
-        out.user_name = row.user.name if row.user else None
+        out.user_name = support_name(row.user, viewer)
         return out
+
+
+def support_name(user, viewer=None):
+    """Who did it, as shown to the viewer: the support account appears as "System support" to others."""
+    if user is None:
+        return None
+    if user.is_super_admin and not (viewer is not None and viewer.is_super_admin):
+        return "System support"
+    return user.name

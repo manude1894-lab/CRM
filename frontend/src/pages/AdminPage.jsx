@@ -104,6 +104,14 @@ export default function AdminPage() {
     }
   };
 
+  // Only the support account may delete a login (e.g. a test account); everyone else deactivates.
+  const deleteUser = async (u) => {
+    if (!(await confirmDialog({ title: "Delete user", confirmLabel: "Delete", danger: true,
+      message: `${u.name} (${u.email}) will be removed permanently. Their past actions stay in the history without their name.` }))) return;
+    try { await usersApi.remove(u.id); toast.success("User deleted"); load(); }
+    catch (e) { toast.error(e.response?.data?.detail || "Delete failed"); }
+  };
+
   // Users are never deleted: deactivating ends their access and keeps their history.
   const toggleActive = async (u) => {
     if (u.is_active && !(await confirmDialog({ title: "Deactivate user", confirmLabel: "Deactivate", danger: true,
@@ -195,6 +203,10 @@ export default function AdminPage() {
                     className={`px-2 py-1 rounded text-[11px] border ${u.is_active ? "border-gray-200 text-gray-500 hover:text-red-600 hover:border-red-200" : "border-green-200 text-green-700 hover:bg-green-50"}`}>
                     {u.is_active ? "Deactivate" : "Activate"}
                   </button>}
+                  {me?.is_super_admin && u.id !== me?.id && (
+                    <button onClick={() => deleteUser(u)} title="Delete user"
+                      className="ml-1 px-2 py-1 rounded text-[11px] border border-red-200 text-red-600 hover:bg-red-50">Delete</button>
+                  )}
                 </td>
               </tr>
             ))}

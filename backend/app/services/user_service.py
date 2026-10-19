@@ -8,13 +8,21 @@ from app.auth.security import hash_password
 from app.services import access_control
 
 
-def list_users(db: Session, skip: int = 0, limit: int = 100) -> list[User]:
-    return db.query(User).order_by(User.id).offset(skip).limit(limit).all()
+def _hidden_from(viewer) -> bool:
+    """The super admin account is invisible to everyone but itself."""
+    return not (viewer is not None and viewer.is_super_admin)
 
 
-def get_user(db: Session, user_id: int) -> User:
+def list_users(db: Session, skip: int = 0, limit: int = 100, viewer: User | None = None) -> list[User]:
+    q = db.query(User)
+    if _hidden_from(viewer):
+        q = q.filter(User.is_super_admin == False)  # noqa: E712
+    return q.order_by(User.id).offset(skip).limit(limit).all()
+
+
+def get_user(db: Session, user_id: int, viewer: User | None = None) -> User:
     user = db.query(User).filter(User.id == user_id).first()
-    if not user:
+    if not user or (user.is_super_admin and _hidden_from(viewer) and (viewer is None or viewer.id != user.id)):
         raise HTTPException(status_code=404, detail="User not found")
     return user
 
@@ -71,12 +79,19 @@ def _extra_roles(db: Session, role_ids) -> list[Role]:
     return roles
 
 
-def update_user(db: Session, user_id: int, data: UserUpdate) -> User:
-    user = get_user(db, user_id)
+def update_user(db: Session, user_id: int, data: UserUpdate, viewer: User | None = None) -> User:
+    user = get_user(db, user_id, viewer)
     update_data = data.model_dump(exclude_unset=True)
-    losing_admin = user.role == UserRole.ADMIN and user.is_active and (
+    if user.is_super_admin:
+        if viewer is None or viewer.id != user.id:
+            raise HTTPException(status_code=404, detail="User not found")
+        if update_data.get("is_active") is False or update_data.get("role", UserRole.ADMIN) != UserRole.ADMIN:
+            raise HTTPException(status_code=400, detail="The support account can't be deactivated or given another user type")
+    losing_admin = user.role == UserRole.ADMIN and user.is_active and not user.is_super_admin and (
         update_data.get("is_active") is False or update_data.get("role", UserRole.ADMIN) != UserRole.ADMIN)
-    if losing_admin and db.query(User).filter(User.role == UserRole.ADMIN, User.is_active == True).count() <= 1:  # noqa: E712
+    active_admins = db.query(User).filter(User.role == UserRole.ADMIN, User.is_active == True,  # noqa: E712
+                                          User.is_super_admin == False).count()  # noqa: E712
+    if losing_admin and active_admins <= 1:
         raise HTTPException(status_code=400, detail="This is the only active administrator. Add another administrator first.")
     if "supervisor_id" in update_data:
         sup = update_data["supervisor_id"]
@@ -99,3 +114,23 @@ def update_user(db: Session, user_id: int, data: UserUpdate) -> User:
     db.commit()
     db.refresh(user)
     return user
+
+
+def delete_user(db: Session, user_id: int, viewer: User) -> None:
+    """Super admin only: remove a user login for good (e.g. a test or mistaken account). A user who still
+    owns clients, cases or activities must have them reassigned first; their other history is kept
+    without the name."""
+    from app.models import Account, Activity, Case
+    if not viewer.is_super_admin:
+        raise HTTPException(status_code=403, detail="Only the support account can delete users")
+    user = get_user(db, user_id, viewer)
+    if user.id == viewer.id:
+        raise HTTPException(status_code=400, detail="The support account can't delete itself")
+    owned = (db.query(Account).filter((Account.owner_id == user.id) | (Account.spoc_id == user.id)).count()
+             + db.query(Case).filter((Case.rm_id == user.id) | (Case.ops_owner_id == user.id)).count()
+             + db.query(Activity).filter(Activity.owner_id == user.id).count())
+    if owned:
+        raise HTTPException(status_code=409, detail=f"{user.name} still owns {owned} client(s), case(s) or activities. "
+                                                    "Reassign them first, or deactivate the user instead.")
+    db.delete(user)
+    db.commit()

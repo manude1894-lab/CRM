@@ -32,6 +32,8 @@ class User(Base):
     hashed_password = Column(String(255), nullable=False)
     role = Column(SAEnum(UserRole, name="user_role", values_callable=lambda obj: [e.value for e in obj]), default=UserRole.RM, nullable=False)
     is_active = Column(Boolean, default=True, nullable=False)
+    # Ezee Tech support account: hidden from other users, changeable only by itself, may delete users.
+    is_super_admin = Column(Boolean, default=False, server_default="false", nullable=False)
 
     department_id = Column(Integer, ForeignKey("departments.id", ondelete="SET NULL"), nullable=True)
     title = Column(String(100), nullable=True)
