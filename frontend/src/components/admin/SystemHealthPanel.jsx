@@ -4,7 +4,7 @@ import { Spinner, ErrorBanner } from "../ui";
 
 const SEVERITY = { high: "Must fix before go-live", medium: "Fix before go-live", low: "When available" };
 
-/** Admin → System Health: the go-live security and configuration checks (P7). */
+/** Admin → System Health: the go-live security and configuration checks. */
 export default function SystemHealthPanel() {
   const [checks, setChecks] = useState(null);
   const [error, setError] = useState(null);

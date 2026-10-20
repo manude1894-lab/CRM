@@ -1,4 +1,4 @@
-"""Triam BRD mark-up §2 / §13 — last login, role-level "My work", company email domain."""
+"""BRD §2 / §13 — last login, role-level "My work", company email domain."""
 import pytest
 from fastapi import HTTPException
 

@@ -1,4 +1,4 @@
-"""Test helpers for the new-client approval flow (Triam BRD mark-up §7–§10):
+"""Test helpers for the new-client approval flow (BRD §7–§10):
 RM submits → Compliance (MLRO) completes the CDD section and approves → Approver gives final approval."""
 from datetime import date
 

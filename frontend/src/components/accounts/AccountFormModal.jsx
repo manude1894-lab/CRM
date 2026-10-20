@@ -14,7 +14,7 @@ import {
   PROFILE_STATUS_OPTIONS, COUNTRY_CALLING_CODES, TRIAM_ENTITY_OPTIONS, isUAE,
 } from "../../utils/constants";
 import {
-  PRIORITY_OPTIONS, RISK_OPTIONS, KYC_STATUS_OPTIONS, BLANK_ADDRESS, SECTION_FIELDS,
+  RISK_OPTIONS, BLANK_ADDRESS, SECTION_FIELDS,
   buildAccountPayload, buildSectionPatch, validateCoreFields, accountToForm,
 } from "./accountForm";
 import { useMasters } from "../../hooks/useMasters";
@@ -109,7 +109,7 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
   const myDraft = amendment?.request?.status === "Draft" && amendment.actions.includes("submit");
   const amendLocked = !!form._id && approvedClient && !myDraft;
   const locked = ["Awaiting Approval", "Exited"].includes(form.profile_status) || amendLocked;
-  // Triam mark-up §7/§11: only Compliance completes the CDD section — before submission, while the
+  // BRD §7/§11: only Compliance completes the CDD section — before submission, while the
   // client is with Compliance, or in an amendment of an approved client.
   const canCdd = useAuthStore((st) => st.can("client.cdd_edit"));
   const [stage, setStage] = useState(null);
@@ -169,7 +169,7 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
   const withOverride = (payload) => (exactMatch && override.allow ? { ...payload, allow_duplicate: true, duplicate_reason: override.reason.trim() } : payload);
 
   const save = async () => {
-    // Industry is only enforced when creating a client, so older records without one can still be edited.
+    // The core rules (name, Anchor Triam Entity, duplicates) are checked when creating a client.
     const invalid = mode === "new" ? (validateCoreFields(form) || duplicateBlock()) : (!form.company_name?.trim() && "Company name is required");
     if (invalid) return toast.error(invalid);
     try {
@@ -184,7 +184,7 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
     } finally { setSaving(false); }
   };
 
-  // Client CRM-change-request item 19 — per-section Save, so each section validates and
+  // BRD §10 — per-section Save, so each section validates and
   // persists independently instead of only surfacing errors at the very bottom of the form.
   const saveSection = async (key, isCore = false) => {
     setSectionStatus((s) => ({ ...s, [key]: "saving" }));
@@ -297,25 +297,11 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
             <div className="grid grid-cols-2 gap-3">
               <YesNo label="Is this a one-time service?" value={form.is_one_time_service} onChange={setValue("is_one_time_service")} />
             </div>
-            <Field label="Website">
-              <Input value={form.website} onChange={set("website")} placeholder="e.g. https://company.com" />
-            </Field>
           </>
         )}
-        <Field label="Key Contacts">
-          <Input value={form.key_contacts} onChange={set("key_contacts")} placeholder="e.g. John Smith - CEO" />
-        </Field>
         <Field label="Single Point of Contact (Client Contact Name)">
           <Input value={form.single_point_of_contact} onChange={set("single_point_of_contact")} placeholder="e.g. Jane Doe" />
         </Field>
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Existing Relationship">
-            <Select value={form.existing_relationship} onChange={set("existing_relationship")}>
-              <option>No</option>
-              <option>Yes</option>
-            </Select>
-          </Field>
-        </div>
         <div className="grid grid-cols-2 gap-3">
           <Field label="Anchor RM (SPOC)">
             <Select value={form.spoc_id || ""} onChange={(e) => setForm({ ...form, spoc_id: e.target.value, non_anchor_rm_ids: (form.non_anchor_rm_ids || []).filter((id) => id !== +e.target.value) })}>
@@ -355,13 +341,6 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
             </Field>
           </div>
         )}
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="KYC Status">
-            <Select value={form.kyc_status} onChange={set("kyc_status")}>
-              {KYC_STATUS_OPTIONS.map((s) => <option key={s}>{s}</option>)}
-            </Select>
-          </Field>
-        </div>
 
         <Field label="Tags">
           <MultiSelect options={selectableCodes(tags.items, form.tags)} value={form.tags} onChange={setValue("tags")} />
@@ -473,15 +452,13 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
         )}
 
         {isIndividual && (
-          <Section title="Individual Details" hasData={!!(form.date_of_birth || form.country_of_birth || form.nationality || form.passport_number || form.occupation || form.individual_mobile_number || form.individual_email || form.country_of_residence || form.source_of_funds || form.source_of_wealth || form.is_pep || (form.nature_of_services_sought || []).length > 0)}
+          <Section title="Individual Details" hasData={!!(form.date_of_birth || form.country_of_birth || form.nationality || form.individual_mobile_number || form.individual_email || form.country_of_residence || form.is_pep || (form.nature_of_services_sought || []).length > 0)}
             {...sectionProps("individual")}>
             <div className="grid grid-cols-2 gap-3">
               <Field label="Date of Birth"><DateInput value={form.date_of_birth || ""} onChange={set("date_of_birth")} /></Field>
               <Field label="Country of Birth"><CountrySelect value={form.country_of_birth} onChange={set("country_of_birth")} countries={countries} /></Field>
               <Field label="Nationality"><CountrySelect value={form.nationality} onChange={set("nationality")} countries={countries} /></Field>
-              <Field label="Passport Number"><Input value={form.passport_number} onChange={set("passport_number")} /></Field>
               <Field label="Passport Expiry"><DateInput value={form.passport_expiry_date || ""} onChange={set("passport_expiry_date")} /></Field>
-              <Field label="Occupation"><Input value={form.occupation} onChange={set("occupation")} /></Field>
               <Field label="Email"><Input type="email" value={form.individual_email} onChange={set("individual_email")} /></Field>
               <Field label="Country of Residence"><CountrySelect value={form.country_of_residence} onChange={set("country_of_residence")} countries={countries} /></Field>
             </div>
@@ -494,8 +471,6 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
                 <Input value={form.individual_mobile_number || ""} onChange={set("individual_mobile_number")} maxLength={12} placeholder="e.g. 501234567" />
               </div>
             </Field>
-            <Field label="Source of Funds"><Input value={form.source_of_funds} onChange={set("source_of_funds")} placeholder="e.g. Salary, business income" /></Field>
-            <Field label="Source of Wealth"><Input value={form.source_of_wealth} onChange={set("source_of_wealth")} placeholder="e.g. Accumulated savings, inheritance" /></Field>
             <Field label="Nature of Services Sought *">
               <MultiSelect options={selectableCodes(services.items, form.nature_of_services_sought)} value={form.nature_of_services_sought} onChange={setValue("nature_of_services_sought")} />
             </Field>

@@ -7,7 +7,7 @@ import enum
 from app.database import Base
 
 
-# A user can hold more than one business role (Triam BRD mark-up §13): the main role is
+# A user can hold more than one business role (BRD §13): the main role is
 # users.business_role_id, any others are listed here. Permissions are the union of all of them.
 user_extra_roles = Table(
     "user_extra_roles", Base.metadata,
@@ -36,13 +36,13 @@ class User(Base):
 
     department_id = Column(Integer, ForeignKey("departments.id", ondelete="SET NULL"), nullable=True)
     title = Column(String(100), nullable=True)
-    mobile = Column(String(20), nullable=True)
-    # P7 — login lockout and password tracking
+    mobile = Column(String(20), nullable=True)  # for SMS notifications, e.g. +971501234567
+    # login lockout and password tracking
     failed_login_count = Column(Integer, default=0, server_default="0", nullable=False)
     locked_until = Column(DateTime(timezone=True), nullable=True)
     password_changed_at = Column(DateTime(timezone=True), nullable=True)
     last_login_at = Column(DateTime(timezone=True), nullable=True)  # this sign-in
-    previous_login_at = Column(DateTime(timezone=True), nullable=True)  # shown as "last login" (Triam mark-up §2)  # for SMS notifications (BRD §17), e.g. +971501234567
+    previous_login_at = Column(DateTime(timezone=True), nullable=True)  # shown as "last login" (BRD §2)
     supervisor_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     # BRD §15 business role (CO / MLRO / RO / …) — adds permissions on top of the system tier in `role`.
     business_role_id = Column(Integer, ForeignKey("roles.id", ondelete="SET NULL"), nullable=True)

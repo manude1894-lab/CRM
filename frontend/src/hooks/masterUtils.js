@@ -22,7 +22,7 @@ export function selectableCodes(items = [], current) {
 // "Other"-style items open a free-text field (BRD §5 Licensing Authority / Regulator).
 export const opensFreeText = (items = [], code) => !!items.find((i) => i.code === code)?.meta?.opens_free_text;
 
-// Services offered by the chosen Triam entities (Triam BRD mark-up: "Triam Entity – Services Provided
+// Services offered by the chosen Triam entities (BRD: "Triam Entity – Services Provided
 // Relationship"). A service with no entity list is offered by every entity; with no entity chosen yet,
 // every service is shown.
 export function servicesForEntities(items = [], entities = []) {

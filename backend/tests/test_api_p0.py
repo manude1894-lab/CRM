@@ -89,7 +89,7 @@ def test_login_success_and_failure_are_audited(client, db):
 
 
 def test_user_can_hold_several_roles(client, db, make_user, make_role):
-    """Triam BRD mark-up §13: one email ID can be assigned more than one role."""
+    """BRD §13: one email ID can be assigned more than one role."""
     mlro = make_role("MLRO", ["client.approve"])
     approver = make_role("Approver", ["client.final_approve"])
     admin = make_user(role=UserRole.ADMIN)

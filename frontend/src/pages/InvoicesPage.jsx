@@ -15,7 +15,7 @@ const STATUS_STYLE = {
 const money = (currency, amount) => `${currency || "AED"} ${Number(amount || 0).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 /**
- * Triam BRD mark-up §16 — the Invoice module. The RM / Sales requests an invoice for a client onboarding or a
+ * BRD §16 — the Invoice module. The RM / Sales requests an invoice for a client onboarding or a
  * service request and attaches the pricing approvals (the instruction to Accounts); Accounts records the
  * Invoice No, Date, Currency and Amount with the invoice file, and the payment. Front-end staff download
  * the invoice from here to send it to the client.

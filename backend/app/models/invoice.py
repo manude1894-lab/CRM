@@ -13,7 +13,7 @@ from app.database import Base
 
 
 class InvoiceLedgerStatus(str, enum.Enum):
-    REQUESTED = "Requested"  # Triam mark-up §16: RM / Sales instruction to Accounts
+    REQUESTED = "Requested"  # BRD §16: RM / Sales instruction to Accounts
     DRAFT = "Draft"
     RAISED = "Raised"
     PAID = "Paid"

@@ -7,7 +7,7 @@ import { toast } from "../../store/toast";
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 const show = (v) => (typeof v === "string" && ISO_DATE.test(v) ? fmtDate(v) : v ?? "—");
 
-/** Triam BRD mark-up §20a — the standard reports, shown on screen and exported to CSV. */
+/** BRD §20a — the standard reports, shown on screen and exported to CSV. */
 export default function StandardReports() {
   const [list, setList] = useState([]);
   const [key, setKey] = useState("documents-expiring");

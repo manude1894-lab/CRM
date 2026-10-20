@@ -1,4 +1,4 @@
-"""Triam BRD mark-up §16 — the Invoice module: RM requests, Accounts raises and records payment."""
+"""BRD §16 — the Invoice module: RM requests, Accounts raises and records payment."""
 import io
 from datetime import date
 from decimal import Decimal

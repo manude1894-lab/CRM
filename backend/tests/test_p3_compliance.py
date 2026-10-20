@@ -27,7 +27,7 @@ def approved_client(db, people):
 def test_approved_client_needs_explicit_amend(db, people):
     acc = approved_client(db, people)
     with pytest.raises(HTTPException) as e:
-        account_service.update_account(db, acc.id, AccountUpdate(industry="Banking"), people["maker"])
+        account_service.update_account(db, acc.id, AccountUpdate(nature_of_business="Banking"), people["maker"])
     assert e.value.status_code == 409 and "Amend client" in e.value.detail
 
 
@@ -35,36 +35,36 @@ def test_amendment_is_staged_until_compliance_approves(db, people, act_as):
     maker, checker = people["maker"], people["checker"]
     acc = approved_client(db, people)
     amend.start(db, acc, maker)
-    staged = account_service.update_account(db, acc.id, AccountUpdate(industry="Banking", website="https://x.example"), maker)
-    assert staged["industry"] == "Banking"
+    staged = account_service.update_account(db, acc.id, AccountUpdate(nature_of_business="Banking", contact_email="info@x.example"), maker)
+    assert staged["nature_of_business"] == "Banking"
     db.expire_all()
-    assert db.get(Account, acc.id).industry == "Fintech"  # live record untouched
+    assert db.get(Account, acc.id).nature_of_business == "Fintech"  # live record untouched
 
-    req = amend.submit(db, acc, maker, "New industry per licence")
+    req = amend.submit(db, acc, maker, "New business per licence")
     assert req.status == "Pending"
     labels = {c["label"]: (c["old"], c["new"]) for c in req.changes["account"]}
-    assert labels["Industry"] == ("Fintech", "Banking")
+    assert labels["Detailed Nature of Business"] == ("Fintech", "Banking")
 
     # Locked while with Compliance
     with pytest.raises(HTTPException) as e:
-        account_service.update_account(db, acc.id, AccountUpdate(industry="Insurance"), maker)
+        account_service.update_account(db, acc.id, AccountUpdate(nature_of_business="Insurance"), maker)
     assert "awaiting Compliance" in e.value.detail
 
     act_as(checker)
     amend.approve(db, acc, checker)
     db.expire_all()
     live = db.get(Account, acc.id)
-    assert live.industry == "Banking" and live.profile_status == "Active"
+    assert live.nature_of_business == "Banking" and live.profile_status == "Active"
     events = db.query(AuditLog).filter(AuditLog.account_id == acc.id).all()
     assert any(e.action == "amend_approve" for e in events)
-    assert any(e.action == "update" and e.user_id == checker.id and "industry" in (e.changes or {}) for e in events)
+    assert any(e.action == "update" and e.user_id == checker.id and "nature_of_business" in (e.changes or {}) for e in events)
 
 
 def test_checker_cannot_approve_own_amendment(db, people):
     acc = approved_client(db, people)
     checker = people["checker"]
     amend.start(db, acc, checker)
-    account_service.update_account(db, acc.id, AccountUpdate(industry="Banking"), checker)
+    account_service.update_account(db, acc.id, AccountUpdate(nature_of_business="Banking"), checker)
     amend.submit(db, acc, checker)
     with pytest.raises(HTTPException) as e:
         amend.approve(db, acc, checker)
@@ -78,17 +78,17 @@ def test_reject_returns_changes_to_maker_as_draft(db, people):
     maker, checker = people["maker"], people["checker"]
     acc = approved_client(db, people)
     amend.start(db, acc, maker)
-    account_service.update_account(db, acc.id, AccountUpdate(industry="Banking"), maker)
+    account_service.update_account(db, acc.id, AccountUpdate(nature_of_business="Banking"), maker)
     amend.submit(db, acc, maker)
     with pytest.raises(HTTPException):
         amend.reject(db, acc, checker, "Documents missing or incomplete", "too short")
     amend.reject(db, acc, checker, "Documents missing or incomplete", "Upload the new trade licence first please")
     draft = amend.open_request(db, acc.id)
     assert draft.status == "Draft" and draft.maker_id == maker.id
-    assert draft.payload["account"]["industry"] == "Banking"
+    assert draft.payload["account"]["nature_of_business"] == "Banking"
     v = amend.view(db, acc, maker)
     assert v["previous"].reason_text.startswith("Upload the new trade licence")
-    assert v["preview"]["account"]["industry"] == "Banking"
+    assert v["preview"]["account"]["nature_of_business"] == "Banking"
 
 
 def test_staged_party_changes_are_validated_and_not_live(db, people):
@@ -165,7 +165,7 @@ def test_cannot_amend_before_approval(db, people):
 def test_inbox_lists_amendments(db, people):
     acc = approved_client(db, people)
     amend.start(db, acc, people["maker"])
-    account_service.update_account(db, acc.id, AccountUpdate(industry="Banking"), people["maker"])
+    account_service.update_account(db, acc.id, AccountUpdate(nature_of_business="Banking"), people["maker"])
     assert wf.inbox(db, people["checker"]) == []  # drafts aren't with Compliance yet
     amend.submit(db, acc, people["maker"])
     [r] = wf.inbox(db, people["checker"])
@@ -216,9 +216,9 @@ def test_blank_address_blocks_are_not_changes(db, people):
     acc = approved_client(db, people)
     amend.start(db, acc, maker)
     blank = {"line1": "", "line2": "", "landmark": "", "zip": "", "po_box": "", "city": "", "country": ""}
-    account_service.update_account(db, acc.id, AccountUpdate(industry="Banking", residential_address=blank), maker)
+    account_service.update_account(db, acc.id, AccountUpdate(nature_of_business="Banking", residential_address=blank), maker)
     req = amend.submit(db, acc, maker)
-    assert [c["field"] for c in req.changes["account"]] == ["industry"]
+    assert [c["field"] for c in req.changes["account"]] == ["nature_of_business"]
 
 
 # ─── P4: client document folder (BRD §16) ───────────────────────────────────

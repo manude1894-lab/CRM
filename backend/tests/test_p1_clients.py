@@ -1,4 +1,4 @@
-"""P1 — client capture rules from BRD §3, §5, §6, §10, §11, §19."""
+"""Client capture rules (BRD §3, §5, §6, §18)."""
 from decimal import Decimal
 
 import pytest
@@ -12,7 +12,7 @@ from app.services import account_service, account_party_service
 
 
 def create(db, user, **fields):
-    data = {"company_name": "Acme Holdings", "industry": "Fintech", "anchor_entity": "TCPL", **fields}
+    data = {"company_name": "Acme Holdings", "anchor_entity": "TCPL", **fields}
     return account_service.create_account(db, AccountCreate(**data), user)
 
 
@@ -20,7 +20,7 @@ def create(db, user, **fields):
 
 def test_client_ids_count_per_entity(db, make_user):
     a = create(db, make_user(), company_name="A Ltd")
-    assert a.client_id is None  # issued when Compliance approves (Triam mark-up §18)
+    assert a.client_id is None  # issued when Compliance approves (BRD §18)
     ids = [account_service.next_client_id(db, e) for e in ("TCPL", "TCPL", "TMCL")]
     assert ids == ["TCPL/00001", "TCPL/00002", "TMCL/00001"]
 
@@ -141,10 +141,10 @@ def test_status_timestamp_moves_only_on_status_change(db, make_user):
     admin = make_user(role=UserRole.ADMIN)
     acc = create(db, admin)
     assert acc.profile_status == "New" and acc.status_updated_by_id == admin.id
-    account_service.update_account(db, acc.id, AccountUpdate(industry="Banking"), admin)
+    account_service.update_account(db, acc.id, AccountUpdate(nature_of_business="Banking"), admin)
     assert acc.profile_status == "WIP"  # P2: the first save moves New -> WIP
     moved = acc.status_updated_at
-    account_service.update_account(db, acc.id, AccountUpdate(industry="Insurance"), admin)
+    account_service.update_account(db, acc.id, AccountUpdate(nature_of_business="Insurance"), admin)
     assert acc.status_updated_at == moved  # later edits don't touch the status timestamp
     with pytest.raises(HTTPException) as e:
         account_service.update_account(db, acc.id, AccountUpdate(profile_status="Active"), admin)
@@ -188,7 +188,7 @@ def test_shareholding_cannot_exceed_100(db, make_user):
         account_party_service.create_party(db, acc.id, _sh(full_name="D", effective_ownership_percent=Decimal("1.005")), admin)
 
 
-# ─── Mandatory checklist (enforced at Submit in P2) ─────────────────────────
+# ─── Mandatory checklist (enforced at Submit) ───────────────────────────────
 
 def test_missing_mandatory_for_a_new_corporate(db, make_user):
     admin = make_user(role=UserRole.ADMIN)
@@ -203,7 +203,7 @@ def test_missing_mandatory_for_a_new_corporate(db, make_user):
 
 
 def test_formation_clients_skip_incorporation_fields(db, make_user):
-    """Triam mark-up §5: licence and incorporation details are mandatory only for Existing companies."""
+    """BRD §5: licence and incorporation details are mandatory only for Existing companies."""
     admin = make_user(role=UserRole.ADMIN)
     acc = create(db, admin, client_category="Under Formation")
     labels = {m["label"] for m in account_service.missing_mandatory(acc)}
@@ -225,7 +225,7 @@ def test_conditional_fields(db, make_user):
 
 def test_individual_checklist(db, make_user):
     admin = make_user(role=UserRole.ADMIN)
-    acc = create(db, admin, account_type="Individual", company_name="John Smith", industry=None)
+    acc = create(db, admin, account_type="Individual", company_name="John Smith")
     labels = {m["label"] for m in account_service.missing_mandatory(acc)}
     assert {"Date of Birth", "Passport Expiry Date", "Nationality"} <= labels
     assert "Licensing Authority" not in labels and "At least one Shareholder / UBO" not in labels
@@ -276,7 +276,7 @@ def test_party_country_rules(db, make_user, role, fields, message):
     assert message in e.value.detail
 
 
-# ─── Triam BRD mark-up §5, §5.1–5.3, §6 ─────────────────────────────────────
+# ─── BRD §5, §5.1–5.3, §6 ─────────────────────────────────────
 
 def test_new_corporate_fields_are_checked(db, make_user):
     admin = make_user(role=UserRole.ADMIN)
@@ -322,7 +322,7 @@ def test_individual_clients_have_joint_holders(db, make_user):
 
 
 def test_expired_licence_blocks_onboarding_and_tax_number_is_optional(db, make_user):
-    """Triam mark-up §5: no onboarding with an expired trade licence; Corp Tax Registration No. is optional."""
+    """BRD §5: no onboarding with an expired trade licence; Corp Tax Registration No. is optional."""
     from datetime import date as _d, timedelta
     admin = make_user(role=UserRole.ADMIN)
     acc = create(db, admin, client_category="Existing", corp_tax_registered=True)

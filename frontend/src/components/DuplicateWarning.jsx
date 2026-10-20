@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 
 // Debounced, non-blocking fuzzy-duplicate advisory — never prevents saving.
 // onSelect (optional): lets the user jump straight into amending an existing match
-// instead of typing a fresh record (client CRM-change-request item 1).
+// instead of typing a fresh record (BRD §3).
 export default function DuplicateWarning({ name, excludeId, checkFn, active, onSelect }) {
   const [matches, setMatches] = useState([]);
 

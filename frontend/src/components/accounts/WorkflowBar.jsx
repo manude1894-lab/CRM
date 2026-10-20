@@ -67,7 +67,7 @@ export default function WorkflowBar({ accountId, refreshKey, onChanged }) {
 
   const rejectTooShort = dialog?.action === "reject" && (text.trim().length < 15 || !reasonCode);
   const reasonMissing = NEEDS_REASON[dialog?.action] && !text.trim();
-  // Triam mark-up §7/§10: mandatory comment boxes of up to 250 words.
+  // BRD §7/§10: mandatory comment boxes of up to 250 words.
   const commentLabel = dialog?.action === "submit" ? "RM/Sales comments"
     : dialog?.action === "approve" ? (state.stage === "Approver" ? "Approver's comments" : "Compliance comments") : null;
   const words = wordCount(text);

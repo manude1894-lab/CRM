@@ -6,7 +6,7 @@ import { toast } from "../store/toast";
 import { reasonDialog } from "../store/confirm";
 
 const CORPORATE_ROLES = ["Shareholder", "Director", "Authorised Signatory"];
-const INDIVIDUAL_ROLES = ["Joint Holder"];  // Triam BRD mark-up: individual clients have joint holders
+const INDIVIDUAL_ROLES = ["Joint Holder"];  // BRD: individual clients have joint holders
 
 const BLANK_ADDRESS = { line1: "", line2: "", landmark: "", zip: "", po_box: "", city: "", country: "" };
 
@@ -189,7 +189,7 @@ const setAddr = (setForm, k) => (e) => setForm((p) => ({ ...p, residential_addre
 function PartyForm({ form, setForm, countries, onCancel, onSave }) {
   const isShareholder = form.party_role === "Shareholder";
   const isDirector = form.party_role === "Director";
-  // Triam mark-up §5.3 / §6: signatories and joint holders need mobile and email too.
+  // BRD §5.3 / §6: signatories and joint holders need mobile and email too.
   const contactRequired = ["Shareholder", "Authorised Signatory", "Joint Holder"].includes(form.party_role);
   const isEntity = form.constitution === "Entity";
   const isUAEResident = isUAE(form.country_of_residence);

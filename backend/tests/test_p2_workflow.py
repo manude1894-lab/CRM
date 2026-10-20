@@ -1,4 +1,4 @@
-"""P2 — maker-checker and client lifecycle (BRD §11, §12 steps 10–14, §14, §15)."""
+"""Maker-checker and the client lifecycle (BRD §7–§10, §13)."""
 from datetime import date
 from decimal import Decimal
 
@@ -28,7 +28,7 @@ def people(make_user, make_role, seed_master):
 def complete_client(db, maker):
     """A Corporate client with every BRD mandatory field filled in."""
     acc = account_service.create_account(db, AccountCreate(
-        company_name="Complete Co", industry="Fintech", anchor_entity="TCPL", spoc_id=maker.id,
+        company_name="Complete Co", nature_of_business="Fintech", anchor_entity="TCPL", spoc_id=maker.id,
         country="United Arab Emirates", registration_number="CI-123", incorporation_date=date(2020, 1, 1),
         license_number="L-1", licensing_authority="DMCC", license_start_date=date(2024, 1, 1),
         license_expiry_date=date(2030, 1, 1), license_activities="Consulting", financial_year_end="12-31",
@@ -91,7 +91,7 @@ def test_full_lifecycle(db, people):
 # ─── Maker-checker rules ────────────────────────────────────────────────────
 
 def test_submit_blocked_until_mandatory_fields_complete(db, people):
-    acc = account_service.create_account(db, AccountCreate(company_name="Half Done", industry="x", anchor_entity="TCPL"), people["maker"])
+    acc = account_service.create_account(db, AccountCreate(company_name="Half Done", anchor_entity="TCPL"), people["maker"])
     with pytest.raises(HTTPException) as e:
         flow.submit(db, acc, people["maker"])
     assert e.value.status_code == 400 and "mandatory field" in e.value.detail
@@ -141,7 +141,7 @@ def test_profile_locked_while_awaiting_approval(db, people):
     acc = complete_client(db, maker)
     flow.submit(db, acc, maker)
     with pytest.raises(HTTPException) as e:
-        account_service.update_account(db, acc.id, AccountUpdate(industry="Changed"), maker)
+        account_service.update_account(db, acc.id, AccountUpdate(nature_of_business="Changed"), maker)
     assert e.value.status_code == 409
     with pytest.raises(HTTPException):
         account_party_service.create_party(db, acc.id, AccountPartyCreate(party_role="Director", full_name="New Dir"), maker)
@@ -150,8 +150,8 @@ def test_profile_locked_while_awaiting_approval(db, people):
     assert e.value.status_code == 409
     # Withdraw unlocks it.
     wf.withdraw(db, acc, maker)
-    account_service.update_account(db, acc.id, AccountUpdate(industry="Changed"), maker)
-    assert acc.industry == "Changed"
+    account_service.update_account(db, acc.id, AccountUpdate(nature_of_business="Changed"), maker)
+    assert acc.nature_of_business == "Changed"
 
 
 def test_withdraw_only_by_submitter_or_approver(db, people, make_user):
@@ -204,7 +204,7 @@ def test_exited_client_is_read_only(db, people):
     flow.submit(db, acc, maker); flow.approve_all(db, acc, checker, people["approver"]); wf.change_status(db, acc, maker, "activate")
     wf.change_status(db, acc, maker, "mark_exit", "Leaving"); wf.change_status(db, acc, checker, "confirm_exit")
     with pytest.raises(HTTPException) as e:
-        account_service.update_account(db, acc.id, AccountUpdate(industry="x"), checker)
+        account_service.update_account(db, acc.id, AccountUpdate(nature_of_business="x"), checker)
     assert e.value.status_code == 409
 
 
@@ -238,7 +238,7 @@ def test_inbox_lists_pending_requests_the_checker_can_see(db, people):
     assert r.account_id == acc.id and r.stage == "Approver"
 
 
-# ─── Three-level approval (Triam BRD mark-up §7–§10) ────────────────────────
+# ─── Three-level approval (BRD §7–§10) ────────────────────────
 
 def test_submit_needs_comments_and_kyc_declaration(db, people):
     maker = people["maker"]
@@ -268,7 +268,7 @@ def test_only_compliance_completes_the_cdd_section(db, people):
     assert acc.risk_rating == "High" and acc.next_aml_review_date is not None
     # … and nothing else
     with pytest.raises(HTTPException) as e:
-        account_service.update_account(db, acc.id, AccountUpdate(industry="Changed"), checker)
+        account_service.update_account(db, acc.id, AccountUpdate(nature_of_business="Changed"), checker)
     assert e.value.status_code == 409
 
 

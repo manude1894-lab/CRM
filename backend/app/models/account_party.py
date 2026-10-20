@@ -17,7 +17,7 @@ class AccountPartyRole(str, enum.Enum):
     SHAREHOLDER = "Shareholder"
     DIRECTOR = "Director"
     AUTHORISED_SIGNATORY = "Authorised Signatory"
-    JOINT_HOLDER = "Joint Holder"  # Individual clients (Triam BRD mark-up §2, §10 step 6)
+    JOINT_HOLDER = "Joint Holder"  # Individual clients (BRD §2, §10 step 6)
 
 
 class AccountPartyConstitution(str, enum.Enum):
@@ -36,17 +36,16 @@ class AccountParty(Base):
     constitution = Column(String(20), default=AccountPartyConstitution.INDIVIDUAL.value, nullable=False)
 
     full_name = Column(String(255), nullable=False)
-    # Spec's own dual-purpose fields (§14.3/21.3, §14.4/21.4) — label switches by constitution.
+    # Dual-purpose fields: the label switches by constitution (Entity / Individual).
     dob_or_incorp_date = Column(Date, nullable=True)
     id_or_license_expiry = Column(Date, nullable=True)
     country_of_incorp_or_birth = Column(String(120), nullable=True)
 
-    mobile = Column(String(50), nullable=True)  # superseded by mobile_country_code/mobile_number below (client spec §15)
     mobile_country_code = Column(String(6), nullable=True)
     mobile_number = Column(String(12), nullable=True)
     email = Column(String(255), nullable=True)
 
-    nationality = Column(String(120), nullable=True)  # mandatory for every party (Triam mark-up §5.1–5.3)
+    nationality = Column(String(120), nullable=True)  # mandatory for every party (BRD §5.1–5.3)
     country_of_residence = Column(String(120), nullable=True)
     residential_address = Column(JSON, nullable=True)  # AddressBlock shape (see schemas/account.py)
 

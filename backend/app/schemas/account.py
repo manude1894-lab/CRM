@@ -4,9 +4,6 @@ import re
 from pydantic import BaseModel, Field, ConfigDict, field_validator
 from typing import Optional
 from datetime import date, datetime
-from decimal import Decimal
-
-from app.models.account import Priority
 
 
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
@@ -14,7 +11,7 @@ _FYE_RE = re.compile(r"^(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$")
 
 
 class _ClientFieldRules(BaseModel):
-    """BRD §5/§9/§10 field formats, shared by create and update so they can't drift apart.
+    """BRD §5–§8 field formats, shared by create and update so they can't drift apart.
 
     Formats only — whether a field is *mandatory* is checked by account_service.missing_mandatory()
     at Submit (BRD §12 step 11), because each section is saved on its own before the profile is complete.
@@ -93,13 +90,7 @@ class AccountImportRow(BaseModel):
     account_type: Optional[str] = None
     search_name: Optional[str] = Field(None, max_length=120)
     company_name: str = Field(..., min_length=1, max_length=255)
-    industry: Optional[str] = None
     country: Optional[str] = None
-    company_size: Optional[str] = None
-    website: Optional[str] = None
-    strategic_priority: Optional[str] = None
-    existing_relationship: Optional[str] = None
-    key_contacts: Optional[str] = None
     tags: Optional[str] = None
     single_point_of_contact: Optional[str] = None
     anchor_entity: Optional[str] = None
@@ -108,7 +99,6 @@ class AccountImportRow(BaseModel):
     incorporation_date: Optional[date] = None
     license_number: Optional[str] = None
     risk_rating: Optional[str] = None
-    kyc_status: Optional[str] = None
     spoc_id: Optional[int] = None
     non_anchor_rm_ids: Optional[list[int]] = None
 
@@ -148,14 +138,9 @@ class AccountImportRow(BaseModel):
     date_of_birth: Optional[date] = None
     country_of_birth: Optional[str] = None
     nationality: Optional[str] = None
-    passport_number: Optional[str] = None
     passport_expiry_date: Optional[date] = None
-    occupation: Optional[str] = None
-    source_of_funds: Optional[str] = None
-    source_of_wealth: Optional[str] = None
     country_of_residence: Optional[str] = None
     residential_address: Optional[AddressBlock] = None
-    individual_mobile: Optional[str] = None
     individual_mobile_country_code: Optional[str] = None
     individual_mobile_number: Optional[str] = Field(None, max_length=12)
     individual_email: Optional[str] = None
@@ -182,7 +167,6 @@ class AccountBulkUpdateRequest(BaseModel):
     ids: list[int] = Field(..., min_length=1)
     spoc_id: Optional[int] = None
     risk_rating: Optional[str] = None
-    kyc_status: Optional[str] = None
 
 
 class BulkUpdateResult(BaseModel):
@@ -217,13 +201,7 @@ class AccountBase(_ClientFieldRules):
     licensing_authority_other: Optional[str] = Field(None, max_length=100)
     kyc_verified_by: Optional[str] = Field(None, max_length=150)
     company_name: str = Field(..., min_length=1, max_length=255)
-    industry: Optional[str] = None
     country: Optional[str] = None
-    company_size: Optional[str] = None
-    website: Optional[str] = None
-    strategic_priority: Priority = Priority.MEDIUM
-    existing_relationship: str = "No"
-    key_contacts: Optional[str] = None
     tags: Optional[str] = None
     single_point_of_contact: Optional[str] = None
     anchor_entity: Optional[str] = None
@@ -232,7 +210,6 @@ class AccountBase(_ClientFieldRules):
     incorporation_date: Optional[date] = None
     license_number: Optional[str] = Field(None, max_length=30)
     risk_rating: Optional[str] = None
-    kyc_status: str = "Not Started"
     owner_id: Optional[int] = None
     spoc_id: Optional[int] = None
     non_anchor_rm_ids: Optional[list[int]] = None
@@ -272,18 +249,13 @@ class AccountBase(_ClientFieldRules):
 
     is_pep: Optional[bool] = None  # direct-editable only for Individual accounts (no parties to roll up from)
 
-    # Individual Details (Phase C)
+    # Individual client (BRD §6)
     date_of_birth: Optional[date] = None
     country_of_birth: Optional[str] = None
     nationality: Optional[str] = None
-    passport_number: Optional[str] = None
     passport_expiry_date: Optional[date] = None
-    occupation: Optional[str] = None
-    source_of_funds: Optional[str] = None
-    source_of_wealth: Optional[str] = None
     country_of_residence: Optional[str] = None
     residential_address: Optional[AddressBlock] = None
-    individual_mobile: Optional[str] = None
     individual_mobile_country_code: Optional[str] = None
     individual_mobile_number: Optional[str] = Field(None, max_length=12)
     individual_email: Optional[str] = None
@@ -301,7 +273,7 @@ class AccountBase(_ClientFieldRules):
 
 
 class AccountCreate(AccountBase):
-    prospect_id: Optional[int] = None  # Triam mark-up §4A — the prospect this client is created from
+    prospect_id: Optional[int] = None  # BRD §4A — the prospect this client is created from
     # BRD §3 duplicate exception — only honoured for users with client.approve.
     allow_duplicate: bool = False
     duplicate_reason: Optional[str] = Field(None, max_length=255)
@@ -313,13 +285,7 @@ class AccountUpdate(_ClientFieldRules):
     licensing_authority_other: Optional[str] = Field(None, max_length=100)
     kyc_verified_by: Optional[str] = Field(None, max_length=150)
     company_name: Optional[str] = None
-    industry: Optional[str] = None
     country: Optional[str] = None
-    company_size: Optional[str] = None
-    website: Optional[str] = None
-    strategic_priority: Optional[Priority] = None
-    existing_relationship: Optional[str] = None
-    key_contacts: Optional[str] = None
     tags: Optional[str] = None
     single_point_of_contact: Optional[str] = None
     anchor_entity: Optional[str] = None
@@ -328,7 +294,6 @@ class AccountUpdate(_ClientFieldRules):
     incorporation_date: Optional[date] = None
     license_number: Optional[str] = Field(None, max_length=30)
     risk_rating: Optional[str] = None
-    kyc_status: Optional[str] = None
     owner_id: Optional[int] = None
     spoc_id: Optional[int] = None
     non_anchor_rm_ids: Optional[list[int]] = None
@@ -371,14 +336,9 @@ class AccountUpdate(_ClientFieldRules):
     date_of_birth: Optional[date] = None
     country_of_birth: Optional[str] = None
     nationality: Optional[str] = None
-    passport_number: Optional[str] = None
     passport_expiry_date: Optional[date] = None
-    occupation: Optional[str] = None
-    source_of_funds: Optional[str] = None
-    source_of_wealth: Optional[str] = None
     country_of_residence: Optional[str] = None
     residential_address: Optional[AddressBlock] = None
-    individual_mobile: Optional[str] = None
     individual_mobile_country_code: Optional[str] = None
     individual_mobile_number: Optional[str] = Field(None, max_length=12)
     individual_email: Optional[str] = None
@@ -404,8 +364,6 @@ class AccountRead(AccountBase):
     status_updated_at: Optional[datetime] = None
     status_updated_by_id: Optional[int] = None
     duplicate_override_reason: Optional[str] = None
-    total_cases: int
-    total_invoiced_amount: Decimal
     next_aml_review_date: Optional[date] = None
     is_pep: bool = False
     created_at: datetime

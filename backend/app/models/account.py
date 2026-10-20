@@ -1,16 +1,9 @@
-"""SQLAlchemy model: Account (client company)."""
-from sqlalchemy import Column, Integer, String, Text, Date, DateTime, Numeric, Boolean, JSON, ForeignKey, Enum as SAEnum
+"""SQLAlchemy model: Account — a Triam client, Corporate or Individual (BRD §3–§9)."""
+from sqlalchemy import Column, Integer, String, Text, Date, DateTime, Boolean, JSON, ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-import enum
 
 from app.database import Base
-
-
-class Priority(str, enum.Enum):
-    HIGH = "High"
-    MEDIUM = "Medium"
-    LOW = "Low"
 
 
 class Account(Base):
@@ -18,7 +11,7 @@ class Account(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     account_uid = Column(String(20), unique=True, index=True, nullable=False)  # ACC-0001 — internal key
-    # BRD §19 Unique Client ID — {ENTITY}/{00000}, per-entity counter, assigned on first save.
+    # BRD §18 Unique Client ID — {ENTITY}/{00000}, per-entity counter, issued at Compliance approval.
     client_id = Column(String(20), unique=True, index=True, nullable=True)
     # BRD §3 Unique Search Name — short, unique (case-insensitive), prefilled from the legal name.
     search_name = Column(String(120), unique=True, index=True, nullable=True)
@@ -29,98 +22,80 @@ class Account(Base):
     # service unless an approver records an exception (duplicate_override_reason).
     company_name = Column(String(255), nullable=False, index=True)
     duplicate_override_reason = Column(String(255), nullable=True)
-    industry = Column(String(100), nullable=True)
-    country = Column(String(100), nullable=True)
-    company_size = Column(String(100), nullable=True)
-    website = Column(String(255), nullable=True)
+    country = Column(String(100), nullable=True)  # country of incorporation / registration
 
-    strategic_priority = Column(SAEnum(Priority, name="priority", values_callable=lambda obj: [e.value for e in obj]), default=Priority.MEDIUM, nullable=False)
-    existing_relationship = Column(String(10), default="No", nullable=False)
-    key_contacts = Column(Text, nullable=True)
     tags = Column(String(500), nullable=True)
-    single_point_of_contact = Column(String(255), nullable=True)  # client-side primary contact name, free text
+    single_point_of_contact = Column(String(255), nullable=True)  # client-side contact, free text (BRD §22 item 9)
 
-    # Triam's own internal legal entities (client CRM-change-request item 3).
-    anchor_entity = Column(String(10), nullable=True)  # one of TRIAM_ENTITY_OPTIONS
-    non_anchor_entities = Column(JSON, nullable=True)  # list[str], subset of TRIAM_ENTITY_OPTIONS
+    # Triam entities (BRD §4)
+    anchor_entity = Column(String(10), nullable=True)  # triam_entity master list
+    non_anchor_entities = Column(JSON, nullable=True)  # list[str], excludes the anchor entity
 
-    # Compliance & risk
-    registration_number = Column(String(100), nullable=True)  # "Incorporation Certificate No." per client spec §5.1
+    # Corporate profile (BRD §5)
+    registration_number = Column(String(100), nullable=True)  # Incorporation Certificate No.
     incorporation_date = Column(Date, nullable=True)
     license_number = Column(String(100), nullable=True)
-    risk_rating = Column(String(20), nullable=True)  # Low / Medium / High
-    kyc_status = Column(String(30), default="Not Started", nullable=False)  # Not Started / Submitted / Under Review / Approved / Rejected
-
-    # Licensing & regulatory (client-database spec §6.1-7.6)
     licensing_authority = Column(String(150), nullable=True)
-    licensing_authority_other = Column(String(100), nullable=True)  # BRD §5 — free text when "Other"
+    licensing_authority_other = Column(String(100), nullable=True)  # free text when "Other"
     license_start_date = Column(Date, nullable=True)
     license_expiry_date = Column(Date, nullable=True)
-    regulatory_license_expiry_date = Column(Date, nullable=True)  # BRD §5 — mandatory when regulated
-    # BRD §5 Mandatory Yes/No: None = not answered yet (required before submission).
+    regulatory_license_expiry_date = Column(Date, nullable=True)  # mandatory when regulated
+    # Mandatory Yes/No: None = not answered yet (required before submission).
     is_regulated = Column(Boolean, nullable=True)
     regulator_name = Column(String(50), nullable=True)  # DFSA / FSRA / CMA / UAECB / Other
     regulator_other = Column(String(100), nullable=True)
     license_category = Column(String(100), nullable=True)
     license_activities = Column(Text, nullable=True)
 
-    # Addresses (§8.1/8.2) — {line1, line2, landmark, zip, po_box, city, country}
+    # Addresses — {line1, line2, landmark, zip, po_box, city, country}
     registered_address = Column(JSON, nullable=True)
     operating_address = Column(JSON, nullable=True)
 
-    # Tax (§9-10.1)
     trn_vat_number = Column(String(30), nullable=True)
     corp_tax_registered = Column(Boolean, nullable=True)
     corp_tax_registration_number = Column(String(30), nullable=True)
+    financial_year_end = Column(String(5), nullable=True)  # "MM-DD", shown as DD-MMM
 
-    financial_year_end = Column(String(5), nullable=True)  # "MM-DD"
-
-    # Introducer (§12-13)
     has_introducer = Column(Boolean, nullable=True)
     introducer_name = Column(String(255), nullable=True)
 
-    services_obtained = Column(JSON, nullable=True)  # list[str]
+    services_obtained = Column(JSON, nullable=True)  # list[str], service master list (BRD §4)
 
-    # Profile status workflow (§25)
+    # Status (BRD §9)
     profile_status = Column(String(30), default="New", nullable=False)
-    # BRD §11 "status last updated on" — set by the service whenever profile_status changes.
+    # "Status last updated on" — set by the service whenever profile_status changes.
     status_updated_at = Column(DateTime(timezone=True), nullable=True)
     status_updated_by_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
-    # Engagement Letter (BRD §9)
-    engagement_letter_signed = Column(Boolean, nullable=True)  # mandatory Yes / No — None = not answered (BRD §9)
+    # Engagement Letter (BRD §9): mandatory Yes / No — None = not answered
+    engagement_letter_signed = Column(Boolean, nullable=True)
     engagement_letter_valid_until = Column(Date, nullable=True)
 
-    # AML classification (§24.1, 24.3, 24.5-24.6) — distinct from risk_rating (High/Med/Low)
-    aml_classification = Column(String(20), nullable=True)  # Standard / SDD / EDD
+    # Customer risk assessment / KYC & AML (BRD §8) — completed by Compliance (MLRO)
+    risk_rating = Column(String(20), nullable=True)  # CDD/AML risk level: High / Medium / Low
+    aml_classification = Column(String(20), nullable=True)  # AML risk level: Standard / SDD / EDD
     edd_reason = Column(String(255), nullable=True)
     cdd_completion_date = Column(Date, nullable=True)
-    kyc_verified_by = Column(String(150), nullable=True)  # BRD §10 — full name of the RM who verified KYC
+    kyc_verified_by = Column(String(150), nullable=True)  # full name of the RM who verified KYC
     next_aml_review_date = Column(Date, nullable=True)  # server-computed from risk_rating + cdd_completion_date
 
-    # For Corporate accounts this is a server-computed rollup (any account_parties row is_pep=True).
-    # For Individual accounts (no parties) it is directly user-editable — see account_service.
+    # Corporate: computed from the parties (any party is a PEP). Individual: entered directly.
     is_pep = Column(Boolean, default=False, nullable=False)
 
-    # Individual Details (Phase C) — populated only when account_type == "Individual"
+    # Individual client (BRD §6)
     date_of_birth = Column(Date, nullable=True)
     country_of_birth = Column(String(120), nullable=True)
     nationality = Column(String(120), nullable=True)
-    passport_number = Column(String(50), nullable=True)
     passport_expiry_date = Column(Date, nullable=True)
-    occupation = Column(String(150), nullable=True)
-    source_of_funds = Column(String(255), nullable=True)
-    source_of_wealth = Column(String(255), nullable=True)
     country_of_residence = Column(String(120), nullable=True)
-    residential_address = Column(JSON, nullable=True)  # AddressBlock shape, reused from Phase A
-    individual_mobile = Column(String(50), nullable=True)  # superseded by the split fields below (client spec §15)
+    residential_address = Column(JSON, nullable=True)  # same shape as the corporate addresses
     individual_mobile_country_code = Column(String(6), nullable=True)
     individual_mobile_number = Column(String(12), nullable=True)
     individual_email = Column(String(255), nullable=True)
     uae_visa_number = Column(String(50), nullable=True)
     uae_visa_expiry = Column(Date, nullable=True)
-    # Triam BRD mark-up §5
-    client_category = Column(String(20), nullable=True)  # "Under Formation" | "Existing"
+
+    client_category = Column(String(20), nullable=True)  # "Under Formation" | "Existing" (BRD §5)
     contact_mobile_country_code = Column(String(6), nullable=True)  # company contact
     contact_mobile_number = Column(String(12), nullable=True)
     contact_email = Column(String(255), nullable=True)
@@ -128,18 +103,12 @@ class Account(Base):
     lei_number = Column(String(20), nullable=True)
     lei_expiry_date = Column(Date, nullable=True)
     is_one_time_service = Column(Boolean, nullable=True)
-    nature_of_services_sought = Column(JSON, nullable=True)  # list[str] — client spec §23.13
+    nature_of_services_sought = Column(JSON, nullable=True)  # list[str]
 
-    # Computed / denormalized
-    total_cases = Column(Integer, default=0, nullable=False)
-    total_invoiced_amount = Column(Numeric(14, 2), default=0, nullable=False)
-
-    owner_id = Column(Integer, ForeignKey("users.id"), nullable=True)
-    prospect_id = Column(Integer, ForeignKey("prospects.id", ondelete="SET NULL"), nullable=True)  # Triam mark-up §4A
-    # Anchor RM (labelled "Anchor RM (SPOC)" in the UI) — the staff member who owns this client;
-    # drives RM-scoped access control (see access_control.py).
+    owner_id = Column(Integer, ForeignKey("users.id"), nullable=True)  # who created the client
+    prospect_id = Column(Integer, ForeignKey("prospects.id", ondelete="SET NULL"), nullable=True)  # BRD §4A
+    # Anchor RM — the staff member who owns this client; drives RM-scoped access (access_control.py).
     spoc_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
-    # Non-anchor RMs — reference only, no access grant (client spec §I).
     non_anchor_rm_ids = Column(JSON, nullable=True)  # list[int] of User ids, excludes spoc_id
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -152,7 +121,7 @@ class Account(Base):
     @property
     def temp_id(self):
         """Shown until the Client ID is issued at Compliance approval: the Prospect ID the client came
-        from, or the internal record number for clients created before prospects were required."""
+        from, or the internal record number for clients loaded by import."""
         return self.prospect.prospect_uid if self.prospect is not None else self.account_uid
 
     # Current parties only; removed ones stay in the table (removed_at set) and are listed by removed_parties.

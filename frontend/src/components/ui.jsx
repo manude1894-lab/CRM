@@ -417,7 +417,7 @@ export const Textarea = (props) => (
 // Checkbox-list multi-select, styled to match Select/Input. `value` is an array of
 // selected option strings; `onChange` receives the new array.
 // Country dropdown backed by the live AML country-risk list; falls back to free text if that list is empty.
-// UAE is pinned to the top of the list per the client-database spec's repeated "put UAE on top" requirement.
+// UAE is pinned to the top of the list (BRD §5–§6: "UAE to appear at the top").
 export const CountrySelect = ({ value, onChange, countries }) => {
   const options = (countries || []).map((c) => c.name).sort((a, b) => {
     const aUAE = a.startsWith("United Arab Emirates");

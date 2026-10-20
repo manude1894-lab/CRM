@@ -1,4 +1,4 @@
-"""BRD line-by-line review fixes (Triam mark-up)."""
+"""BRD line-by-line review fixes (BRD)."""
 import io
 from decimal import Decimal
 

@@ -1,6 +1,6 @@
 import React from "react";
 import { Select } from "../ui";
-import { RISK_OPTIONS, KYC_STATUS_OPTIONS } from "./accountForm";
+import { RISK_OPTIONS } from "./accountForm";
 
 const BulkField = ({ value, placeholder, options, disabled, onChange, onApply }) => (
   <div className="flex items-center gap-1.5">
@@ -26,7 +26,6 @@ export default function BulkActionBar({ count, users, values, onChange, onApply,
       <span className="text-xs font-medium text-brand-700">{count} selected</span>
       {field("spoc_id", "Anchor RM…", users.filter((u) => u.role === "rm").map((u) => ({ value: u.id, label: u.name })))}
       {field("risk_rating", "Risk Rating…", asOptions(RISK_OPTIONS))}
-      {field("kyc_status", "KYC Status…", asOptions(KYC_STATUS_OPTIONS))}
       <button onClick={onClear} className="text-xs text-brand-500 hover:underline ml-auto">Clear selection</button>
     </div>
   );

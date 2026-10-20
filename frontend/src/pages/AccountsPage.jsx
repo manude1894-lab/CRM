@@ -12,7 +12,7 @@ import { toast } from "../store/toast";
 import { fmtDate, exportFilename } from "../utils/constants";
 import { useAuthStore } from "../store/auth";
 
-const BLANK_BULK = { spoc_id: "", risk_rating: "", kyc_status: "" };
+const BLANK_BULK = { spoc_id: "", risk_rating: "" };
 const STATUSES = ["New", "WIP", "Awaiting Approval", "Approved", "Active", "Inactive", "Marked for Exit", "Exited"];
 const VIEW_KEY = "triam.clients.view";
 

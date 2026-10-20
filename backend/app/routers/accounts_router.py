@@ -17,15 +17,13 @@ router = APIRouter(prefix="/accounts", tags=["Clients"])
 def list_accounts(
     skip: int = 0, limit: int = 100,
     search: Optional[str] = None,
-    industry: Optional[str] = None,
     country: Optional[str] = None,
-    priority: Optional[str] = None,
     response: Response = None,
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
     items, total = account_service.list_accounts(
-        db, user, skip, limit, search, industry, country, priority,
+        db, user, skip, limit, search, country,
     )
     if response is not None:
         response.headers["X-Total-Count"] = str(total)

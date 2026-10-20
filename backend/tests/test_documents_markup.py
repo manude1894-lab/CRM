@@ -1,4 +1,4 @@
-"""Triam BRD mark-up §14 — document types, links, Compliance documents and removal history."""
+"""BRD §14 — document types, links, Compliance documents and removal history."""
 import io
 
 import pytest

@@ -49,7 +49,7 @@ class ApprovalRequest(Base):
     changes = Column(JSON, nullable=True)  # before/after diff shown to the checker
     previous_request_id = Column(Integer, nullable=True)  # the rejected/withdrawn request this draft continues
 
-    # New-client onboarding (Triam BRD mark-up §7–§10): RM → Compliance (MLRO) → Approver.
+    # New-client onboarding (BRD §7–§10): RM → Compliance (MLRO) → Approver.
     stage = Column(String(20), nullable=True)  # "Compliance" | "Approver" while Pending
     kyc_declared = Column(Boolean, nullable=True)  # submitter confirmed KYC verification is done
     compliance_checker_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)

@@ -6,7 +6,7 @@ from app.models.master import MasterItem, MASTER_LIST_TYPES
 from app.models.audit import AuditLog
 from app.models.client_id import ClientIdSequence
 from app.models.approval import ApprovalRequest, ApprovalStatus
-from app.models.account import Account, Priority
+from app.models.account import Account
 from app.models.notification import Notification
 from app.models.activity import Activity, ActivityType, ActivityStatus
 from app.models.account_party import AccountParty, AccountPartyRole, AccountPartyConstitution
@@ -24,7 +24,7 @@ __all__ = [
     "AuditLog",
     "ClientIdSequence",
     "ApprovalRequest", "ApprovalStatus",
-    "Account", "Priority",
+    "Account",
     "Notification",
     "Activity", "ActivityType", "ActivityStatus",
     "AccountParty", "AccountPartyRole", "AccountPartyConstitution",

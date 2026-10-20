@@ -1,4 +1,4 @@
-"""Triam BRD mark-up §4A — every new client starts as a prospect, assigned to an RM."""
+"""BRD §4A — every new client starts as a prospect, assigned to an RM."""
 import pytest
 from fastapi import HTTPException
 

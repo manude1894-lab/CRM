@@ -16,7 +16,6 @@ class AccountPartyBase(BaseModel):
     id_or_license_expiry: Optional[date] = None
     country_of_incorp_or_birth: Optional[str] = None
 
-    mobile: Optional[str] = None  # superseded by mobile_country_code/mobile_number
     mobile_country_code: Optional[str] = None
     mobile_number: Optional[str] = Field(None, max_length=12)
     email: Optional[str] = None
@@ -47,7 +46,6 @@ class AccountPartyUpdate(BaseModel):
     dob_or_incorp_date: Optional[date] = None
     id_or_license_expiry: Optional[date] = None
     country_of_incorp_or_birth: Optional[str] = None
-    mobile: Optional[str] = None
     mobile_country_code: Optional[str] = None
     mobile_number: Optional[str] = Field(None, max_length=12)
     email: Optional[str] = None

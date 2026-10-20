@@ -8,17 +8,17 @@ const users = [
 
 describe("parseCSV", () => {
   it("maps known headers to account fields and ignores unknown ones", () => {
-    const rows = parseCSV("Company Name,Industry,Mystery Column\nAcme,Fintech,ignored");
-    expect(rows).toEqual([{ company_name: "Acme", industry: "Fintech" }]);
+    const rows = parseCSV("Company Name,Country,Mystery Column\nAcme,UAE,ignored");
+    expect(rows).toEqual([{ company_name: "Acme", country: "UAE" }]);
   });
 
   it("is case-insensitive and trims headers and values", () => {
-    expect(parseCSV("  COMPANY NAME ,industry\n  Acme  , Fintech ")).toEqual([{ company_name: "Acme", industry: "Fintech" }]);
+    expect(parseCSV("  COMPANY NAME ,country\n  Acme  , UAE ")).toEqual([{ company_name: "Acme", country: "UAE" }]);
   });
 
   it("handles quoted fields with commas, escaped quotes and newlines", () => {
-    const rows = parseCSV('Company Name,Key Contacts\n"Acme, Inc.","Jane ""JD"" Doe\nCEO"');
-    expect(rows).toEqual([{ company_name: "Acme, Inc.", key_contacts: 'Jane "JD" Doe\nCEO' }]);
+    const rows = parseCSV('Company Name,Single Point of Contact\n"Acme, Inc.","Jane ""JD"" Doe\nCEO"');
+    expect(rows).toEqual([{ company_name: "Acme, Inc.", single_point_of_contact: 'Jane "JD" Doe\nCEO' }]);
   });
 
   it("handles CRLF line endings and skips blank lines", () => {
@@ -49,7 +49,7 @@ describe("parseCSV", () => {
 
 describe("parseImportRows", () => {
   it("drops rows without a company name", () => {
-    expect(parseImportRows("Company Name,Industry\n,Fintech\nAcme,Fintech", users)).toEqual([{ company_name: "Acme", industry: "Fintech" }]);
+    expect(parseImportRows("Company Name,Country\n,UAE\nAcme,UAE", users)).toEqual([{ company_name: "Acme", country: "UAE" }]);
   });
 
   it("resolves anchor and non-anchor RM names to ids, case-insensitively", () => {
@@ -65,7 +65,7 @@ describe("parseImportRows", () => {
 
 describe("buildAccountsCsv", () => {
   const account = {
-    account_uid: "C-1", account_type: "Corporate", company_name: 'Acme "Holdings", Ltd', industry: "Fintech",
+    account_uid: "C-1", account_type: "Corporate", company_name: 'Acme "Holdings", Ltd', country: "UAE",
     spoc_id: 1, non_anchor_rm_ids: [2], services_obtained: ["Formation", "Accounting"],
     registered_address: { line1: "1 Main St", city: "Dubai" }, is_regulated: true,
   };
@@ -82,7 +82,7 @@ describe("buildAccountsCsv", () => {
     const [row] = parseImportRows(csv, users);
     expect(row).toMatchObject({
       company_name: 'Acme "Holdings", Ltd',
-      industry: "Fintech",
+      country: "UAE",
       spoc_id: 1,
       non_anchor_rm_ids: [2],
       services_obtained: ["Formation", "Accounting"],

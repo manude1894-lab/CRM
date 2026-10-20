@@ -9,22 +9,16 @@ export const IMPORT_HEADER_MAP = {
   "client type": "account_type",
   "unique search name": "search_name", // BRD §3. "Client ID" is export-only: IDs are always issued by the system.
   "company name": "company_name",
-  "industry": "industry",
   "country": "country",
-  "website": "website",
-  "key contacts": "key_contacts",
   "single point of contact": "single_point_of_contact",
   "anchor entity": "anchor_entity",
   "non-anchor entities": "__non_anchor_entities",
-  "strategic priority": "strategic_priority",
-  "existing relationship": "existing_relationship",
   "tags": "tags",
   "incorporation certificate no.": "registration_number",
   "registration number": "registration_number", // legacy header, kept for older exported files
   "incorporation date": "incorporation_date",
   "license number": "license_number",
   "risk rating": "risk_rating",
-  "kyc status": "kyc_status",
   "spoc": "__spoc_name", // legacy header, kept for older exported files
   "anchor rm (spoc)": "__spoc_name",
   "non-anchor rms": "__non_anchor_rm_names",
@@ -53,13 +47,8 @@ export const IMPORT_HEADER_MAP = {
   "date of birth": "date_of_birth",
   "country of birth": "country_of_birth",
   "nationality": "nationality",
-  "passport number": "passport_number",
   "passport expiry": "passport_expiry_date",
-  "occupation": "occupation",
-  "source of funds": "source_of_funds",
-  "source of wealth": "source_of_wealth",
   "country of residence": "country_of_residence",
-  "individual mobile": "individual_mobile", // legacy header, kept for older exported files
   "individual mobile country code": "individual_mobile_country_code",
   "individual mobile number": "individual_mobile_number",
   "individual email": "individual_email",
@@ -157,10 +146,10 @@ const ADDRESS_COLS = ["Line 1", "Line 2", "Landmark", "City", "ZIP", "P.O. Box",
 const addrRow = (v) => { const a = v || {}; return [a.line1, a.line2, a.landmark, a.city, a.zip, a.po_box, a.country]; };
 
 export const EXPORT_HEADERS = [
-  "Account UID", "Client ID", "Unique Search Name", "Client Type", "Company Name", "Industry", "Country", "Website", "Key Contacts", "Single Point of Contact",
+  "Account UID", "Client ID", "Unique Search Name", "Client Type", "Company Name", "Country", "Single Point of Contact",
   "Anchor Entity", "Non-anchor Entities",
-  "Strategic Priority", "Existing Relationship", "Tags", "Incorporation Certificate No.", "Incorporation Date", "License Number",
-  "Risk Rating", "KYC Status", "Anchor RM (SPOC)", "Non-anchor RMs",
+  "Tags", "Incorporation Certificate No.", "Incorporation Date", "License Number",
+  "Risk Rating", "Anchor RM (SPOC)", "Non-anchor RMs",
   "Licensing Authority", "License Activities", "License Start Date", "License Expiry Date",
   "Is Regulated", "Regulator", "Other Regulator", "License Category",
   ...ADDRESS_COLS.map((c) => `Registered Address ${c}`),
@@ -169,21 +158,20 @@ export const EXPORT_HEADERS = [
   "Has Introducer", "Introducer Name", "Services Obtained",
   "Profile Status", "Engagement Letter Signed", "Engagement Letter Valid Until",
   "AML Classification", "EDD Reason", "CDD Completion Date", "Next AML Review Date", "Is PEP",
-  "Date of Birth", "Country of Birth", "Nationality", "Passport Number", "Passport Expiry", "Occupation",
-  "Source of Funds", "Source of Wealth", "Country of Residence",
+  "Date of Birth", "Country of Birth", "Nationality", "Passport Expiry", "Country of Residence",
   ...ADDRESS_COLS.map((c) => `Residential Address ${c}`),
   "Individual Mobile Country Code", "Individual Mobile Number", "Individual Email", "UAE Visa Number", "UAE Visa Expiry", "Nature of Services Sought",
-  "Total Cases", "Total Invoiced Amount", "Created At", "Updated At",
+  "Created At", "Updated At",
 ];
 
 // Builds the export CSV text. Headers are chosen so the file round-trips through parseCSV.
 export function buildAccountsCsv(accounts, users) {
   const userName = (id) => users.find((u) => u.id === id)?.name;
   const rows = accounts.map((a) => [
-    a.account_uid, a.client_id, a.search_name, a.account_type, a.company_name, a.industry, a.country, a.website, a.key_contacts, a.single_point_of_contact,
+    a.account_uid, a.client_id, a.search_name, a.account_type, a.company_name, a.country, a.single_point_of_contact,
     a.anchor_entity, (a.non_anchor_entities || []).join("; "),
-    a.strategic_priority, a.existing_relationship, a.tags, a.registration_number, a.incorporation_date, a.license_number,
-    a.risk_rating, a.kyc_status, userName(a.spoc_id) || "",
+    a.tags, a.registration_number, a.incorporation_date, a.license_number,
+    a.risk_rating, userName(a.spoc_id) || "",
     (a.non_anchor_rm_ids || []).map(userName).filter(Boolean).join("; "),
     a.licensing_authority, a.license_activities, a.license_start_date, a.license_expiry_date,
     a.is_regulated, a.regulator_name, a.regulator_other, a.license_category,
@@ -193,12 +181,11 @@ export function buildAccountsCsv(accounts, users) {
     a.has_introducer, a.introducer_name, (a.services_obtained || []).join("; "),
     a.profile_status, a.engagement_letter_signed, a.engagement_letter_valid_until,
     a.aml_classification, a.edd_reason, a.cdd_completion_date, a.next_aml_review_date, a.is_pep,
-    a.date_of_birth, a.country_of_birth, a.nationality, a.passport_number, a.passport_expiry_date, a.occupation,
-    a.source_of_funds, a.source_of_wealth, a.country_of_residence,
+    a.date_of_birth, a.country_of_birth, a.nationality, a.passport_expiry_date, a.country_of_residence,
     ...addrRow(a.residential_address),
     a.individual_mobile_country_code, a.individual_mobile_number, a.individual_email, a.uae_visa_number, a.uae_visa_expiry,
     (a.nature_of_services_sought || []).join("; "),
-    a.total_cases, a.total_invoiced_amount, a.created_at, a.updated_at,
+    a.created_at, a.updated_at,
   ]);
   return [EXPORT_HEADERS, ...rows].map((r) => r.map((v) => `"${(csvDate(v) ?? "").toString().replace(/"/g, '""')}"`).join(",")).join("\n");
 }

@@ -53,7 +53,7 @@ class Settings(BaseSettings):
     SMS_NOTIFICATION_TYPES: str = ("client_submitted,client_approved,client_rejected,amendment_submitted,"
                                    "amendment_approved,amendment_rejected")
 
-    # Login lockout (P7): this many wrong passwords in a row locks the account for N minutes.
+    # Login lockout: this many wrong passwords in a row locks the account for N minutes.
     LOGIN_MAX_ATTEMPTS: int = 5
     LOGIN_LOCK_MINUTES: int = 15
     # BRD §13: company email domain(s) for user accounts, e.g. "asktriam.com" (empty = any)

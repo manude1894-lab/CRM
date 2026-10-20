@@ -38,7 +38,7 @@ def _validate_party(account: Account, p: AccountParty) -> None:
     if not individual_client and p.party_role == "Joint Holder":
         raise HTTPException(status_code=400, detail="Joint Holders apply to Individual clients only")
     if p.party_role in ("Shareholder", "Authorised Signatory", "Joint Holder"):
-        # Triam mark-up §5.3 / §6: signatories and joint holders need mobile and email too.
+        # BRD §5.3 / §6: signatories and joint holders need mobile and email too.
         missing = [label for label, value in (
             ("Contact Mobile country code", p.mobile_country_code),
             ("Contact Mobile number", p.mobile_number),

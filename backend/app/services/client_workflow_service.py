@@ -2,7 +2,7 @@
 
 All status changes go through here; `profile_status` can no longer be edited directly.
 
-New clients are approved in two steps (Triam BRD mark-up §7–§10). While Awaiting Approval the
+New clients are approved in two steps (BRD §7–§10). While Awaiting Approval the
 pending request's `stage` says where it is:
   Compliance — the MLRO completes the CDD section and approves with comments (Client ID issued)
   Approver   — the Approver gives the final approval with comments → Approved
@@ -192,7 +192,7 @@ def _label(acc: Account) -> str:
 # ─── Actions ────────────────────────────────────────────────────────────────
 
 def submit(db: Session, acc: Account, user: User, comment: Optional[str] = None, kyc_declared: bool = False) -> ApprovalRequest:
-    """BRD §12 step 11 — the maker submits; every mandatory field must be complete. Triam mark-up §7:
+    """BRD §12 step 11 — the maker submits; every mandatory field must be complete. BRD §7:
     with mandatory RM/Sales comments and the declaration that KYC verification is done."""
     _require(db, acc, user, "submit")
     comment = _comment(comment, "RM/Sales comments")
@@ -215,7 +215,7 @@ def submit(db: Session, acc: Account, user: User, comment: Optional[str] = None,
 
 def approve(db: Session, acc: Account, user: User, comment: Optional[str] = None) -> ApprovalRequest:
     """Compliance step: the MLRO approves with comments; the Client ID is issued and the client goes to
-    the Approver. Approver step: final approval with comments → Approved (Triam mark-up §10)."""
+    the Approver. Approver step: final approval with comments → Approved (BRD §10)."""
     _require(db, acc, user, "approve")
     req = pending_request(db, acc.id)
     if stage_of(req) == STAGE_COMPLIANCE:
@@ -248,7 +248,7 @@ def approve(db: Session, acc: Account, user: User, comment: Optional[str] = None
 
 
 def _issue_client_id(db: Session, acc: Account) -> None:
-    """Triam mark-up §18: the Unique Client ID is issued once Compliance approves the new client."""
+    """BRD §18: the Unique Client ID is issued once Compliance approves the new client."""
     if not acc.client_id and acc.anchor_entity:
         from app.services.account_service import next_client_id
         acc.client_id = next_client_id(db, acc.anchor_entity)

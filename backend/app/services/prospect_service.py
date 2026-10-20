@@ -77,7 +77,7 @@ def create_prospect(db: Session, data: ProspectCreate, user: User) -> Prospect:
 
 
 def assign_prospect(db: Session, prospect_id: int, rm_id: int, comments: Optional[str], user: User) -> Prospect:
-    """Triam mark-up §4A — the Prospecting Team Coordinator assigns an RM (after discussing with the Unit
+    """BRD §4A — the Prospecting Team Coordinator assigns an RM (after discussing with the Unit
     Managers), or an RM assigns the prospect to themselves. Assignor's comments are optional (≤ 250 words)."""
     p = get_prospect(db, prospect_id, user)
     if p.converted_account_id:

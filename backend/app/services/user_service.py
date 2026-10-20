@@ -28,7 +28,7 @@ def get_user(db: Session, user_id: int, viewer: User | None = None) -> User:
 
 
 def _assert_company_email(email: str) -> None:
-    """Triam mark-up §13 — when USER_EMAIL_DOMAINS is set (e.g. "asktriam.com"), users must have a
+    """BRD §13 — when USER_EMAIL_DOMAINS is set (e.g. "asktriam.com"), users must have a
     company email address; access lasts while that address is active."""
     from app.config import settings
     domains = [d.strip().lower() for d in (settings.USER_EMAIL_DOMAINS or "").split(",") if d.strip()]

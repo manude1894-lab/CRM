@@ -91,7 +91,7 @@ export default function ClientProfilePage({ accountId, initialTab = "overview", 
               <FactList items={individual ? [
                 ["Date of birth", fmtDate(a.date_of_birth)], ["Nationality", a.nationality], ["Country of birth", a.country_of_birth],
                 ["Country of residence", a.country_of_residence], ["Passport expiry", fmtDate(a.passport_expiry_date)],
-                ["Occupation", a.occupation], ["Email", a.individual_email],
+                ["Email", a.individual_email], ["Profession / business", a.nature_of_business],
               ] : [
                 ["Unique search name", a.search_name], ["New client category", a.client_category], ["Country of incorporation", a.country],
                 ["Contact", [a.contact_mobile_country_code && a.contact_mobile_number ? `${a.contact_mobile_country_code} ${a.contact_mobile_number}` : null, a.contact_email].filter(Boolean).join(" · ") || null],

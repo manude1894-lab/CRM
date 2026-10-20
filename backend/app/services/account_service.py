@@ -7,7 +7,7 @@ from decimal import Decimal
 from datetime import date, datetime, timezone
 from dateutil.relativedelta import relativedelta
 
-from app.models import Account, Priority, User, UserRole, Invoice, InvoiceLedgerStatus, ClientIdSequence
+from app.models import Account, User, UserRole, ClientIdSequence
 from app.auth.permissions import has_permission
 from app.audit import log_event
 from app.schemas.account import AccountCreate, AccountUpdate, AccountImportRow, AccountImportRowResult, AccountBulkUpdateRequest, BulkUpdateResult
@@ -164,12 +164,10 @@ def list_accounts(
     skip: int = 0,
     limit: int = 100,
     search: Optional[str] = None,
-    industry: Optional[str] = None,
     country: Optional[str] = None,
-    priority: Optional[str] = None,
 ) -> tuple[list[Account], int]:
     query = db.query(Account)
-    # BRD §15 RM privacy + supervisor visibility (was: RMs saw only clients they created).
+    # BRD §13 RM privacy + supervisor visibility.
     visibility = access_control.account_visibility_clause(db, user)
     if visibility is not None:
         query = query.filter(visibility)
@@ -178,18 +176,15 @@ def list_accounts(
         pattern = f"%{search}%"
         query = query.filter(or_(
             Account.company_name.ilike(pattern),
-            Account.key_contacts.ilike(pattern),
+            Account.search_name.ilike(pattern),
+            Account.client_id.ilike(pattern),
             Account.account_uid.ilike(pattern),
         ))
-    if industry:
-        query = query.filter(Account.industry == industry)
     if country:
         query = query.filter(Account.country == country)
-    if priority:
-        query = query.filter(Account.strategic_priority == priority)
 
     total = query.count()
-    items = query.order_by(Account.total_invoiced_amount.desc()).offset(skip).limit(limit).all()
+    items = query.order_by(Account.company_name).offset(skip).limit(limit).all()
     return items, total
 
 
@@ -224,7 +219,7 @@ def _assert_shareholder_ownership_complete(account: Account) -> None:
 
 
 def _assert_date_sanity(data) -> None:
-    """Client spec CRM-change-request items 7 & 11 — Incorporation Date can't be in the
+    """BRD §5 — Incorporation Date can't be in the
     future; License Expiry Date can't be in the past. Interactive create/update only —
     CSV import of historical data is exempt, since expired licenses are legitimate there."""
     today = date.today()
@@ -243,7 +238,7 @@ def _normalize_non_anchor_rms(acc: Account) -> None:
         acc.non_anchor_rm_ids = list(dict.fromkeys(i for i in acc.non_anchor_rm_ids if i != acc.spoc_id)) or None
 
 
-MAX_CLIENT_NAME = 50  # Triam mark-up §5: "50 char long, alpha-num-Spl. Char."
+MAX_CLIENT_NAME = 50  # BRD §5: "50 char long, alpha-num-Spl. Char."
 
 
 def create_account(db: Session, data: AccountCreate, user: User) -> Account:
@@ -316,7 +311,7 @@ def create_account(db: Session, data: AccountCreate, user: User) -> Account:
     return acc
 
 
-# Triam BRD mark-up §7/§11: the CDD / risk assessment section is completed only by Compliance (MLRO).
+# BRD §7/§11: the CDD / risk assessment section is completed only by Compliance (MLRO).
 CDD_FIELDS = ("risk_rating", "aml_classification", "edd_reason", "kyc_verified_by", "cdd_completion_date")
 
 
@@ -392,7 +387,7 @@ def apply_update(db: Session, acc: Account, data: AccountUpdate, user: User) -> 
             raise HTTPException(status_code=409, detail=f"A client named '{clash.company_name}' already exists ({clash.client_id or clash.account_uid})")
     for field, value in update_data.items():
         setattr(acc, field, value)
-    # The Client ID is issued when Compliance approves a new client (Triam mark-up §18); until then the
+    # The Client ID is issued when Compliance approves a new client (BRD §18); until then the
     # temporary ID is shown. Approved clients that pre-date Client IDs get one on their next save.
     # Once issued, a Client ID never changes (even if the Anchor Entity later does).
     if not acc.client_id and acc.anchor_entity and acc.profile_status not in (
@@ -442,14 +437,6 @@ def import_accounts(
 
         payload = row.model_dump(exclude_none=True)
         payload["company_name"] = name
-        # strategic_priority is a DB-level enum — an unrecognized CSV value would fail at
-        # insert time, so normalize case-insensitively and drop it (falls back to the
-        # column default) rather than let the whole row error out.
-        raw_priority = payload.pop("strategic_priority", None)
-        if raw_priority:
-            matched = next((p for p in Priority if p.value.lower() == raw_priority.strip().lower()), None)
-            if matched:
-                payload["strategic_priority"] = matched
         search_name = payload.pop("search_name", None)
         if search_name and _search_name_taken(db, search_name):
             search_name = None  # fall back to a generated one rather than failing the row
@@ -510,7 +497,7 @@ def missing_mandatory(account: Account) -> list[dict]:
         if not all((addr.get(f) or "").strip() for f in ("line1", "city", "country")):
             missing.append({"section": "Individual details", "field": "residential_address", "label": "Residential Address (line 1, city and country)"})
     else:
-        # §5 (Triam mark-up) — New Client Category: licence and incorporation details are mandatory for
+        # BRD §5 — New Client Category: licence and incorporation details are mandatory for
         # existing companies and may be blank for companies under formation.
         category = account.client_category
         forming = category == "Under Formation" or (category is None and "Company Formation" in (account.services_obtained or []))
@@ -569,7 +556,7 @@ def missing_mandatory(account: Account) -> list[dict]:
 
 
 def missing_cdd(account: Account) -> list[dict]:
-    """Triam BRD mark-up §10 — the CDD section Compliance (MLRO) must complete before approving.
+    """BRD §10 — the CDD section Compliance (MLRO) must complete before approving.
     (The AML Risk Level Standard / SDD / EDD was removed; EDD applies to High-risk clients.)"""
     missing: list[dict] = []
 

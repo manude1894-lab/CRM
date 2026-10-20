@@ -6,9 +6,9 @@ import {
 
 describe("accountToForm", () => {
   it("fills missing values with form defaults and keeps the id", () => {
-    const form = accountToForm({ id: 7, company_name: "Acme", strategic_priority: "High", existing_relationship: "Yes" });
+    const form = accountToForm({ id: 7, company_name: "Acme" });
     expect(form).toMatchObject({
-      _id: 7, company_name: "Acme", account_type: "Corporate", industry: "", kyc_status: "Not Started",
+      _id: 7, company_name: "Acme", account_type: "Corporate", country: "",
       profile_status: "New", is_regulated: null, services_obtained: [], tags: [], next_aml_review_date: null,
     });
     expect(form.registered_address).toEqual(BLANK_ACCOUNT_FORM.registered_address);
@@ -58,7 +58,7 @@ describe("buildAccountPayload", () => {
     const payload = buildAccountPayload({ ...BLANK_ACCOUNT_FORM, _id: 3, next_aml_review_date: "2027-01-01", company_name: "Acme", tags: ["VIP", "New"], spoc_id: "5" });
     expect(payload).not.toHaveProperty("_id");
     expect(payload).not.toHaveProperty("next_aml_review_date");
-    expect(payload).toMatchObject({ company_name: "Acme", tags: "VIP, New", spoc_id: 5, industry: null });
+    expect(payload).toMatchObject({ company_name: "Acme", tags: "VIP, New", spoc_id: 5, country: null });
   });
 
   it("sends null for empty tags and spoc", () => {
@@ -82,15 +82,15 @@ describe("buildSectionPatch", () => {
 
 describe("validateCoreFields", () => {
   it("requires a company name", () => {
-    expect(validateCoreFields({ company_name: "  ", industry: "x" })).toBe("Company name is required");
+    expect(validateCoreFields({ company_name: "  " })).toBe("Company name is required");
   });
 
-  it("requires industry for corporate clients only", () => {
-    expect(validateCoreFields({ company_name: "Acme", anchor_entity: "TCPL", account_type: "Corporate", industry: "" })).toBe(null);  // Industry dropped
-    expect(validateCoreFields({ company_name: "Jane", anchor_entity: "TCPL", account_type: "Individual", industry: "" })).toBeNull();
+  it("accepts corporate and individual clients with a name and an entity", () => {
+    expect(validateCoreFields({ company_name: "Acme", anchor_entity: "TCPL", account_type: "Corporate" })).toBeNull();
+    expect(validateCoreFields({ company_name: "Jane", anchor_entity: "TCPL", account_type: "Individual" })).toBeNull();
   });
 
   it("requires an Anchor Triam Entity (it builds the Client ID)", () => {
-    expect(validateCoreFields({ company_name: "Acme", industry: "Fintech" })).toMatch(/Anchor Triam Entity/);
+    expect(validateCoreFields({ company_name: "Acme" })).toMatch(/Anchor Triam Entity/);
   });
 });

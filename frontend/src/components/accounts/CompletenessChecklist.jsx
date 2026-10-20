@@ -3,7 +3,7 @@ import { accountsApi } from "../../api/endpoints";
 
 /**
  * Mandatory fields still missing (BRD §5/§9/§10/§11), grouped by section. Informational now;
- * in P2 the Submit button is blocked until this list is empty. `refreshKey` changes after each
+ * the Submit button is blocked until this list is empty. `refreshKey` changes after each
  * save so the list stays current.
  */
 export default function CompletenessChecklist({ accountId, refreshKey }) {

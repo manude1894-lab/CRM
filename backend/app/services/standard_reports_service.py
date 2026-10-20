@@ -1,4 +1,4 @@
-"""Standard reports (Triam BRD mark-up §20a). Each report returns {title, columns, rows}; rows only cover
+"""Standard reports (BRD §20a). Each report returns {title, columns, rows}; rows only cover
 the clients and prospects the user may see. Dates are ISO strings; the screen shows them as DD MM YYYY.
 
 Custom reports and favourites (§20b) follow once Triam gives the details.

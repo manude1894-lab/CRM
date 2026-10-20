@@ -26,19 +26,19 @@ def test_create_is_logged_with_actor_and_client(db, make_user, make_account, act
 
 def test_update_records_field_level_before_and_after(db, make_user, make_account, act_as):
     rm = make_user()
-    acc = make_account(risk_rating="Low")
+    acc = make_account(risk_rating="Low", edd_reason="Old")
     act_as(rm)
     acc.risk_rating = "High"
-    acc.kyc_status = "Approved"
+    acc.edd_reason = "New"
     db.commit()
 
     [entry] = _entries(db, subject_type="Account", action="update")
-    assert entry.changes == {"risk_rating": ["Low", "High"], "kyc_status": ["Not Started", "Approved"]}
+    assert entry.changes == {"risk_rating": ["Low", "High"], "edd_reason": ["Old", "New"]}
     assert entry.user_id == rm.id
 
 
 def test_old_value_is_captured_even_after_an_earlier_commit_expired_the_object(db, make_account):
-    acc = make_account(risk_rating="Low")
+    acc = make_account(risk_rating="Low", edd_reason="Old")
     db.commit()  # expires acc — the next assignment happens without the old value loaded
     acc.risk_rating = "Medium"
     db.commit()
@@ -47,7 +47,7 @@ def test_old_value_is_captured_even_after_an_earlier_commit_expired_the_object(d
 
 
 def test_no_entry_when_nothing_actually_changed(db, make_account):
-    acc = make_account(risk_rating="Low")
+    acc = make_account(risk_rating="Low", edd_reason="Old")
     before = db.query(AuditLog).count()
     acc.risk_rating = "Low"
     db.commit()

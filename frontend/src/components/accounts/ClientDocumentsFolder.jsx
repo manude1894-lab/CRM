@@ -28,7 +28,7 @@ export default function ClientDocumentsFolder({ accountId, onChange, onboarding 
   const [busy, setBusy] = useState(false);
   const [category, setCategory] = useState("");
   const [notes, setNotes] = useState("");
-  const [mode, setMode] = useState("file"); // "file" | "link" (Triam mark-up §14: URLs are allowed)
+  const [mode, setMode] = useState("file"); // "file" | "link" (BRD §14: URLs are allowed)
   const [linkUrl, setLinkUrl] = useState("");
   const [linkTitle, setLinkTitle] = useState("");
   const [partyId, setPartyId] = useState("");
@@ -51,7 +51,7 @@ export default function ClientDocumentsFolder({ accountId, onChange, onboarding 
     .filter((c) => !complianceOnly(c) || folder.compliance_can_file)
     .filter((c) => !statusLocked || complianceOnly(c));
   const sectionOf = (code) => cats.items.find((i) => i.code === code)?.meta?.section;
-  // Passport / EID / Visa and similar are filed for one of the client's people (Triam mark-up §14).
+  // Passport / EID / Visa and similar are filed for one of the client's people (BRD §14).
   const forPeople = (code) => /UBO|Director|Signatory|Individual/.test(sectionOf(code) || "");
   const parties = folder.parties || [];
 

@@ -51,7 +51,7 @@ app.add_middleware(
 )
 
 
-# ─── Security headers (P7) ─────────────────────────────────────────────────
+# ─── Security headers ─────────────────────────────────────────────────
 @app.middleware("http")
 async def security_headers(request, call_next):
     response = await call_next(request)

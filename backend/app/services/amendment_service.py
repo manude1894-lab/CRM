@@ -45,7 +45,7 @@ OPEN = (ApprovalStatus.DRAFT.value, ApprovalStatus.PENDING.value)
 
 # Read-only/system fields that never appear as an amendment line.
 _IGNORED = {"id", "account_uid", "client_id", "created_at", "updated_at", "profile_status", "status_updated_at",
-            "status_updated_by_id", "next_aml_review_date", "total_invoiced_amount", "case_count", "is_pep",
+            "status_updated_by_id", "next_aml_review_date", "is_pep",
             "account_id"}
 
 _LABELS = {
@@ -62,6 +62,7 @@ _LABELS = {
     "regulator_name": "Name of Regulator", "is_regulated": "Is entity regulated",
     "corp_tax_registered": "Corporate Tax Registered", "has_introducer": "Introducer",
     "regulatory_license_expiry_date": "Current regulatory license expiry",
+    "nature_of_business": "Detailed Nature of Business", "contact_email": "Contact Email",
 }
 
 

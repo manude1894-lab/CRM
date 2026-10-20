@@ -1,4 +1,4 @@
-"""Triam BRD mark-up §20a — standard reports."""
+"""BRD §20a — standard reports."""
 from datetime import date, timedelta
 
 from app.schemas.prospect import ProspectCreate

@@ -1,4 +1,4 @@
-"""P7 — go-live hardening: lockout, password rules, change password, health checks, headers."""
+"""Go-live hardening: lockout, password rules, change password, health checks, headers."""
 from datetime import datetime, timedelta, timezone
 
 import pytest

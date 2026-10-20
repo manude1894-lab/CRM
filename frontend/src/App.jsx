@@ -105,7 +105,7 @@ export default function App() {
       {/* Main */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {passwordWarning && (
-          // P7 — the account still uses a default password.
+          // the account still uses a default password.
           <div className="flex flex-wrap items-center gap-3 px-6 py-2 bg-amber-50 border-b border-amber-200 text-sm text-amber-900">
             <span className="flex-1">You signed in with a default password. Please change it now to keep client data safe.</span>
             <button onClick={() => setPasswordOpen(true)} className="px-3 py-1 text-xs text-white rounded-lg" style={{ background: "#1a3a5c" }}>Change password</button>

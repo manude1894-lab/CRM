@@ -58,7 +58,7 @@ class UserRead(UserBase):
     business_role_name: Optional[str] = None
     handles_clients: bool = True  # client-facing staff; central desks get a shorter menu
     is_super_admin: bool = False
-    locked_until: Optional[datetime] = None  # P7 — shown to admins; resetting the password unlocks
+    locked_until: Optional[datetime] = None  # shown to admins; resetting the password unlocks
     last_login_at: Optional[datetime] = None
     previous_login_at: Optional[datetime] = None
     created_at: datetime

@@ -1,4 +1,4 @@
-"""Invoices router — the Invoice module (Triam BRD mark-up §16). Rules live in invoice_service."""
+"""Invoices router — the Invoice module (BRD §16). Rules live in invoice_service."""
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, File, Form, Response, UploadFile, status
