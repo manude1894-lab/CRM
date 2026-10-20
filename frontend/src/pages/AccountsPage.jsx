@@ -1,15 +1,15 @@
 import React, { useEffect, useRef, useState } from "react";
-import { accountsApi, casesApi, usersApi, amlApi, prospectsApi } from "../api/endpoints";
-import { Badge, Button, EmptyState, ErrorBanner, FilterBar, Icon, Modal, PageHeader, SearchInput, Select, Spinner } from "../components/ui";
+import { accountsApi, usersApi, countriesApi, prospectsApi } from "../api/endpoints";
+import { Badge, Button, EmptyState, ErrorBanner, FilterBar, Icon, PageHeader, SearchInput, Select, Spinner } from "../components/ui";
 import AccountCard from "../components/accounts/AccountCard";
 import AccountFormModal from "../components/accounts/AccountFormModal";
 import BulkActionBar from "../components/accounts/BulkActionBar";
 import ImportPreviewModal from "../components/accounts/ImportPreviewModal";
 import ClientProfilePage from "./ClientProfilePage";
-import { BLANK_ACCOUNT_FORM, accountToForm } from "../components/accounts/accountForm";
+import { BLANK_ACCOUNT_FORM } from "../components/accounts/accountForm";
 import { buildAccountsCsv, parseImportRows } from "../components/accounts/accountCsv";
 import { toast } from "../store/toast";
-import { fmt, fmtDate, exportFilename } from "../utils/constants";
+import { fmtDate, exportFilename } from "../utils/constants";
 import { useAuthStore } from "../store/auth";
 
 const BLANK_BULK = { spoc_id: "", risk_rating: "", kyc_status: "" };
@@ -21,7 +21,6 @@ const readView = () => { try { return localStorage.getItem(VIEW_KEY) || "table";
 export default function AccountsPage({ initialAccountId, initialOpenForm, initialProspectId, onNavigate } = {}) {
   const appliedInitialRef = useRef(false);
   const [accounts, setAccounts] = useState([]);
-  const [cases, setCases] = useState([]);
   const [users, setUsers] = useState([]);
   const [countries, setCountries] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -31,8 +30,9 @@ export default function AccountsPage({ initialAccountId, initialOpenForm, initia
   const [riskFilter, setRiskFilter] = useState("");
   const [view, setView] = useState(readView);
   const [open, setOpen] = useState(null); // { id, tab } — the client page being shown
-  const [newClient, setNewClient] = useState(null); // { key, prospect } while the New Client flow is open
-  // "Create client" on a prospect lands here with the prospect chosen.
+  // BRD §4A — a client is created only from an assigned prospect: "Create client" on the prospect
+  // lands here with the prospect chosen.
+  const [newClient, setNewClient] = useState(null); // { key, prospect }
   useEffect(() => {
     if (initialProspectId) prospectsApi.get(initialProspectId).then((p) => setNewClient({ key: Date.now(), prospect: p })).catch(() => {});
   }, [initialProspectId]);
@@ -49,11 +49,10 @@ export default function AccountsPage({ initialAccountId, initialOpenForm, initia
     try {
       if (!silent) setLoading(true);
       setError(null);
-      const [accRes, caseRes, usersRes, countriesRes] = await Promise.all([
-        accountsApi.list({ limit: 200 }), casesApi.list({ limit: 500 }), usersApi.list(), amlApi.countryRisk().catch(() => []),
+      const [accRes, usersRes, countriesRes] = await Promise.all([
+        accountsApi.list({ limit: 200 }), usersApi.list(), countriesApi.list().catch(() => []),
       ]);
       setAccounts(accRes.items || []);
-      setCases(caseRes.items || []);
       setUsers(usersRes || []);
       setCountries(countriesRes || []);
     } catch (e) {
@@ -133,13 +132,12 @@ export default function AccountsPage({ initialAccountId, initialOpenForm, initia
 
   if (open) {
     return (
-      <ClientProfilePage key={open.id} accountId={open.id} initialTab={open.tab} users={users} countries={countries} cases={cases}
-        onBack={() => { setOpen(null); load({ silent: true }); }} onChanged={() => load({ silent: true })}
-        onOpenCase={(caseId) => onNavigate?.({ page: "cases", caseId })} />
+      <ClientProfilePage key={open.id} accountId={open.id} initialTab={open.tab} users={users} countries={countries}
+        onBack={() => { setOpen(null); load({ silent: true }); }} onChanged={() => load({ silent: true })} />
     );
   }
 
-  // Matches legal name, Unique Search Name (BRD §3) or Client ID (BRD §19).
+  // Matches legal name, Unique Search Name (BRD §3) or Client ID (BRD §18).
   const q = search.toLowerCase();
   const filtered = accounts.filter((a) => (!q || [a.company_name, a.search_name, a.client_id, a.temp_id, a.account_uid].some((v) => (v || "").toLowerCase().includes(q)))
     && (!statusFilter || (a.profile_status || "New") === statusFilter)
@@ -150,7 +148,7 @@ export default function AccountsPage({ initialAccountId, initialOpenForm, initia
   return (
     <div className="space-y-4">
       <PageHeader title="Clients"
-        subtitle={`${accounts.length} client${accounts.length === 1 ? "" : "s"} · ${fmt(accounts.reduce((s, a) => s + Number(a.total_invoiced_amount || 0), 0))} invoiced`}
+        subtitle={`${accounts.length} client${accounts.length === 1 ? "" : "s"} · new clients are created from an assigned prospect`}
         actions={<>
           <Button onClick={exportCSV}>Export CSV</Button>
           {isAdmin && (
@@ -160,7 +158,7 @@ export default function AccountsPage({ initialAccountId, initialOpenForm, initia
               <Button onClick={() => fileInputRef.current?.click()} disabled={importing}>{importing ? "Reading…" : "Import CSV"}</Button>
             </>
           )}
-          <Button variant="primary" onClick={() => setNewClient({})}><Icon name="plus" size={15} /> New Client</Button>
+          <Button variant="primary" onClick={() => onNavigate?.({ page: "prospects" })}>Go to Prospects</Button>
         </>}
       />
 
@@ -192,8 +190,8 @@ export default function AccountsPage({ initialAccountId, initialOpenForm, initia
       {filtered.length === 0 ? (
         <EmptyState
           title={accounts.length === 0 ? "No clients yet" : "No clients match these filters"}
-          text={accounts.length === 0 ? "Add your first client to get started." : "Try a different search or clear the filters."}
-          action={accounts.length === 0 && <Button variant="primary" onClick={() => setNewClient({})}>New Client</Button>} />
+          text={accounts.length === 0 ? "Clients are created from a prospect: assign it to an RM, then choose Create client." : "Try a different search or clear the filters."}
+          action={accounts.length === 0 && <Button variant="primary" onClick={() => onNavigate?.({ page: "prospects" })}>Go to Prospects</Button>} />
       ) : view === "table" ? (
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-x-auto">
           <table className="w-full text-sm">
@@ -202,8 +200,8 @@ export default function AccountsPage({ initialAccountId, initialOpenForm, initia
                 <th className="py-2.5 px-3 w-8">
                   <input type="checkbox" checked={ids.every((id) => selectedIds.has(id))} onChange={() => toggleSelectAll(ids)} />
                 </th>
-                {["Client ID", "Client", "Status", "Risk", "Anchor RM", "PEP", "Next AML review", "Cases"].map((h) => (
-                  <th key={h} className={`py-2.5 px-3 font-semibold ${h === "Cases" ? "text-right" : "text-left"}`}>{h}</th>
+                {["Client ID", "Client", "Status", "Risk", "Anchor RM", "PEP", "Next AML review"].map((h) => (
+                  <th key={h} className="py-2.5 px-3 font-semibold text-left">{h}</th>
                 ))}
               </tr>
             </thead>
@@ -223,7 +221,6 @@ export default function AccountsPage({ initialAccountId, initialOpenForm, initia
                   <td className="py-2.5 px-3 text-xs text-gray-600">{userName(a.spoc_id)}</td>
                   <td className="py-2.5 px-3 text-xs text-gray-600">{a.is_pep ? "PEP" : "—"}</td>
                   <td className="py-2.5 px-3 text-xs text-gray-600">{fmtDate(a.next_aml_review_date) || "—"}</td>
-                  <td className="py-2.5 px-3 text-xs text-gray-600 text-right">{a.total_cases || 0}</td>
                 </tr>
               ))}
             </tbody>
@@ -238,16 +235,10 @@ export default function AccountsPage({ initialAccountId, initialOpenForm, initia
         </div>
       )}
 
-      {newClient && !newClient.prospect && (
-        <ProspectPicker isAdmin={isAdmin} onClose={() => setNewClient(null)}
-          onPick={(p) => setNewClient({ key: Date.now(), prospect: p })}
-          onGoToProspects={() => { setNewClient(null); onNavigate?.({ page: "prospects" }); }} />
-      )}
-      {newClient && newClient.prospect && (
+      {newClient && (
         <AccountFormModal key={newClient.key} users={users} countries={countries}
-          initialForm={newClient.prospect === "none" ? BLANK_ACCOUNT_FORM
-            : { ...BLANK_ACCOUNT_FORM, company_name: newClient.prospect.company_name, prospect_id: newClient.prospect.id,
-                _prospect_uid: newClient.prospect.prospect_uid, spoc_id: newClient.prospect.owner_id ? String(newClient.prospect.owner_id) : "" }}
+          initialForm={{ ...BLANK_ACCOUNT_FORM, company_name: newClient.prospect.company_name, prospect_id: newClient.prospect.id,
+            _prospect_uid: newClient.prospect.prospect_uid, spoc_id: newClient.prospect.owner_id ? String(newClient.prospect.owner_id) : "" }}
           onClose={() => setNewClient(null)} onChanged={() => load({ silent: true })}
           onOpenExisting={(a) => { setNewClient(null); openClient(a); }} />
       )}
@@ -257,43 +248,5 @@ export default function AccountsPage({ initialAccountId, initialOpenForm, initia
           onConfirm={confirmImport} onClose={() => setImportPreview(null)} />
       )}
     </div>
-  );
-}
-
-
-
-
-/** Triam BRD mark-up §4A — every new client is created from an assigned prospect. */
-function ProspectPicker({ isAdmin, onPick, onClose, onGoToProspects }) {
-  const [items, setItems] = useState(null);
-  useEffect(() => {
-    prospectsApi.list().then((ps) => setItems(ps.filter((p) => p.owner_id && !p.converted_account_id && p.status !== "Lost")))
-      .catch(() => setItems([]));
-  }, []);
-  return (
-    <Modal title="New client: choose the prospect" onClose={onClose}>
-      <p className="text-xs text-gray-500 mb-3">Choose the prospect for this client.</p>
-      {items === null ? <Spinner /> : items.length === 0 ? (
-        <div className="text-sm text-gray-500 text-center py-6">
-          No assigned prospects are waiting for a client.
-          <div className="mt-2"><Button onClick={onGoToProspects}>Go to Prospects</Button></div>
-        </div>
-      ) : (
-        <div className="space-y-1.5 max-h-80 overflow-y-auto">
-          {items.map((p) => (
-            <button key={p.id} type="button" onClick={() => onPick(p)}
-              className="w-full text-left px-3 py-2 rounded-lg border border-gray-100 hover:border-brand-300 hover:bg-brand-50/40">
-              <div className="text-sm font-medium text-gray-800">{p.company_name}</div>
-              <div className="text-[11px] text-gray-500"><span className="font-mono">{p.prospect_uid}</span> · {p.status} · RM {p.owner_name || "—"}</div>
-            </button>
-          ))}
-        </div>
-      )}
-      {isAdmin && (
-        <div className="mt-3 pt-3 border-t border-gray-100 text-right">
-          <button type="button" onClick={() => onPick("none")} className="text-xs text-gray-500 hover:underline">Administrator: create without a prospect</button>
-        </div>
-      )}
-    </Modal>
   );
 }

@@ -1,19 +1,18 @@
-"""Service layer: Prospect (pre-Case proposal tracking)."""
+"""Service layer: Prospect (BRD §4A) — every new client starts as a prospect."""
 from typing import Optional
 
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
 
 from app.models import Prospect, ProspectStatus, User, UserRole, Account
-from app.schemas.prospect import ProspectCreate, ProspectUpdate, ProspectConvertRequest, DuplicateMatch
-from app.schemas.case import CaseCreate
+from app.schemas.prospect import ProspectCreate, ProspectUpdate, DuplicateMatch
 from app.utils.uid import next_uid
 from app.utils.fuzzy_match import top_matches
 from datetime import datetime, timezone
 
 from app.audit import log_event
 from app.auth.permissions import has_permission
-from app.services import case_service, access_control, notification_service
+from app.services import access_control, notification_service
 
 MAX_ASSIGNOR_WORDS = 250
 
@@ -132,23 +131,3 @@ def update_prospect(db: Session, prospect_id: int, data: ProspectUpdate, user: U
     db.commit()
     db.refresh(p)
     return p
-
-
-def convert_to_case(db: Session, prospect_id: int, data: ProspectConvertRequest, user: User):
-    p = get_prospect(db, prospect_id, user)
-    if p.converted_case_id:
-        raise HTTPException(status_code=400, detail="This prospect has already been converted")
-    case = case_service.create_case(db, CaseCreate(
-        company_name=p.company_name,
-        source="Referral",
-        introducer=p.source,
-        jurisdiction=data.jurisdiction,
-        service_type=data.service_type or "Company Formation",
-        rm_id=data.rm_id or p.owner_id,
-        notes=f"Converted from prospect {p.prospect_uid}.",
-    ), user)
-    p.converted_case_id = case.id
-    p.status = ProspectStatus.WON.value
-    db.commit()
-    db.refresh(p)
-    return case

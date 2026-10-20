@@ -1,4 +1,4 @@
-"""P3 — Compliance approvals: client amendments (BRD §13), document removal (§16) and case approval."""
+"""Compliance approvals: client amendments (BRD §11) and document removal (§14)."""
 import io
 from decimal import Decimal
 
@@ -8,12 +8,8 @@ from fastapi import HTTPException, UploadFile
 from app.models import Account, AccountParty, ApprovalRequest, AuditLog
 from app.schemas.account import AccountUpdate
 from app.schemas.account_party import AccountPartyCreate, AccountPartyUpdate
-from app.schemas.case import CaseCreate, CaseUpdate
-from app.schemas import CaseStageChangeRequest  # noqa: F401  (import check)
-from app.models.case import CaseStage
 from app.services import (account_party_service, account_service, amendment_service as amend,
-                          case_approval_service as case_ok, case_service, client_workflow_service as wf,
-                          document_service)
+                          client_workflow_service as wf, document_service)
 from tests.test_p2_workflow import complete_client, people  # noqa: F401  (fixture)
 from tests import flow
 
@@ -213,58 +209,6 @@ def test_document_removal_rules(db, people, seed_master, make_role, make_user):
 
 # ─── Case approval ──────────────────────────────────────────────────────────
 
-def _case(db, user, **kw):
-    return case_service.create_case(db, CaseCreate(company_name="Falcon BVI Ltd", **kw), user)
-
-
-def test_new_case_waits_for_compliance(db, people):
-    maker, checker = people["maker"], people["checker"]
-    case = _case(db, maker)
-    assert case.compliance_status == "Pending Approval"
-    with pytest.raises(HTTPException) as e:
-        case_service.change_stage(db, case.id, CaseStage.RM_ASSIGNED, maker)
-    assert "awaiting Compliance" in e.value.detail
-    with pytest.raises(HTTPException):
-        case_service.update_case(db, case.id, CaseUpdate(notes="x"), maker)  # locked
-    [r] = wf.inbox(db, checker)
-    assert r.request_type == "case_creation"
-    with pytest.raises(HTTPException):
-        case_ok.approve(db, case, maker)  # not an approver
-    case_ok.approve(db, case, checker)
-    assert case.compliance_status == "Approved"
-    case_service.change_stage(db, case.id, CaseStage.RM_ASSIGNED, maker)
-
-
-def test_returned_case_is_fixed_and_resubmitted(db, people):
-    maker, checker = people["maker"], people["checker"]
-    case = _case(db, maker)
-    case_ok.reject(db, case, checker, "Documents missing or incomplete", "Client is not onboarded yet, link the client first")
-    assert case.compliance_status == "Returned"
-    case_service.update_case(db, case.id, CaseUpdate(notes="Linked to the client"), maker)  # direct edit while returned
-    assert case.notes == "Linked to the client"
-    case_ok.resubmit(db, case, maker)
-    assert case.compliance_status == "Pending Approval"
-    case_ok.approve(db, case, checker)
-
-
-def test_edit_to_approved_case_becomes_amendment(db, people):
-    maker, checker = people["maker"], people["checker"]
-    case = _case(db, maker)
-    case_ok.approve(db, case, checker)
-    case_service.update_case(db, case.id, CaseUpdate(service_type="Restoration", notes="Client asked"), maker)
-    db.expire_all()
-    case = case_service.get_case(db, case.id, maker)
-    assert case.notes is None  # unchanged until approved
-    req = case_ok.pending_request(db, case.id)
-    assert req.request_type == "case_amendment"
-    assert {c["label"] for c in req.changes["case"]} == {"Service", "Notes"}
-    with pytest.raises(HTTPException):
-        case_service.update_case(db, case.id, CaseUpdate(notes="again"), maker)  # one at a time
-    case_ok.approve(db, case, checker)
-    db.expire_all()
-    case = case_service.get_case(db, case.id, maker)
-    assert case.notes == "Client asked" and case.service_type == "Restoration"
-
 
 def test_blank_address_blocks_are_not_changes(db, people):
     # The form sends empty address blocks; "no address" and "address with blank lines" are the same.
@@ -288,10 +232,6 @@ def test_client_folder_shows_stage_and_who_can_remove(db, people, seed_master, m
     [d] = f["documents"]
     assert f["stage"] == "Draft" and f["client_id"] is None and f["temp_id"] == acc.temp_id and d["can_delete"] is True
     assert d["uploaded_by_name"] == "Rita RM"
-
-    case = case_service.create_case(db, CaseCreate(company_name="Complete Co", account_id=acc.id), maker)
-    f = document_service.client_folder(db, acc.id, maker)
-    assert f["case_documents"] == []  # nothing uploaded on the case yet
 
     flow.submit(db, acc, maker)
     f = document_service.client_folder(db, acc.id, checker)

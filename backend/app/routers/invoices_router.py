@@ -18,14 +18,14 @@ router = APIRouter(prefix="/invoices", tags=["Invoices"])
 @router.get("", summary="List invoices")
 def list_invoices(
     skip: int = 0, limit: int = 100,
-    case_id: Optional[int] = None, account_id: Optional[int] = None,
+    account_id: Optional[int] = None,
     status: Optional[str] = None,
     search: Optional[str] = None,
     response: Response = None,
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    items, total = invoice_service.list_invoices(db, user, skip, limit, case_id, status, search, account_id)
+    items, total = invoice_service.list_invoices(db, user, skip, limit, status, search, account_id)
     if response is not None:
         response.headers["X-Total-Count"] = str(total)
     return {"items": [invoice_read(i, db) for i in items], "total": total}

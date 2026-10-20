@@ -1,68 +1,24 @@
-"""Reports router: PDF downloads and the standard reports."""
-from typing import Optional
-from fastapi import APIRouter, Depends
-from fastapi.responses import Response
-from sqlalchemy.orm import Session
+"""Reports router: the BRD §20 standard reports (shown on screen, exported to CSV in the browser)."""
 from datetime import date
+from typing import Optional
+
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.auth.dependencies import get_current_user
 from app.models import User
-from app.services import dashboard_service, case_service
-from app.reports import (
-    case_stage_summary_pdf,
-    case_details_pdf,
-    compliance_calendar_pdf,
-    rm_ops_performance_pdf,
-)
+from app.services import standard_reports_service
 
 router = APIRouter(prefix="/reports", tags=["Reports"])
 
 
-def _pdf_response(content: bytes, filename: str) -> Response:
-    return Response(
-        content=content,
-        media_type="application/pdf",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
-    )
-
-
 @router.get("/standard", summary="Standard reports available")
 def standard_reports(user: User = Depends(get_current_user)):
-    from app.services import standard_reports_service
     return [{"key": k, "title": t} for k, t in standard_reports_service.REPORTS.items()]
 
 
 @router.get("/standard/{key}", summary="Run a standard report")
 def run_standard_report(key: str, days: int = 30, date_from: Optional[date] = None, date_to: Optional[date] = None,
                         db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    from app.services import standard_reports_service
     return standard_reports_service.run(db, user, key, days, date_from, date_to)
-
-
-@router.get("/case-stage-summary", summary="Case Stage Summary PDF")
-def case_stage_summary(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    dashboard = dashboard_service.build_dashboard(db, user)
-    pdf = case_stage_summary_pdf(dashboard)
-    return _pdf_response(pdf, f"case_stage_summary_{date.today().isoformat()}.pdf")
-
-
-@router.get("/case-details", summary="Case Details PDF")
-def case_details(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    cases, _ = case_service.list_cases(db, user, skip=0, limit=1000)
-    pdf = case_details_pdf(cases)
-    return _pdf_response(pdf, f"case_details_{date.today().isoformat()}.pdf")
-
-
-@router.get("/compliance-calendar", summary="Compliance Calendar PDF")
-def compliance_calendar(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    dashboard = dashboard_service.build_dashboard(db, user)
-    pdf = compliance_calendar_pdf(dashboard)
-    return _pdf_response(pdf, f"compliance_calendar_{date.today().isoformat()}.pdf")
-
-
-@router.get("/rm-ops-performance", summary="RM/Ops Performance PDF")
-def rm_ops_performance(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    dashboard = dashboard_service.build_dashboard(db, user)
-    pdf = rm_ops_performance_pdf(dashboard)
-    return _pdf_response(pdf, f"rm_ops_performance_{date.today().isoformat()}.pdf")

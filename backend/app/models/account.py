@@ -44,9 +44,9 @@ class Account(Base):
     anchor_entity = Column(String(10), nullable=True)  # one of TRIAM_ENTITY_OPTIONS
     non_anchor_entities = Column(JSON, nullable=True)  # list[str], subset of TRIAM_ENTITY_OPTIONS
 
-    # Compliance & risk — client-level (distinct from the per-case CDDRecord.aml_risk_rating)
+    # Compliance & risk
     registration_number = Column(String(100), nullable=True)  # "Incorporation Certificate No." per client spec §5.1
-    incorporation_date = Column(Date, nullable=True)  # client spec §5.2 — distinct from per-Case CompanyProfile.incorporation_date
+    incorporation_date = Column(Date, nullable=True)
     license_number = Column(String(100), nullable=True)
     risk_rating = Column(String(20), nullable=True)  # Low / Medium / High
     kyc_status = Column(String(30), default="Not Started", nullable=False)  # Not Started / Submitted / Under Review / Approved / Rejected
@@ -87,7 +87,7 @@ class Account(Base):
     status_updated_at = Column(DateTime(timezone=True), nullable=True)
     status_updated_by_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
-    # Engagement Letter — client-level (§26-27), distinct from Case's onboarding-pipeline dates
+    # Engagement Letter (BRD §9)
     engagement_letter_signed = Column(Boolean, nullable=True)  # mandatory Yes / No — None = not answered (BRD §9)
     engagement_letter_valid_until = Column(Date, nullable=True)
 
@@ -154,7 +154,7 @@ class Account(Base):
         """Shown until the Client ID is issued at Compliance approval: the Prospect ID the client came
         from, or the internal record number for clients created before prospects were required."""
         return self.prospect.prospect_uid if self.prospect is not None else self.account_uid
-    cases = relationship("Case", back_populates="account")
+
     # Current parties only; removed ones stay in the table (removed_at set) and are listed by removed_parties.
     parties = relationship("AccountParty", primaryjoin="and_(Account.id == AccountParty.account_id, AccountParty.removed_at.is_(None))",
                            cascade="all, delete-orphan", order_by="AccountParty.id", overlaps="removed_parties")

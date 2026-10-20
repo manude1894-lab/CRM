@@ -6,17 +6,15 @@ import { fmtDate } from "../../utils/constants";
 export const REQUEST_TYPE_LABEL = {
   client_profile: "New Client",
   client_amendment: "Client Amendment",
-  case_creation: "New Case",
-  case_amendment: "Case Amendment",
 };
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 const show = (v) => (v === null || v === undefined || v === "" ? "—" : ISO_DATE.test(String(v)) ? fmtDate(v) : String(v));
 
-/** Before / after table for an amendment (client fields, parties, or case fields). */
+/** Before / after table for a client amendment (client fields and parties). */
 export function ChangeList({ diff }) {
   if (!diff) return null;
-  const fields = diff.account || diff.case || [];
+  const fields = diff.account || [];
   const parties = diff.parties || [];
   if (!fields.length && !parties.length) return <p className="text-xs text-gray-400">No changes yet.</p>;
   return (

@@ -1,12 +1,7 @@
-"""SQLAlchemy model: CountryRisk — AML country-risk reference table.
+"""SQLAlchemy model: the Countries master (BRD §17), table country_risk.
 
-Seeded from Triam's AML Risk Matrix (Annexure 6) country tables: a KnowYourCountry
-score (April 2025) banded Low/Medium/High, overridden to High for any jurisdiction
-on the FATF increased-monitoring ("grey") or call-for-action ("black") list as of
-13.06.2025, and "Prohibited" for the FATF black list (DPRK, Iran, Myanmar).
-
-Admin-editable — Triam refreshes this quarterly (KnowYourCountry) / three times a
-year (FATF plenary).
+Only the name is used by the CRM (every country drop-down). The risk columns are the reference data
+the list was first loaded from and are not shown or used.
 """
 from sqlalchemy import Column, Integer, String, Numeric, Boolean, DateTime
 from sqlalchemy.sql import func

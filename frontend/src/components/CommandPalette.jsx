@@ -1,12 +1,11 @@
 import React, { useEffect, useRef, useState } from "react";
-import { accountsApi, casesApi } from "../api/endpoints";
+import { accountsApi } from "../api/endpoints";
 import { Icon } from "./ui";
 
 export default function CommandPalette({ onNavigate }) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
   const [clients, setClients] = useState([]);
-  const [cases, setCases] = useState([]);
   const [loading, setLoading] = useState(false);
   const inputRef = useRef(null);
 
@@ -27,7 +26,6 @@ export default function CommandPalette({ onNavigate }) {
     if (open) {
       setQ("");
       setClients([]);
-      setCases([]);
       setTimeout(() => inputRef.current?.focus(), 0);
     }
   }, [open]);
@@ -35,21 +33,15 @@ export default function CommandPalette({ onNavigate }) {
   useEffect(() => {
     if (!open || q.trim().length < 2) {
       setClients([]);
-      setCases([]);
       return;
     }
     setLoading(true);
     const timer = setTimeout(async () => {
       try {
-        const [accRes, caseRes] = await Promise.all([
-          accountsApi.list({ search: q.trim(), limit: 6 }),
-          casesApi.list({ search: q.trim(), limit: 6 }),
-        ]);
+        const accRes = await accountsApi.list({ search: q.trim(), limit: 10 });
         setClients(accRes.items || []);
-        setCases(caseRes.items || []);
       } catch {
         setClients([]);
-        setCases([]);
       } finally {
         setLoading(false);
       }
@@ -59,10 +51,6 @@ export default function CommandPalette({ onNavigate }) {
 
   const goToClient = (a) => {
     onNavigate({ page: "accounts", accountId: a.id });
-    setOpen(false);
-  };
-  const goToCase = (c) => {
-    onNavigate({ page: "cases", caseId: c.id });
     setOpen(false);
   };
 
@@ -84,7 +72,7 @@ export default function CommandPalette({ onNavigate }) {
                 ref={inputRef}
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
-                placeholder="Search clients or cases by name or UID…"
+                placeholder="Search clients by name or Client ID…"
                 className="flex-1 text-sm outline-none"
               />
               <button onClick={() => setOpen(false)} className="text-gray-400 hover:text-gray-600 flex-shrink-0">
@@ -96,7 +84,7 @@ export default function CommandPalette({ onNavigate }) {
               {q.trim().length < 2 && (
                 <p className="text-xs text-gray-400 text-center py-8">Type at least 2 characters to search.</p>
               )}
-              {q.trim().length >= 2 && !loading && clients.length === 0 && cases.length === 0 && (
+              {q.trim().length >= 2 && !loading && clients.length === 0 && (
                 <p className="text-xs text-gray-400 text-center py-8">No matches found.</p>
               )}
 
@@ -107,20 +95,7 @@ export default function CommandPalette({ onNavigate }) {
                     <button key={a.id} onClick={() => goToClient(a)}
                       className="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center justify-between">
                       <span className="text-sm text-gray-800">{a.company_name}</span>
-                      <span className="text-xs text-gray-400">{a.account_uid}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              {cases.length > 0 && (
-                <div className="py-1.5 border-t border-gray-50">
-                  <p className="px-4 py-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Cases</p>
-                  {cases.map((c) => (
-                    <button key={c.id} onClick={() => goToCase(c)}
-                      className="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center justify-between">
-                      <span className="text-sm text-gray-800">{c.company_name}</span>
-                      <span className="text-xs text-gray-400">{c.case_uid}</span>
+                      <span className="text-xs text-gray-400 font-mono">{a.client_id || a.temp_id}</span>
                     </button>
                   ))}
                 </div>

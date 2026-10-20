@@ -1,6 +1,5 @@
-"""SQLAlchemy model: AccountParty — Shareholders, Directors, and Authorised
-Signatories captured on the Client itself (client-database spec §14/21/22),
-as distinct from the per-Case Director/Shareholder/UBO registers in party.py.
+"""SQLAlchemy model: AccountParty — a client's Shareholders / UBOs, Directors and Authorised
+Signatories (BRD §5.1–§5.3), or an Individual client's joint holders (BRD §6).
 
 One discriminated table rather than three near-duplicate ones: the spec's
 three sections overlap heavily and differ only in a couple of role-specific
@@ -32,8 +31,7 @@ class AccountParty(Base):
     id = Column(Integer, primary_key=True, index=True)
     account_id = Column(Integer, ForeignKey("accounts.id", ondelete="CASCADE"), nullable=False, index=True)
 
-    # role/constitution stored as plain strings — same precedent as Case.jurisdiction
-    # and Account.kyc_status (Postgres enums proved painful to alter later).
+    # role/constitution stored as plain strings (Postgres enums are painful to alter later).
     party_role = Column(String(30), nullable=False)  # Shareholder / Director / Authorised Signatory
     constitution = Column(String(20), default=AccountPartyConstitution.INDIVIDUAL.value, nullable=False)
 

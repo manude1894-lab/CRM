@@ -1,7 +1,7 @@
-"""Service layer: Invoice module (Triam BRD mark-up §16).
+"""Service layer: Invoice module (BRD §16).
 
 Invoicing for every new client onboarding and every service request:
-  1. The RM / Sales *requests* an invoice for a client (optionally a case or service request), with the
+  1. The RM / Sales *requests* an invoice for a client (optionally for a service request), with the
      expected amount and currency, and attaches the pricing approvals. This is the instruction to the
      Accounts Department — every Accounts user (invoice.manage) is notified.
   2. Accounts *raises* it: Invoice No, Invoice Date, Currency, Amount and the invoice file. The requester
@@ -19,7 +19,7 @@ from sqlalchemy.orm import Session
 
 from app.audit import log_event
 from app.auth.permissions import has_permission
-from app.models import Account, Case, Document, Instruction, Invoice, InvoiceLedgerStatus, User
+from app.models import Account, Document, Instruction, Invoice, InvoiceLedgerStatus, User
 from app.schemas.invoice import InvoiceCreate, InvoiceRaise, InvoiceRequest, InvoiceUpdate
 from app.services import access_control, notification_service
 
@@ -47,32 +47,26 @@ def _client(db: Session, account_id: int, user: User) -> Account:
 
 
 def _visible(db: Session, inv: Invoice, user: User) -> bool:
-    if inv.account_id:
-        acc = db.get(Account, inv.account_id)
-        return acc is not None and access_control.user_can_access_account(db, acc, user)
-    case = db.get(Case, inv.case_id) if inv.case_id else None
-    return case is not None and access_control.user_can_access_case(case, user)
+    acc = db.get(Account, inv.account_id)
+    return acc is not None and access_control.user_can_access_account(db, acc, user)
 
 
-def list_invoices(db: Session, user: User, skip: int = 0, limit: int = 100, case_id: Optional[int] = None,
+def list_invoices(db: Session, user: User, skip: int = 0, limit: int = 100,
                   status: Optional[str] = None, search: Optional[str] = None,
                   account_id: Optional[int] = None) -> tuple[list[Invoice], int]:
     query = db.query(Invoice)
     clause = access_control.account_visibility_clause(db, user)
     if clause is not None:
         visible_accounts = [a.id for a in db.query(Account.id).filter(clause).all()]
-        visible_cases = [c.id for c in db.query(Case.id).filter(access_control.rm_visibility_clause(user)).all()]
-        query = query.filter(or_(Invoice.account_id.in_(visible_accounts or [-1]), Invoice.case_id.in_(visible_cases or [-1])))
-    if case_id:
-        query = query.filter(Invoice.case_id == case_id)
+        query = query.filter(Invoice.account_id.in_(visible_accounts or [-1]))
     if account_id:
         query = query.filter(Invoice.account_id == account_id)
     if status:
         query = query.filter(Invoice.status == status)
     if search:
         pattern = f"%{search}%"
-        query = query.outerjoin(Account, Invoice.account_id == Account.id).outerjoin(Case, Invoice.case_id == Case.id).filter(or_(
-            Account.company_name.ilike(pattern), Case.company_name.ilike(pattern),
+        query = query.join(Account, Invoice.account_id == Account.id).filter(or_(
+            Account.company_name.ilike(pattern), Account.client_id.ilike(pattern),
             Invoice.invoice_number.ilike(pattern), Invoice.description.ilike(pattern),
         ))
     total = query.count()
@@ -90,29 +84,22 @@ def get_invoice(db: Session, invoice_id: int, user: User) -> Invoice:
 
 
 def _label(db: Session, inv: Invoice) -> str:
-    acc = db.get(Account, inv.account_id) if inv.account_id else None
-    name = acc.company_name if acc else (inv.case.company_name if inv.case else "—")
-    return f"invoice #{inv.id} for {name}"
+    acc = db.get(Account, inv.account_id)
+    return f"invoice #{inv.id} for {acc.company_name if acc else '—'}"
 
 
 def request_invoice(db: Session, data: InvoiceRequest, user: User) -> Invoice:
     """Step 1 — the RM / Sales asks Accounts to invoice a client onboarding or a service request."""
     acc = _client(db, data.account_id, user)
-    case_id = data.case_id
     if data.instruction_id:
         inst = db.get(Instruction, data.instruction_id)
         if not inst or inst.account_id != acc.id:
             raise HTTPException(status_code=400, detail="That service request does not belong to this client")
         if inst.invoice_id:
             raise HTTPException(status_code=400, detail="An invoice has already been requested for this service request")
-        case_id = case_id or inst.case_id
-    if case_id:
-        case = db.get(Case, case_id)
-        if not case or case.account_id != acc.id:
-            raise HTTPException(status_code=400, detail="That case does not belong to this client")
     if data.currency not in CURRENCIES:
         raise HTTPException(status_code=400, detail=f"Currency must be one of {', '.join(CURRENCIES)}")
-    inv = Invoice(account_id=acc.id, case_id=case_id, description=data.description, amount=data.amount, currency=data.currency,
+    inv = Invoice(account_id=acc.id, description=data.description, amount=data.amount, currency=data.currency,
                   notes=data.notes, status=REQUESTED, requested_by_id=user.id, requested_at=datetime.now(timezone.utc))
     db.add(inv)
     db.flush()
@@ -134,10 +121,8 @@ def create_invoice(db: Session, data: InvoiceCreate, user: User) -> Invoice:
     """Accounts entering an invoice directly (e.g. consolidating several charges)."""
     if not _can_manage(user):
         raise HTTPException(status_code=403, detail="Only Accounts can create invoices. Please request one instead.")
-    if not data.account_id and not data.case_id:
-        raise HTTPException(status_code=400, detail="Choose the client")
-    account_id = data.account_id or db.get(Case, data.case_id).account_id
-    inv = Invoice(**data.model_dump(exclude={"account_id"}), account_id=account_id)
+    acc = _client(db, data.account_id, user)
+    inv = Invoice(**data.model_dump(exclude={"account_id"}), account_id=acc.id)
     db.add(inv)
     db.commit()
     db.refresh(inv)

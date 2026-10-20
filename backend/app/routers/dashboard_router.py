@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.auth.dependencies import get_current_user
 from app.models import User
+from app.schemas.dashboard import DashboardResponse
 from app.services import dashboard_service
 
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
@@ -16,6 +17,6 @@ def my_work(db: Session = Depends(get_db), user: User = Depends(get_current_user
     return my_work_service.my_work(db, user)
 
 
-@router.get("", summary="Full dashboard payload (KPIs + charts)")
+@router.get("", response_model=DashboardResponse, summary="Snapshot MI for this user (BRD §2)")
 def dashboard(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     return dashboard_service.build_dashboard(db, user)

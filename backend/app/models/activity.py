@@ -1,4 +1,4 @@
-"""SQLAlchemy model: Activity (meetings, calls, demos, emails)."""
+"""SQLAlchemy model: Activity — a client's Visit Reports and Call Reports (BRD §15)."""
 from sqlalchemy import Column, Integer, String, Text, Date, DateTime, ForeignKey, Enum as SAEnum
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -8,14 +8,8 @@ from app.database import Base
 
 
 class ActivityType(str, enum.Enum):
-    CALL = "Call"
-    EMAIL = "Email"
-    MEETING = "Meeting"
-    DEMO = "Demo"
-    FOLLOW_UP = "Follow-up"
-    NOTE = "Note"
-    VISIT_REPORT = "Visit Report"  # BRD §17
-    CALL_REPORT = "Call Report"  # BRD §17
+    VISIT_REPORT = "Visit Report"
+    CALL_REPORT = "Call Report"
 
 
 class ActivityStatus(str, enum.Enum):
@@ -31,9 +25,7 @@ class Activity(Base):
     id = Column(Integer, primary_key=True, index=True)
     activity_uid = Column(String(20), unique=True, index=True, nullable=False)  # ACT-0001
 
-    # BRD §17 — activities belong to the client; linking a case is optional.
     account_id = Column(Integer, ForeignKey("accounts.id", ondelete="CASCADE"), nullable=True, index=True)
-    case_id = Column(Integer, ForeignKey("cases.id", ondelete="CASCADE"), nullable=True)
     owner_id = Column(Integer, ForeignKey("users.id"), nullable=True)
 
     company_name = Column(String(255), nullable=False)
@@ -56,6 +48,5 @@ class Activity(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
-    case = relationship("Case", back_populates="activities")
     account = relationship("Account")
     owner = relationship("User", back_populates="activities", foreign_keys=[owner_id])

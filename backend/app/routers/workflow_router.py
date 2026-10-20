@@ -1,21 +1,19 @@
-"""Compliance router — client onboarding workflow (BRD §11, §12 steps 11–14, §15), client amendments
-(§13), Compliance approval of cases, and the single Compliance inbox. Rules live in
-client_workflow_service, amendment_service and case_approval_service."""
+"""Compliance router — new-client approval RM → Compliance (MLRO) → Approver (BRD §7–§10), client
+amendments (§11) and the Compliance inbox. Rules live in client_workflow_service and amendment_service."""
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app.auth.dependencies import get_current_user, require_any_permission, require_permission
+from app.auth.dependencies import get_current_user, require_any_permission
 from app.database import get_db
 from app.models import User
 from app.schemas.account import AccountRead
 from app.schemas.approval import (
-    AmendmentState, ApprovalRead, ApproveRequest, CaseComplianceState, RejectOrComment, RejectRequest,
+    AmendmentState, ApprovalRead, ApproveRequest, RejectOrComment, RejectRequest,
     StatusActionRequest, SubmitRequest, WorkflowAction, WorkflowState,
 )
-from app.services import account_service, amendment_service as amend, case_approval_service as case_ok
-from app.services import case_service, client_workflow_service as wf
+from app.services import account_service, amendment_service as amend, client_workflow_service as wf
 
 router = APIRouter(tags=["Client Workflow"])
 
@@ -79,7 +77,7 @@ def approvals_inbox(status: str = "Pending", request_type: Optional[str] = None,
     return [ApprovalRead.from_row(r) for r in wf.inbox(db, user, status, request_type)]
 
 
-# ─── Client amendments (BRD §13) ────────────────────────────────────────────
+# ─── Client amendments (BRD §11) ────────────────────────────────────────────
 
 def _amendment(db: Session, acc, user: User) -> AmendmentState:
     v = amend.view(db, acc, user)
@@ -122,39 +120,3 @@ def amendment_action(account_id: int, action: str, data: Optional[RejectOrCommen
         raise HTTPException(status_code=404, detail=f"Unknown action '{action}'")
     db.expire_all()
     return _amendment(db, account_service.get_account(db, account_id, user), user)
-
-
-# ─── Compliance approval of cases ───────────────────────────────────────────
-
-def _case_state(db: Session, case, user: User) -> CaseComplianceState:
-    v = case_ok.state(db, case, user)
-    return CaseComplianceState(
-        compliance_status=v["compliance_status"], actions=v["actions"],
-        request=ApprovalRead.from_row(v["request"]) if v["request"] else None,
-        history=[ApprovalRead.from_row(r) for r in v["history"]],
-    )
-
-
-@router.get("/cases/{case_id}/compliance", response_model=CaseComplianceState)
-def get_case_compliance(case_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    return _case_state(db, case_service.get_case(db, case_id, user), user)
-
-
-@router.post("/cases/{case_id}/compliance/{action}", response_model=CaseComplianceState,
-             summary="approve | reject | withdraw | resubmit")
-def case_compliance_action(case_id: int, action: str, data: Optional[RejectOrComment] = None,
-                           db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    case = case_service.get_case(db, case_id, user)
-    data = data or RejectOrComment()
-    if action == "approve":
-        case_ok.approve(db, case, user, data.comment)
-    elif action == "reject":
-        case_ok.reject(db, case, user, data.reason_code, data.reason_text)
-    elif action == "withdraw":
-        case_ok.withdraw(db, case, user)
-    elif action == "resubmit":
-        case_ok.resubmit(db, case, user, data.comment)
-    else:
-        raise HTTPException(status_code=404, detail=f"Unknown action '{action}'")
-    db.expire_all()
-    return _case_state(db, case_service.get_case(db, case_id, user), user)

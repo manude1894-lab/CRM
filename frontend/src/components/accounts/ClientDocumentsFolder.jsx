@@ -5,7 +5,7 @@ import { toast } from "../../store/toast";
 import { reasonDialog } from "../../store/confirm";
 import { useMasters } from "../../hooks/useMasters";
 import { selectableCodes } from "../../hooks/masterUtils";
-import { DOCUMENT_CATEGORY_OPTIONS, fmtDate } from "../../utils/constants";
+import { fmtDate } from "../../utils/constants";
 
 const fmtBytes = (b) =>
   b == null ? "" : b < 1024 ? `${b} B` : b < 1048576 ? `${(b / 1024).toFixed(0)} KB` : `${(b / 1048576).toFixed(1)} MB`;
@@ -18,9 +18,9 @@ const STAGE = {
 };
 
 /**
- * BRD §16 — the client's document folder: everything filed against the Client ID, grouped by category,
- * plus documents attached to the client's cases. Removal follows the client's stage (Draft / Submitted /
- * Locked), decided by the server. The upload form opens only when the user chooses to upload (BRD §14).
+ * BRD §14 — the client's document folder: everything filed against the Client ID, grouped by category.
+ * Removal follows the client's stage (Draft / Submitted / Locked), decided by the server. The upload
+ * form opens only when the user chooses to upload.
  */
 export default function ClientDocumentsFolder({ accountId, onChange, onboarding = false }) {
   const [folder, setFolder] = useState(null);
@@ -34,7 +34,7 @@ export default function ClientDocumentsFolder({ accountId, onChange, onboarding 
   const [partyId, setPartyId] = useState("");
   const [openCats, setOpenCats] = useState({});
   const fileRef = useRef(null);
-  const cats = useMasters("document_category", DOCUMENT_CATEGORY_OPTIONS);
+  const cats = useMasters("document_category", []);
 
   const load = () => documentsApi.folder(accountId).then(setFolder).catch(() => setFolder(null));
   useEffect(() => { if (accountId) load(); }, [accountId]);
@@ -118,7 +118,6 @@ export default function ClientDocumentsFolder({ accountId, onChange, onboarding 
         <div className="text-[10px] text-gray-400">
           {d.link_url ? "Link" : fmtBytes(d.size_bytes)} · {fmtDate(d.created_at)}{d.uploaded_by_name ? ` · ${d.uploaded_by_name}` : ""}
           {d.party_name && <> · <span className="text-gray-600">{d.party_name}</span></>}
-          {d.case_uid && <> · case <span className="font-mono">{d.case_uid}</span></>}
           {d.notes && <> · {d.notes}</>}
         </div>
       </div>
@@ -128,9 +127,9 @@ export default function ClientDocumentsFolder({ accountId, onChange, onboarding 
             <Icon name="view" size={13} />
           </button>
         )}
-        {!d.case_uid && (d.can_delete
+        {d.can_delete
           ? <button onClick={() => remove(d)} title="Remove" className="p-1 rounded hover:bg-red-50 text-gray-400 hover:text-red-500"><Icon name="del" size={13} /></button>
-          : <span title={d.lock_reason || ""} className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 cursor-help">{d.stage === "Locked" ? "Locked" : "Protected"}</span>)}
+          : <span title={d.lock_reason || ""} className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 cursor-help">{d.stage === "Locked" ? "Locked" : "Protected"}</span>}
       </div>
     </div>
   );
@@ -245,12 +244,6 @@ export default function ClientDocumentsFolder({ accountId, onChange, onboarding 
         </details>
       )}
 
-      {folder.case_documents.length > 0 && (
-        <div className="rounded-lg border border-dashed border-gray-200 p-2.5">
-          <div className="text-xs font-semibold text-gray-600 mb-1.5">From the client's cases ({folder.case_documents.length}) <span className="font-normal text-gray-400">— managed on each case</span></div>
-          <div className="space-y-1">{folder.case_documents.map((d) => <Row key={d.id} d={d} />)}</div>
-        </div>
-      )}
     </div>
   );
 }

@@ -1,19 +1,19 @@
 """Service layer: Activity business logic.
 
-BRD §17 — activities (including Visit Reports and Call Reports) belong to the client; linking a case
-is optional. A user sees an activity they (or their team) own, or one on a client they can see.
+BRD §15 — Visit Reports and Call Reports belong to the client. A user sees an activity they (or their
+team) own, or one on a client they can see.
 """
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, select
 from fastapi import HTTPException
 from typing import Optional
 
-from app.models import Account, Activity, ActivityStatus, ActivityType, Case, User, UserRole
+from app.models import Account, Activity, ActivityStatus, ActivityType, User, UserRole
 from app.schemas.activity import ActivityCreate, ActivityUpdate
 from app.utils.uid import next_uid
 from app.services import access_control
 
-# Visit / Call Report fields that must be filled (BRD §17 report templates).
+# Visit / Call Report fields that must be filled.
 REPORT_REQUIRED = {
     ActivityType.VISIT_REPORT.value: [("client_contact", "Client contact met"), ("location", "Location")],
     ActivityType.CALL_REPORT.value: [("client_contact", "Client contact spoken to")],
@@ -40,7 +40,6 @@ def list_activities(
     user: User,
     skip: int = 0,
     limit: int = 100,
-    case_id: Optional[int] = None,
     activity_type: Optional[str] = None,
     owner_id: Optional[int] = None,
     search: Optional[str] = None,
@@ -52,8 +51,6 @@ def list_activities(
 
     if account_id:
         query = query.filter(Activity.account_id == account_id)
-    if case_id:
-        query = query.filter(Activity.case_id == case_id)
     if activity_type:
         query = query.filter(Activity.activity_type == activity_type)
     if owner_id:
@@ -96,24 +93,13 @@ def _check_report(activity_type, values: dict) -> None:
 
 
 def create_activity(db: Session, data: ActivityCreate, user: User) -> Activity:
-    case = account = None
-    if data.case_id:
-        case = db.query(Case).filter(Case.id == data.case_id).first()
-        if not case:
-            raise HTTPException(status_code=400, detail="Case does not exist")
-        if not access_control.user_can_access_case(case, user):
-            raise HTTPException(status_code=403, detail="You don't have access to this case")
-    account_id = data.account_id or (case.account_id if case else None)
-    if account_id:
-        account = db.get(Account, account_id)
-        if not account:
-            raise HTTPException(status_code=400, detail="Client does not exist")
-        if not access_control.user_can_access_account(db, account, user):
-            raise HTTPException(status_code=403, detail="You don't have access to this client")
-        if case and case.account_id and case.account_id != account.id:
-            raise HTTPException(status_code=400, detail="The case belongs to a different client")
-    if not case and not account:
-        raise HTTPException(status_code=400, detail="Choose the client (and optionally the case) this activity is for")
+    if not data.account_id:
+        raise HTTPException(status_code=400, detail="Choose the client this activity is for")
+    account = db.get(Account, data.account_id)
+    if not account:
+        raise HTTPException(status_code=400, detail="Client does not exist")
+    if not access_control.user_can_access_account(db, account, user):
+        raise HTTPException(status_code=403, detail="You don't have access to this client")
     _check_report(data.activity_type, data.model_dump())
 
     owner_id = data.owner_id or user.id
@@ -123,8 +109,8 @@ def create_activity(db: Session, data: ActivityCreate, user: User) -> Activity:
     act = Activity(
         activity_uid=next_uid(db, Activity, "activity_uid", "ACT"),
         **payload,
-        account_id=account_id,
-        company_name=data.company_name or (account.company_name if account else case.company_name),
+        account_id=account.id,
+        company_name=data.company_name or account.company_name,
         owner_id=owner_id,
     )
     db.add(act)

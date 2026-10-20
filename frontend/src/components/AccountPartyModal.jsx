@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { accountPartiesApi, amlApi } from "../api/endpoints";
+import { accountPartiesApi, countriesApi } from "../api/endpoints";
 import { Icon, Modal, Field, Input, Select, CountrySelect, Spinner, ErrorBanner, DateInput } from "./ui";
 import { COUNTRY_CALLING_CODES, fmtDate, isUAE } from "../utils/constants";
 import { toast } from "../store/toast";
@@ -55,7 +55,7 @@ export default function AccountPartyModal({ account, onClose }) {
       setLoading(true); setError(null);
       const [ps, cs, rm] = await Promise.all([
         accountPartiesApi.list(account.id),
-        amlApi.countryRisk().catch(() => []),
+        countriesApi.list().catch(() => []),
         accountPartiesApi.removed(account.id).catch(() => []),
       ]);
       setParties(ps || []);

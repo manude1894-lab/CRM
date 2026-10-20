@@ -19,7 +19,7 @@ Changing the two secrets signs everyone out once; they simply sign in again.
 - [ ] Sign in as `admin@ezeetechgroup.com` and change the password (**Password**, bottom of the menu). The CRM shows a reminder until this is done.
 - [ ] Create a named administrator account for Triam's own system owner, then deactivate or rename the generic admin if Triam prefers.
 - [ ] Create users (Admin → Users & Departments) with their department, supervisor, business role and mobile number.
-- [ ] Give the CO, MLRO and Dy MLRO roles to at least two people, so no one has to approve their own work.
+- [ ] Give the CO, MLRO and Dy MLRO roles to at least two people, so no one has to approve their own work. Name the Approver(s), the Accountant(s) and the Prospecting Coordinator.
 - [ ] Passwords for new users: at least 10 characters with letters and numbers. Ask users to change the first password you give them.
 
 Five wrong passwords in a row lock an account for 15 minutes. An administrator can unlock it at once by setting a new password for the user.
@@ -40,18 +40,12 @@ Five wrong passwords in a row lock an account for 15 minutes. An administrator c
 
 Replace the starter values with Triam's final lists: Triam entities, services, licensing authorities, regulators, tags, document categories, rejection reasons and service request types.
 
-## 6. Loading existing data (in this order)
+## 6. Loading existing clients
 
-1. **Clients:** Clients → Import CSV.
-2. **Existing companies:** Cases → Import existing entities (Offshore Entities List, "Active RELs" sheet saved as CSV). Give each row the Client ID it belongs to.
-3. **Open service requests:** Service Requests → Import (Instruction Tracker saved as CSV).
-
-Each import shows a preview first. Fix any rows marked *Error* in the spreadsheet and import the file again; rows already loaded are recognised and skipped.
-
-Afterwards, check the Filing Calendar: items shown in red are overdue according to the dates imported.
+Clients → Import CSV (administrators). The import shows a preview first. Fix any rows marked *Error* in the spreadsheet and import the file again; rows already loaded are recognised and skipped. New clients are always entered through Prospects.
 
 ## 7. Acceptance and parallel run
 
-- [ ] UAT round 2 with Triam's users, one session per role (RM, Compliance, Operations, Administrator).
+- [ ] UAT round 2 with Triam's users, one session per role (Prospecting Coordinator, RM, Compliance, Approver, Accounts, Administrator).
 - [ ] Two weeks running the CRM alongside the Excel trackers, then retire the trackers.
-- [ ] Sign-off of the Solution Design document and the open items in its Section 8.
+- [ ] Sign-off of the Business Requirements & Scope document and its open items (Section 22).

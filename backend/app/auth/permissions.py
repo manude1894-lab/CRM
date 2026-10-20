@@ -1,8 +1,7 @@
 """Permission resolution (BRD §15). Code asks "may this user do X?", never "is this user an MLRO?".
 
 Effective permissions = everything for the Admin tier, otherwise the flags on the user's active
-business roles (main + additional, Role.permissions). The system tiers (rm / ops / screening) grant no extra flags —
-their existing screen access is unchanged and still enforced by require_roles.
+business roles (main + additional, Role.permissions). The staff tier grants no extra flags.
 """
 from app.models import User, UserRole, PERMISSIONS
 

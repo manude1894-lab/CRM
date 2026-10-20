@@ -1,18 +1,17 @@
 import React, { useEffect, useState } from "react";
 import { accountsApi } from "../api/endpoints";
-import { Badge, Button, Embedded, ErrorBanner, FactList, MoreMenu, PageHeader, Panel, Spinner, Tabs, EmptyState } from "../components/ui";
+import { Badge, Button, Embedded, ErrorBanner, FactList, PageHeader, Panel, Spinner, Tabs } from "../components/ui";
 import AccountFormModal from "../components/accounts/AccountFormModal";
 import AccountPartyModal from "../components/AccountPartyModal";
 import ClientDocumentsFolder from "../components/accounts/ClientDocumentsFolder";
 import ClientServicingModal from "../components/accounts/ClientServicingModal";
 import AccountHistoryModal from "../components/accounts/AccountHistoryModal";
-import TrackRecordModal from "../components/TrackRecordModal";
 import WorkflowBar from "../components/accounts/WorkflowBar";
 import CompletenessChecklist from "../components/accounts/CompletenessChecklist";
 import { accountToForm } from "../components/accounts/accountForm";
 import { useAuthStore } from "../store/auth";
 import { toast } from "../store/toast";
-import { fmt, fmtDate } from "../utils/constants";
+import { fmtDate } from "../utils/constants";
 import { fmtFYE } from "../utils/fye";
 
 const yesNo = (v) => (v === true ? "Yes" : v === false ? "No" : null);
@@ -22,12 +21,11 @@ const list = (v) => (Array.isArray(v) && v.length ? v.join(", ") : null);
  * One client on its own page: header with status and actions, then tabs for everything about the
  * client. The tabs reuse the existing screens (profile form, parties, documents, servicing, history).
  */
-export default function ClientProfilePage({ accountId, initialTab = "overview", users, countries, cases, onBack, onChanged, onOpenCase }) {
+export default function ClientProfilePage({ accountId, initialTab = "overview", users, countries, onBack, onChanged }) {
   const [account, setAccount] = useState(null);
   const [error, setError] = useState(null);
   const [tab, setTab] = useState(initialTab);
   const [version, setVersion] = useState(0); // remounts the tabs after a status change or save
-  const [trackRecord, setTrackRecord] = useState(false);
   const [tabStart, setTabStart] = useState(null); // "request" opens a new service request on the Reports & Requests tab
   const isAdmin = useAuthStore((s) => s.isAdmin());
 
@@ -41,7 +39,6 @@ export default function ClientProfilePage({ accountId, initialTab = "overview", 
 
   const a = account;
   const userName = (id) => users.find((u) => u.id === id)?.name || null;
-  const clientCases = cases.filter((c) => c.account_id === a.id);
   const individual = a.account_type === "Individual";
   const onboarding = ["New", "WIP"].includes(a.profile_status);
   const existing = ["Approved", "Active", "Inactive", "Marked for Exit", "Exited"].includes(a.profile_status);
@@ -53,7 +50,6 @@ export default function ClientProfilePage({ accountId, initialTab = "overview", 
     { key: "parties", label: individual ? "Joint Holders" : "Shareholders & Directors" },
     { key: "documents", label: "Documents" },
     { key: "servicing", label: "Reports & Requests" },
-    { key: "cases", label: "Cases", count: clientCases.length },
     { key: "history", label: "History" },
   ];
 
@@ -68,13 +64,10 @@ export default function ClientProfilePage({ accountId, initialTab = "overview", 
             <Button onClick={() => { setServicingStart("request"); setTab("servicing"); }}>New service request</Button>
           )}
           <Button onClick={() => setTab("profile")}>Edit profile</Button>
-          <MoreMenu items={[
-            { label: "Track record", onClick: () => setTrackRecord(true) },
-          ]} />
         </>}
       />
       <div className="flex flex-wrap gap-1.5 items-center">
-        {/* Triam mark-up §9: existing relationships show status + date + Risk Level + Next AML Review on top. */}
+        {/* BRD §11: existing relationships show status + date + Risk Level + Next AML Review on top. */}
         {existing && a.next_aml_review_date && (
           <span className={`text-[11px] px-2 py-0.5 rounded ${new Date(a.next_aml_review_date) < new Date() ? "bg-red-50 text-red-700" : "bg-gray-100 text-gray-600"}`}>
             Next AML review {fmtDate(a.next_aml_review_date)}
@@ -104,7 +97,6 @@ export default function ClientProfilePage({ accountId, initialTab = "overview", 
                 ["Contact", [a.contact_mobile_country_code && a.contact_mobile_number ? `${a.contact_mobile_country_code} ${a.contact_mobile_number}` : null, a.contact_email].filter(Boolean).join(" · ") || null],
                 ["LEI", a.lei_number ? `${a.lei_number}${a.lei_expiry_date ? ` (expires ${fmtDate(a.lei_expiry_date)})` : ""}` : null],
                 ["Incorporation date", fmtDate(a.incorporation_date)], ["Incorporation cert. no.", a.registration_number],
-                ["Website", a.website], ["Key contacts", a.key_contacts],
               ]} />
             </Panel>
             <Panel title="Triam assignment">
@@ -112,7 +104,7 @@ export default function ClientProfilePage({ accountId, initialTab = "overview", 
                 ["Anchor entity", a.anchor_entity], ["Non-anchor entities", list(a.non_anchor_entities)],
                 ["Anchor RM", userName(a.spoc_id)], ["Non-anchor RMs", list((a.non_anchor_rm_ids || []).map(userName).filter(Boolean))],
                 ["Services", list(a.services_obtained)], ["Nature of services sought", list(a.nature_of_services_sought)],
-                ["One-time service", yesNo(a.is_one_time_service)], ["Invoiced to date", fmt(a.total_invoiced_amount)],
+                ["One-time service", yesNo(a.is_one_time_service)],
               ]} />
             </Panel>
             {!individual && (
@@ -154,36 +146,10 @@ export default function ClientProfilePage({ accountId, initialTab = "overview", 
         )}
         {tab === "parties" && <Panel><Embedded><AccountPartyModal account={a} onClose={refresh} /></Embedded></Panel>}
         {tab === "documents" && <Panel><ClientDocumentsFolder accountId={a.id} onboarding={onboarding} /></Panel>}
-        {tab === "servicing" && <Panel><Embedded><ClientServicingModal account={a} cases={cases} startWith={servicingStart} onClose={() => {}} /></Embedded></Panel>}
+        {tab === "servicing" && <Panel><Embedded><ClientServicingModal account={a} startWith={servicingStart} onClose={() => {}} /></Embedded></Panel>}
         {tab === "history" && <Panel><Embedded><AccountHistoryModal account={a} onClose={() => {}} /></Embedded></Panel>}
-        {tab === "cases" && (clientCases.length === 0
-          ? <EmptyState title="No cases for this client yet" text="Create one from the Cases page and link it to this client." />
-          : (
-            <div className="bg-white border border-gray-100 rounded-xl shadow-sm overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead><tr className="border-b border-gray-100 bg-gray-50 text-xs text-gray-500">
-                  <th className="text-left py-2.5 px-4 font-semibold">Case</th><th className="text-left py-2.5 px-4 font-semibold">Company</th>
-                  <th className="text-left py-2.5 px-4 font-semibold">Route</th><th className="text-left py-2.5 px-4 font-semibold">Stage</th>
-                  <th className="text-left py-2.5 px-4 font-semibold">Compliance</th><th className="text-right py-2.5 px-4 font-semibold">Invoice</th>
-                </tr></thead>
-                <tbody>
-                  {clientCases.map((c) => (
-                    <tr key={c.id} onClick={() => onOpenCase?.(c.id)} className="border-b border-gray-50 hover:bg-gray-50 cursor-pointer">
-                      <td className="py-2.5 px-4 font-mono text-xs">{c.case_uid}</td>
-                      <td className="py-2.5 px-4">{c.company_name}</td>
-                      <td className="py-2.5 px-4 text-xs text-gray-500">{c.engagement_route}</td>
-                      <td className="py-2.5 px-4"><Badge text={c.stage} /></td>
-                      <td className="py-2.5 px-4 text-xs text-gray-500">{c.compliance_status}</td>
-                      <td className="py-2.5 px-4 text-right">{fmt(c.invoice_amount)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ))}
       </div>
 
-      {trackRecord && <TrackRecordModal account={a} onClose={() => setTrackRecord(false)} />}
     </div>
   );
 }

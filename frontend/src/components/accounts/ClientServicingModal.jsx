@@ -3,7 +3,7 @@ import { activitiesApi, instructionsApi } from "../../api/endpoints";
 import { Modal, Field, Input, Select, Textarea, Spinner, DateInput } from "../ui";
 import { toast } from "../../store/toast";
 import { useMasters } from "../../hooks/useMasters";
-import { INSTRUCTION_TYPE_OPTIONS, fmtDate } from "../../utils/constants";
+import { fmtDate } from "../../utils/constants";
 import { useRequestOptions, requestLabel, clientEntities } from "../../hooks/useRequestOptions";
 import ActivityForm, { activityPayload, activityProblem, blankActivity } from "../activities/ActivityForm";
 import ActivityCard from "../activities/ActivityCard";
@@ -12,25 +12,24 @@ const SERVICEABLE = ["Approved", "Active", "Inactive", "Marked for Exit"];
 const STATUS_STYLE = { Completed: "bg-emerald-50 text-emerald-700", "On Hold": "bg-gray-100 text-gray-600", Dropped: "bg-gray-100 text-gray-400" };
 
 /**
- * BRD §17 — servicing an existing client: its Visit / Call Reports and activity history, and its
- * Service Requests, in one place on the client.
+ * BRD §15 — servicing an existing client: its Visit / Call Reports and its Service Requests, in one
+ * place on the client.
  */
-export default function ClientServicingModal({ account, cases = [], onClose, startWith = null }) {
+export default function ClientServicingModal({ account, onClose, startWith = null }) {
   const [tab, setTab] = useState(startWith === "request" ? "requests" : "reports");
   const [activities, setActivities] = useState(null);
   const [requests, setRequests] = useState(null);
   const [form, setForm] = useState(null); // activity form, when open
-  // service request form, when open (Triam mark-up §11: opened straight from the client, with its details)
+  // service request form, when open (BRD §11: opened straight from the client, with its details)
   const entities = clientEntities(account);
-  const blankRequest = () => ({ triam_entity: entities[0] || "", instruction_type: "", other_description: "", case_id: "",
+  const blankRequest = () => ({ triam_entity: entities[0] || "", instruction_type: "", other_description: "",
     date_received: new Date().toISOString().split("T")[0], charge_amount: "", comments: "" });
   const [sr, setSr] = useState(startWith === "request" ? blankRequest() : null);
   const [busy, setBusy] = useState(false);
-  const requestTypes = useMasters("service_request_type", INSTRUCTION_TYPE_OPTIONS);
+  const requestTypes = useMasters("service_request_type", []);
   const triamEntities = useMasters("triam_entity", []);
   const optionsFor = useRequestOptions(sr ? [sr.triam_entity] : []);
   const srOpts = optionsFor(sr?.triam_entity);
-  const clientCases = cases.filter((c) => c.account_id === account.id);
 
   const load = () => {
     activitiesApi.list({ account_id: account.id, limit: 200 }).then((r) => setActivities(r.items || [])).catch(() => setActivities([]));
@@ -56,7 +55,7 @@ export default function ClientServicingModal({ account, cases = [], onClose, sta
     setBusy(true);
     try {
       await instructionsApi.create({
-        account_id: account.id, case_id: sr.case_id ? Number(sr.case_id) : null, instruction_type: sr.instruction_type,
+        account_id: account.id, instruction_type: sr.instruction_type,
         triam_entity: sr.triam_entity || null, other_description: sr.other_description || null,
         date_received: sr.date_received || null, comments: sr.comments || null,
         charge_amount: sr.charge_amount === "" ? null : sr.charge_amount,
@@ -83,7 +82,7 @@ export default function ClientServicingModal({ account, cases = [], onClose, sta
 
       {tab === "reports" && (form ? (
         <div>
-          <ActivityForm form={form} setForm={setForm} cases={clientCases} lockClient />
+          <ActivityForm form={form} setForm={setForm} lockClient />
           <div className="flex justify-end gap-2">
             <button onClick={() => setForm(null)} className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
             <button onClick={saveActivity} disabled={busy} className="px-3 py-1.5 text-sm text-white rounded-lg disabled:opacity-60" style={{ background: "#1a3a5c" }}>Save</button>
@@ -94,13 +93,12 @@ export default function ClientServicingModal({ account, cases = [], onClose, sta
           <div className="flex gap-2">
             <button onClick={() => setForm(blankActivity(account.id, "Visit Report"))} className="px-2.5 py-1 text-xs text-white rounded-lg" style={{ background: "#1a3a5c" }}>+ Visit Report</button>
             <button onClick={() => setForm(blankActivity(account.id, "Call Report"))} className="px-2.5 py-1 text-xs text-white rounded-lg" style={{ background: "#1a3a5c" }}>+ Call Report</button>
-            <button onClick={() => setForm(blankActivity(account.id, "Meeting"))} className="px-2.5 py-1 text-xs border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50">+ Other activity</button>
           </div>
           {activities === null ? <Spinner /> : activities.length === 0
-            ? <p className="text-sm text-gray-400 text-center py-6">No activities recorded for this client yet.</p>
+            ? <p className="text-sm text-gray-400 text-center py-6">No visit or call reports for this client yet.</p>
             : activities.map((a) => (
               <ActivityCard key={a.id} activity={a} compact
-                onEdit={() => setForm({ ...blankActivity(account.id), ...a, account_id: a.account_id || account.id, case_id: a.case_id || "" })} />
+                onEdit={() => setForm({ ...blankActivity(account.id), ...a, account_id: a.account_id || account.id })} />
             ))}
         </div>
       ))}
@@ -126,12 +124,6 @@ export default function ClientServicingModal({ account, cases = [], onClose, sta
                   onChange={(e) => setSr((p) => ({ ...p, other_description: e.target.value }))} />
               </Field>
             )}
-            <Field label="Case / entity (optional)">
-              <Select value={sr.case_id} onChange={(e) => setSr((p) => ({ ...p, case_id: e.target.value }))}>
-                <option value="">— none —</option>
-                {clientCases.map((c) => <option key={c.id} value={c.id}>{c.case_uid} – {c.company_name}</option>)}
-              </Select>
-            </Field>
             <Field label="Date Received"><DateInput value={sr.date_received} onChange={(e) => setSr((p) => ({ ...p, date_received: e.target.value }))} /></Field>
             <Field label="Charge (to client)"><Input type="number" min="0" step="0.01" value={sr.charge_amount} onChange={(e) => setSr((p) => ({ ...p, charge_amount: e.target.value }))} /></Field>
           </div>

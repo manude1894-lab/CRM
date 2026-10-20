@@ -1,4 +1,4 @@
-"""Pydantic schemas: Prospect (pre-Case proposal tracking)."""
+"""Pydantic schemas: Prospect (BRD §4A)."""
 from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional
 from datetime import date, datetime
@@ -43,12 +43,6 @@ class ProspectUpdate(BaseModel):
     notes: Optional[str] = None
 
 
-class ProspectConvertRequest(BaseModel):
-    jurisdiction: Optional[str] = None
-    service_type: Optional[str] = None
-    rm_id: Optional[int] = None
-
-
 class DuplicateMatch(BaseModel):
     id: int
     company_name: str
@@ -64,7 +58,6 @@ class ProspectAssignRequest(BaseModel):
 class ProspectRead(ProspectBase):
     id: int
     prospect_uid: str
-    converted_case_id: Optional[int] = None
     converted_account_id: Optional[int] = None
     assigned_by_id: Optional[int] = None
     assigned_by_name: Optional[str] = None

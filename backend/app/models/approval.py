@@ -4,12 +4,10 @@ A maker submits the client profile; an authorised checker (client.approve, not t
 or rejects it with a reason. Rows are the review history and are never deleted. `snapshot` keeps
 the profile as submitted, so it's clear what the checker approved.
 
-P3 — the same table is the Compliance inbox for every kind of review (request_type):
-  client_profile    new client onboarding (P2)
-  client_amendment  changes to an approved client; `payload` holds the staged edits, `changes` the
-                    field-level before/after shown to the checker
-  case_creation     a new case, waiting for Compliance before it can move through the pipeline
-  case_amendment    changes to an approved case
+The same table is the Compliance inbox for both kinds of review (request_type):
+  client_profile    new client onboarding: RM → Compliance (MLRO) → Approver (BRD §7–§10)
+  client_amendment  changes to an approved client, approved by Compliance only (BRD §11); `payload`
+                    holds the staged edits, `changes` the field-level before/after shown to the checker
 """
 import enum
 
@@ -34,7 +32,6 @@ class ApprovalRequest(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     account_id = Column(Integer, ForeignKey("accounts.id", ondelete="CASCADE"), nullable=True, index=True)
-    case_id = Column(Integer, ForeignKey("cases.id", ondelete="CASCADE"), nullable=True, index=True)
     request_type = Column(String(30), nullable=False, default="client_profile")
     status = Column(String(20), nullable=False, default=ApprovalStatus.PENDING.value, index=True)
 
@@ -60,7 +57,6 @@ class ApprovalRequest(Base):
     compliance_decided_at = Column(DateTime(timezone=True), nullable=True)
 
     account = relationship("Account")
-    case = relationship("Case")
     maker = relationship("User", foreign_keys=[maker_id])
     checker = relationship("User", foreign_keys=[checker_id])
     compliance_checker = relationship("User", foreign_keys=[compliance_checker_id])

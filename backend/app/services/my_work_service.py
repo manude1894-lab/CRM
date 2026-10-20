@@ -1,4 +1,4 @@
-"""Role-level dashboard (Triam BRD mark-up §2): the work waiting for *this* user, by what they may do.
+"""Role-level dashboard (BRD §2): the work waiting for *this* user, by what they may do.
 
 Each item is {key, label, count, page, hint}; the dashboard shows the ones with something to do.
 """
@@ -26,7 +26,7 @@ def my_work(db: Session, user: User) -> list[dict]:
         new_clients = [r for r in pending if r.request_type == "client_profile" and wf.stage_of(r) == wf.STAGE_COMPLIANCE and r.maker_id != user.id]
         others = [r for r in pending if r.request_type != "client_profile" and r.maker_id != user.id]
         add("compliance_new", "New clients waiting for Compliance", len(new_clients), "approvals", "Complete the CDD section, then approve or reject")
-        add("compliance_changes", "Amendments and cases waiting for Compliance", len(others), "approvals")
+        add("compliance_changes", "Client amendments waiting for Compliance", len(others), "approvals")
     if has_permission(user, "client.final_approve"):
         final = [r for r in pending if r.request_type == "client_profile" and wf.stage_of(r) == wf.STAGE_APPROVER and r.maker_id != user.id]
         add("approver", "New clients waiting for your final approval", len(final), "approvals")

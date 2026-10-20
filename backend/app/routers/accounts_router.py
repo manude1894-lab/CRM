@@ -1,18 +1,16 @@
-"""Accounts router."""
+"""Clients router (stored as Account)."""
 from fastapi import APIRouter, Depends, HTTPException, status, Response
 from sqlalchemy.orm import Session
 from typing import Optional
 
 from app.database import get_db
 from app.auth.dependencies import get_current_user, require_admin, require_rm
-from app.models import User, UserRole
+from app.models import User
 from app.schemas import AccountCreate, AccountRead, AccountUpdate, AccountImportRequest, AccountImportResponse
 from app.schemas.account import DuplicateMatch, AccountBulkUpdateRequest, BulkUpdateResult
-from app.schemas.account_report import TrackRecordRead
 from app.services import account_service
-from app.reports import account_track_record_pdf
 
-router = APIRouter(prefix="/accounts", tags=["Accounts"])
+router = APIRouter(prefix="/accounts", tags=["Clients"])
 
 
 @router.get("", summary="List accounts")
@@ -64,29 +62,10 @@ def account_completeness(account_id: int, db: Session = Depends(get_db), user: U
     return {"complete": not missing, "missing": missing}
 
 
-@router.get("/{account_id}/track-record", response_model=TrackRecordRead, summary="Client track record — in-app summary")
-def get_track_record(account_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    account = account_service.get_account(db, account_id, user)
-    return account_service.build_track_record(db, account)
-
-
-@router.get("/{account_id}/track-record/pdf", summary="Client track record — PDF download")
-def download_track_record(account_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    account = account_service.get_account(db, account_id, user)
-    record = account_service.build_track_record(db, account)
-    pdf = account_track_record_pdf(record)
-    filename = f"track_record_{account.account_uid}.pdf"
-    return Response(
-        content=pdf, media_type="application/pdf",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
-    )
-
-
 @router.post("", response_model=AccountRead, status_code=status.HTTP_201_CREATED)
 def create_account(data: AccountCreate, db: Session = Depends(get_db), user: User = Depends(require_rm)):
-    # Triam mark-up §4A — every new client is routed through the Prospect module (administrators may
-    # still create one directly, e.g. to correct data).
-    if not data.prospect_id and user.role != UserRole.ADMIN:
+    # BRD §4A — every new client is routed through the Prospect module.
+    if not data.prospect_id:
         raise HTTPException(status_code=400, detail="New clients are created from a prospect. Open the prospect and choose 'Create client'.")
     return account_service.create_account(db, data, user)
 
@@ -97,8 +76,6 @@ def update_account(
     db: Session = Depends(get_db), user: User = Depends(get_current_user),
 ):
     return account_service.update_account(db, account_id, data, user)
-
-
 
 
 @router.post("/import", response_model=AccountImportResponse, summary="Bulk import clients (Admin only)")

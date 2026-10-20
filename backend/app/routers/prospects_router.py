@@ -1,4 +1,4 @@
-"""Prospects router — pre-Case proposal tracking."""
+"""Prospects router (BRD §4A) — every new client starts as a prospect."""
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 from typing import List, Optional
@@ -6,9 +6,7 @@ from typing import List, Optional
 from app.database import get_db
 from app.auth.dependencies import get_current_user
 from app.models import User
-from app.schemas import (
-    ProspectCreate, ProspectUpdate, ProspectRead, ProspectConvertRequest, CaseRead,
-)
+from app.schemas import ProspectCreate, ProspectUpdate, ProspectRead
 from app.schemas.prospect import DuplicateMatch, ProspectAssignRequest
 from app.services import prospect_service
 
@@ -51,9 +49,3 @@ def update_prospect(prospect_id: int, data: ProspectUpdate, db: Session = Depend
 def assign_prospect(prospect_id: int, data: ProspectAssignRequest, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     return _read(prospect_service.assign_prospect(db, prospect_id, data.rm_id, data.comments, user))
 
-
-
-
-@router.post("/{prospect_id}/convert", response_model=CaseRead, summary="Convert a Won prospect into an onboarding Case")
-def convert_prospect(prospect_id: int, data: ProspectConvertRequest, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    return prospect_service.convert_to_case(db, prospect_id, data, user)

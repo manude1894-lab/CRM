@@ -1,29 +1,18 @@
 import React, { useEffect, useState } from "react";
-import { amendmentApi, caseComplianceApi, casesApi, workflowApi } from "../api/endpoints";
+import { amendmentApi, workflowApi } from "../api/endpoints";
 import { Modal, Spinner, ErrorBanner, PageHeader } from "../components/ui";
 import { useMasters } from "../hooks/useMasters";
 import { formatTimestamp } from "../utils/auditFormat";
-import { fmtDate } from "../utils/constants";
 import { toast } from "../store/toast";
 import { ChangeList, DecisionButtons, REQUEST_TYPE_LABEL } from "../components/compliance/ComplianceParts";
 
 const TABS = ["Pending", "Approved", "Rejected", "Withdrawn"];
-const TYPES = [["", "All"], ["client_profile", "New Clients"], ["client_amendment", "Client Amendments"],
-  ["case_creation", "New Cases"], ["case_amendment", "Case Amendments"]];
-const TYPE_STYLE = {
-  client_profile: "bg-blue-50 text-blue-700", client_amendment: "bg-amber-50 text-amber-800",
-  case_creation: "bg-violet-50 text-violet-700", case_amendment: "bg-orange-50 text-orange-700",
-};
-
-// Case fields shown to the checker when a new case is reviewed.
-const CASE_FIELDS = [
-  ["case_uid", "Case"], ["company_name", "Company Name"], ["service_type", "Service"], ["jurisdiction", "Jurisdiction"],
-  ["source", "Source"], ["introducer", "Introducer"], ["onboarding_date", "Onboarding Date"], ["stage", "Stage"], ["notes", "Notes"],
-];
+const TYPES = [["", "All"], ["client_profile", "New Clients"], ["client_amendment", "Client Amendments"]];
+const TYPE_STYLE = { client_profile: "bg-blue-50 text-blue-700", client_amendment: "bg-amber-50 text-amber-800" };
 
 /**
- * The Compliance review desk: every new client, client amendment, new case and case change waiting
- * for a CO / MLRO decision (BRD §12, §13, §15). A checker can never approve their own submission.
+ * The Compliance review desk: new clients (Compliance, then the Approver — BRD §7–§10) and client
+ * amendments (Compliance only — BRD §11). A checker can never approve their own submission.
  */
 export default function ApprovalsPage({ onNavigate }) {
   const [tab, setTab] = useState("Pending");
@@ -74,7 +63,7 @@ export default function ApprovalsPage({ onNavigate }) {
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50 text-xs text-gray-500">
                 <th className="text-left py-2.5 px-4 font-semibold">Type</th>
-                <th className="text-left py-2.5 px-4 font-semibold">Client / Case</th>
+                <th className="text-left py-2.5 px-4 font-semibold">Client</th>
                 <th className="text-left py-2.5 px-4 font-semibold">Submitted by</th>
                 <th className="text-left py-2.5 px-4 font-semibold">Submitted</th>
                 {tab !== "Pending" && <th className="text-left py-2.5 px-4 font-semibold">Decision</th>}
@@ -94,11 +83,10 @@ export default function ApprovalsPage({ onNavigate }) {
                     )}
                   </td>
                   <td className="py-2.5 px-4">
-                    <div className="font-medium text-gray-800">{r.case_name || r.company_name}</div>
+                    <div className="font-medium text-gray-800">{r.company_name}</div>
                     <div className="text-xs text-gray-400">
-                      <span className="font-mono">{r.case_uid || r.client_id || r.temp_id || "—"}</span>
-                      {r.case_uid && r.client_id && <> · client <span className="font-mono">{r.client_id}</span></>}
-                      {!r.case_uid && r.account_type && <> · {r.account_type}</>}
+                      <span className="font-mono">{r.client_id || r.temp_id || "—"}</span>
+                      {r.account_type && <> · {r.account_type}</>}
                     </div>
                     {r.maker_comment && <div className="text-xs text-gray-500 mt-0.5">“{r.maker_comment}”</div>}
                   </td>
@@ -131,20 +119,13 @@ export default function ApprovalsPage({ onNavigate }) {
   );
 }
 
-/** Review of a client amendment, a new case or a case amendment, with the decision buttons. */
+/** Review of a client amendment: the old and new values, with the decision buttons. */
 function ReviewModal({ row, onClose, onDecided, onNavigate }) {
-  const isCase = row.request_type.startsWith("case_");
   const [state, setState] = useState(null);
-  const [caseInfo, setCaseInfo] = useState(null);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (isCase) {
-      caseComplianceApi.get(row.case_id).then(setState).catch(() => setState({ actions: [] }));
-      casesApi.get(row.case_id).then(setCaseInfo).catch(() => {});
-    } else {
-      amendmentApi.get(row.account_id).then(setState).catch(() => setState({ actions: [] }));
-    }
+    amendmentApi.get(row.account_id).then(setState).catch(() => setState({ actions: [] }));
   }, [row.id]);
 
   // The pending request is the one being reviewed; past requests in the inbox are read-only.
@@ -155,8 +136,7 @@ function ReviewModal({ row, onClose, onDecided, onNavigate }) {
   const act = async (action, body) => {
     setBusy(true);
     try {
-      if (isCase) await caseComplianceApi.act(row.case_id, action, body);
-      else await amendmentApi.act(row.account_id, action, body);
+      await amendmentApi.act(row.account_id, action, body);
       toast.success({ approve: "Approved", reject: "Rejected and returned to the maker", withdraw: "Withdrawn" }[action] || "Done");
       onDecided();
       return true;
@@ -168,12 +148,11 @@ function ReviewModal({ row, onClose, onDecided, onNavigate }) {
 
   const goto = () => {
     onClose();
-    if (isCase) onNavigate?.({ page: "cases", caseId: row.case_id });
-    else onNavigate?.({ page: "accounts", accountId: row.account_id, openForm: true });
+    onNavigate?.({ page: "accounts", accountId: row.account_id, openForm: true });
   };
 
   return (
-    <Modal title={`${REQUEST_TYPE_LABEL[row.request_type]}: ${row.case_name || row.company_name}`} onClose={onClose}>
+    <Modal title={`${REQUEST_TYPE_LABEL[row.request_type]}: ${row.company_name}`} onClose={onClose}>
       <div className="space-y-3">
         <div className="text-xs text-gray-500">
           Submitted by <strong className="text-gray-700">{row.maker_name || "—"}</strong> {formatTimestamp(row.submitted_at)}
@@ -181,18 +160,6 @@ function ReviewModal({ row, onClose, onDecided, onNavigate }) {
         </div>
         {!state ? <Spinner /> : (
           <>
-            {row.request_type === "case_creation" && caseInfo && (
-              <table className="w-full text-xs border border-gray-100 rounded">
-                <tbody>
-                  {CASE_FIELDS.map(([k, label]) => (
-                    <tr key={k} className="border-t border-gray-100">
-                      <td className="px-2 py-1.5 text-gray-500 w-1/3">{label}</td>
-                      <td className="px-2 py-1.5 text-gray-800">{k.endsWith("_date") ? fmtDate(caseInfo[k]) : (caseInfo[k] || "—")}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
             {diff && <ChangeList diff={diff} />}
             {row.status !== "Pending" && (
               <p className="text-xs text-gray-500">{row.status} by {row.checker_name || "—"} {formatTimestamp(row.decided_at)}{row.reason_text ? ` — ${row.reason_text}` : ""}</p>
@@ -200,7 +167,7 @@ function ReviewModal({ row, onClose, onDecided, onNavigate }) {
           </>
         )}
         <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-gray-100">
-          <button onClick={goto} className="text-xs text-brand-600 hover:underline">Open the full {isCase ? "case" : "client"}</button>
+          <button onClick={goto} className="text-xs text-brand-600 hover:underline">Open the full client</button>
           {actions.length > 0 && <DecisionButtons actions={actions} busy={busy} onAction={act} />}
           {isCurrent && actions.length === 0 && <span className="text-[11px] text-gray-400">You submitted this, so another approver must review it.</span>}
         </div>

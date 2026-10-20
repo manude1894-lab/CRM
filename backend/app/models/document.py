@@ -1,13 +1,13 @@
-"""SQLAlchemy model: Document — an uploaded file attached to a Case.
+"""SQLAlchemy model: Document — a file (or link) in the client's folder (BRD §14).
 
 The actual bytes live in the deferred `content` column (Postgres bytea). List
 queries never load it; only document_service.stream_content() touches it — that
 is the single swap point if storage later moves to a volume or S3.
 
-A document can also be linked to a CDD checklist item (case_document_id) or an
-Instruction (instruction_id); uploading against a checklist item marks it received.
+A document can also belong to a service request (instruction_id) or an invoice (invoice_id).
+Categories come from the document_category master list.
 """
-from sqlalchemy import Column, Integer, String, Text, DateTime, LargeBinary, ForeignKey
+from sqlalchemy import Column, Integer, String, DateTime, LargeBinary, ForeignKey
 from sqlalchemy.orm import relationship, deferred
 from sqlalchemy.sql import func
 import enum
@@ -16,15 +16,6 @@ from app.database import Base
 
 
 class DocumentCategory(str, enum.Enum):
-    CDD = "CDD"
-    ACTIVATION = "Activation Document"
-    REFERENCE_LETTER = "Reference Letter"
-    STRUCTURE_CHART = "Structure Chart"
-    CORPORATE_DOCUMENT = "Corporate Document"
-    KYC_FORM = "KYC Form"
-    FILED_RETURN = "Filed Return / Confirmation"
-    RESTORATION = "Restoration"
-    CLOSURE = "Closure / Strike Off"
     OTHER = "Other"
 
 
@@ -32,13 +23,10 @@ class Document(Base):
     __tablename__ = "documents"
 
     id = Column(Integer, primary_key=True, index=True)
-    # Exactly one of case_id/account_id is set — a document belongs to a Case or to a Client directly.
-    case_id = Column(Integer, ForeignKey("cases.id", ondelete="CASCADE"), nullable=True, index=True)
-    account_id = Column(Integer, ForeignKey("accounts.id", ondelete="CASCADE"), nullable=True, index=True)
-    case_document_id = Column(Integer, ForeignKey("case_documents.id", ondelete="SET NULL"), nullable=True)
+    account_id = Column(Integer, ForeignKey("accounts.id", ondelete="CASCADE"), nullable=False, index=True)
     instruction_id = Column(Integer, ForeignKey("instructions.id", ondelete="SET NULL"), nullable=True)
-    invoice_id = Column(Integer, ForeignKey("invoices.id", ondelete="CASCADE"), nullable=True, index=True)
-    party_id = Column(Integer, ForeignKey("account_parties.id", ondelete="SET NULL"), nullable=True, index=True)  # the UBO / director / signatory  # pricing approval / invoice file
+    invoice_id = Column(Integer, ForeignKey("invoices.id", ondelete="CASCADE"), nullable=True, index=True)  # pricing approval / invoice file
+    party_id = Column(Integer, ForeignKey("account_parties.id", ondelete="SET NULL"), nullable=True, index=True)  # the UBO / director / signatory
 
     category = Column(String(40), default=DocumentCategory.OTHER.value, nullable=False)
     filename = Column(String(255), nullable=False)
@@ -50,8 +38,6 @@ class Document(Base):
 
     uploaded_by_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     notes = Column(String(500), nullable=True)
-    # The template code when this file was produced by generation_service; null = uploaded.
-    generated_from = Column(String(60), nullable=True)
 
     # Never deleted (Triam: no delete in the CRM) — a removal is recorded here and the record is kept.
     removed_at = Column(DateTime(timezone=True), nullable=True)
@@ -59,8 +45,6 @@ class Document(Base):
     removed_reason = Column(String(500), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
-    case = relationship("Case", back_populates="documents")
     account = relationship("Account", back_populates="documents")
-    case_document = relationship("CaseDocument", back_populates="attachments")
     instruction = relationship("Instruction", back_populates="attachments")
     uploaded_by = relationship("User", foreign_keys=[uploaded_by_id])

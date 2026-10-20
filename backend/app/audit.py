@@ -26,7 +26,9 @@ AUDITED_MODELS = {
     "Account": "Client",
     "AccountParty": "Client party",
     "Document": "Document",
-    "Case": "Case",
+    "Prospect": "Prospect",
+    "Instruction": "Service request",
+    "Invoice": "Invoice",
     "User": "User",
     "Role": "Role",
     "Department": "Department",
@@ -71,7 +73,7 @@ def _account_id_for(obj) -> int | None:
 
 
 def _label(obj) -> str:
-    for attr in ("company_name", "full_name", "name", "label", "filename", "case_uid"):
+    for attr in ("company_name", "full_name", "name", "label", "filename", "instruction_type", "invoice_number"):
         value = getattr(obj, attr, None)
         if isinstance(value, str) and value:
             return value

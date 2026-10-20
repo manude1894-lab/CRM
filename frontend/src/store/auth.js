@@ -7,19 +7,15 @@ export const useAuthStore = create(
       accessToken: null,
       refreshToken: null,
       user: null,
-      passwordChangeRecommended: false, // P7 — signed in with a default password
+      passwordChangeRecommended: false, // signed in with a default password
       setTokens: (accessToken, refreshToken, user, passwordChangeRecommended = false) =>
         set({ accessToken, refreshToken, user, passwordChangeRecommended }),
       clearPasswordWarning: () => set({ passwordChangeRecommended: false }),
       logout: () => set({ accessToken: null, refreshToken: null, user: null, passwordChangeRecommended: false }),
       isAuthenticated: () => !!get().accessToken,
       role: () => get().user?.role || null,
-      canEdit: () => ["admin", "rm", "ops"].includes(get().user?.role),
       isAdmin: () => get().user?.role === "admin",
-      isRM: () => get().user?.role === "rm",
-      isOps: () => get().user?.role === "ops",
-      isScreening: () => get().user?.role === "screening",
-      // BRD §15 permission flags (from /auth/login and /auth/me). Admins have every flag; the
+      // BRD §13 permission flags (from /auth/login and /auth/me). Admins have every flag; the
       // fallback covers sessions stored before permissions were added to the user payload.
       can: (flag) => get().user?.role === "admin" || (get().user?.permissions || []).includes(flag),
     }),

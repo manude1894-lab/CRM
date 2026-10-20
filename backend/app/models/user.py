@@ -17,10 +17,9 @@ user_extra_roles = Table(
 
 
 class UserRole(str, enum.Enum):
+    """System tier: Administrator, or a staff user whose access comes from business roles (BRD §13)."""
     ADMIN = "admin"
     RM = "rm"
-    OPS = "ops"
-    SCREENING = "screening"
 
 
 class User(Base):
@@ -85,8 +84,6 @@ class User(Base):
         return " · ".join(names) if names else None
 
     # Reverse relationships
-    cases_as_rm = relationship("Case", back_populates="rm", foreign_keys="Case.rm_id")
-    cases_as_ops = relationship("Case", back_populates="ops_owner", foreign_keys="Case.ops_owner_id")
     accounts = relationship("Account", back_populates="owner", foreign_keys="Account.owner_id")
     activities = relationship("Activity", back_populates="owner", foreign_keys="Activity.owner_id")
     notifications = relationship("Notification", back_populates="user", foreign_keys="Notification.user_id")

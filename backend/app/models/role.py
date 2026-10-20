@@ -1,8 +1,8 @@
 """SQLAlchemy model: Role — admin-managed business roles with permission flags (BRD §15, §18).
 
-Business roles (CO, MLRO, RO, FO, Sales Manager, Dy MLRO, …) sit *on top of* the fixed system
-tier in User.role (admin / rm / ops / screening). The tier still drives the existing screens;
-a business role adds permissions. Code checks permissions via app.auth.permissions, never role names.
+Business roles (CO, MLRO, RO, FO, Sales Manager, Dy MLRO, …) sit on top of the system tier in
+User.role (Administrator or staff user); a business role adds permissions. Code checks permissions
+via app.auth.permissions, never role names.
 """
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, JSON, ForeignKey
 from sqlalchemy.orm import relationship

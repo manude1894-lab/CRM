@@ -1,67 +1,40 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { instructionsApi, casesApi, invoicesApi, accountsApi } from "../api/endpoints";
+import { instructionsApi, invoicesApi, accountsApi } from "../api/endpoints";
 import { useMasters } from "../hooks/useMasters";
-import { Icon, Badge, Modal, Field, Input, Select, Textarea, Spinner, ErrorBanner, PageHeader, DateInput } from "../components/ui";
-import DocumentsPanel from "../components/DocumentsPanel";
-import FeedbackPanel from "../components/FeedbackPanel";
-import { INSTRUCTION_TYPE_OPTIONS, fmtFull, fmtDate } from "../utils/constants";
+import { Icon, Modal, Field, Input, Select, Textarea, Spinner, ErrorBanner, PageHeader, DateInput } from "../components/ui";
+import { fmtFull, fmtDate } from "../utils/constants";
 import { useRequestOptions, pickableStatuses, firstOpenStatus, requestLabel, clientEntities } from "../hooks/useRequestOptions";
 import { toast } from "../store/toast";
 import { reasonDialog } from "../store/confirm";
-import { useAuthStore } from "../store/auth";
-import CsvImportModal from "../components/CsvImportModal";
 
-// BRD §17 — a service request belongs to a client; the BVI case (and the Vistra dates) are optional.
+// BRD §15 — service requests on approved clients. Request types and statuses follow the Triam entity
+// handling the request (Triam's "Service Requests - Triam Entities" list, kept as master data).
+const SERVICEABLE = ["Approved", "Active", "Inactive", "Marked for Exit"];
+const CLOSED = ["Dropped", "Completed"];
+
 const emptyForm = (accountId) => ({
   account_id: accountId || "",
-  case_id: "",
   triam_entity: "",
   instruction_type: "",
   other_description: "",
   status: "",
-  document_shared: "",
   date_received: new Date().toISOString().split("T")[0],
-  date_sent_to_vistra: "",
-  date_received_from_vistra: "",
   date_completed: "",
-  cost_amount: "",
   charge_amount: "",
-  invoice_reference: "",
   invoice_id: "",
   comments: "",
 });
 
-// Strip blank-string fields to null so optional date/number columns don't fail validation.
-const cleanPayload = (obj) => Object.fromEntries(
-  Object.entries(obj).map(([k, v]) => [k, v === "" ? null : v])
-);
-
-const REQUEST_COLUMNS = [
-  ["client_id", "Client ID"],
-  ["company_name", "Company Name", "Entity", "Entity Name"],
-  ["case_uid", "Case ID", "Case"],
-  ["request_type", "Request Type", "Instruction Type", "Instruction"],
-  ["status", "Status"],
-  ["date_received", "Date Received", "Received"],
-  ["date_sent_to_vistra", "Date Sent to Vistra", "Sent to Vistra"],
-  ["date_received_from_vistra", "Date Received from Vistra", "Received from Vistra"],
-  ["date_completed", "Date Completed", "Completed"],
-  ["cost_amount", "Cost", "Cost Paid"],
-  ["charge_amount", "Charge", "Charge Billed"],
-  ["invoice_reference", "Invoice Reference", "Invoice Ref", "Invoice No"],
-  ["comments", "Comments", "Notes"],
-];
+// Blank strings go as null so optional date / number fields don't fail validation.
+const cleanPayload = (obj) => Object.fromEntries(Object.entries(obj).map(([k, v]) => [k, v === "" ? null : v]));
 
 export default function InstructionsPage() {
   const [instructions, setInstructions] = useState([]);
-  const isAdmin = useAuthStore((s) => s.isAdmin());
-  const [importing, setImporting] = useState(false); // P6 — open requests from the Excel tracker
-  const [cases, setCases] = useState([]);
   const [accounts, setAccounts] = useState([]);
-  const [clientFilter, setClientFilter] = useState("");
-  const requestTypes = useMasters("service_request_type", INSTRUCTION_TYPE_OPTIONS);
-  const triamEntities = useMasters("triam_entity", []);
   const [invoices, setInvoices] = useState([]);
+  const [clientFilter, setClientFilter] = useState("");
+  const requestTypes = useMasters("service_request_type", []);
+  const triamEntities = useMasters("triam_entity", []);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [statusFilter, setStatusFilter] = useState("All");
@@ -72,14 +45,12 @@ export default function InstructionsPage() {
   const load = async () => {
     try {
       setLoading(true); setError(null);
-      const [instRes, caseRes, invRes, accRes] = await Promise.all([
+      const [instRes, invRes, accRes] = await Promise.all([
         instructionsApi.list({ limit: 500 }),
-        casesApi.list({ limit: 500 }),
         invoicesApi.list({ limit: 500 }),
         accountsApi.list({ limit: 500 }),
       ]);
       setInstructions(instRes.items || []);
-      setCases(caseRes.items || []);
       setAccounts(accRes.items || []);
       setInvoices(invRes.items || []);
     } catch (e) {
@@ -88,9 +59,8 @@ export default function InstructionsPage() {
   };
   useEffect(() => { load(); }, []);
 
-  const caseById = useMemo(() => Object.fromEntries(cases.map((c) => [c.id, c])), [cases]);
   const accountById = useMemo(() => Object.fromEntries(accounts.map((a) => [a.id, a])), [accounts]);
-  // Request types and statuses follow the Triam entity handling the request.
+  const invoiceById = useMemo(() => Object.fromEntries(invoices.map((inv) => [inv.id, inv])), [invoices]);
   const optionsFor = useRequestOptions([...instructions.map((i) => i.triam_entity), form.triam_entity]);
   const formOpts = optionsFor(form.triam_entity);
   const formEntities = (() => {
@@ -98,44 +68,42 @@ export default function InstructionsPage() {
     return served.length ? served : triamEntities.items.map((e) => e.code);
   })();
   const allStatuses = [...new Set(instructions.map((i) => i.status))];
-  // Pick the client's anchor entity; a new entity resets the type and status to that entity's lists.
-  const chooseClient = (accountId) => setForm((p) => ({ ...p, account_id: accountId, case_id: "",
-    triam_entity: clientEntities(accountById[accountId])[0] || "", instruction_type: "", other_description: "", status: "" }));
+  // Picking the client picks its anchor entity; a new entity resets the type and status to that entity's lists.
+  const chooseClient = (accountId) => setForm((p) => ({ ...p, account_id: accountId,
+    triam_entity: clientEntities(accountById[accountId])[0] || "", instruction_type: "", other_description: "", status: "", invoice_id: "" }));
   const chooseEntity = (entity) => setForm((p) => ({ ...p, triam_entity: entity, instruction_type: "", other_description: "", status: "" }));
-  const clientCases = cases.filter((c) => !form.account_id || c.account_id === Number(form.account_id));
-  const caseInvoices = useMemo(
-    () => invoices.filter((inv) => inv.case_id === Number(form.case_id)),
-    [invoices, form.case_id]
-  );
+  const clientInvoices = invoices.filter((inv) => inv.account_id === Number(form.account_id) && inv.status !== "Cancelled");
 
   const filtered = instructions.filter((i) => {
-    const matchStatus = statusFilter === "All" || i.status === statusFilter;
     const acc = accountById[i.account_id];
-    const company = acc?.company_name || caseById[i.case_id]?.company_name || "";
-    const matchSearch = search === "" || [company, acc?.client_id, i.instruction_type, i.invoice_reference, i.comments]
+    const matchSearch = search === "" || [acc?.company_name, acc?.client_id, i.instruction_type, i.other_description, i.comments]
       .some((v) => v?.toLowerCase().includes(search.toLowerCase()));
-    return matchStatus && matchSearch && (!clientFilter || i.account_id === Number(clientFilter));
+    return (statusFilter === "All" || i.status === statusFilter) && matchSearch
+      && (!clientFilter || i.account_id === Number(clientFilter));
   });
 
   const openNew = () => {
     setForm({ ...emptyForm(clientFilter), triam_entity: clientEntities(accountById[clientFilter])[0] || "" });
     setModal("new");
   };
-  const openEdit = (i) => { setForm({ ...i, account_id: i.account_id || "", case_id: i.case_id || "", triam_entity: i.triam_entity || "", other_description: i.other_description || "", charge_amount: i.charge_amount ?? "", cost_amount: i.cost_amount ?? "" }); setModal("edit"); };
+  const openEdit = (i) => {
+    setForm({ ...i, triam_entity: i.triam_entity || "", other_description: i.other_description || "",
+      charge_amount: i.charge_amount ?? "", invoice_id: i.invoice_id || "" });
+    setModal("edit");
+  };
 
   const save = async () => {
-    if (!form.account_id && !form.case_id) return toast.error("Choose the client for this service request");
+    if (!form.account_id) return toast.error("Choose the client for this service request");
     if (!form.instruction_type) return toast.error("Choose the request type");
     if (form.instruction_type === "Other" && !form.other_description?.trim()) return toast.error("Describe the request (up to 50 characters)");
     try {
       const payload = cleanPayload({ ...form, status: form.status || firstOpenStatus(formOpts) });
       if (payload.invoice_id != null) payload.invoice_id = Number(payload.invoice_id);
       if (modal === "new") {
-        await instructionsApi.create({ ...payload, account_id: payload.account_id ? Number(payload.account_id) : null,
-          case_id: payload.case_id ? Number(payload.case_id) : null });
+        await instructionsApi.create({ ...payload, account_id: Number(payload.account_id) });
         toast.success("Service request created");
       } else {
-        const { id, case_id, account_id, created_at, updated_at, cancel_reason, ...patch } = payload;
+        const { id, account_id, created_at, updated_at, cancel_reason, ...patch } = payload;
         await instructionsApi.update(form.id, patch);
       }
       setModal(null); load();
@@ -152,7 +120,7 @@ export default function InstructionsPage() {
   // Service requests are never deleted: they are cancelled with a reason and stay on record.
   const cancelRequest = async (i) => {
     const reason = await reasonDialog({ title: "Cancel service request", confirmLabel: "Cancel request",
-      message: `${i.instruction_type} will be marked Cancelled and kept on record.` });
+      message: `${requestLabel(i)} will be marked Dropped and kept on record.` });
     if (!reason) return;
     try { await instructionsApi.cancel(i.id, reason); toast.success("Service request cancelled"); load(); }
     catch (e) { toast.error(e.response?.data?.detail || "Cancel failed"); }
@@ -161,37 +129,22 @@ export default function InstructionsPage() {
   if (loading) return <Spinner />;
   if (error) return <ErrorBanner message={error} onRetry={load} />;
 
-  const counts = allStatuses.reduce((acc, s) => {
-    acc[s] = instructions.filter((i) => i.status === s).length;
-    return acc;
-  }, {});
-
-  const totals = filtered.reduce((acc, i) => {
-    acc.cost += Number(i.cost_amount || 0);
-    acc.charge += Number(i.charge_amount || 0);
-    return acc;
-  }, { cost: 0, charge: 0 });
-  totals.margin = totals.charge - totals.cost;
+  const counts = allStatuses.reduce((acc, s) => ({ ...acc, [s]: instructions.filter((i) => i.status === s).length }), {});
 
   return (
     <div className="space-y-4">
       <PageHeader title="Service Requests"
         subtitle={<>{filtered.length} of {instructions.length} service requests</>}
-        actions={<>
-<div className="flex gap-2">
-          {isAdmin && (
-            <button onClick={() => setImporting(true)} className="px-3 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-700 bg-white font-medium">Import</button>
-          )}
+        actions={
           <button onClick={openNew} className="px-3 py-2 text-sm text-white rounded-lg font-medium flex items-center gap-1.5 hover:opacity-90" style={{ background: "#1a3a5c" }}>
-          <Icon name="plus" size={14} /> New Service Request
-        </button>
-        </div>
-        </>} />
+            <Icon name="plus" size={14} /> New Service Request
+          </button>
+        } />
 
       <div className="flex gap-2 flex-wrap items-center">
         <div className="relative flex-1 min-w-48">
           <Icon name="search" size={15} className="absolute left-3 top-2.5 text-gray-400" />
-          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search company, type, invoice ref..."
+          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search client, request type, comments..."
             className="w-full pl-8 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-brand-400" />
         </div>
         <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
@@ -206,96 +159,68 @@ export default function InstructionsPage() {
         </select>
       </div>
 
-      <div className="flex flex-wrap gap-3">
-        <div className="bg-white border border-gray-100 rounded-xl px-4 py-2 shadow-sm">
-          <div className="text-[11px] text-gray-400 uppercase tracking-wide">Cost (to RA)</div>
-          <div className="text-sm font-semibold text-gray-700">{fmtFull(totals.cost)}</div>
-        </div>
-        <div className="bg-white border border-gray-100 rounded-xl px-4 py-2 shadow-sm">
-          <div className="text-[11px] text-gray-400 uppercase tracking-wide">Charged (to client)</div>
-          <div className="text-sm font-semibold text-gray-700">{fmtFull(totals.charge)}</div>
-        </div>
-        <div className="bg-white border border-gray-100 rounded-xl px-4 py-2 shadow-sm">
-          <div className="text-[11px] text-gray-400 uppercase tracking-wide">Margin</div>
-          <div className={`text-sm font-semibold ${totals.margin < 0 ? "text-red-600" : "text-emerald-600"}`}>{fmtFull(totals.margin)}</div>
-        </div>
-      </div>
-
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-100 bg-gray-50">
               <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500">Client</th>
+              <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500">Triam Entity</th>
               <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500">Request Type</th>
               <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500">Status</th>
               <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500">Received</th>
               <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500">Completed</th>
-              <th className="text-right py-3 px-4 text-xs font-semibold text-gray-500">Cost</th>
               <th className="text-right py-3 px-4 text-xs font-semibold text-gray-500">Charge</th>
-              <th className="text-right py-3 px-4 text-xs font-semibold text-gray-500">Margin</th>
-              <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500">Invoice Ref</th>
+              <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500">Invoice</th>
               <th className="py-3 px-4 text-xs font-semibold text-gray-500">Actions</th>
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 && (
-              <tr><td colSpan={10} className="py-8 text-center text-sm text-gray-400">No service requests match this filter.</td></tr>
+              <tr><td colSpan={9} className="py-8 text-center text-sm text-gray-400">No service requests match this filter.</td></tr>
             )}
-            {filtered.map((i) => (
-              <tr key={i.id} className="border-b border-gray-50 hover:bg-gray-50">
-                <td className="py-3 px-4 text-xs">
-                  <div className="font-medium text-gray-800">{accountById[i.account_id]?.company_name || caseById[i.case_id]?.company_name || "—"}</div>
-                  <div className="text-gray-400">
-                    <span className="font-mono">{accountById[i.account_id]?.client_id || ""}</span>
-                    {i.case_id && <> {accountById[i.account_id]?.client_id ? "· " : ""}{caseById[i.case_id]?.case_uid}</>}
-                  </div>
-                </td>
-                <td className="py-3 px-4 text-xs text-gray-600">
-                  {requestLabel(i)}
-                  {i.triam_entity && <div className="text-[11px] text-gray-400">{i.triam_entity}</div>}
-                </td>
-                <td className="py-3 px-4">
-                  {["Dropped", "Completed"].includes(i.status) ? (
-                    <span className={`text-xs ${i.status === "Dropped" ? "text-gray-400" : "text-emerald-700"}`} title={i.cancel_reason || ""}>{i.status}</span>
-                  ) : (
-                    <select value={i.status} onChange={(e) => quickSetStatus(i, e.target.value)}
-                      className="text-xs border-0 bg-transparent focus:outline-none cursor-pointer max-w-[11rem]">
-                      {pickableStatuses(optionsFor(i.triam_entity), i.status).map((s) => <option key={s} value={s}>{s}</option>)}
-                    </select>
-                  )}
-                </td>
-                <td className="py-3 px-4 text-xs text-gray-500">{fmtDate(i.date_received) || "—"}</td>
-                <td className="py-3 px-4 text-xs text-gray-500">{fmtDate(i.date_completed) || "—"}</td>
-                <td className="py-3 px-4 text-xs text-right text-gray-500">{i.cost_amount != null ? fmtFull(i.cost_amount) : "—"}</td>
-                <td className="py-3 px-4 text-xs text-right text-gray-600">{i.charge_amount != null ? fmtFull(i.charge_amount) : "—"}</td>
-                <td className="py-3 px-4 text-xs text-right text-gray-500">
-                  {i.charge_amount != null || i.cost_amount != null
-                    ? fmtFull(Number(i.charge_amount || 0) - Number(i.cost_amount || 0))
-                    : "—"}
-                </td>
-                <td className="py-3 px-4 text-xs text-gray-500">{i.invoice_reference || "—"}</td>
-                <td className="py-3 px-4">
-                  <div className="flex gap-1">
-                    {!["Dropped", "Completed"].includes(i.status) && (<>
-                      <button onClick={() => openEdit(i)} className="p-1.5 rounded hover:bg-brand-50 text-gray-400 hover:text-brand-600">
-                        <Icon name="edit" size={14} />
-                      </button>
-                      <button onClick={() => cancelRequest(i)} title="Cancel request" className="p-1.5 rounded hover:bg-red-50 text-gray-400 hover:text-red-500">
-                        <Icon name="close" size={14} />
-                      </button>
-                    </>)}
-                  </div>
-                </td>
-              </tr>
-            ))}
+            {filtered.map((i) => {
+              const acc = accountById[i.account_id];
+              const inv = invoiceById[i.invoice_id];
+              return (
+                <tr key={i.id} className="border-b border-gray-50 hover:bg-gray-50">
+                  <td className="py-3 px-4 text-xs">
+                    <div className="font-medium text-gray-800">{acc?.company_name || "—"}</div>
+                    <div className="text-gray-400 font-mono">{acc?.client_id || ""}</div>
+                  </td>
+                  <td className="py-3 px-4 text-xs text-gray-600">{i.triam_entity || "—"}</td>
+                  <td className="py-3 px-4 text-xs text-gray-600">{requestLabel(i)}</td>
+                  <td className="py-3 px-4">
+                    {CLOSED.includes(i.status) ? (
+                      <span className={`text-xs ${i.status === "Dropped" ? "text-gray-400" : "text-emerald-700"}`} title={i.cancel_reason || ""}>{i.status}</span>
+                    ) : (
+                      <select value={i.status} onChange={(e) => quickSetStatus(i, e.target.value)}
+                        className="text-xs border-0 bg-transparent focus:outline-none cursor-pointer max-w-[11rem]">
+                        {pickableStatuses(optionsFor(i.triam_entity), i.status).map((s) => <option key={s} value={s}>{s}</option>)}
+                      </select>
+                    )}
+                  </td>
+                  <td className="py-3 px-4 text-xs text-gray-500">{fmtDate(i.date_received) || "—"}</td>
+                  <td className="py-3 px-4 text-xs text-gray-500">{fmtDate(i.date_completed) || "—"}</td>
+                  <td className="py-3 px-4 text-xs text-right text-gray-600">{i.charge_amount != null ? fmtFull(i.charge_amount) : "—"}</td>
+                  <td className="py-3 px-4 text-xs text-gray-500">{inv ? `${inv.invoice_number || `#${inv.id}`} (${inv.status})` : "—"}</td>
+                  <td className="py-3 px-4">
+                    <div className="flex gap-1">
+                      {!CLOSED.includes(i.status) && (<>
+                        <button onClick={() => openEdit(i)} className="p-1.5 rounded hover:bg-brand-50 text-gray-400 hover:text-brand-600">
+                          <Icon name="edit" size={14} />
+                        </button>
+                        <button onClick={() => cancelRequest(i)} title="Cancel request" className="p-1.5 rounded hover:bg-red-50 text-gray-400 hover:text-red-500">
+                          <Icon name="close" size={14} />
+                        </button>
+                      </>)}
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
-
-      {importing && (
-        <CsvImportModal title="Import open service requests" columns={REQUEST_COLUMNS} required={["request_type"]}
-          templateName="service-requests-template.csv" onRun={instructionsApi.importRequests} onClose={() => setImporting(false)} onDone={load} />
-      )}
 
       {modal && (
         <Modal title={modal === "new" ? "New Service Request" : "Edit Service Request"} onClose={() => setModal(null)}>
@@ -303,14 +228,8 @@ export default function InstructionsPage() {
             <Field label="Client" required>
               <Select value={form.account_id || ""} disabled={modal === "edit"} onChange={(e) => chooseClient(e.target.value)}>
                 <option value="">— choose client —</option>
-                {accounts.filter((a) => modal === "edit" || ["Approved", "Active", "Inactive", "Marked for Exit"].includes(a.profile_status))
+                {accounts.filter((a) => modal === "edit" || SERVICEABLE.includes(a.profile_status))
                   .map((a) => <option key={a.id} value={a.id}>{a.client_id ? `${a.client_id} – ` : ""}{a.company_name}</option>)}
-              </Select>
-            </Field>
-            <Field label="Case / entity (optional)">
-              <Select value={form.case_id || ""} disabled={modal === "edit"} onChange={(e) => setForm((p) => ({ ...p, case_id: e.target.value }))}>
-                <option value="">— none —</option>
-                {clientCases.map((c) => <option key={c.id} value={c.id}>{c.case_uid} – {c.company_name}</option>)}
               </Select>
             </Field>
             <Field label="Triam entity" required>
@@ -327,67 +246,35 @@ export default function InstructionsPage() {
                   .map((t) => <option key={t} value={t}>{requestTypes.labelOf(t) || t}</option>)}
               </Select>
             </Field>
-            {form.instruction_type === "Other" && (
+            {form.instruction_type === "Other" ? (
               <Field label="Describe the request" required>
                 <Input maxLength={50} value={form.other_description || ""} placeholder="Up to 50 characters"
                   onChange={(e) => setForm((p) => ({ ...p, other_description: e.target.value }))} />
               </Field>
-            )}
+            ) : <div />}
             <Field label="Status">
               <Select value={form.status || firstOpenStatus(formOpts)} onChange={(e) => setForm((p) => ({ ...p, status: e.target.value }))}>
                 {pickableStatuses(formOpts, form.status).map((s) => <option key={s}>{s}</option>)}
               </Select>
             </Field>
-            <Field label="Cost (to registered agent)">
-              <Input type="number" min="0" step="0.01" value={form.cost_amount ?? ""} onChange={(e) => setForm((p) => ({ ...p, cost_amount: e.target.value }))} />
-            </Field>
-            <Field label="Charge (to client)">
+            <Field label="Charge to the client">
               <Input type="number" min="0" step="0.01" value={form.charge_amount ?? ""} onChange={(e) => setForm((p) => ({ ...p, charge_amount: e.target.value }))} />
             </Field>
             <Field label="Date Received">
               <DateInput value={form.date_received || ""} onChange={(e) => setForm((p) => ({ ...p, date_received: e.target.value }))} />
             </Field>
-            {form.case_id && (<>
-            <Field label="Date Sent to Vistra">
-              <DateInput value={form.date_sent_to_vistra || ""} onChange={(e) => setForm((p) => ({ ...p, date_sent_to_vistra: e.target.value }))} />
-            </Field>
-            <Field label="Date Received from Vistra">
-              <DateInput value={form.date_received_from_vistra || ""} onChange={(e) => setForm((p) => ({ ...p, date_received_from_vistra: e.target.value }))} />
-            </Field>
-            </>)}
             <Field label="Date Completed">
               <DateInput value={form.date_completed || ""} onChange={(e) => setForm((p) => ({ ...p, date_completed: e.target.value }))} />
             </Field>
-            <Field label="Invoice Reference">
-              <Input value={form.invoice_reference || ""} onChange={(e) => setForm((p) => ({ ...p, invoice_reference: e.target.value }))} placeholder="e.g. 2024-TCS-00005" />
-            </Field>
-            <Field label="Linked Invoice (ledger)">
-              <Select value={form.invoice_id || ""} onChange={(e) => setForm((p) => ({ ...p, invoice_id: e.target.value }))}>
-                <option value="">— None —</option>
-                {caseInvoices.map((inv) => <option key={inv.id} value={inv.id}>{inv.invoice_number || `Invoice #${inv.id}`} ({inv.status})</option>)}
+            <Field label="Invoice">
+              <Select value={form.invoice_id || ""} disabled={!form.account_id} onChange={(e) => setForm((p) => ({ ...p, invoice_id: e.target.value }))}>
+                <option value="">— none —</option>
+                {clientInvoices.map((inv) => <option key={inv.id} value={inv.id}>{inv.invoice_number || `Invoice #${inv.id}`} ({inv.status})</option>)}
               </Select>
-            </Field>
-            <Field label="Document Shared">
-              <Input value={form.document_shared || ""} onChange={(e) => setForm((p) => ({ ...p, document_shared: e.target.value }))} placeholder="e.g. Company docs (COI, MoA, ROM)" />
             </Field>
           </div>
           <Field label="Comments"><Textarea value={form.comments || ""} onChange={(e) => setForm((p) => ({ ...p, comments: e.target.value }))} /></Field>
-
-          {!form.case_id && <p className="text-[11px] text-gray-400 -mt-2 mb-3">Without a case, the Vistra dates don't apply and a completed charged request is invoiced manually.</p>}
-
-          {modal === "edit" && form.id && form.case_id && (
-            <div className="border-t border-gray-100 pt-3 mb-1">
-              <p className="text-xs font-semibold text-gray-600 mb-2">Attachments <span className="text-gray-400 font-normal">· issued docs, filed-return confirmations</span></p>
-              <DocumentsPanel caseId={Number(form.case_id)} scope={{ instruction_id: form.id }} defaultCategory="Filed Return / Confirmation" />
-            </div>
-          )}
-
-          {modal === "edit" && form.id && form.case_id && (
-            <div className="border-t border-gray-100 pt-3 mb-1">
-              <p className="text-xs font-semibold text-gray-600 mb-2">Client Feedback <span className="text-gray-400 font-normal">· logged by staff, not client-submitted</span></p>
-              <FeedbackPanel caseId={Number(form.case_id)} instructionId={form.id} />
-            </div>
-          )}
+          <p className="text-[11px] text-gray-400 -mt-2 mb-3">When a request with a charge is completed, Accounts receive an invoice instruction automatically.</p>
 
           <div className="flex justify-end gap-3 mt-4">
             <button onClick={() => setModal(null)} className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>

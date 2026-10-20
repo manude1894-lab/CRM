@@ -51,23 +51,16 @@ class Settings(BaseSettings):
     SMS_SENDER_ID: str = "TRIAM"
     # Notification types that also go out by SMS (comma-separated). Compliance decisions by default.
     SMS_NOTIFICATION_TYPES: str = ("client_submitted,client_approved,client_rejected,amendment_submitted,"
-                                   "amendment_approved,amendment_rejected,case_submitted,case_approved,case_rejected,"
-                                   "case_amendment_submitted")
+                                   "amendment_approved,amendment_rejected")
 
     # Login lockout (P7): this many wrong passwords in a row locks the account for N minutes.
     LOGIN_MAX_ATTEMPTS: int = 5
     LOGIN_LOCK_MINUTES: int = 15
-    # Triam mark-up §13: company email domain(s) for user accounts, e.g. "asktriam.com" (empty = any)
+    # BRD §13: company email domain(s) for user accounts, e.g. "asktriam.com" (empty = any)
     USER_EMAIL_DOMAINS: str = ""
 
-    # Uploads — client spec CRM-change-request item 16
+    # Uploads — BRD §14
     MAX_UPLOAD_MB: int = 2
-
-    # Compliance cadence (anchored to the BVI calendar — see case_service)
-    RENEWAL_CADENCE_MONTHS: int = 12          # Annual Licence Fee (incorporation anniversary)
-    ESR_FILING_CADENCE_MONTHS: int = 12       # Economic Substance filing (annual)
-    AR_FILING_CADENCE_MONTHS: int = 12        # Annual Return (fixed 30 September)
-    BO_FILING_DEADLINE_DAYS: int = 30         # ROM/RBO filing after any ownership change
 
     class Config:
         env_file = ".env"

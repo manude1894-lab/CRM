@@ -8,14 +8,10 @@ from apscheduler.schedulers.background import BackgroundScheduler
 
 from app.config import settings
 from app.routers import (
-    auth_router, users_router, cases_router, cdd_router, compliance_router,
-    accounts_router, activities_router, notifications_router, dashboard_router, reports_router,
-    party_router, instructions_router, invoices_router, aml_router, company_router,
-    documents_router, lifecycle_router, formation_router,
-    action_points_router, pep_router, generation_router, jurisdictions_router,
-    prospects_router, service_subscriptions_router, service_feedback_router,
-    account_party_router, department_router,
-    masters_router, roles_router, audit_router, workflow_router, system_router,
+    auth_router, users_router, accounts_router, account_party_router, workflow_router,
+    prospects_router, activities_router, instructions_router, invoices_router, documents_router,
+    notifications_router, dashboard_router, reports_router, countries_router, department_router,
+    masters_router, roles_router, audit_router, system_router,
 )
 from app.services.scheduler_jobs import run_daily_sweep
 import app.audit  # noqa: F401  registers the audit-trail listener (BRD §15)
@@ -84,17 +80,11 @@ def health():
 
 # ─── Routers ───────────────────────────────────────────────────────────────
 for r in (
-    auth_router.router, users_router.router, cases_router.router, cdd_router.router,
-    compliance_router.router, accounts_router.router, activities_router.router,
+    auth_router.router, users_router.router, accounts_router.router, account_party_router.router,
+    workflow_router.router, prospects_router.router, activities_router.router,
+    instructions_router.router, invoices_router.router, documents_router.router,
     notifications_router.router, dashboard_router.router, reports_router.router,
-    party_router.router, instructions_router.router, invoices_router.router,
-    aml_router.router, company_router.router, documents_router.router,
-    lifecycle_router.router, formation_router.router,
-    action_points_router.router, pep_router.router, generation_router.router,
-    jurisdictions_router.router,
-    prospects_router.router, service_subscriptions_router.router, service_feedback_router.router,
-    account_party_router.router, department_router.router,
-    masters_router.router, roles_router.router, audit_router.router, workflow_router.router,
-    system_router.router,
+    countries_router.router, department_router.router, masters_router.router,
+    roles_router.router, audit_router.router, system_router.router,
 ):
     app.include_router(r, prefix=settings.API_V1_PREFIX)

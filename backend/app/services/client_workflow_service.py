@@ -326,14 +326,13 @@ def history(db: Session, account_id: int) -> list[ApprovalRequest]:
 
 def inbox(db: Session, user: User, status: str = ApprovalStatus.PENDING.value,
           request_type: Optional[str] = None) -> list[ApprovalRequest]:
-    """The Compliance inbox — every kind of request (new client, client amendment, new case, case
-    amendment) on records this user may see."""
-    from app.services import case_approval_service
+    """The Compliance inbox — new clients and client amendments on clients this user may see."""
     q = db.query(ApprovalRequest).filter(ApprovalRequest.status == status)
     if request_type:
         q = q.filter(ApprovalRequest.request_type == request_type)
     reqs = q.order_by(ApprovalRequest.submitted_at).all()
-    return [r for r in reqs if case_approval_service.can_see(db, r, user) and _in_my_queue(r, user, status)]
+    return [r for r in reqs if r.account is not None and access_control.user_can_access_account(db, r.account, user)
+            and _in_my_queue(r, user, status)]
 
 
 def _in_my_queue(r: ApprovalRequest, user: User, status: str) -> bool:

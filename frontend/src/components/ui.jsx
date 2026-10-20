@@ -7,7 +7,6 @@ import { useConfirmStore } from "../store/confirm";
 export const Icon = ({ name, size = 18, className = "" }) => {
   const icons = {
     dashboard: "M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z",
-    cases: "M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 3c1.93 0 3.5 1.57 3.5 3.5S13.93 13 12 13s-3.5-1.57-3.5-3.5S10.07 6 12 6zm7 13H5v-.23c0-.62.28-1.2.76-1.58C7.47 15.82 9.64 15 12 15s4.53.82 6.24 2.19c.48.38.76.97.76 1.58V19z",
     cdd: "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z",
     compliance: "M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm2 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z",
     accounts: "M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z",
@@ -49,74 +48,49 @@ export const Icon = ({ name, size = 18, className = "" }) => {
 export const Badge = ({ text }) => {
   const label = ROLE_LABEL[text] || text;
   const styles = {
-    // Case stages
-    "New Inquiry": "bg-gray-100 text-gray-600",
-    "RM Assigned": "bg-sky-100 text-sky-700",
-    "Docs Requested": "bg-blue-100 text-blue-700",
-    "CDD/KYC In Review": "bg-indigo-100 text-indigo-700",
-    "CDD Approved": "bg-purple-100 text-purple-700",
-    "Invoice Raised": "bg-orange-100 text-orange-700",
-    "Invoice Paid": "bg-amber-100 text-amber-700",
-    "Ops Assigned": "bg-teal-100 text-teal-700",
-    "Application Submitted": "bg-lime-100 text-lime-700",
-    "License Received": "bg-emerald-100 text-emerald-700",
-    Active: "bg-emerald-100 text-emerald-700",
-    // Case status overlay
-    "Docs Pending": "bg-amber-100 text-amber-700",
-    Rejected: "bg-red-100 text-red-700",
-    "On Hold": "bg-gray-100 text-gray-600",
-    // Entity-lifecycle statuses
-    "In Closure": "bg-amber-100 text-amber-700",
-    "Struck Off": "bg-red-100 text-red-700",
-    Dissolved: "bg-gray-200 text-gray-700",
-    "Transferred Out": "bg-gray-200 text-gray-700",
-    // Document / CDD statuses
-    "Not Started": "bg-gray-100 text-gray-600",
-    Submitted: "bg-blue-100 text-blue-700",
-    "Under Review": "bg-indigo-100 text-indigo-700",
+    // Client lifecycle (BRD §9)
+    New: "bg-gray-100 text-gray-600",
+    WIP: "bg-sky-100 text-sky-700",
+    "Awaiting Approval": "bg-amber-100 text-amber-700",
     Approved: "bg-emerald-100 text-emerald-700",
-    // Formation / screening / Vistra loop
-    "Not Submitted": "bg-gray-100 text-gray-600",
-    Cleared: "bg-emerald-100 text-emerald-700",
-    "Signed Off": "bg-emerald-100 text-emerald-700",
-    "Query Raised": "bg-amber-100 text-amber-700",
-    "Adverse Findings": "bg-red-100 text-red-700",
-    // Action Points / PEP / AR sub-workflow
-    Open: "bg-gray-100 text-gray-600",
-    Done: "bg-emerald-100 text-emerald-700",
-    Decline: "bg-red-100 text-red-700",
-    Proceed: "bg-emerald-100 text-emerald-700",
-    "Proceed with EDD": "bg-amber-100 text-amber-700",
-    "Data Prepared": "bg-blue-100 text-blue-700",
-    "Submitted to Vistra": "bg-blue-100 text-blue-700",
-    Filed: "bg-indigo-100 text-indigo-700",
-    Confirmed: "bg-emerald-100 text-emerald-700",
-    // Invoice statuses
-    "Not Raised": "bg-gray-100 text-gray-600",
+    Active: "bg-emerald-100 text-emerald-700",
+    Inactive: "bg-gray-200 text-gray-700",
+    "Marked for Exit": "bg-orange-100 text-orange-700",
+    Exited: "bg-gray-200 text-gray-700",
+    // Prospects (BRD §4A)
+    "Proposal Sent": "bg-blue-100 text-blue-700",
+    Negotiating: "bg-indigo-100 text-indigo-700",
+    Won: "bg-emerald-100 text-emerald-700",
+    Lost: "bg-gray-200 text-gray-700",
+    // Approvals
+    Pending: "bg-amber-100 text-amber-700",
+    Rejected: "bg-red-100 text-red-700",
+    Withdrawn: "bg-gray-100 text-gray-600",
+    // Service requests (BRD §15) and invoices (BRD §16)
+    "On Hold": "bg-gray-100 text-gray-600",
+    Completed: "bg-emerald-100 text-emerald-700",
+    Dropped: "bg-gray-200 text-gray-700",
+    Requested: "bg-amber-100 text-amber-700",
+    Draft: "bg-gray-100 text-gray-600",
     Raised: "bg-orange-100 text-orange-700",
     Paid: "bg-emerald-100 text-emerald-700",
-    // Generic risk-style badges (kept for reuse)
+    Overdue: "bg-red-100 text-red-700",
+    Cancelled: "bg-gray-200 text-gray-700",
+    // Visit / Call Reports
+    "Visit Report": "bg-blue-100 text-blue-700",
+    "Call Report": "bg-green-100 text-green-700",
+    Planned: "bg-sky-100 text-sky-700",
+    // CDD / AML risk level (BRD §8)
     High: "bg-red-100 text-red-700",
     Medium: "bg-amber-100 text-amber-700",
     Low: "bg-green-100 text-green-700",
-    // Roles
+    "High Risk": "bg-red-100 text-red-700",
+    "Medium Risk": "bg-amber-100 text-amber-700",
+    "Low Risk": "bg-green-100 text-green-700",
+    PEP: "bg-purple-100 text-purple-700",
+    // User types
     Admin: "bg-red-100 text-red-700",
-    "Relationship Manager": "bg-blue-100 text-blue-700",
-    Ops: "bg-teal-100 text-teal-700",
-    Screening: "bg-purple-100 text-purple-700",
-    // Activity types
-    Meeting: "bg-blue-100 text-blue-700",
-    Demo: "bg-purple-100 text-purple-700",
-    Call: "bg-green-100 text-green-700",
-    Email: "bg-gray-100 text-gray-600",
-    "Follow-up": "bg-amber-100 text-amber-700",
-    // Instruction statuses
-    Pending: "bg-amber-100 text-amber-700",
-    "In Progress": "bg-blue-100 text-blue-700",
-    Completed: "bg-emerald-100 text-emerald-700",
-    // Invoice ledger statuses
-    Draft: "bg-gray-100 text-gray-600",
-    Overdue: "bg-red-100 text-red-700",
+    Staff: "bg-blue-100 text-blue-700",
   };
   const cls = styles[text] || styles[label] || "bg-gray-100 text-gray-600";
   return <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${cls}`}>{label}</span>;

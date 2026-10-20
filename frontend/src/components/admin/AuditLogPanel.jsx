@@ -5,7 +5,10 @@ import AuditTrail from "../AuditTrail";
 import { toast } from "../../store/toast";
 
 const PAGE = 50;
-const SUBJECTS = ["Account", "AccountParty", "Document", "Case", "User", "Role", "Department", "MasterItem"];
+// [stored subject type, label]
+const SUBJECTS = [["Account", "Client"], ["AccountParty", "Client party"], ["Document", "Document"], ["Prospect", "Prospect"],
+  ["Instruction", "Service request"], ["Invoice", "Invoice"], ["User", "User"], ["Role", "Role"], ["Department", "Department"],
+  ["MasterItem", "Master item"]];
 const ACTIONS = ["create", "update", "delete", "login", "login_failed"];
 
 // BRD §15 — global, read-only audit log for admins / users with audit.view.
@@ -40,7 +43,7 @@ export default function AuditLogPanel({ users }) {
       <div className="flex flex-wrap items-end gap-2 mb-4">
         <Select value={filters.subject_type} onChange={set("subject_type")} className="text-xs !w-auto">
           <option value="">All records</option>
-          {SUBJECTS.map((s) => <option key={s} value={s}>{s}</option>)}
+          {SUBJECTS.map(([s, label]) => <option key={s} value={s}>{label}</option>)}
         </Select>
         <Select value={filters.action} onChange={set("action")} className="text-xs !w-auto">
           <option value="">All actions</option>

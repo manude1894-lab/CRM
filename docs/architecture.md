@@ -1,6 +1,6 @@
 # Triam CRM — Architecture
 
-Status: updated for P0 Foundations (4 Oct 2026). Answers BRD §20 "Architecture diagram — to be prepared".
+Status: updated for the BRD alignment (20 Oct 2026). Answers BRD §21 "Architecture diagram — to be prepared".
 
 ## Components
 
@@ -20,13 +20,14 @@ flowchart LR
       MASTERS["Master data service"]
     end
     subgraph Domain["Domain services"]
+      PROS["Prospects"]
       CLIENT["Clients & parties"]
-      DOCS["Documents"]
-      CASES["Cases / formation pipeline"]
-      CDD["CDD · AML matrix · PEP"]
-      SERV["Instructions · invoices · compliance calendar · lifecycle"]
+      WF["Approvals: RM → Compliance → Approver · amendments"]
+      DOCS["Client document folder"]
+      SERV["Visit / Call Reports · Service Requests · Invoices"]
+      REP["Dashboard · standard reports"]
     end
-    SCHED["APScheduler<br/>daily 07:00 sweep"]
+    SCHED["APScheduler<br/>daily 07:00 reminders"]
   end
 
   DB[("PostgreSQL 16<br/>business data + audit_log + document bytes")]
@@ -46,17 +47,17 @@ flowchart LR
 ## Request lifecycle
 1. The browser calls `/api/v1/...` with a JWT.
 2. `get_current_user` resolves the user, then stamps the user and IP on the request's DB session (`set_actor`).
-3. Permission checks run (`require_roles` for the system tier, `require_permission` for BRD §15 flags).
-4. The service applies the visibility policy (`access_control`) to every client and case query.
+3. Permission checks run (`require_roles` for the system tier, `require_permission` for BRD §13 flags).
+4. The service applies the visibility policy (`access_control`) to every client query; prospects, service requests, invoices and reports follow the client.
 5. On commit, the audit listener writes one `audit_log` row per created, updated or deleted audited record, with field-level before/after values.
 
-## Access model (BRD §15)
+## Access model (BRD §13)
 | Layer | What it controls |
 |---|---|
-| System tier `users.role` (admin / rm / ops / screening) | Which screens and actions exist for the user (unchanged from v1) |
-| Business role `roles` (CO, MLRO, Dy MLRO, RO, FO, Sales Manager, …) | Extra permission flags: `client.approve`, `document.delete_submitted`, `master.manage`, `audit.view`, `view.all_clients`, `view.department_clients` |
+| System tier `users.role` (Administrator / staff user) | Administrators see and manage everything |
+| Business roles `roles` (CO, MLRO, Dy MLRO, RO, FO, Sales Manager, Approver, Accountant, Inquiry, Prospecting Coordinator, …) | Permission flags such as `client.approve`, `client.final_approve`, `client.cdd_edit`, `invoice.manage`, `prospect.assign`, `read_only`, `view.all_clients`. One user may hold several roles. |
 | Supervisor chain `users.supervisor_id` | A supervisor sees everything their direct and indirect reports see |
 | Client assignment (Anchor RM, Non-anchor RMs, creator) | Which clients an RM sees |
 
-## Hosting (BRD §20)
+## Hosting (BRD §21)
 Initial: six months on the vendor server with daily DB backups (weekend backups retained). Later: AWS/Azure, subject to approval. SharePoint hosting is under review.

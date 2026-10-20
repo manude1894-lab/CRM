@@ -78,6 +78,4 @@ def require_any_permission(*flags: str):
 # Convenience dependencies
 require_admin = require_roles(UserRole.ADMIN)
 require_rm = require_roles(UserRole.ADMIN, UserRole.RM)
-require_ops = require_roles(UserRole.ADMIN, UserRole.OPS)
-require_screening = require_roles(UserRole.ADMIN, UserRole.SCREENING)
-require_any = require_roles(UserRole.ADMIN, UserRole.RM, UserRole.OPS, UserRole.SCREENING)
+require_any = require_roles(UserRole.ADMIN, UserRole.RM)

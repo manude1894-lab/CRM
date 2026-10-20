@@ -1,5 +1,5 @@
 """BRD §15 — RM privacy, supervisor visibility, role-based widening."""
-from app.models import Account, Case, UserRole, CaseAdditionalRM
+from app.models import Account, UserRole
 from app.services import access_control
 from app.auth.permissions import user_permissions, has_permission
 
@@ -47,10 +47,9 @@ def test_single_object_check_matches_the_list_filter(db, make_user, make_account
     assert not access_control.user_can_access_account(db, acc, stranger)
 
 
-def test_ops_screening_admin_keep_full_visibility(db, make_user, make_account):
+def test_admin_keeps_full_visibility(db, make_user, make_account):
     make_account("A", spoc=make_user())
-    for role in (UserRole.ADMIN, UserRole.OPS, UserRole.SCREENING):
-        assert visible(db, make_user(role=role)) == {"A"}
+    assert visible(db, make_user(role=UserRole.ADMIN)) == {"A"}
 
 
 def test_view_all_clients_permission_lifts_rm_restriction(db, make_user, make_account, make_role):
@@ -86,25 +85,6 @@ def test_cycle_detection(db, make_user):
     assert access_control.would_create_supervisor_cycle(db, a.id, c.id)  # A reporting to C loops
     assert not access_control.would_create_supervisor_cycle(db, c.id, a.id)
     assert not access_control.would_create_supervisor_cycle(db, a.id, None)
-
-
-def test_case_visibility_includes_team(db, make_user, make_account):
-    boss = make_user("Boss")
-    rm = make_user("RM", supervisor=boss)
-    helper = make_user("Helper")
-    stranger = make_user("Stranger")
-    case = Case(case_uid="CASE-9001", company_name="Formation Co", rm_id=rm.id)
-    db.add(case); db.commit()
-    db.add(CaseAdditionalRM(case_id=case.id, user_id=helper.id)); db.commit()
-    db.refresh(case)
-
-    def sees(user):
-        return db.query(Case).filter(access_control.rm_visibility_clause(user)).count() == 1
-
-    assert sees(rm) and sees(boss) and sees(helper)
-    assert not sees(stranger)
-    assert access_control.user_can_access_case(case, boss)
-    assert not access_control.user_can_access_case(case, stranger)
 
 
 def test_approvers_see_every_client(db, make_user, make_account, make_role):

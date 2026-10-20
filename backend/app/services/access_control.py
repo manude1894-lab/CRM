@@ -1,26 +1,22 @@
-"""Shared visibility rules — who may see which clients and cases (BRD §15).
+"""Shared visibility rules — who may see which clients (BRD §13).
 
 BRD §15 "RM privacy": one RM must not see another RM's clients unless role/hierarchy allows it.
 "Supervisor visibility": a supervisor sees the clients of every RM who reports to them
 (directly or further down the chain).
 
-Who is restricted: the RM system tier only. Admin / Ops / Screening keep full visibility, as before
-(SPOC only restricts the RM role, per the client's earlier decision). Business-role permissions
-`view.all_clients` / `view.department_clients` widen an RM's view.
+Who is restricted: staff users. Administrators see every client. Business-role permissions
+`view.all_clients` / `view.department_clients` widen a staff user's view.
 
 A user's *team* = themself + everyone below them in the supervisor chain.
 
 Clients: visible when a team member is the Anchor RM (spoc_id), a Non-anchor RM, or the creator
 (owner_id); or, with view.department_clients, when the Anchor RM is in the user's department.
-
-Cases: visible when a team member is the primary RM, an additional RM, or the Anchor RM on the
-case's client.
 """
-from sqlalchemy import or_, select, false, true
-from sqlalchemy.orm import Session, object_session
+from sqlalchemy import or_, false
+from sqlalchemy.orm import Session
 
 from app.auth.permissions import has_permission
-from app.models import Case, CaseAdditionalRM, Account, User, UserRole
+from app.models import Account, User, UserRole
 
 
 # ─── Team (supervisor hierarchy) ─────────────────────────────────────────────
@@ -41,10 +37,6 @@ def would_create_supervisor_cycle(db: Session, user_id: int, new_supervisor_id: 
     if new_supervisor_id is None:
         return False
     return new_supervisor_id in team_user_ids(db, user_id)
-
-
-def _db_for(user: User) -> Session | None:
-    return object_session(user)
 
 
 def _is_restricted(user: User) -> bool:
@@ -86,40 +78,4 @@ def user_can_access_account(db: Session, account: Account, user: User) -> bool:
     if has_permission(user, "view.department_clients") and user.department_id and account.spoc_id:
         anchor = db.get(User, account.spoc_id)
         return bool(anchor and anchor.department_id == user.department_id)
-    return False
-
-
-# ─── Cases ──────────────────────────────────────────────────────────────────
-
-def rm_visibility_clause(user: User | int):
-    """A filter expression for any query that selects (or is joined to) Case.
-
-    Accepts a User (preferred — includes the supervisor's team) or a bare user id (legacy callers:
-    that user only)."""
-    if isinstance(user, User):
-        if not _is_restricted(user):
-            return true()
-        db = _db_for(user)
-        ids = team_user_ids(db, user.id) if db is not None else {user.id}
-    else:
-        ids = {user}
-    return or_(
-        Case.rm_id.in_(ids),
-        Case.id.in_(select(CaseAdditionalRM.case_id).where(CaseAdditionalRM.user_id.in_(ids))),
-        Case.account_id.in_(select(Account.id).where(Account.spoc_id.in_(ids))),
-    )
-
-
-def user_can_access_case(case: Case, user: User) -> bool:
-    """Python-level check for an already-loaded Case (single-object 403 guards)."""
-    if not _is_restricted(user):
-        return True
-    db = _db_for(user)
-    ids = team_user_ids(db, user.id) if db is not None else {user.id}
-    if case.rm_id in ids:
-        return True
-    if any(r.user_id in ids for r in case.additional_rms):
-        return True
-    if case.account_id and case.account is not None and case.account.spoc_id in ids:
-        return True
     return False

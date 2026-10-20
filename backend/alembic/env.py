@@ -7,7 +7,7 @@ from app.config import settings
 from app.database import Base
 # Import all models so Alembic sees them
 from app.models import (  # noqa: F401
-    User, Account, Case, CDDRecord, CaseDocument, ComplianceSchedule, Notification, Activity,
+    User, Account, Notification, Activity,
 )
 
 config = context.config

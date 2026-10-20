@@ -70,6 +70,6 @@ def test_client_is_created_from_an_assigned_prospect(db, team):
 def test_api_requires_a_prospect_for_new_clients(client, make_user):
     rm, admin = make_user("Rita RM"), make_user("Ada Admin", role=UserRole.ADMIN)
     body = {"company_name": "Direct Ltd", "anchor_entity": "TCPL"}
-    r = client.post("/api/v1/accounts", json=body, headers=auth(rm))
-    assert r.status_code == 400 and "prospect" in r.json()["detail"]
-    assert client.post("/api/v1/accounts", json=body, headers=auth(admin)).status_code == 201
+    for user in (rm, admin):  # BRD §4A: every new client, administrators included
+        r = client.post("/api/v1/accounts", json=body, headers=auth(user))
+        assert r.status_code == 400 and "prospect" in r.json()["detail"]

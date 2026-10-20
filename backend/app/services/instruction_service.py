@@ -1,14 +1,14 @@
-"""Service layer: Service Requests (the Instruction Tracker, generalised to every client — BRD §17).
+"""Service layer: Service Requests (BRD §15) on approved clients.
 
-A request belongs to a client; linking a BVI case is optional. The Vistra dates only apply to
-BVI work routed through Vistra.
+Each request is handled by one of the client's Triam entities; that entity decides the request types
+and statuses offered (Triam's "Service Requests - Triam Entities" list, kept as master data).
 """
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, select
 from fastapi import HTTPException
 from typing import Optional
 
-from app.models import Account, Instruction, InstructionStatus, Case, User, UserRole
+from app.models import Account, Instruction, InstructionStatus, User, UserRole
 from app.schemas.instruction import InstructionCreate, InstructionUpdate
 from app.services import access_control, master_service
 
@@ -17,9 +17,9 @@ def _apply_rbac_filter(db: Session, query, user: User):
     if user.role != UserRole.RM:
         return query
     acc_clause = access_control.account_visibility_clause(db, user)
-    visible_accounts = select(Account.id).where(acc_clause) if acc_clause is not None else select(Account.id)
-    visible_cases = select(Case.id).where(access_control.rm_visibility_clause(user))
-    return query.filter(or_(Instruction.account_id.in_(visible_accounts), Instruction.case_id.in_(visible_cases)))
+    if acc_clause is None:
+        return query
+    return query.filter(Instruction.account_id.in_(select(Account.id).where(acc_clause)))
 
 
 def list_instructions(
@@ -27,7 +27,6 @@ def list_instructions(
     user: User,
     skip: int = 0,
     limit: int = 100,
-    case_id: Optional[int] = None,
     status: Optional[str] = None,
     instruction_type: Optional[str] = None,
     search: Optional[str] = None,
@@ -37,23 +36,19 @@ def list_instructions(
 
     if account_id:
         query = query.filter(Instruction.account_id == account_id)
-    if case_id:
-        query = query.filter(Instruction.case_id == case_id)
     if status:
         query = query.filter(Instruction.status == status)
     if instruction_type:
         query = query.filter(Instruction.instruction_type == instruction_type)
     if search:
         pattern = f"%{search}%"
-        query = (query.outerjoin(Case, Instruction.case_id == Case.id)
-                 .outerjoin(Account, Instruction.account_id == Account.id)
+        query = (query.join(Account, Instruction.account_id == Account.id)
                  .filter(or_(
-                     Case.company_name.ilike(pattern),
                      Account.company_name.ilike(pattern),
                      Account.client_id.ilike(pattern),
                      Instruction.instruction_type.ilike(pattern),
+                     Instruction.other_description.ilike(pattern),
                      Instruction.comments.ilike(pattern),
-                     Instruction.invoice_reference.ilike(pattern),
                  )))
 
     total = query.count()
@@ -62,15 +57,8 @@ def list_instructions(
 
 
 def _can_see(db: Session, inst: Instruction, user: User) -> bool:
-    if inst.account_id:
-        acc = db.get(Account, inst.account_id)
-        if acc and access_control.user_can_access_account(db, acc, user):
-            return True
-    if inst.case_id:
-        case = db.get(Case, inst.case_id)
-        if case and access_control.user_can_access_case(case, user):
-            return True
-    return False
+    acc = db.get(Account, inst.account_id)
+    return bool(acc and access_control.user_can_access_account(db, acc, user))
 
 
 def get_instruction(db: Session, instruction_id: int, user: User) -> Instruction:
@@ -82,31 +70,20 @@ def get_instruction(db: Session, instruction_id: int, user: User) -> Instruction
     return inst
 
 
-def _resolve_links(db: Session, account_id: Optional[int], case_id: Optional[int], user: User) -> tuple[Optional[int], Optional[int]]:
-    case = None
-    if case_id:
-        case = db.query(Case).filter(Case.id == case_id).first()
-        if not case:
-            raise HTTPException(status_code=400, detail="Case does not exist")
-        if not access_control.user_can_access_case(case, user):
-            raise HTTPException(status_code=403, detail="You don't have access to this case")
-    account_id = account_id or (case.account_id if case else None)
-    if account_id:
-        acc = db.get(Account, account_id)
-        if not acc:
-            raise HTTPException(status_code=400, detail="Client does not exist")
-        if not access_control.user_can_access_account(db, acc, user):
-            raise HTTPException(status_code=403, detail="You don't have access to this client")
-        if case and case.account_id and case.account_id != acc.id:
-            raise HTTPException(status_code=400, detail="The case belongs to a different client")
-    if not account_id and not case:
-        raise HTTPException(status_code=400, detail="Choose the client (and optionally the case) for this service request")
-    return account_id, case_id
+def _client_for(db: Session, account_id: Optional[int], user: User) -> Account:
+    if not account_id:
+        raise HTTPException(status_code=400, detail="Choose the client for this service request")
+    acc = db.get(Account, account_id)
+    if not acc:
+        raise HTTPException(status_code=400, detail="Client does not exist")
+    if not access_control.user_can_access_account(db, acc, user):
+        raise HTTPException(status_code=403, detail="You don't have access to this client")
+    return acc
 
 
 SERVICEABLE = {"Approved", "Active", "Inactive", "Marked for Exit"}
 
-# ─── Request types and statuses by Triam entity (Triam's Service Request list) ────────────────────
+# ─── Request types and statuses by Triam entity (Triam's "Service Requests - Triam Entities" list) ──
 OTHER = "Other"
 # Used only while the status master list is empty (e.g. a database that hasn't been seeded).
 FALLBACK_STATUSES = ["Received", "Applied for service", "On Hold", "Completed", "Dropped"]
@@ -126,17 +103,14 @@ def options(db: Session, entity: Optional[str]) -> dict:
     return {"triam_entity": entity, "types": types, "statuses": statuses}
 
 
-def _client_entities(acc: Optional[Account]) -> list[str]:
-    if acc is None:
-        return []
+def _client_entities(acc: Account) -> list[str]:
     return [e for e in [acc.anchor_entity, *(acc.non_anchor_entities or [])] if e]
 
 
-def _resolve_entity(db: Session, entity: Optional[str], account_id: Optional[int], case_id: Optional[int]) -> Optional[str]:
-    acc = db.get(Account, account_id) if account_id else None
+def _resolve_entity(db: Session, entity: Optional[str], acc: Account) -> Optional[str]:
     served_by = _client_entities(acc)
     if not entity:
-        entity = served_by[0] if served_by else ("TBVI" if case_id else None)
+        entity = served_by[0] if served_by else None
     if entity:
         master_service.assert_valid(db, "triam_entity", entity, "Triam entity")
         if served_by and entity not in served_by:
@@ -166,20 +140,18 @@ def _check_type_and_status(db: Session, inst: Instruction, status_given: bool) -
         raise HTTPException(status_code=400, detail=f"'{inst.status}' is not a status for {inst.triam_entity or 'this entity'}")
 
 
-def _assert_client_serviceable(db: Session, account_id) -> None:
-    """Triam mark-up §8: a client is available for service requests once it is approved."""
-    from app.models import Account
-    acc = db.get(Account, account_id) if account_id else None
-    if acc is not None and acc.profile_status not in SERVICEABLE:
+def _assert_client_serviceable(acc: Account) -> None:
+    """BRD §8: a client is available for service requests once it is approved."""
+    if acc.profile_status not in SERVICEABLE:
         raise HTTPException(status_code=400, detail=f"{acc.company_name} is {acc.profile_status}. Service requests open once the client is approved.")
 
 
 def create_instruction(db: Session, data: InstructionCreate, user: User) -> Instruction:
-    account_id, case_id = _resolve_links(db, data.account_id, data.case_id, user)
-    _assert_client_serviceable(db, account_id)
+    acc = _client_for(db, data.account_id, user)
+    _assert_client_serviceable(acc)
     master_service.assert_valid(db, "service_request_type", data.instruction_type, "Request type")
-    inst = Instruction(**data.model_dump(exclude={"account_id", "case_id", "triam_entity"}), account_id=account_id, case_id=case_id,
-                       triam_entity=_resolve_entity(db, data.triam_entity, account_id, case_id))
+    inst = Instruction(**data.model_dump(exclude={"account_id", "triam_entity"}), account_id=acc.id,
+                       triam_entity=_resolve_entity(db, data.triam_entity, acc))
     _check_type_and_status(db, inst, status_given=bool(data.status))
     db.add(inst)
     db.commit()
@@ -197,7 +169,7 @@ def update_instruction(db: Session, instruction_id: int, data: InstructionUpdate
     if "instruction_type" in payload and payload["instruction_type"] != inst.instruction_type:
         master_service.assert_valid(db, "service_request_type", payload["instruction_type"], "Request type")
     if "triam_entity" in payload:
-        payload["triam_entity"] = _resolve_entity(db, payload["triam_entity"], inst.account_id, inst.case_id)
+        payload["triam_entity"] = _resolve_entity(db, payload["triam_entity"], db.get(Account, inst.account_id))
     for field, value in payload.items():
         setattr(inst, field, value)
     if {"instruction_type", "triam_entity", "status", "other_description"} & set(payload):
@@ -207,11 +179,11 @@ def update_instruction(db: Session, instruction_id: int, data: InstructionUpdate
             db.rollback()
             raise
 
-    # Triam mark-up §16: a completed, charged service request is an instruction to Accounts to invoice it.
+    # BRD §16: a completed, charged service request is an instruction to Accounts to invoice it.
     new_invoice = None
-    if payload.get("status") == "Completed" and inst.charge_amount and not inst.invoice_id and inst.account_id:
+    if payload.get("status") == "Completed" and inst.charge_amount and not inst.invoice_id:
         from datetime import datetime, timezone
-        new_invoice = Invoice(account_id=inst.account_id, case_id=inst.case_id, description=inst.instruction_type,
+        new_invoice = Invoice(account_id=inst.account_id, description=inst.other_description or inst.instruction_type,
                               amount=inst.charge_amount, status="Requested", requested_by_id=user.id,
                               requested_at=datetime.now(timezone.utc))
         db.add(new_invoice)

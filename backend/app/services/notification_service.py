@@ -25,11 +25,11 @@ def notify_user(
     message: str,
     notification_type: str,
     link: str | None = None,
-    case_id: int | None = None,
+    account_id: int | None = None,
 ) -> Notification:
     notification = Notification(
         user_id=user_id,
-        case_id=case_id,
+        account_id=account_id,
         notification_type=notification_type,
         message=message,
         link=link,
@@ -53,27 +53,33 @@ def notify_role(
     message: str,
     notification_type: str,
     link: str | None = None,
-    case_id: int | None = None,
+    account_id: int | None = None,
 ) -> list[Notification]:
-    users = db.query(User).filter(User.role == role, User.is_active == True).all()
+    users = db.query(User).filter(User.role == role, User.is_active == True).all()  # noqa: E712
     return [
-        notify_user(db, u.id, message, notification_type, link=link, case_id=case_id)
+        notify_user(db, u.id, message, notification_type, link=link, account_id=account_id)
         for u in users
     ]
 
 
-def notify_case_rm_and_admin(db: Session, case, message: str, notification_type: str) -> None:
-    """Standard 'key case action happened' pair: the case's RM (if set) plus the whole Admin role."""
-    link = f"/cases/{case.id}"
-    if case.rm_id:
-        notify_user(db, case.rm_id, message, notification_type, link=link, case_id=case.id)
-    notify_role(db, UserRole.ADMIN, message, notification_type, link=link, case_id=case.id)
+def notify_permission(
+    db: Session,
+    flag: str,
+    message: str,
+    notification_type: str,
+    link: str | None = None,
+    account_id: int | None = None,
+) -> list[Notification]:
+    """Notify every active user holding a permission flag (e.g. client.approve = Compliance)."""
+    from app.auth.permissions import has_permission  # local import: auth imports models
+    users = [u for u in db.query(User).filter(User.is_active == True).all() if has_permission(u, flag)]  # noqa: E712
+    return [notify_user(db, u.id, message, notification_type, link=link, account_id=account_id) for u in users]
 
 
-def has_unresolved_notification(db: Session, case_id: int, notification_type: str) -> bool:
-    """Dedup helper for scheduled jobs: skip if an unread notification of this type already exists for the case."""
+def has_unresolved_notification(db: Session, account_id: int, notification_type: str) -> bool:
+    """Dedup helper for scheduled jobs: skip if an unread notification of this type already exists for the client."""
     return db.query(Notification).filter(
-        Notification.case_id == case_id,
+        Notification.account_id == account_id,
         Notification.notification_type == notification_type,
         Notification.read_at.is_(None),
     ).first() is not None

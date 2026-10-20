@@ -146,7 +146,7 @@ def rejected_with_rm(db: Session, user: User) -> dict:
         rows.append([a.company_name, _client_ref(a), rm.name if rm else "—", last.checker.name if last.checker else "—",
                      _iso(_local_date(decided)), last.reason_text or "", (now - decided).days])
     rows.sort(key=lambda r: r[6], reverse=True)
-    return {"title": "Cases pending with RM in Rejected status (ageing)",
+    return {"title": "Clients pending with RM in Rejected status (ageing)",
             "columns": ["Client", "Temporary / Client ID", "RM", "Rejected by", "Rejected on", "Reason", "Days pending"], "rows": rows}
 
 
@@ -156,7 +156,7 @@ REPORTS = {
     "clients-risk": "Clients with their risk levels and AML review dates",
     "prospects-assigned": "Prospects assigned for a period",
     "prospects-unassigned": "Unassigned prospects (ageing)",
-    "rejected-with-rm": "Cases pending with RM in Rejected status (ageing)",
+    "rejected-with-rm": "Clients pending with RM in Rejected status (ageing)",
 }
 
 

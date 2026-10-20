@@ -22,7 +22,7 @@ export const departmentsApi = {
   update: (id, data) => api.patch(`/departments/${id}`, data).then((r) => r.data),
 };
 
-// ─── Master data, roles, audit (BRD §15, §18) ─────────────────────────
+// ─── Master data, roles, audit (BRD §13, §17) ─────────────────────────
 export const mastersApi = {
   types: () => api.get("/masters").then((r) => r.data),
   list: (listType, includeInactive = false) =>
@@ -56,7 +56,7 @@ export const auditApi = {
   },
 };
 
-// ─── Client workflow / maker-checker (BRD §11, §12, §15) ──────────────
+// ─── New-client approval: RM → Compliance (MLRO) → Approver (BRD §7–§10) ──
 export const workflowApi = {
   get: (accountId) => api.get(`/accounts/${accountId}/workflow`).then((r) => r.data),
   submit: (accountId, comment, kycDeclared) => api.post(`/accounts/${accountId}/submit`, { comment: comment || null, kyc_declared: !!kycDeclared }).then((r) => r.data),
@@ -67,7 +67,7 @@ export const workflowApi = {
   inbox: (status = "Pending", request_type) => api.get("/approvals", { params: { status, request_type: request_type || undefined } }).then((r) => r.data),
 };
 
-// ─── Compliance: client amendments (BRD §13) and case approvals ───────────
+// ─── Client amendments (BRD §11) ─────────────────────────────────────
 export const amendmentApi = {
   get: (accountId) => api.get(`/accounts/${accountId}/amendment`).then((r) => r.data),
   start: (accountId) => api.post(`/accounts/${accountId}/amendment`).then((r) => r.data),
@@ -75,62 +75,7 @@ export const amendmentApi = {
   act: (accountId, action, body = {}) => api.post(`/accounts/${accountId}/amendment/${action}`, body).then((r) => r.data),
 };
 
-export const caseComplianceApi = {
-  get: (caseId) => api.get(`/cases/${caseId}/compliance`).then((r) => r.data),
-  // action: approve | reject | withdraw | resubmit
-  act: (caseId, action, body = {}) => api.post(`/cases/${caseId}/compliance/${action}`, body).then((r) => r.data),
-};
-
-// ─── Cases ─────────────────────────────────────────────────────────────
-export const casesApi = {
-  list: (params = {}) => api.get("/cases", { params }).then((r) => r.data),
-  get: (id) => api.get(`/cases/${id}`).then((r) => r.data),
-  create: (data) => api.post("/cases", data).then((r) => r.data),
-  update: (id, data) => api.patch(`/cases/${id}`, data).then((r) => r.data),
-  changeStage: (id, stage) => api.post(`/cases/${id}/stage`, { stage }).then((r) => r.data),
-  // P6 — existing entities from the Offshore Entities List (admin; dry run first)
-  importEntities: (rows, dryRun) => api.post("/cases/import", { rows, dry_run: dryRun }).then((r) => r.data),
-  raiseInvoice: (id, amount = 0) => api.post(`/cases/${id}/invoice/raise`, { amount }).then((r) => r.data),
-  markInvoicePaid: (id) => api.post(`/cases/${id}/invoice/mark-paid`).then((r) => r.data),
-  cancel: (id, reason) => api.post(`/cases/${id}/cancel`, { reason }),
-  addRM: (id, userId) => api.post(`/cases/${id}/relationship-managers`, { user_id: userId }).then((r) => r.data),
-  removeRM: (id, userId) => api.delete(`/cases/${id}/relationship-managers/${userId}`).then((r) => r.data),
-  bulkUpdate: (payload) => api.patch("/cases/bulk", payload).then((r) => r.data),
-};
-
-// ─── CDD / KYC ─────────────────────────────────────────────────────────
-export const cddApi = {
-  listAll: () => api.get("/cdd").then((r) => r.data),
-  get: (caseId) => api.get(`/cdd/${caseId}`).then((r) => r.data),
-  update: (caseId, data) => api.patch(`/cdd/${caseId}`, data).then((r) => r.data),
-  review: (caseId, data) => api.post(`/cdd/${caseId}/review`, data).then((r) => r.data),
-  applyIntroducerExemption: (caseId) => api.post(`/cdd/${caseId}/apply-introducer-exemption`).then((r) => r.data),
-  grantException: (caseId, reason, days) => api.post(`/cdd/${caseId}/grant-exception`, { reason, days }).then((r) => r.data),
-  revokeException: (caseId) => api.post(`/cdd/${caseId}/revoke-exception`).then((r) => r.data),
-  addDocument: (caseId, data) => api.post(`/cdd/${caseId}/documents`, data).then((r) => r.data),
-  updateDocument: (documentId, data) => api.patch(`/cdd/documents/${documentId}`, data).then((r) => r.data),
-};
-
-// ─── Directors & Shareholders ──────────────────────────────────────────
-export const directorsApi = {
-  list: (caseId) => api.get(`/cases/${caseId}/directors`).then((r) => r.data),
-  create: (caseId, data) => api.post(`/cases/${caseId}/directors`, data).then((r) => r.data),
-  update: (id, data) => api.patch(`/directors/${id}`, data).then((r) => r.data),
-};
-
-export const shareholdersApi = {
-  list: (caseId) => api.get(`/cases/${caseId}/shareholders`).then((r) => r.data),
-  create: (caseId, data) => api.post(`/cases/${caseId}/shareholders`, data).then((r) => r.data),
-  update: (id, data) => api.patch(`/shareholders/${id}`, data).then((r) => r.data),
-};
-
-export const ubosApi = {
-  list: (caseId) => api.get(`/cases/${caseId}/ubos`).then((r) => r.data),
-  create: (caseId, data) => api.post(`/cases/${caseId}/ubos`, data).then((r) => r.data),
-  update: (id, data) => api.patch(`/ubos/${id}`, data).then((r) => r.data),
-};
-
-// ─── Client Parties (Shareholders/Directors/Authorised Signatories on an Account) ──
+// ─── Client parties: Shareholders / UBOs, Directors, Authorised Signatories, joint holders ──
 export const accountPartiesApi = {
   list: (accountId) => api.get(`/accounts/${accountId}/parties`).then((r) => r.data),
   create: (accountId, data) => api.post(`/accounts/${accountId}/parties`, data).then((r) => r.data),
@@ -140,10 +85,9 @@ export const accountPartiesApi = {
   removed: (accountId) => api.get(`/accounts/${accountId}/removed-parties`).then((r) => r.data),
 };
 
-// ─── Instructions (service-request tracker) ───────────────────────────
+// ─── Service Requests (BRD §15) ────────────────────────────────────────
 export const instructionsApi = {
   list: (params = {}) => api.get("/instructions", { params }).then((r) => r.data),
-  importRequests: (rows, dryRun) => api.post("/instructions/import", { rows, dry_run: dryRun }).then((r) => r.data),
   options: (triamEntity) => api.get("/instructions/options", { params: triamEntity ? { triam_entity: triamEntity } : {} }).then((r) => r.data),
   get: (id) => api.get(`/instructions/${id}`).then((r) => r.data),
   create: (data) => api.post("/instructions", data).then((r) => r.data),
@@ -151,14 +95,13 @@ export const instructionsApi = {
   cancel: (id, reason) => api.post(`/instructions/${id}/cancel`, { reason }),
 };
 
-// ─── Invoices (running ledger of charges) ─────────────────────────────
+// ─── Invoices (BRD §16) ────────────────────────────────────────────────
 export const invoicesApi = {
   list: (params = {}) => api.get("/invoices", { params }).then((r) => r.data),
   get: (id) => api.get(`/invoices/${id}`).then((r) => r.data),
   create: (data) => api.post("/invoices", data).then((r) => r.data),
   update: (id, data) => api.patch(`/invoices/${id}`, data).then((r) => r.data),
   cancel: (id, reason) => api.post(`/invoices/${id}/cancel`, { reason }),
-  // Triam BRD mark-up §16
   request: (data) => api.post("/invoices/request", data).then((r) => r.data),
   raise: (id, data) => api.post(`/invoices/${id}/raise`, data).then((r) => r.data),
   paid: (id, data = {}) => api.post(`/invoices/${id}/paid`, data).then((r) => r.data),
@@ -171,78 +114,17 @@ export const invoicesApi = {
   },
 };
 
-// ─── AML Risk ──────────────────────────────────────────────────────────
-export const amlApi = {
-  catalog: () => api.get("/aml/catalog").then((r) => r.data),
-  prefill: (caseId) => api.get("/aml/prefill", { params: { case_id: caseId } }).then((r) => r.data),
-  countryRisk: () => api.get("/aml/country-risk").then((r) => r.data),
-  createCountry: (data) => api.post("/aml/country-risk", data).then((r) => r.data),
-  updateCountry: (id, data) => api.patch(`/aml/country-risk/${id}`, data).then((r) => r.data),
-  listAssessments: (caseId) => api.get("/aml/assessments", { params: caseId ? { case_id: caseId } : {} }).then((r) => r.data),
-  createAssessment: (data) => api.post("/aml/assessments", data).then((r) => r.data),
-  updateAssessment: (id, data) => api.patch(`/aml/assessments/${id}`, data).then((r) => r.data),
+// ─── Countries master (BRD §17) ──────────────────────────────────────
+export const countriesApi = {
+  list: () => api.get("/countries").then((r) => r.data),
+  create: (data) => api.post("/countries", data).then((r) => r.data),
+  update: (id, data) => api.patch(`/countries/${id}`, data).then((r) => r.data),
 };
 
-// ─── Compliance ────────────────────────────────────────────────────────
-export const complianceApi = {
-  listUpcoming: (days = 60) => api.get("/compliance", { params: { days } }).then((r) => r.data),
-  get: (caseId) => api.get(`/compliance/${caseId}`).then((r) => r.data),
-  markDone: (caseId, item) => api.post(`/compliance/${caseId}/mark-done`, { item }).then((r) => r.data),
-  setArStatus: (caseId, status) => api.post(`/compliance/${caseId}/ar-status`, { status }).then((r) => r.data),
-};
-
-// ─── Action Points (WIP board) ───────────────────────────────────────
-export const actionPointsApi = {
-  list: (params = {}) => api.get("/action-points", { params }).then((r) => r.data),
-  create: (data) => api.post("/action-points", data).then((r) => r.data),
-  update: (id, data) => api.patch(`/action-points/${id}`, data).then((r) => r.data),
-  cancel: (id, reason) => api.post(`/action-points/${id}/cancel`, { reason }),
-};
-
-// ─── Document generation (templated PDFs) ────────────────────────────
-export const generationApi = {
-  templates: () => api.get("/document-templates").then((r) => r.data),
-  prefill: (caseId, code) => api.get(`/cases/${caseId}/document-templates/${code}/prefill`).then((r) => r.data),
-  generate: (caseId, body) => api.post(`/cases/${caseId}/documents/generate`, body).then((r) => r.data),
-};
-
-// ─── PEP assessments ─────────────────────────────────────────────────
-export const pepApi = {
-  list: (caseId) => api.get(`/cases/${caseId}/pep-assessments`).then((r) => r.data),
-  create: (caseId, data) => api.post(`/cases/${caseId}/pep-assessments`, data).then((r) => r.data),
-  update: (id, data) => api.patch(`/pep-assessments/${id}`, data).then((r) => r.data),
-};
-
-// ─── Company profile (formation / statutory detail) ────────────────────
-export const companyProfileApi = {
-  get: (caseId) => api.get(`/cases/${caseId}/company-profile`).then((r) => r.data),
-  update: (caseId, data) => api.patch(`/cases/${caseId}/company-profile`, data).then((r) => r.data),
-};
-
-// ─── Jurisdictions (per-jurisdiction rules catalog) ──────────────────
-export const jurisdictionsApi = {
-  list: () => api.get("/jurisdictions").then((r) => r.data),
-};
-
-// ─── Entity lifecycle (closure / restoration / RA transfer) ───────────
-export const lifecycleApi = {
-  get: (caseId) => api.get(`/cases/${caseId}/lifecycle`).then((r) => r.data),
-  update: (caseId, data) => api.patch(`/cases/${caseId}/lifecycle`, data).then((r) => r.data),
-};
-
-// ─── Formation (screening / MLRO sign-off / Vistra loop / milestones) ──
-export const formationApi = {
-  get: (caseId) => api.get(`/cases/${caseId}/formation`).then((r) => r.data),
-  update: (caseId, data) => api.patch(`/cases/${caseId}/formation`, data).then((r) => r.data),
-};
-
-// ─── Documents (uploaded files) ───────────────────────────────────────
+// ─── Client document folder (BRD §14) ─────────────────────────────────
 export const documentsApi = {
-  list: (caseId) => api.get(`/cases/${caseId}/documents`).then((r) => r.data),
-  upload: (caseId, formData) =>
-    api.post(`/cases/${caseId}/documents`, formData, { headers: { "Content-Type": undefined } }).then((r) => r.data),
   listForAccount: (accountId) => api.get(`/accounts/${accountId}/documents`).then((r) => r.data),
-  // BRD §16 — the client folder: documents by category, their stage and whether this user may remove them
+  // The client folder: documents by category, their stage and whether this user may remove them
   folder: (accountId) => api.get(`/accounts/${accountId}/folder`).then((r) => r.data),
   addLink: (accountId, data) => api.post(`/accounts/${accountId}/documents/link`, data).then((r) => r.data),
   uploadForAccount: (accountId, formData) =>
@@ -277,7 +159,7 @@ export const notificationsApi = {
   markAllRead: () => api.post("/notifications/read-all").then((r) => r.data),
 };
 
-// ─── Accounts ──────────────────────────────────────────────────────────
+// ─── Clients ───────────────────────────────────────────────────────────
 export const accountsApi = {
   list: (params = {}) => api.get("/accounts", { params }).then((r) => r.data),
   get: (id) => api.get(`/accounts/${id}`).then((r) => r.data),
@@ -286,25 +168,13 @@ export const accountsApi = {
   import: (rows, dryRun) => api.post("/accounts/import", { rows, dry_run: dryRun }).then((r) => r.data),
   // BRD §3 — names matching the first 3+ letters (all clients; can_open says whether the user may open it)
   lookup: (q, excludeId) => api.get("/accounts/lookup", { params: { q, exclude_id: excludeId || undefined } }).then((r) => r.data),
-  // Mandatory fields still missing (enforced at Submit in P2)
+  // Mandatory fields still missing (enforced at Submit)
   completeness: (id) => api.get(`/accounts/${id}/completeness`).then((r) => r.data),
   checkDuplicate: (name, excludeId) => api.get("/accounts/check-duplicate", { params: { name, exclude_id: excludeId || undefined } }).then((r) => r.data),
   bulkUpdate: (payload) => api.patch("/accounts/bulk", payload).then((r) => r.data),
-  trackRecord: (id) => api.get(`/accounts/${id}/track-record`).then((r) => r.data),
-  downloadTrackRecordPdf: async (id, filename) => {
-    const res = await api.get(`/accounts/${id}/track-record/pdf`, { responseType: "blob" });
-    const url = window.URL.createObjectURL(new Blob([res.data], { type: "application/pdf" }));
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename || `track-record-${id}.pdf`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    window.URL.revokeObjectURL(url);
-  },
 };
 
-// ─── Activities ────────────────────────────────────────────────────────
+// ─── Visit / Call Reports (BRD §15) ────────────────────────────────────
 export const activitiesApi = {
   list: (params = {}) => api.get("/activities", { params }).then((r) => r.data),
   get: (id) => api.get(`/activities/${id}`).then((r) => r.data),
@@ -319,49 +189,23 @@ export const dashboardApi = {
   myWork: () => api.get("/dashboard/my-work").then((r) => r.data),
 };
 
-// ─── Prospects (pre-Case proposal tracking) ───────────────────────────
+// ─── Prospects (BRD §4A) ───────────────────────────────────────────────
 export const prospectsApi = {
   list: (status) => api.get("/prospects", { params: status ? { status } : {} }).then((r) => r.data),
   get: (id) => api.get(`/prospects/${id}`).then((r) => r.data),
   create: (data) => api.post("/prospects", data).then((r) => r.data),
   update: (id, data) => api.patch(`/prospects/${id}`, data).then((r) => r.data),
-  convert: (id, data = {}) => api.post(`/prospects/${id}/convert`, data).then((r) => r.data),
   assign: (id, data) => api.post(`/prospects/${id}/assign`, data).then((r) => r.data),
   checkDuplicate: (name, excludeId) => api.get("/prospects/check-duplicate", { params: { name, exclude_id: excludeId || undefined } }).then((r) => r.data),
 };
 
-// ─── Service subscriptions (recurring services per entity) ────────────
-export const serviceSubscriptionsApi = {
-  list: (caseId) => api.get(`/cases/${caseId}/service-subscriptions`).then((r) => r.data),
-  create: (caseId, data) => api.post(`/cases/${caseId}/service-subscriptions`, data).then((r) => r.data),
-  update: (id, data) => api.patch(`/service-subscriptions/${id}`, data).then((r) => r.data),
-};
-
-// ─── Client feedback ────────────────────────────────────────────────────
-export const feedbackApi = {
-  list: (caseId) => api.get(`/cases/${caseId}/feedback`).then((r) => r.data),
-  create: (caseId, data) => api.post(`/cases/${caseId}/feedback`, data).then((r) => r.data),
-};
-
-// ─── Reports (PDF) ─────────────────────────────────────────────────────
+// ─── Standard reports (BRD §20) — shown on screen, exported to CSV ──────
 export const reportsApi = {
-  // Triam BRD mark-up §20a — standard reports (JSON, shown on screen / exported to CSV)
   standardList: () => api.get("/reports/standard").then((r) => r.data),
   standard: (key, params = {}) => api.get(`/reports/standard/${key}`, { params }).then((r) => r.data),
-  download: async (reportType) => {
-    const res = await api.get(`/reports/${reportType}`, { responseType: "blob" });
-    const url = window.URL.createObjectURL(new Blob([res.data], { type: "application/pdf" }));
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${reportType}-${new Date().toISOString().split("T")[0]}.pdf`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    window.URL.revokeObjectURL(url);
-  },
 };
 
-// ─── System (P7 go-live checks) ─────────────────────────────────────────
+// ─── System (go-live checks) ───────────────────────────────────────────
 export const systemApi = {
   healthChecks: () => api.get("/system/health-checks").then((r) => r.data),
 };

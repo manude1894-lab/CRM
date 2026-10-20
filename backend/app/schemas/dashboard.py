@@ -1,81 +1,51 @@
-"""Pydantic schemas: Dashboard & analytics responses."""
-from pydantic import BaseModel
-from typing import List, Optional
-from decimal import Decimal
+"""Pydantic schemas: Dashboard snapshot MI (BRD §2)."""
 from datetime import date
+from typing import List, Optional
+
+from pydantic import BaseModel
 
 
 class KPISummary(BaseModel):
-    open_cases: int
-    docs_pending: int
-    cdd_awaiting_screening: int
+    prospects_open: int
+    prospects_unassigned: int
+    clients_in_progress: int
+    clients_awaiting_approval: int
+    clients_active: int
+    service_requests_open: int
     invoices_unpaid: int
-    upcoming_compliance_60d: int
+    aml_reviews_due: int
 
 
-class StageBreakdown(BaseModel):
-    stage: str
+class StatusCount(BaseModel):
+    status: str
     count: int
 
 
-class DocsPendingItem(BaseModel):
-    case_id: int
-    case_uid: str
+class ApprovalsPending(BaseModel):
+    compliance: int
+    approver: int
+
+
+class AmlReviewDue(BaseModel):
+    account_id: int
+    client_id: Optional[str] = None
     company_name: str
-    stage: str
-    business_days_pending: int
-
-
-class CDDAwaitingItem(BaseModel):
-    case_id: int
-    case_uid: str
-    company_name: str
-    cdd_form_status: str
-    kyc_verification_status: str
-    days_waiting: int
-
-
-class InvoiceUnpaidItem(BaseModel):
-    case_id: int
-    case_uid: str
-    company_name: str
-    invoice_amount: Decimal
-    invoice_raised_date: Optional[date] = None
-    days_aging: int
-
-
-class UpcomingComplianceRow(BaseModel):
-    case_id: int
-    case_uid: str
-    company_name: str
-    item: str
-    due_date: date
+    risk_rating: Optional[str] = None
+    next_aml_review_date: date
     days_remaining: int
 
 
-class RmCaseSummary(BaseModel):
-    case_id: int
-    case_uid: str
-    company_name: str
-    stage: str
-    status: str
-    invoice_status: str
-
-
-class RmOpsPerformance(BaseModel):
+class PortfolioRow(BaseModel):
     user_id: int
     name: str
-    role: str
-    total_cases: int
-    active_cases: int
-    cases: List[RmCaseSummary] = []
+    total: int
+    in_progress: int
+    active: int
 
 
 class DashboardResponse(BaseModel):
     kpis: KPISummary
-    stage_breakdown: List[StageBreakdown]
-    docs_pending: List[DocsPendingItem]
-    cdd_awaiting_screening: List[CDDAwaitingItem]
-    invoices_unpaid: List[InvoiceUnpaidItem]
-    upcoming_compliance: List[UpcomingComplianceRow]
-    rm_ops_performance: List[RmOpsPerformance]
+    client_status_breakdown: List[StatusCount]
+    approvals_pending: ApprovalsPending
+    aml_reviews_due: List[AmlReviewDue]
+    portfolio_by_rm: List[PortfolioRow]

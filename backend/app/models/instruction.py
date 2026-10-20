@@ -1,9 +1,7 @@
-"""SQLAlchemy model: Instruction (per-entity service-request tracker).
+"""SQLAlchemy model: Instruction — a Service Request on an approved client (BRD §15).
 
-Mirrors Triam's real Instruction Tracker (Annexure 7) — the day-to-day log of
-service requests against an already-formed entity (COI/COGS issuance, LEI
-renewal, AR/ESR/ROM-RBO filings, restoration, closure, notarization, etc.),
-as distinct from the Case's one-time onboarding pipeline.
+Request types and statuses are per Triam entity, from Triam's "Service Requests - Triam Entities"
+list (service_request_type / service_request_status master lists).
 """
 from sqlalchemy import Column, Integer, String, Text, Date, DateTime, Numeric, ForeignKey
 from sqlalchemy.orm import relationship
@@ -25,33 +23,21 @@ class Instruction(Base):
     __tablename__ = "instructions"
 
     id = Column(Integer, primary_key=True, index=True)
-    # BRD §17 — a service request belongs to a client; the BVI case is optional.
-    account_id = Column(Integer, ForeignKey("accounts.id", ondelete="CASCADE"), nullable=True, index=True)
-    case_id = Column(Integer, ForeignKey("cases.id", ondelete="CASCADE"), nullable=True, index=True)
+    account_id = Column(Integer, ForeignKey("accounts.id", ondelete="CASCADE"), nullable=False, index=True)
 
-    # instruction_type/status stored as plain strings (not DB enums) — same precedent
-    # as jurisdiction/service_type on Case (migration 0003): free text is far cheaper
-    # to extend than altering a Postgres enum every time Triam adds a new request type.
+    # instruction_type/status stored as plain strings (not DB enums): Triam maintains the lists
+    # as master data, so a new type or status needs no schema change.
     instruction_type = Column(String(150), nullable=False)
     other_description = Column(String(50), nullable=True)  # when the type is "Other"
     # The Triam entity handling the request; decides the request types and statuses offered.
     triam_entity = Column(String(20), nullable=True)
     status = Column(String(40), default="Received", nullable=False)
 
-    document_shared = Column(Text, nullable=True)
-
     date_received = Column(Date, nullable=True)
-    date_sent_to_vistra = Column(Date, nullable=True)
-    date_received_from_vistra = Column(Date, nullable=True)
     date_completed = Column(Date, nullable=True)
 
-    # cost_amount = what Triam pays the registered agent; charge_amount = what the
-    # client is billed. Margin = charge_amount - cost_amount.
-    cost_amount = Column(Numeric(12, 2), nullable=True)
+    # What the client is charged; on completion it becomes an invoice instruction to Accounts (BRD §16).
     charge_amount = Column(Numeric(12, 2), nullable=True)
-    # Free-text invoice reference for quick entry before a formal ledger entry exists.
-    # invoice_id (below) is the structured link once the charge is actually invoiced.
-    invoice_reference = Column(String(50), nullable=True)
     invoice_id = Column(Integer, ForeignKey("invoices.id", ondelete="SET NULL"), nullable=True, index=True)
 
     comments = Column(Text, nullable=True)
@@ -60,7 +46,6 @@ class Instruction(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
-    case = relationship("Case", back_populates="instructions")
     account = relationship("Account")
     invoice = relationship("Invoice", back_populates="instructions")
     attachments = relationship("Document", back_populates="instruction")

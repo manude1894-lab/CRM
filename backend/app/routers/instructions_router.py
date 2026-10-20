@@ -1,23 +1,21 @@
-"""Instructions router (per-entity service-request tracker)."""
+"""Service Requests router (BRD §15) — requests on approved clients, by Triam entity."""
 from fastapi import APIRouter, Depends, status, Response
 from sqlalchemy.orm import Session
 from typing import Optional
 
 from app.database import get_db
-from app.auth.dependencies import get_current_user, require_admin
+from app.auth.dependencies import get_current_user
 from app.models import User
 from app.schemas import InstructionCreate, InstructionRead, InstructionUpdate
-from app.schemas.case import ImportRequest
 from app.schemas.common import CancelRequest
-from app.services import instruction_service, engagement_service
+from app.services import instruction_service
 
-router = APIRouter(prefix="/instructions", tags=["Instructions"])
+router = APIRouter(prefix="/instructions", tags=["Service Requests"])
 
 
-@router.get("", summary="List instructions")
+@router.get("", summary="List service requests")
 def list_instructions(
     skip: int = 0, limit: int = 100,
-    case_id: Optional[int] = None,
     account_id: Optional[int] = None,
     status: Optional[str] = None,
     instruction_type: Optional[str] = None,
@@ -27,16 +25,11 @@ def list_instructions(
     user: User = Depends(get_current_user),
 ):
     items, total = instruction_service.list_instructions(
-        db, user, skip, limit, case_id, status, instruction_type, search, account_id=account_id,
+        db, user, skip, limit, status, instruction_type, search, account_id=account_id,
     )
     if response is not None:
         response.headers["X-Total-Count"] = str(total)
     return {"items": [InstructionRead.model_validate(i) for i in items], "total": total}
-
-
-@router.post("/import", summary="Import open service requests from CSV rows (dry run first) — Admin")
-def import_service_requests(body: ImportRequest, db: Session = Depends(get_db), user: User = Depends(require_admin)):
-    return engagement_service.import_service_requests(db, user, body.rows, body.dry_run)
 
 
 @router.get("/options", summary="Request types and statuses offered for a Triam entity")

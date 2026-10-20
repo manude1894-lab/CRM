@@ -1,230 +1,83 @@
-"""Daily scheduled SLA checks, run in-process via APScheduler (no Redis/Celery).
+"""Daily reminders, run in-process via APScheduler at 07:00 (no Redis/Celery).
 
-Each job opens its own DB session since it runs outside the FastAPI request
-lifecycle. Notifications are deduped per (case, notification_type) so the
-daily sweep doesn't re-notify on every run while the breach is still open.
+  - Next AML review (BRD §8) due in 30 / 7 days or overdue → the client's Anchor RM and Compliance
+  - Trade licence expiry (BRD §5) in 30 / 7 days or expired → the client's Anchor RM
+
+Each job opens its own DB session since it runs outside the FastAPI request lifecycle. Reminders
+are deduped per (client, reminder) so the sweep doesn't repeat one that is still unread.
 """
 import logging
-from datetime import date, datetime, timezone
+from datetime import date
 
 from app.database import SessionLocal
-from app.models import Case, CaseStatus, CDDRecord, DocumentStatus, ComplianceSchedule, UserRole
-from app.services import notification_service, compliance_service
-from app.services.compliance_service import DORMANT_CASE_STATUSES
-from app.services.compliance_service import _ITEM_FIELDS
-from app.utils.business_days import business_days_between, to_date
-from app import jurisdictions
+from app.models import Account
+from app.services import notification_service
 from app.utils.dates import dmy
 
 logger = logging.getLogger("ezeetech.scheduler")
 
-DOCS_PENDING_BUSINESS_DAYS = 3
-CDD_REVIEW_SLA_DAYS = 2
-INVOICE_UNPAID_SLA_DAYS = 7
+REMINDER_DAYS = (30, 7, 0)
+# Only clients Triam services: approved or active, not leaving.
+SERVICED_STATUSES = ("Approved", "Active")
 
 
-def _notify_once(db, case_id: int, notification_type: str, role: UserRole, message: str, link: str):
-    if notification_service.has_unresolved_notification(db, case_id, notification_type):
+def _window(due: date, today: date):
+    """The reminder this date is in, or None: 30 / 7 days ahead, or 0 once due or past."""
+    days = (due - today).days
+    if days <= 0:
+        return 0
+    return days if days in REMINDER_DAYS else None
+
+
+def _remind(db, acc: Account, key: str, message: str, compliance: bool) -> None:
+    if notification_service.has_unresolved_notification(db, acc.id, key):
         return
-    notification_service.notify_role(db, role, message, notification_type, link=link, case_id=case_id)
+    link = f"/accounts/{acc.id}"
+    if acc.spoc_id:
+        notification_service.notify_user(db, acc.spoc_id, message, key, link=link, account_id=acc.id)
+    if compliance:
+        notification_service.notify_permission(db, "client.approve", message, key, link=link, account_id=acc.id)
 
 
-def check_docs_pending():
+def _label(acc: Account) -> str:
+    return f"{acc.company_name} ({acc.client_id or acc.account_uid})"
+
+
+def check_aml_reviews_due():
     db = SessionLocal()
     try:
         today = date.today()
-        cases = db.query(Case).filter(Case.status == CaseStatus.DOCS_PENDING.value).all()
-        for case in cases:
-            days = business_days_between(to_date(case.updated_at), today)
-            if days > DOCS_PENDING_BUSINESS_DAYS and case.rm_id:
-                _notify_once(
-                    db, case.id, "docs_pending_overdue", UserRole.RM,
-                    f"Case {case.case_uid} ({case.company_name}) has been awaiting client documents for {days} business days.",
-                    f"/cases/{case.id}",
-                )
+        for acc in db.query(Account).filter(Account.profile_status.in_(SERVICED_STATUSES),
+                                            Account.next_aml_review_date.isnot(None)).all():
+            w = _window(acc.next_aml_review_date, today)
+            if w is None:
+                continue
+            when = "is overdue" if w == 0 else f"is due in {w} days"
+            _remind(db, acc, f"aml_review_due_{w}d",
+                    f"Next AML review of {_label(acc)} {when} ({dmy(acc.next_aml_review_date)}).", compliance=True)
     finally:
         db.close()
 
 
-def check_cdd_awaiting_screening():
+def check_licences_expiring():
     db = SessionLocal()
     try:
         today = date.today()
-        records = db.query(CDDRecord).filter(
-            CDDRecord.cdd_form_status.in_([DocumentStatus.SUBMITTED, DocumentStatus.UNDER_REVIEW])
-        ).all()
-        for cdd in records:
-            days = business_days_between(to_date(cdd.updated_at), today)
-            if days > CDD_REVIEW_SLA_DAYS:
-                case = db.query(Case).filter(Case.id == cdd.case_id).first()
-                if case:
-                    _notify_once(
-                        db, case.id, "cdd_awaiting_screening", UserRole.SCREENING,
-                        f"CDD/KYC for case {case.case_uid} ({case.company_name}) has awaited screening for {days} days.",
-                        f"/cdd/{case.id}",
-                    )
-    finally:
-        db.close()
-
-
-def check_invoice_unpaid():
-    db = SessionLocal()
-    try:
-        from app.models import InvoiceStatus
-        today = date.today()
-        cases = db.query(Case).filter(Case.invoice_status == InvoiceStatus.RAISED).all()
-        for case in cases:
-            if not case.invoice_raised_date:
+        for acc in db.query(Account).filter(Account.profile_status.in_(SERVICED_STATUSES),
+                                            Account.license_expiry_date.isnot(None)).all():
+            w = _window(acc.license_expiry_date, today)
+            if w is None:
                 continue
-            days = (today - case.invoice_raised_date).days
-            if days > INVOICE_UNPAID_SLA_DAYS:
-                if notification_service.has_unresolved_notification(db, case.id, "invoice_unpaid"):
-                    continue
-                msg = f"Invoice for case {case.case_uid} ({case.company_name}) has been unpaid for {days} days."
-                if case.rm_id:
-                    notification_service.notify_user(db, case.rm_id, msg, "invoice_unpaid", link=f"/cases/{case.id}", case_id=case.id)
-                notification_service.notify_role(db, UserRole.ADMIN, msg, "invoice_unpaid", link=f"/cases/{case.id}", case_id=case.id)
-    finally:
-        db.close()
-
-
-def _check_compliance_reminders(db, item_key: str, notification_type: str, role: UserRole):
-    """Fire reminders for one compliance item across all schedules. The reminder-day
-    windows and the label come from each case's jurisdiction spec."""
-    today = date.today()
-    due_field = _ITEM_FIELDS[item_key][0]
-    for schedule in db.query(ComplianceSchedule).all():
-        due_date = getattr(schedule, due_field)
-        if not due_date:
-            continue
-        days_remaining = (due_date - today).days
-        case = db.query(Case).filter(Case.id == schedule.case_id).first()
-        if not case or case.status in DORMANT_CASE_STATUSES:
-            continue
-        spec_item = jurisdictions.get(case.jurisdiction).item(item_key)
-        if not spec_item or days_remaining not in spec_item.reminder_days:
-            continue
-        key = f"{notification_type}_{days_remaining}d"
-        if notification_service.has_unresolved_notification(db, case.id, key):
-            continue
-        msg = f"{spec_item.label} for case {case.case_uid} ({case.company_name}) is due in {days_remaining} days ({dmy(due_date)})."
-        notification_service.notify_role(db, role, msg, key, link=f"/compliance/{case.id}", case_id=case.id)
-        notification_service.notify_role(db, UserRole.ADMIN, msg, key, link=f"/compliance/{case.id}", case_id=case.id)
-
-
-def check_renewals_due():
-    db = SessionLocal()
-    try:
-        _check_compliance_reminders(db, "renewal", "renewal_due", UserRole.RM)
-    finally:
-        db.close()
-
-
-def check_esr_filings_due():
-    db = SessionLocal()
-    try:
-        _check_compliance_reminders(db, "esr_filing", "esr_filing_due", UserRole.OPS)
-    finally:
-        db.close()
-
-
-def check_ar_filings_due():
-    db = SessionLocal()
-    try:
-        _check_compliance_reminders(db, "ar_filing", "ar_filing_due", UserRole.OPS)
-    finally:
-        db.close()
-
-
-def check_bo_filings_due():
-    db = SessionLocal()
-    try:
-        _check_compliance_reminders(db, "bo_filing", "bo_filing_due", UserRole.OPS)
-    finally:
-        db.close()
-
-
-CDD_EXCEPTION_REMINDER_DAYS = (7, 3, 0)
-
-
-def check_cdd_exceptions_expiring():
-    db = SessionLocal()
-    try:
-        today = date.today()
-        records = db.query(CDDRecord).filter(CDDRecord.exception_granted == True).all()  # noqa: E712
-        for cdd in records:
-            if not cdd.exception_expires_on:
-                continue
-            days_remaining = (cdd.exception_expires_on - today).days
-            if days_remaining not in CDD_EXCEPTION_REMINDER_DAYS:
-                continue
-            case = db.query(Case).filter(Case.id == cdd.case_id).first()
-            if not case:
-                continue
-            key = f"cdd_exception_expiring_{days_remaining}d"
-            if notification_service.has_unresolved_notification(db, case.id, key):
-                continue
-            msg = (f"CDD exception for case {case.case_uid} ({case.company_name}) "
-                   f"expires in {days_remaining} days ({dmy(cdd.exception_expires_on)}).")
-            if case.rm_id:
-                notification_service.notify_user(db, case.rm_id, msg, key, link=f"/cdd/{case.id}", case_id=case.id)
-            notification_service.notify_role(db, UserRole.ADMIN, msg, key, link=f"/cdd/{case.id}", case_id=case.id)
-    finally:
-        db.close()
-
-
-def check_recurring_service_billing():
-    """Auto-create a Draft invoice for each Active service subscription whose next
-    billing date has arrived, then roll the date forward by its billing frequency."""
-    from dateutil.relativedelta import relativedelta
-    from app.models import ServiceSubscription, Invoice
-
-    db = SessionLocal()
-    try:
-        today = date.today()
-        subs = db.query(ServiceSubscription).filter(
-            ServiceSubscription.status == "Active",
-            ServiceSubscription.next_billing_date != None,  # noqa: E711
-            ServiceSubscription.next_billing_date <= today,
-        ).all()
-        step = {"Monthly": 1, "Quarterly": 3, "Annually": 12}
-        for sub in subs:
-            db.add(Invoice(
-                case_id=sub.case_id,
-                description=sub.service_name,
-                amount=sub.fee_amount or 0,
-                status="Draft",
-            ))
-            case = db.query(Case).filter(Case.id == sub.case_id).first()
-            if case:
-                msg = (f"Auto-generated Draft invoice ({sub.service_name}, {sub.fee_amount or 0}) "
-                       f"for case {case.case_uid} ({case.company_name}). Recurring billing is due.")
-                if case.rm_id:
-                    notification_service.notify_user(db, case.rm_id, msg, "recurring_invoice_generated", link=f"/cases/{case.id}", case_id=case.id)
-                notification_service.notify_role(db, UserRole.ADMIN, msg, "recurring_invoice_generated", link=f"/cases/{case.id}", case_id=case.id)
-            months = step.get(sub.billing_frequency)
-            if months:
-                sub.next_billing_date = sub.next_billing_date + relativedelta(months=months)
-            else:  # One-off — don't keep billing it
-                sub.status = "Cancelled"
-        db.commit()
+            when = "has expired" if w == 0 else f"expires in {w} days"
+            _remind(db, acc, f"licence_expiry_{w}d",
+                    f"Trade licence of {_label(acc)} {when} ({dmy(acc.license_expiry_date)}).", compliance=False)
     finally:
         db.close()
 
 
 def run_daily_sweep():
     """Entry point registered with APScheduler — runs all checks in sequence."""
-    for job in (
-        check_docs_pending,
-        check_cdd_awaiting_screening,
-        check_invoice_unpaid,
-        check_renewals_due,
-        check_esr_filings_due,
-        check_ar_filings_due,
-        check_bo_filings_due,
-        check_cdd_exceptions_expiring,
-        check_recurring_service_billing,
-    ):
+    for job in (check_aml_reviews_due, check_licences_expiring):
         try:
             job()
         except Exception:

@@ -1,4 +1,4 @@
-"""Document upload / download / delete."""
+"""Client document folder (BRD §14): upload, link, download, remove."""
 from typing import List, Optional
 from urllib.parse import quote
 
@@ -15,28 +15,6 @@ from app.schemas.common import OptionalReason
 from app.services import document_service
 
 router = APIRouter(tags=["Documents"])
-
-
-@router.get("/cases/{case_id}/documents", response_model=List[DocumentRead])
-def list_documents(case_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    return document_service.list_for_case(db, case_id, user)
-
-
-@router.post("/cases/{case_id}/documents", response_model=DocumentRead, status_code=status.HTTP_201_CREATED)
-def upload_document(
-    case_id: int,
-    file: UploadFile = File(...),
-    category: str = Form("Other"),
-    case_document_id: Optional[int] = Form(None),
-    instruction_id: Optional[int] = Form(None),
-    notes: Optional[str] = Form(None),
-    db: Session = Depends(get_db),
-    user: User = Depends(get_current_user),
-):
-    return document_service.create(
-        db, case_id, file, category, user,
-        case_document_id=case_document_id, instruction_id=instruction_id, notes=notes,
-    )
 
 
 @router.get("/accounts/{account_id}/documents", response_model=List[DocumentRead])

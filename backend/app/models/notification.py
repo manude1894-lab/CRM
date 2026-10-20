@@ -11,7 +11,7 @@ class Notification(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    case_id = Column(Integer, ForeignKey("cases.id", ondelete="CASCADE"), nullable=True)
+    account_id = Column(Integer, ForeignKey("accounts.id", ondelete="CASCADE"), nullable=True, index=True)
 
     notification_type = Column(String(50), nullable=False)
     message = Column(Text, nullable=False)
@@ -21,4 +21,4 @@ class Notification(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     user = relationship("User", back_populates="notifications", foreign_keys=[user_id])
-    case = relationship("Case")
+    account = relationship("Account")

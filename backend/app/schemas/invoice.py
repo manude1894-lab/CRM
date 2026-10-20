@@ -1,4 +1,4 @@
-"""Pydantic schemas: Invoice (running ledger of charges per Case)."""
+"""Pydantic schemas: Invoice module (BRD §16)."""
 from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional
 from datetime import date, datetime
@@ -19,15 +19,13 @@ class InvoiceBase(BaseModel):
 
 
 class InvoiceCreate(InvoiceBase):
-    account_id: Optional[int] = None
-    case_id: Optional[int] = None
+    account_id: int
     currency: str = "AED"
 
 
 class InvoiceRequest(BaseModel):
-    """Triam mark-up §16 — the RM / Sales instruction to the Accounts Department."""
+    """The RM / Sales instruction to the Accounts Department."""
     account_id: int
-    case_id: Optional[int] = None
     instruction_id: Optional[int] = None  # the service request being invoiced
     description: str = Field(..., min_length=2, max_length=500)
     amount: Decimal = Field(..., ge=0)
@@ -62,8 +60,7 @@ class InvoiceUpdate(BaseModel):
 
 class InvoiceRead(InvoiceBase):
     id: int
-    account_id: Optional[int] = None
-    case_id: Optional[int] = None
+    account_id: int
     currency: str = "AED"
     requested_by_id: Optional[int] = None
     requested_by_name: Optional[str] = None
@@ -86,8 +83,6 @@ def invoice_read(inv, db=None) -> "InvoiceRead":
     acc = inv.account
     if acc is not None:
         out.company_name, out.client_id = acc.company_name, acc.client_id or acc.temp_id
-    elif inv.case is not None:
-        out.company_name = inv.case.company_name
     if db is not None:
         from app.models import Document
         out.attachment_count = db.query(Document).filter(Document.invoice_id == inv.id, Document.removed_at.is_(None)).count()

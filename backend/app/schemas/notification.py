@@ -6,7 +6,7 @@ from datetime import datetime
 
 class NotificationRead(BaseModel):
     id: int
-    case_id: Optional[int] = None
+    account_id: Optional[int] = None
     notification_type: str
     message: str
     link: Optional[str] = None

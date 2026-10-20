@@ -67,5 +67,4 @@ def test_client_update_validates_against_masters_but_keeps_held_legacy_values(db
 def test_document_category_normalisation(db, seed_master):
     seed_master("document_category", ["PASSPORT"])
     assert document_service._normalise_category(db, "PASSPORT") == "PASSPORT"
-    assert document_service._normalise_category(db, "CDD") == "CDD"  # built-in, used by internal flows
     assert document_service._normalise_category(db, "Made up") == "Other"

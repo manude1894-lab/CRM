@@ -7,9 +7,7 @@ from app.models.activity import ActivityType, ActivityStatus
 
 
 class ActivityBase(BaseModel):
-    # BRD §17 — the client is the anchor; the case is optional. One of the two is required.
-    account_id: Optional[int] = None
-    case_id: Optional[int] = None
+    account_id: Optional[int] = None  # required on create (the service checks it)
     company_name: Optional[str] = Field(None, max_length=255)  # defaults to the client's name
     activity_date: date
     activity_type: ActivityType

@@ -1,11 +1,8 @@
-"""SQLAlchemy model: Invoice (running ledger of charges per Case/entity).
+"""SQLAlchemy model: Invoice (BRD §16) — for a new client's onboarding or for service requests.
 
-Distinct from the Case's own invoice_status/invoice_amount fields, which gate
-the one-time onboarding pipeline (CDD Approved -> Raise Invoice -> Invoice Paid
--> Ops Assigned) and are left untouched. This ledger covers ongoing servicing
-invoices raised after the entity is Active — matching how Triam's accounting
-team (Swathi) actually invoices: one invoice can consolidate charges across
-several Instructions (e.g. COI + COGS + notarization billed together).
+RM / Sales request the invoice (instruction to Accounts, pricing approvals attached); Accounts record
+the Invoice No, Date, Currency and Amount and attach the invoice file. One invoice can cover several
+service requests.
 """
 from sqlalchemy import Column, Integer, String, Text, Date, DateTime, Numeric, ForeignKey
 from sqlalchemy.orm import relationship
@@ -28,8 +25,7 @@ class Invoice(Base):
     __tablename__ = "invoices"
 
     id = Column(Integer, primary_key=True, index=True)
-    account_id = Column(Integer, ForeignKey("accounts.id", ondelete="CASCADE"), nullable=True, index=True)
-    case_id = Column(Integer, ForeignKey("cases.id", ondelete="CASCADE"), nullable=True, index=True)
+    account_id = Column(Integer, ForeignKey("accounts.id", ondelete="CASCADE"), nullable=False, index=True)
     currency = Column(String(3), default="AED", server_default="AED", nullable=False)
     requested_by_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     requested_at = Column(DateTime(timezone=True), nullable=True)
@@ -50,7 +46,6 @@ class Invoice(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
-    case = relationship("Case", back_populates="invoices")
     account = relationship("Account")
     requested_by = relationship("User", foreign_keys=[requested_by_id])
     raised_by = relationship("User", foreign_keys=[raised_by_id])

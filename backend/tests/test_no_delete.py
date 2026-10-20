@@ -8,22 +8,21 @@ import pytest
 from fastapi import HTTPException, UploadFile
 
 from app.main import app
-from app.models import AccountParty, ActionPoint, Activity, Case, Document, Instruction, Invoice
+from app.models import AccountParty, Activity, Document, Instruction, Invoice
 from app.schemas.account_party import AccountPartyCreate
 from app.schemas.instruction import InstructionCreate
 from app.schemas.invoice import InvoiceRequest
-from app.services import (account_party_service, action_point_service, activity_service, amendment_service as amend,
-                          case_service, document_service, instruction_service, invoice_service)
+from app.services import (account_party_service, activity_service, amendment_service as amend,
+                          document_service, instruction_service, invoice_service)
 from tests.test_api_p0 import auth, client  # noqa: F401  (fixture)
 from tests.test_p2_workflow import complete_client, people  # noqa: F401  (fixture)
 from tests.test_p3_compliance import approved_client
 
 
 def test_no_delete_endpoints_remain():
-    """DELETE is used only to un-assign an extra RM from a case (an assignment, not a record) and by the
-    support account to remove a user login."""
+    """DELETE is used only by the support account to remove a user login."""
     deletes = sorted(r.path for r in app.routes if "DELETE" in getattr(r, "methods", set()))
-    assert deletes == ["/api/v1/cases/{case_id}/relationship-managers/{rm_user_id}", "/api/v1/users/{user_id}"]
+    assert deletes == ["/api/v1/users/{user_id}"]
 
 
 def test_service_request_is_cancelled_not_deleted(db, make_user, make_account, seed_master):
@@ -55,31 +54,14 @@ def test_invoice_is_cancelled_with_reason_and_paid_ones_cannot_be(db, make_user,
     assert "paid" in e.value.detail
 
 
-def test_case_is_cancelled_by_admin_and_drops_out_of_counts(db, make_user, make_account):
-    admin = make_user(role="admin")
+def test_activity_is_cancelled(db, make_user, make_account):
     rm = make_user()
     acc = make_account(spoc=rm)
-    case = Case(case_uid="CASE-9001", company_name="Falcon SPV", account_id=acc.id, rm_id=rm.id, invoice_amount=Decimal("5000"))
-    db.add(case)
-    db.commit()
-    with pytest.raises(HTTPException):
-        case_service.cancel_case(db, case.id, "Not proceeding", rm)
-    case_service.cancel_case(db, case.id, "Client did not proceed", admin)
-    db.refresh(acc)
-    assert db.get(Case, case.id).status == "Cancelled" and acc.total_cases == 0 and acc.total_invoiced_amount == 0
-
-
-def test_action_point_and_activity_are_cancelled(db, make_user, make_account):
-    rm = make_user()
-    acc = make_account(spoc=rm)
-    ap = ActionPoint(title="Call back", created_by_id=rm.id, owner_id=rm.id)
     act = Activity(activity_uid="ACT-9001", company_name=acc.company_name, activity_date=date.today(),
-                   activity_type="Meeting", summary="Visit", owner_id=rm.id, account_id=acc.id)
-    db.add_all([ap, act])
+                   activity_type="Visit Report", summary="Visit", owner_id=rm.id, account_id=acc.id)
+    db.add(act)
     db.commit()
-    action_point_service.cancel_action_point(db, ap.id, "No longer needed", rm)
     activity_service.cancel_activity(db, act.id, "Meeting called off", rm)
-    assert db.get(ActionPoint, ap.id).status == "Cancelled"
     assert db.get(Activity, act.id).cancel_reason == "Meeting called off"
 
 

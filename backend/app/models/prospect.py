@@ -1,6 +1,6 @@
-"""SQLAlchemy model: Prospect — pre-Case proposal tracking.
+"""SQLAlchemy model: Prospect (BRD §4A).
 
-A prospect is a company Triam has pitched but not yet onboarded. Triam BRD mark-up §4A: every new
+A prospect is a company Triam has pitched but not yet onboarded. Every new
 client starts here. A Prospecting Coordinator assigns the RM (or an RM takes it themselves), and the
 client is created from the prospect; its Prospect ID is the client's temporary ID until Compliance
 approves and the Client ID is issued.
@@ -43,7 +43,6 @@ class Prospect(Base):
     lost_reason = Column(Text, nullable=True)
     notes = Column(Text, nullable=True)
 
-    converted_case_id = Column(Integer, ForeignKey("cases.id", ondelete="SET NULL"), nullable=True)
     converted_account_id = Column(Integer, ForeignKey("accounts.id", ondelete="SET NULL"), nullable=True)
     # owner_id is the assigned RM (empty = not yet assigned)
     assigned_by_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
@@ -55,4 +54,3 @@ class Prospect(Base):
 
     owner = relationship("User", foreign_keys=[owner_id])
     assigned_by = relationship("User", foreign_keys=[assigned_by_id])
-    converted_case = relationship("Case", foreign_keys=[converted_case_id])

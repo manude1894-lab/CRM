@@ -118,19 +118,18 @@ def update_user(db: Session, user_id: int, data: UserUpdate, viewer: User | None
 
 def delete_user(db: Session, user_id: int, viewer: User) -> None:
     """Super admin only: remove a user login for good (e.g. a test or mistaken account). A user who still
-    owns clients, cases or activities must have them reassigned first; their other history is kept
+    owns clients or activities must have them reassigned first; their other history is kept
     without the name."""
-    from app.models import Account, Activity, Case
+    from app.models import Account, Activity
     if not viewer.is_super_admin:
         raise HTTPException(status_code=403, detail="Only the support account can delete users")
     user = get_user(db, user_id, viewer)
     if user.id == viewer.id:
         raise HTTPException(status_code=400, detail="The support account can't delete itself")
     owned = (db.query(Account).filter((Account.owner_id == user.id) | (Account.spoc_id == user.id)).count()
-             + db.query(Case).filter((Case.rm_id == user.id) | (Case.ops_owner_id == user.id)).count()
              + db.query(Activity).filter(Activity.owner_id == user.id).count())
     if owned:
-        raise HTTPException(status_code=409, detail=f"{user.name} still owns {owned} client(s), case(s) or activities. "
+        raise HTTPException(status_code=409, detail=f"{user.name} still owns {owned} client(s) or activities. "
                                                     "Reassign them first, or deactivate the user instead.")
     db.delete(user)
     db.commit()

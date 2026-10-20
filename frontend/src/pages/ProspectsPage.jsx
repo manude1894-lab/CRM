@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { prospectsApi, usersApi } from "../api/endpoints";
 import { Icon, Badge, Modal, Field, Input, Select, Textarea, Spinner, ErrorBanner, PageHeader, DateInput, SelectWithOther } from "../components/ui";
 import DuplicateWarning from "../components/DuplicateWarning";
-import { PROSPECT_STATUS_OPTIONS, CASE_SOURCE_OPTIONS, JURISDICTION_OPTIONS, SERVICE_TYPE_OPTIONS, fmtFull, fmtDate } from "../utils/constants";
+import { PROSPECT_STATUS_OPTIONS, PROSPECT_SOURCE_OPTIONS, fmtFull, fmtDate } from "../utils/constants";
 import { toast } from "../store/toast";
 import { useAuthStore } from "../store/auth";
 import { wordCount } from "../components/accounts/WorkflowBar";
@@ -15,7 +15,7 @@ const empty = {
 };
 
 /**
- * Triam BRD mark-up §4A — every new client starts here. The Prospecting Team Coordinator assigns the RM
+ * BRD §4A — every new client starts here. The Prospecting Team Coordinator assigns the RM
  * (with optional Assignor's comments) or an RM takes an unassigned prospect; the RM then creates the
  * client from the prospect, whose Prospect ID is the client's temporary ID until Compliance approves.
  */
@@ -26,8 +26,6 @@ export default function ProspectsPage({ onNavigate } = {}) {
   const [error, setError] = useState(null);
   const [modal, setModal] = useState(false);
   const [form, setForm] = useState({});
-  const [convertProspect, setConvertProspect] = useState(null);
-  const [convertForm, setConvertForm] = useState({ jurisdiction: "BVI", service_type: "Company Formation", rm_id: "" });
   const [assign, setAssign] = useState(null); // { prospect, rm_id, comments }
   const me = useAuthStore((s) => s.user);
   const coordinator = useAuthStore((s) => s.can("prospect.assign"));
@@ -68,7 +66,7 @@ export default function ProspectsPage({ onNavigate } = {}) {
     };
     try {
       if (form.id) {
-        const { id, prospect_uid, converted_case_id, converted_account_id, assigned_by_id, assigned_by_name, assigned_at,
+        const { id, prospect_uid, converted_account_id, assigned_by_id, assigned_by_name, assigned_at,
           assignor_comments, owner_name, created_at, updated_at, ...patch } = payload;
         if (!coordinator) delete patch.owner_id;  // assignment goes through Assign
         await prospectsApi.update(form.id, patch);
@@ -92,22 +90,6 @@ export default function ProspectsPage({ onNavigate } = {}) {
     } catch (e) { toast.error(e.response?.data?.detail || "Assignment failed"); }
   };
   const createClient = (p) => onNavigate?.({ page: "accounts", prospectId: p.id });
-
-  const openConvert = (p) => {
-    setConvertForm({ jurisdiction: "BVI", service_type: "Company Formation", rm_id: p.owner_id || "" });
-    setConvertProspect(p);
-  };
-
-  const doConvert = async () => {
-    try {
-      await prospectsApi.convert(convertProspect.id, {
-        jurisdiction: convertForm.jurisdiction,
-        service_type: convertForm.service_type,
-        rm_id: convertForm.rm_id ? Number(convertForm.rm_id) : null,
-      });
-      setConvertProspect(null); load();
-    } catch (e) { toast.error(e.response?.data?.detail || "Convert failed"); }
-  };
 
   if (loading) return <Spinner />;
   if (error) return <ErrorBanner message={error} onRetry={load} />;
@@ -151,7 +133,6 @@ export default function ProspectsPage({ onNavigate } = {}) {
                       <button onClick={() => onNavigate?.({ page: "accounts", accountId: p.converted_account_id })}
                         className="mt-1 text-[11px] text-emerald-700 hover:underline">Client created. Open</button>
                     )}
-                    {p.converted_case_id && !p.converted_account_id && <div className="mt-1"><Badge text="Converted" /></div>}
                     <div className="flex items-center gap-1 mt-2 flex-wrap" onClick={(e) => e.stopPropagation()}>
                       {!p.converted_account_id && coordinator && (
                         <button onClick={() => setAssign({ prospect: p, rm_id: p.owner_id || "", comments: p.assignor_comments || "" })}
@@ -164,7 +145,7 @@ export default function ProspectsPage({ onNavigate } = {}) {
                       {!p.converted_account_id && p.owner_id && p.status !== "Lost" && (coordinator || p.owner_id === me?.id || me?.role === "admin") && (
                         <button onClick={() => createClient(p)} className="text-xs px-2 py-0.5 rounded border border-emerald-300 text-emerald-700 hover:bg-emerald-50">Create client</button>
                       )}
-                      {!p.converted_case_id && !p.converted_account_id && PROSPECT_STATUS_OPTIONS.filter((s) => s !== p.status).map((s) => (
+                      {!p.converted_account_id && PROSPECT_STATUS_OPTIONS.filter((s) => s !== p.status).map((s) => (
                         <button key={s} onClick={() => move(p, s)} className="text-xs px-2 py-0.5 rounded border border-gray-200 text-gray-500 hover:bg-gray-50">{s}</button>
                       ))}
                     </div>
@@ -185,7 +166,7 @@ export default function ProspectsPage({ onNavigate } = {}) {
             <Field label="Contact Email"><Input value={form.contact_email || ""} onChange={(e) => setForm((p) => ({ ...p, contact_email: e.target.value }))} /></Field>
             <Field label="Contact Phone"><Input value={form.contact_phone || ""} onChange={(e) => setForm((p) => ({ ...p, contact_phone: e.target.value }))} /></Field>
             <Field label="Source">
-              <SelectWithOther value={form.source} options={CASE_SOURCE_OPTIONS} maxLength={50} otherPlaceholder="Where did the prospect come from?"
+              <SelectWithOther value={form.source} options={PROSPECT_SOURCE_OPTIONS} maxLength={50} otherPlaceholder="Where did the prospect come from?"
                 onChange={(e) => setForm((p) => ({ ...p, source: e.target.value }))} />
             </Field>
             {coordinator ? (
@@ -242,33 +223,6 @@ export default function ProspectsPage({ onNavigate } = {}) {
         </Modal>
       )}
 
-      {convertProspect && (
-        <Modal title={`Convert "${convertProspect.company_name}" to a Case`} onClose={() => setConvertProspect(null)}>
-          <p className="text-sm text-gray-600 mb-3">This creates a new onboarding Case from this prospect. The prospect will be marked Won and linked to the new case.</p>
-          <div className="grid grid-cols-2 gap-x-4">
-            <Field label="Jurisdiction">
-              <Select value={convertForm.jurisdiction} onChange={(e) => setConvertForm((p) => ({ ...p, jurisdiction: e.target.value }))}>
-                {JURISDICTION_OPTIONS.map((x) => <option key={x}>{x}</option>)}
-              </Select>
-            </Field>
-            <Field label="Service Type">
-              <Select value={convertForm.service_type} onChange={(e) => setConvertForm((p) => ({ ...p, service_type: e.target.value }))}>
-                {SERVICE_TYPE_OPTIONS.map((x) => <option key={x}>{x}</option>)}
-              </Select>
-            </Field>
-            <Field label="Relationship Manager">
-              <Select value={convertForm.rm_id || ""} onChange={(e) => setConvertForm((p) => ({ ...p, rm_id: e.target.value }))}>
-                <option value="">— Unassigned —</option>
-                {users.filter((u) => u.role === "rm").map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
-              </Select>
-            </Field>
-          </div>
-          <div className="flex justify-end gap-3 mt-4">
-            <button onClick={() => setConvertProspect(null)} className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
-            <button onClick={doConvert} className="px-4 py-2 text-sm text-white rounded-lg" style={{ background: "#1a3a5c" }}>Convert</button>
-          </div>
-        </Modal>
-      )}
     </div>
   );
 }
