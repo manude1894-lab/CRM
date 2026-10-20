@@ -26,8 +26,10 @@ export default function ClientProfilePage({ accountId, initialTab = "overview", 
   const [error, setError] = useState(null);
   const [tab, setTab] = useState(initialTab);
   const [version, setVersion] = useState(0); // remounts the tabs after a status change or save
+  const [wfVersion, setWfVersion] = useState(0); // reloads the status bar after a profile save (e.g. the CDD section)
   const [tabStart, setTabStart] = useState(null); // "request" opens a new service request on the Reports & Requests tab
   const isAdmin = useAuthStore((s) => s.isAdmin());
+  const readOnly = useAuthStore((s) => !s.isAdmin() && (s.user?.permissions || []).includes("read_only"));
 
   const load = () => accountsApi.get(accountId).then((a) => { setAccount(a); setError(null); })
     .catch((e) => setError(e.response?.data?.detail || "Failed to load the client"));
@@ -59,7 +61,7 @@ export default function ClientProfilePage({ accountId, initialTab = "overview", 
         back={{ label: "Clients", onClick: onBack }}
         title={a.company_name}
         subtitle={[a.client_id || `Temporary ID ${a.temp_id || a.account_uid}`, individual ? "Individual" : "Corporate", a.anchor_entity, userName(a.spoc_id) && `Anchor RM: ${userName(a.spoc_id)}`].filter(Boolean).join(" · ")}
-        actions={<>
+        actions={!readOnly && <>
           {["Approved", "Active"].includes(a.profile_status) && (
             <Button onClick={() => { setServicingStart("request"); setTab("servicing"); }}>New service request</Button>
           )}
@@ -79,7 +81,7 @@ export default function ClientProfilePage({ accountId, initialTab = "overview", 
       </div>
 
       {/* Status, approval actions and review history — the same on every tab. */}
-      <WorkflowBar key={`wf-${version}`} accountId={a.id} onChanged={refresh} />
+      <WorkflowBar key={`wf-${version}-${wfVersion}`} accountId={a.id} onChanged={refresh} />
 
       <Tabs tabs={tabs} active={tab} onChange={setTab} />
 
@@ -140,7 +142,7 @@ export default function ClientProfilePage({ accountId, initialTab = "overview", 
           <Panel>
             <Embedded>
               <AccountFormModal initialForm={accountToForm(a)} users={users} countries={countries}
-                hideWorkflow hideDocuments onClose={refresh} onChanged={() => { load(); onChanged?.(); }} />
+                hideWorkflow hideDocuments onClose={refresh} onChanged={() => { load(); setWfVersion((v) => v + 1); onChanged?.(); }} />
             </Embedded>
           </Panel>
         )}

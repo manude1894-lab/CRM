@@ -11,7 +11,7 @@ import { MONTHS, parseFYE, toFYE, fmtFYE, daysIn } from "../../utils/fye";
 import { toast } from "../../store/toast";
 import {
   fmtDate, REGULATOR_OPTIONS, TAG_OPTIONS, SERVICES_OBTAINED_OPTIONS,
-  PROFILE_STATUS_OPTIONS, COUNTRY_CALLING_CODES, TRIAM_ENTITY_OPTIONS, isUAE,
+  PROFILE_STATUS_OPTIONS, COUNTRY_CALLING_CODES, TRIAM_ENTITY_OPTIONS, isUAE, isRelationshipManager,
 } from "../../utils/constants";
 import {
   RISK_OPTIONS, BLANK_ADDRESS, SECTION_FIELDS,
@@ -143,7 +143,7 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
   const set = (key) => (e) => setForm({ ...form, [key]: e.target.value });
   const setChecked = (key) => (e) => setForm({ ...form, [key]: e.target.checked });
   const setValue = (key) => (v) => setForm({ ...form, [key]: v });
-  const rms = users.filter((u) => u.role === "rm");
+  const rms = users.filter((u) => isRelationshipManager(u) || u.id === +form.spoc_id || (form.non_anchor_rm_ids || []).includes(u.id));
   const isIndividual = form.account_type === "Individual";
   // BRD §18 — admin-managed lists; the old constants are the fallback until the API answers.
   const entities = useMasters("triam_entity", TRIAM_ENTITY_OPTIONS);

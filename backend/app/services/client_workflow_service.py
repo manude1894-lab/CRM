@@ -111,6 +111,8 @@ def _missing_cdd(acc: Account) -> list[dict]:
 def allowed_actions(db: Session, acc: Account, user: User) -> list[dict]:
     """Every action valid from the current status, with whether *this* user may do it and why not.
     Drives the workflow buttons, so the UI never offers something the server would refuse."""
+    if has_permission(user, "read_only"):
+        return []  # Inquiry & Reports: view only (BRD §13)
     status = acc.profile_status
     req = pending_request(db, acc.id) if status == AWAITING else None
     approver = has_permission(user, "client.approve")

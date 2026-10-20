@@ -1,14 +1,8 @@
 // Where a prospect came from.
 export const PROSPECT_SOURCE_OPTIONS = ["Senior Mgmt", "Social Media", "Referral", "Other"];
 
-export const fmt = (n) => {
-  const v = Number(n || 0);
-  if (v >= 1e6) return `$${(v / 1e6).toFixed(2)}M`;
-  if (v >= 1e3) return `$${(v / 1e3).toFixed(0)}K`;
-  return `$${v.toFixed(0)}`;
-};
-
-export const fmtFull = (n) => `$${Number(n || 0).toLocaleString()}`;
+// Amounts without their own currency are in AED (Triam bills in the UAE; invoices carry their own currency).
+export const fmtFull = (n) => `AED ${Number(n || 0).toLocaleString()}`;
 
 // CSV/export filenames: "<base>_YYYY-MM-DD_HH-mm-ss.csv" so every export is
 // timestamped and never silently overwrites the last one in the Downloads folder.
@@ -41,6 +35,10 @@ export const ROLE_LABEL = {
 
 // Labels for the system role on the user form: what kind of user, separate from the business role
 // (MLRO, Approver, Accountant …) that carries the permissions.
+// Users who can be a client's RM: active client-facing staff (RM, RO, FO, Sales Manager …), not the
+// central desks (Compliance, Approver, Accounts, Inquiry, Prospecting Coordinator) or administrators.
+export const isRelationshipManager = (u) => u.role === "rm" && u.handles_clients !== false && u.is_active !== false;
+
 export const USER_TYPE_LABEL = {
   rm: "Standard user",
   admin: "Administrator",

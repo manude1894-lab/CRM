@@ -179,6 +179,11 @@ def update_instruction(db: Session, instruction_id: int, data: InstructionUpdate
             db.rollback()
             raise
 
+    # A request marked Completed without a completion date is completed today.
+    if payload.get("status") == "Completed" and not inst.date_completed:
+        from datetime import date
+        inst.date_completed = date.today()
+
     # BRD §16: a completed, charged service request is an instruction to Accounts to invoice it.
     new_invoice = None
     if payload.get("status") == "Completed" and inst.charge_amount and not inst.invoice_id:

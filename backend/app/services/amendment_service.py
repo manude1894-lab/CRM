@@ -370,6 +370,8 @@ def view(db: Session, acc: Account, user: User) -> dict:
                 out["actions"].append("withdraw")
     elif out["amendable"]:
         out["actions"] = ["start"]
+    if has_permission(user, "read_only"):
+        out["actions"] = []  # Inquiry & Reports: view only (BRD §13)
     return out
 
 

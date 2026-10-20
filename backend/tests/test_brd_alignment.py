@@ -88,3 +88,22 @@ def test_countries_master(client, make_user):
     assert r.status_code == 201 and set(r.json()) == {"id", "name"}
     assert client.post("/api/v1/countries", json={"name": "Lemuria"}, headers=auth(rm)).status_code == 403
     assert "Atlantis" in {c["name"] for c in client.get("/api/v1/countries", headers=auth(rm)).json()}
+
+
+def test_read_only_users_are_offered_no_actions(db, make_user, make_account, make_role):
+    from app.services import amendment_service, client_workflow_service as wf
+    inquiry = make_user("Ines Inquiry", business_role=make_role("Inquiry", ["read_only", "view.all_clients"]))
+    acc = make_account(spoc=make_user("Rita"), profile_status="Active")
+    assert wf.allowed_actions(db, acc, inquiry) == []
+    assert amendment_service.view(db, acc, inquiry)["actions"] == []
+
+
+def test_completing_a_request_sets_the_completion_date(db, make_user, make_account, seed_master):
+    from app.schemas.instruction import InstructionCreate, InstructionUpdate
+    from app.services import instruction_service
+    rm = make_user()
+    acc = make_account(spoc=rm, profile_status="Active")
+    sr = instruction_service.create_instruction(db, InstructionCreate(account_id=acc.id, instruction_type="Other",
+                                                                      other_description="Courier"), rm)
+    instruction_service.update_instruction(db, sr.id, InstructionUpdate(status="Completed"), rm)
+    assert sr.date_completed == date.today()

@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { prospectsApi, usersApi } from "../api/endpoints";
 import { Icon, Badge, Modal, Field, Input, Select, Textarea, Spinner, ErrorBanner, PageHeader, DateInput, SelectWithOther } from "../components/ui";
 import DuplicateWarning from "../components/DuplicateWarning";
-import { PROSPECT_STATUS_OPTIONS, PROSPECT_SOURCE_OPTIONS, fmtFull, fmtDate } from "../utils/constants";
+import { PROSPECT_STATUS_OPTIONS, PROSPECT_SOURCE_OPTIONS, fmtFull, fmtDate, isRelationshipManager } from "../utils/constants";
 import { toast } from "../store/toast";
 import { useAuthStore } from "../store/auth";
 import { wordCount } from "../components/accounts/WorkflowBar";
@@ -173,7 +173,7 @@ export default function ProspectsPage({ onNavigate } = {}) {
               <Field label="Assigned RM">
                 <Select value={form.owner_id || ""} onChange={(e) => setForm((p) => ({ ...p, owner_id: e.target.value }))}>
                   <option value="">— Not yet assigned —</option>
-                  {users.filter((u) => u.role === "rm" && u.is_active !== false).map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+                  {users.filter(isRelationshipManager).map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
                 </Select>
               </Field>
             ) : (
@@ -207,7 +207,7 @@ export default function ProspectsPage({ onNavigate } = {}) {
             <Field label="Relationship Manager" required>
               <Select value={assign.rm_id || ""} onChange={(e) => setAssign((a) => ({ ...a, rm_id: e.target.value }))}>
                 <option value="">— choose —</option>
-                {users.filter((u) => u.role === "rm" && u.is_active !== false).map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+                {users.filter(isRelationshipManager).map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
               </Select>
             </Field>
           )}
