@@ -9,8 +9,8 @@ from app.services import access_control
 
 
 def _hidden_from(viewer) -> bool:
-    """The super admin account is invisible to everyone but itself."""
-    return not (viewer is not None and viewer.is_super_admin)
+    """The super admin account is visible to administrators and hidden from everyone else."""
+    return not (viewer is not None and (viewer.is_super_admin or viewer.role == UserRole.ADMIN))
 
 
 def list_users(db: Session, skip: int = 0, limit: int = 100, viewer: User | None = None) -> list[User]:
@@ -84,7 +84,7 @@ def update_user(db: Session, user_id: int, data: UserUpdate, viewer: User | None
     update_data = data.model_dump(exclude_unset=True)
     if user.is_super_admin:
         if viewer is None or viewer.id != user.id:
-            raise HTTPException(status_code=404, detail="User not found")
+            raise HTTPException(status_code=403, detail="Only the support account can change itself")
         if update_data.get("is_active") is False or update_data.get("role", UserRole.ADMIN) != UserRole.ADMIN:
             raise HTTPException(status_code=400, detail="The support account can't be deactivated or given another user type")
     losing_admin = user.role == UserRole.ADMIN and user.is_active and not user.is_super_admin and (

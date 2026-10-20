@@ -195,6 +195,9 @@ export default function AdminPage() {
                   </span>
                 </td>
                 <td className="py-3 px-4">
+                  {u.is_super_admin && u.id !== me?.id ? (
+                    <span className="text-[11px] text-gray-400">Support account</span>
+                  ) : <>
                   <button onClick={() => { setForm({ ...u, password: "" }); setModal("edit"); }}
                     className="p-1.5 rounded hover:bg-brand-50 text-gray-400 hover:text-brand-600 mr-1">
                     <Icon name="edit" size={14} />
@@ -207,6 +210,7 @@ export default function AdminPage() {
                     <button onClick={() => deleteUser(u)} title="Delete user"
                       className="ml-1 px-2 py-1 rounded text-[11px] border border-red-200 text-red-600 hover:bg-red-50">Delete</button>
                   )}
+                  </>}
                 </td>
               </tr>
             ))}

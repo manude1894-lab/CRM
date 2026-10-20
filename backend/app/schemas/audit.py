@@ -27,9 +27,9 @@ class AuditEntryRead(BaseModel):
 
 
 def support_name(user, viewer=None):
-    """Who did it, as shown to the viewer: the support account appears as "System support" to others."""
+    """Who did it, as shown to the viewer: the support account appears as "System support" to non-administrators."""
     if user is None:
         return None
-    if user.is_super_admin and not (viewer is not None and viewer.is_super_admin):
+    if user.is_super_admin and not (viewer is not None and (viewer.is_super_admin or viewer.role == "admin")):
         return "System support"
     return user.name
