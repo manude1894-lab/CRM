@@ -115,7 +115,8 @@ def test_import_of_existing_clients(db, make_user):
     from app.services import account_service
     admin = make_user("Ada", role="admin")
     rows = [
-        AccountImportRow(company_name="Old Client Ltd", anchor_entity="TABL", risk_rating="high", cdd_completion_date=date(2026, 1, 15)),
+        AccountImportRow(company_name="Old Client Ltd", anchor_entity="TABL", risk_rating="high", cdd_completion_date=date(2026, 1, 15),
+                         kyc_verified_by="Kalyan", client_category="Existing", contact_email="info@old.ae", is_one_time_service=False),
         AccountImportRow(company_name="Leaving Ltd", anchor_entity="TABL", profile_status="marked for exit"),
         AccountImportRow(company_name="Typo Ltd", profile_status="Actve"),
         AccountImportRow(company_name="Half Way Ltd", profile_status="WIP"),
@@ -130,5 +131,6 @@ def test_import_of_existing_clients(db, make_user):
     old = db.query(Account).filter(Account.company_name == "Old Client Ltd").one()
     assert (old.profile_status, old.risk_rating, old.client_id) == ("Active", "High", "TABL/00001")
     assert old.next_aml_review_date == date(2027, 1, 15)  # High risk: 1 year after the CDD date
+    assert (old.kyc_verified_by, old.client_category, old.contact_email, old.is_one_time_service) == ("Kalyan", "Existing", "info@old.ae", False)
     assert db.query(Account).filter(Account.company_name == "Leaving Ltd").one().profile_status == "Marked for Exit"
     assert db.query(Account).count() == 2

@@ -88,6 +88,9 @@ class AddressBlock(BaseModel):
 
 class AccountImportRow(BaseModel):
     account_type: Optional[str] = None
+    licensing_authority_other: Optional[str] = Field(None, max_length=100)
+    kyc_verified_by: Optional[str] = Field(None, max_length=150)
+    is_pep: Optional[bool] = None
     search_name: Optional[str] = Field(None, max_length=120)
     company_name: str = Field(..., min_length=1, max_length=255)
     country: Optional[str] = None

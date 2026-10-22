@@ -2,14 +2,19 @@ import { csvDate } from "../../utils/constants";
 // CSV import/export for the Clients page. Pure functions (no React, no API) so they can be unit-tested.
 
 const IMPORT_ADDRESS_COL_KEYS = { "line 1": "line1", "line 2": "line2", "landmark": "landmark", "city": "city", "zip": "zip", "p.o. box": "po_box", "country": "country" };
-const IMPORT_BOOLEAN_FIELDS = new Set(["is_regulated", "corp_tax_registered", "has_introducer", "engagement_letter_signed"]);
+const IMPORT_BOOLEAN_FIELDS = new Set(["is_regulated", "corp_tax_registered", "has_introducer", "engagement_letter_signed", "is_one_time_service", "is_pep"]);
 const IMPORT_TRUTHY = new Set(["true", "yes", "1"]);
 
 export const IMPORT_HEADER_MAP = {
   "client type": "account_type",
   "unique search name": "search_name", // BRD §3. "Client ID" is export-only: IDs are always issued by the system.
   "company name": "company_name",
+  "new client category": "client_category",
   "country": "country",
+  "contact mobile country code": "contact_mobile_country_code",
+  "contact mobile number": "contact_mobile_number",
+  "contact email": "contact_email",
+  "one-time service": "is_one_time_service",
   "single point of contact": "single_point_of_contact",
   "anchor entity": "anchor_entity",
   "non-anchor entities": "__non_anchor_entities",
@@ -23,6 +28,7 @@ export const IMPORT_HEADER_MAP = {
   "anchor rm (spoc)": "__spoc_name",
   "non-anchor rms": "__non_anchor_rm_names",
   "licensing authority": "licensing_authority",
+  "other licensing authority": "licensing_authority_other",
   "license activities": "license_activities",
   "license start date": "license_start_date",
   "license expiry date": "license_expiry_date",
@@ -30,6 +36,10 @@ export const IMPORT_HEADER_MAP = {
   "regulator": "regulator_name",
   "other regulator": "regulator_other",
   "license category": "license_category",
+  "regulatory license expiry": "regulatory_license_expiry_date",
+  "nature of business": "nature_of_business",
+  "lei number": "lei_number",
+  "lei expiry date": "lei_expiry_date",
   "trn/vat number": "trn_vat_number",
   "corp tax registered": "corp_tax_registered",
   "corp tax registration no.": "corp_tax_registration_number",
@@ -43,7 +53,9 @@ export const IMPORT_HEADER_MAP = {
   "engagement letter valid until": "engagement_letter_valid_until",
   "aml classification": "aml_classification",
   "edd reason": "edd_reason",
+  "kyc verified by": "kyc_verified_by",
   "cdd completion date": "cdd_completion_date",
+  "is pep": "is_pep",
   "date of birth": "date_of_birth",
   "country of birth": "country_of_birth",
   "nationality": "nationality",
@@ -146,18 +158,20 @@ const ADDRESS_COLS = ["Line 1", "Line 2", "Landmark", "City", "ZIP", "P.O. Box",
 const addrRow = (v) => { const a = v || {}; return [a.line1, a.line2, a.landmark, a.city, a.zip, a.po_box, a.country]; };
 
 export const EXPORT_HEADERS = [
-  "Account UID", "Client ID", "Unique Search Name", "Client Type", "Company Name", "Country", "Single Point of Contact",
+  "Account UID", "Client ID", "Unique Search Name", "Client Type", "Company Name", "New Client Category", "Country",
+  "Contact Mobile Country Code", "Contact Mobile Number", "Contact Email", "One-time Service", "Single Point of Contact",
   "Anchor Entity", "Non-anchor Entities",
   "Tags", "Incorporation Certificate No.", "Incorporation Date", "License Number",
   "Risk Rating", "Anchor RM (SPOC)", "Non-anchor RMs",
-  "Licensing Authority", "License Activities", "License Start Date", "License Expiry Date",
-  "Is Regulated", "Regulator", "Other Regulator", "License Category",
+  "Licensing Authority", "Other Licensing Authority", "License Activities", "License Start Date", "License Expiry Date",
+  "Is Regulated", "Regulator", "Other Regulator", "License Category", "Regulatory License Expiry",
+  "Nature of Business", "LEI Number", "LEI Expiry Date",
   ...ADDRESS_COLS.map((c) => `Registered Address ${c}`),
   ...ADDRESS_COLS.map((c) => `Operating Address ${c}`),
   "TRN/VAT Number", "Corp Tax Registered", "Corp Tax Registration No.", "Financial Year End",
   "Has Introducer", "Introducer Name", "Services Obtained",
   "Profile Status", "Engagement Letter Signed", "Engagement Letter Valid Until",
-  "AML Classification", "EDD Reason", "CDD Completion Date", "Next AML Review Date", "Is PEP",
+  "AML Classification", "EDD Reason", "KYC Verified By", "CDD Completion Date", "Next AML Review Date", "Is PEP",
   "Date of Birth", "Country of Birth", "Nationality", "Passport Expiry", "Country of Residence",
   ...ADDRESS_COLS.map((c) => `Residential Address ${c}`),
   "Individual Mobile Country Code", "Individual Mobile Number", "Individual Email", "UAE Visa Number", "UAE Visa Expiry", "Nature of Services Sought",
@@ -168,19 +182,21 @@ export const EXPORT_HEADERS = [
 export function buildAccountsCsv(accounts, users) {
   const userName = (id) => users.find((u) => u.id === id)?.name;
   const rows = accounts.map((a) => [
-    a.account_uid, a.client_id, a.search_name, a.account_type, a.company_name, a.country, a.single_point_of_contact,
+    a.account_uid, a.client_id, a.search_name, a.account_type, a.company_name, a.client_category, a.country,
+    a.contact_mobile_country_code, a.contact_mobile_number, a.contact_email, a.is_one_time_service, a.single_point_of_contact,
     a.anchor_entity, (a.non_anchor_entities || []).join("; "),
     a.tags, a.registration_number, a.incorporation_date, a.license_number,
     a.risk_rating, userName(a.spoc_id) || "",
     (a.non_anchor_rm_ids || []).map(userName).filter(Boolean).join("; "),
-    a.licensing_authority, a.license_activities, a.license_start_date, a.license_expiry_date,
-    a.is_regulated, a.regulator_name, a.regulator_other, a.license_category,
+    a.licensing_authority, a.licensing_authority_other, a.license_activities, a.license_start_date, a.license_expiry_date,
+    a.is_regulated, a.regulator_name, a.regulator_other, a.license_category, a.regulatory_license_expiry_date,
+    a.nature_of_business, a.lei_number, a.lei_expiry_date,
     ...addrRow(a.registered_address),
     ...addrRow(a.operating_address),
     a.trn_vat_number, a.corp_tax_registered, a.corp_tax_registration_number, a.financial_year_end,
     a.has_introducer, a.introducer_name, (a.services_obtained || []).join("; "),
     a.profile_status, a.engagement_letter_signed, a.engagement_letter_valid_until,
-    a.aml_classification, a.edd_reason, a.cdd_completion_date, a.next_aml_review_date, a.is_pep,
+    a.aml_classification, a.edd_reason, a.kyc_verified_by, a.cdd_completion_date, a.next_aml_review_date, a.is_pep,
     a.date_of_birth, a.country_of_birth, a.nationality, a.passport_expiry_date, a.country_of_residence,
     ...addrRow(a.residential_address),
     a.individual_mobile_country_code, a.individual_mobile_number, a.individual_email, a.uae_visa_number, a.uae_visa_expiry,
