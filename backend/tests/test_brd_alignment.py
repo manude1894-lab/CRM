@@ -107,3 +107,28 @@ def test_completing_a_request_sets_the_completion_date(db, make_user, make_accou
                                                                       other_description="Courier"), rm)
     instruction_service.update_instruction(db, sr.id, InstructionUpdate(status="Completed"), rm)
     assert sr.date_completed == date.today()
+
+
+def test_import_of_existing_clients(db, make_user):
+    from app.models import Account
+    from app.schemas.account import AccountImportRow
+    from app.services import account_service
+    admin = make_user("Ada", role="admin")
+    rows = [
+        AccountImportRow(company_name="Old Client Ltd", anchor_entity="TABL", risk_rating="high", cdd_completion_date=date(2026, 1, 15)),
+        AccountImportRow(company_name="Leaving Ltd", anchor_entity="TABL", profile_status="marked for exit"),
+        AccountImportRow(company_name="Typo Ltd", profile_status="Actve"),
+        AccountImportRow(company_name="Half Way Ltd", profile_status="WIP"),
+        AccountImportRow(company_name="Odd Risk Ltd", risk_rating="Extreme"),
+    ]
+    preview = account_service.import_accounts(db, admin, rows, dry_run=True)
+    assert [r.status for r in preview] == ["ok", "ok", "error", "error", "error"]
+    assert "Actve" in preview[2].message and "Extreme" in preview[4].message
+    assert db.query(Account).count() == 0  # the preview writes nothing
+
+    account_service.import_accounts(db, admin, rows, dry_run=False)
+    old = db.query(Account).filter(Account.company_name == "Old Client Ltd").one()
+    assert (old.profile_status, old.risk_rating, old.client_id) == ("Active", "High", "TABL/00001")
+    assert old.next_aml_review_date == date(2027, 1, 15)  # High risk: 1 year after the CDD date
+    assert db.query(Account).filter(Account.company_name == "Leaving Ltd").one().profile_status == "Marked for Exit"
+    assert db.query(Account).count() == 2

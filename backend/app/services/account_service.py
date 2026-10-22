@@ -414,6 +414,17 @@ def bulk_update_accounts(db: Session, user: User, data: AccountBulkUpdateRequest
     return results
 
 
+# Imported clients are existing relationships, so only the existing-client statuses (BRD §9).
+IMPORT_STATUSES = ("Active", "Approved", "Inactive", "Marked for Exit", "Exited")
+RISK_LEVELS = ("High", "Medium", "Low")
+
+
+def _match(value: str, allowed) -> Optional[str]:
+    """The allowed value matching `value` case-insensitively, or None."""
+    v = value.strip().lower()
+    return next((a for a in allowed if a.lower() == v), None)
+
+
 def import_accounts(
     db: Session, user: User, rows: list[AccountImportRow], dry_run: bool,
 ) -> list[AccountImportRowResult]:
@@ -430,6 +441,17 @@ def import_accounts(
             results.append(AccountImportRowResult(row_index=idx, company_name=name, status="duplicate", message="Client with this company name already exists"))
             continue
 
+        # Existing clients Triam already services: a blank status means Active (new clients come
+        # through Prospects). Status and risk level must be values the CRM knows.
+        status = _match(row.profile_status, IMPORT_STATUSES) if row.profile_status else "Active"
+        risk = _match(row.risk_rating, RISK_LEVELS) if row.risk_rating else None
+        problem = (f"Status '{row.profile_status}' is not one of {', '.join(IMPORT_STATUSES)}" if status is None
+                   else f"Risk rating '{row.risk_rating}' is not one of {', '.join(RISK_LEVELS)}" if row.risk_rating and risk is None
+                   else None)
+        if problem:
+            results.append(AccountImportRowResult(row_index=idx, company_name=name, status="error", message=problem))
+            continue
+
         seen_in_batch.add(_norm(name))
         if dry_run:
             results.append(AccountImportRowResult(row_index=idx, company_name=name, status="ok"))
@@ -437,6 +459,7 @@ def import_accounts(
 
         payload = row.model_dump(exclude_none=True)
         payload["company_name"] = name
+        payload["profile_status"], payload["risk_rating"] = status, risk
         search_name = payload.pop("search_name", None)
         if search_name and _search_name_taken(db, search_name):
             search_name = None  # fall back to a generated one rather than failing the row
@@ -449,6 +472,7 @@ def import_accounts(
         if acc.anchor_entity:
             acc.client_id = next_client_id(db, acc.anchor_entity)
         _set_status(acc, user)
+        _compute_next_aml_review_date(acc)
         _normalize_non_anchor_rms(acc)
         db.add(acc)
         db.flush()
