@@ -281,7 +281,7 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
             <div className="grid grid-cols-2 gap-3">
               <Field label="Contact Mobile *">
                 <div className="flex gap-2">
-                  <Select value={form.contact_mobile_country_code || ""} onChange={set("contact_mobile_country_code")} className="w-40 flex-shrink-0">
+                  <Select value={form.contact_mobile_country_code || ""} onChange={set("contact_mobile_country_code")} className="!w-44 flex-shrink-0">
                     <option value="">Code</option>
                     {COUNTRY_CALLING_CODES.map((c) => <option key={c.code} value={c.code}>{c.label}</option>)}
                   </Select>
@@ -464,7 +464,7 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
             </div>
             <Field label="Mobile">
               <div className="flex gap-2">
-                <Select value={form.individual_mobile_country_code || ""} onChange={set("individual_mobile_country_code")} className="w-40 flex-shrink-0">
+                <Select value={form.individual_mobile_country_code || ""} onChange={set("individual_mobile_country_code")} className="!w-44 flex-shrink-0">
                   <option value="">Code</option>
                   {COUNTRY_CALLING_CODES.map((c) => <option key={c.code} value={c.code}>{c.label}</option>)}
                 </Select>

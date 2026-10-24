@@ -232,7 +232,7 @@ function PartyForm({ form, setForm, countries, onCancel, onSave }) {
 
       <Field label="Contact Mobile" required={contactRequired}>
         <div className="flex gap-2">
-          <Select value={form.mobile_country_code || ""} onChange={set(setForm, "mobile_country_code")} className="w-40 flex-shrink-0">
+          <Select value={form.mobile_country_code || ""} onChange={set(setForm, "mobile_country_code")} className="!w-44 flex-shrink-0">
             <option value="">Code</option>
             {COUNTRY_CALLING_CODES.map((c) => <option key={c.code} value={c.code}>{c.label}</option>)}
           </Select>
