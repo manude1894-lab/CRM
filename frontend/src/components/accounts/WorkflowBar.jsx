@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { workflowApi } from "../../api/endpoints";
 import { Modal, Field, Select, Textarea } from "../ui";
 import { useMasters } from "../../hooks/useMasters";
@@ -26,8 +26,11 @@ export const wordCount = (t) => (t || "").trim().split(/\s+/).filter(Boolean).le
  * BRD §11/§12/§15 — the client's lifecycle status, the actions this user may take now (disabled ones
  * say why), and the review history. Status only changes through these buttons.
  * onChanged(state) runs after every successful action so the form can refresh / lock.
+ * submitSignal: each new value opens the submit dialog (the client form's Submit button), after
+ * reloading the state so the check uses what was just saved. dialogOnly renders only the dialogs,
+ * for pages that show the bar themselves. onState(state) reports every state loaded.
  */
-export default function WorkflowBar({ accountId, refreshKey, onChanged }) {
+export default function WorkflowBar({ accountId, refreshKey, onChanged, submitSignal = 0, dialogOnly = false, onState }) {
   const [state, setState] = useState(null);
   const [busy, setBusy] = useState(false);
   const [dialog, setDialog] = useState(null); // { action, label }
@@ -37,8 +40,19 @@ export default function WorkflowBar({ accountId, refreshKey, onChanged }) {
   const [showHistory, setShowHistory] = useState(false);
   const reasons = useMasters("rejection_reason", []);
 
-  const load = () => workflowApi.get(accountId).then(setState).catch(() => setState(null));
+  const apply = (s) => { setState(s); onState?.(s); return s; };
+  const load = () => workflowApi.get(accountId).then(apply).catch(() => apply(null));
   useEffect(() => { if (accountId) load(); }, [accountId, refreshKey]);
+  const handledSignal = useRef(0);
+  useEffect(() => {
+    if (!accountId || !submitSignal || handledSignal.current === submitSignal) return;
+    handledSignal.current = submitSignal;
+    workflowApi.get(accountId).then(apply).then((s) => {
+      const a = s.actions.find((x) => x.action === "submit");
+      if (!a?.allowed) return toast.error(a?.reason || "This client can't be submitted for approval now.");
+      setText(""); setReasonCode(""); setKycDeclared(false); setDialog(a);
+    }).catch(() => toast.error("Couldn't load the client's approval status"));
+  }, [submitSignal, accountId]);
   if (!accountId || !state) return null;
 
   const run = async (action) => {
@@ -73,6 +87,47 @@ export default function WorkflowBar({ accountId, refreshKey, onChanged }) {
   const words = wordCount(text);
   const commentBad = !!commentLabel && (!text.trim() || words > MAX_WORDS);
   const kycMissing = dialog?.action === "submit" && !kycDeclared;
+
+  const dialogEl = dialog && (
+        <Modal title={dialog.label} onClose={() => setDialog(null)}>
+          {dialog.action === "reject" && (
+            <Field label="Reason" required>
+              <Select value={reasonCode} onChange={(e) => setReasonCode(e.target.value)}>
+                <option value="">— choose —</option>
+                {reasons.items.map((r) => <option key={r.code} value={r.code}>{r.label}</option>)}
+              </Select>
+            </Field>
+          )}
+          <Field label={dialog.action === "reject" ? "What needs fixing? (at least 15 characters)" : commentLabel || NEEDS_REASON[dialog.action] || "Comment (optional)"}
+            required={dialog.action === "reject" || !!NEEDS_REASON[dialog.action] || !!commentLabel}>
+            <Textarea rows={commentLabel ? 5 : 3} value={text} onChange={(e) => setText(e.target.value)} maxLength={commentLabel ? 4000 : dialog.action === "reject" ? 2000 : 500} />
+            {commentLabel && <div className={`text-[11px] text-right mt-0.5 ${words > MAX_WORDS ? "text-red-600" : "text-gray-400"}`}>{words} / {MAX_WORDS} words</div>}
+          </Field>
+          {dialog.action === "submit" && (
+            <>
+              <label className="flex items-start gap-2 text-xs text-gray-700 mb-3">
+                <input type="checkbox" className="mt-0.5" checked={kycDeclared} onChange={(e) => setKycDeclared(e.target.checked)} />
+                <span>I confirm that the client's KYC verification is done as per the extant verification procedures.</span>
+              </label>
+              <p className="text-xs text-gray-500 mb-3">Goes to Compliance, then to the Approver.</p>
+            </>
+          )}
+          {dialog.action === "approve" && (
+            <p className="text-xs text-gray-500 -mt-2 mb-3">
+              {state.stage === "Approver" ? "You give the final approval; the client becomes Approved and available for service requests."
+                : "You confirm the CDD section is complete and the information and documents are reviewed. The Client ID is issued and the client goes to the Approver."}
+            </p>
+          )}
+          <div className="flex justify-end gap-3 mt-2">
+            <button onClick={() => setDialog(null)} className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
+            <button onClick={() => run(dialog.action)} disabled={busy || rejectTooShort || reasonMissing || commentBad || kycMissing}
+              className="px-4 py-2 text-sm text-white rounded-lg font-medium disabled:opacity-50" style={{ background: "#1a3a5c" }}>
+              {busy ? "Working…" : dialog.label}
+            </button>
+          </div>
+        </Modal>
+  );
+  if (dialogOnly) return dialogEl || null;
 
   return (
     <div className="mb-3 rounded-lg border border-gray-100 bg-white">
@@ -131,45 +186,7 @@ export default function WorkflowBar({ accountId, refreshKey, onChanged }) {
         </div>
       )}
 
-      {dialog && (
-        <Modal title={dialog.label} onClose={() => setDialog(null)}>
-          {dialog.action === "reject" && (
-            <Field label="Reason" required>
-              <Select value={reasonCode} onChange={(e) => setReasonCode(e.target.value)}>
-                <option value="">— choose —</option>
-                {reasons.items.map((r) => <option key={r.code} value={r.code}>{r.label}</option>)}
-              </Select>
-            </Field>
-          )}
-          <Field label={dialog.action === "reject" ? "What needs fixing? (at least 15 characters)" : commentLabel || NEEDS_REASON[dialog.action] || "Comment (optional)"}
-            required={dialog.action === "reject" || !!NEEDS_REASON[dialog.action] || !!commentLabel}>
-            <Textarea rows={commentLabel ? 5 : 3} value={text} onChange={(e) => setText(e.target.value)} maxLength={commentLabel ? 4000 : dialog.action === "reject" ? 2000 : 500} />
-            {commentLabel && <div className={`text-[11px] text-right mt-0.5 ${words > MAX_WORDS ? "text-red-600" : "text-gray-400"}`}>{words} / {MAX_WORDS} words</div>}
-          </Field>
-          {dialog.action === "submit" && (
-            <>
-              <label className="flex items-start gap-2 text-xs text-gray-700 mb-3">
-                <input type="checkbox" className="mt-0.5" checked={kycDeclared} onChange={(e) => setKycDeclared(e.target.checked)} />
-                <span>I confirm that the client's KYC verification is done as per the extant verification procedures.</span>
-              </label>
-              <p className="text-xs text-gray-500 mb-3">Goes to Compliance, then to the Approver.</p>
-            </>
-          )}
-          {dialog.action === "approve" && (
-            <p className="text-xs text-gray-500 -mt-2 mb-3">
-              {state.stage === "Approver" ? "You give the final approval; the client becomes Approved and available for service requests."
-                : "You confirm the CDD section is complete and the information and documents are reviewed. The Client ID is issued and the client goes to the Approver."}
-            </p>
-          )}
-          <div className="flex justify-end gap-3 mt-2">
-            <button onClick={() => setDialog(null)} className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
-            <button onClick={() => run(dialog.action)} disabled={busy || rejectTooShort || reasonMissing || commentBad || kycMissing}
-              className="px-4 py-2 text-sm text-white rounded-lg font-medium disabled:opacity-50" style={{ background: "#1a3a5c" }}>
-              {busy ? "Working…" : dialog.label}
-            </button>
-          </div>
-        </Modal>
-      )}
+      {dialogEl}
     </div>
   );
 }

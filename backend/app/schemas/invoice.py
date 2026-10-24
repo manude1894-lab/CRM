@@ -31,6 +31,7 @@ class InvoiceRequest(BaseModel):
     amount: Decimal = Field(..., ge=0)
     currency: str = "AED"
     notes: Optional[str] = Field(None, max_length=2000)
+    submit: bool = True  # False keeps it as the requester's draft; Accounts is not told yet
 
 
 class InvoiceRaise(BaseModel):

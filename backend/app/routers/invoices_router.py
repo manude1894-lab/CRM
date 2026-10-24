@@ -42,6 +42,11 @@ def request_invoice(data: InvoiceRequest, db: Session = Depends(get_db), user: U
     return invoice_read(invoice_service.request_invoice(db, data, user), db)
 
 
+@router.post("/{invoice_id}/submit", response_model=InvoiceRead, summary="RM / Sales: send a draft invoice request to Accounts")
+def submit_request(invoice_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    return invoice_read(invoice_service.submit_request(db, invoice_id, user), db)
+
+
 @router.post("", response_model=InvoiceRead, status_code=status.HTTP_201_CREATED, summary="Accounts: enter an invoice directly")
 def create_invoice(data: InvoiceCreate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     return invoice_read(invoice_service.create_invoice(db, data, user), db)

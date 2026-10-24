@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { accountsApi, workflowApi } from "../../api/endpoints";
 import { Icon, Modal, Field, Input, Select, MultiSelect, CountrySelect, Textarea, DateInput } from "../ui";
 import NameLookup from "./NameLookup";
@@ -9,6 +9,7 @@ import ClientDocumentsFolder from "./ClientDocumentsFolder";
 import { useAuthStore } from "../../store/auth";
 import { MONTHS, parseFYE, toFYE, fmtFYE, daysIn } from "../../utils/fye";
 import { toast } from "../../store/toast";
+import { confirmDialog } from "../../store/confirm";
 import {
   fmtDate, REGULATOR_OPTIONS, TAG_OPTIONS, SERVICES_OBTAINED_OPTIONS,
   PROFILE_STATUS_OPTIONS, COUNTRY_CALLING_CODES, TRIAM_ENTITY_OPTIONS, isUAE, isRelationshipManager,
@@ -118,8 +119,16 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
     else setStage(null);
   }, [form._id, form.profile_status, refreshKey]);
   const cddEditable = canCdd && (!locked || (form.profile_status === "Awaiting Approval" && stage === "Compliance"));
+  // Footer Submit: save, then open the submit dialog of the client workflow or of the draft amendment.
+  // The form closes once the client / amendment has gone to Compliance.
+  const [wfSubmit, setWfSubmit] = useState(null); // the workflow's "submit" action for this user, if any
+  const [submitSignal, setSubmitSignal] = useState(0);
+  const [amendSubmitSignal, setAmendSubmitSignal] = useState(0);
+  const footerSubmit = useRef(false);
+  const onWorkflowState = (s) => setWfSubmit(s?.actions.find((a) => a.action === "submit") || null);
   const onAmendmentState = (s) => {
     setAmendment(s);
+    if (footerSubmit.current && s?.request && s.request.status !== "Draft") { footerSubmit.current = false; onChanged(); onClose(); return; }
     // Show the maker their staged values (once per draft; later saves keep the form as typed).
     if (s?.preview && s.request && previewOf !== s.request.id) {
       setPreviewOf(s.request.id);
@@ -134,6 +143,7 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
     onChanged();
   };
   const onWorkflowChanged = (state) => {
+    if (footerSubmit.current && state.status === "Awaiting Approval") { footerSubmit.current = false; onChanged(); onClose(); return; }
     setForm((f) => ({ ...f, profile_status: state.status, _status_updated_at: state.status_updated_at }));
     setRefreshKey((k) => k + 1);
     onChanged();
@@ -168,21 +178,47 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
   };
   const withOverride = (payload) => (exactMatch && override.allow ? { ...payload, allow_duplicate: true, duplicate_reason: override.reason.trim() } : payload);
 
-  const save = async () => {
+  // Saves the whole form; true when saved. A new client becomes an edited one (the form stays open).
+  const persist = async () => {
     // The core rules (name, Anchor Triam Entity, duplicates) are checked when creating a client.
     const invalid = mode === "new" ? (validateCoreFields(form) || duplicateBlock()) : (!form.company_name?.trim() && "Company name is required");
-    if (invalid) return toast.error(invalid);
+    if (invalid) { toast.error(invalid); return false; }
     try {
       setSaving(true);
       const payload = buildAccountPayload(form);
-      if (mode === "edit") await accountsApi.update(form._id, payload);
-      else await accountsApi.create(withOverride(payload));
+      if (mode === "edit") {
+        const updated = await accountsApi.update(form._id, payload);
+        setForm((f) => ({ ...f, next_aml_review_date: updated.next_aml_review_date, _client_id: updated.client_id || f._client_id }));
+      } else {
+        const created = await accountsApi.create(withOverride({ ...payload, prospect_id: form.prospect_id || null }));
+        setSearchTouched(true);
+        setForm((f) => ({ ...f, _id: created.id, search_name: created.search_name, _client_id: created.client_id, _status_updated_at: created.status_updated_at }));
+        setMode("edit");
+      }
+      setSaved(form);
+      setRefreshKey((k) => k + 1);
       onChanged();
-      onClose();
+      return true;
     } catch (e) {
       toast.error(e.response?.data?.detail || (mode === "edit" ? "Failed to update client" : "Failed to create client"));
+      return false;
     } finally { setSaving(false); }
   };
+  // Save: keep it as a draft (New / WIP, or the open amendment) and close.
+  const save = async () => { if (await persist()) onClose(); };
+  // Submit: save what is unsaved, then the submit dialog (comments, KYC declaration) sends it to Compliance.
+  const submit = async () => {
+    if ((mode === "new" || anyDirty) && !(await persist())) return;
+    footerSubmit.current = true;
+    if (myDraft) setAmendSubmitSignal((n) => n + 1);
+    else setSubmitSignal((n) => n + 1);
+  };
+  // Cancel: close without saving; asks first when something is unsaved.
+  const cancel = async () => {
+    if (anyDirty && !(await confirmDialog({ title: "Discard changes?", message: "The changes you haven't saved will be lost.", confirmLabel: "Discard", danger: true }))) return;
+    onClose();
+  };
+  const canSubmit = !locked && (myDraft || (!approvedClient && (mode === "new" || !!wfSubmit)));
 
   // BRD §10 — per-section Save, so each section validates and
   // persists independently instead of only surfacing errors at the very bottom of the form.
@@ -220,7 +256,7 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
   const today = new Date().toISOString().slice(0, 10);
 
   return (
-    <Modal title={mode === "edit" ? "Edit Client" : "New Client"} onClose={onClose}>
+    <Modal title={mode === "edit" ? "Edit Client" : "New Client"} onClose={cancel}>
       <div className="space-y-3">
         {form._id && !hideWorkflow && (
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 px-3 py-2 rounded-lg bg-gray-50 border border-gray-100 text-xs text-gray-600">
@@ -228,9 +264,10 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
             {form._status_updated_at && <span>Status last updated {fmtDate(form._status_updated_at)}</span>}
           </div>
         )}
-        {form._id && !hideWorkflow && <WorkflowBar accountId={form._id} refreshKey={refreshKey} onChanged={onWorkflowChanged} />}
+        {form._id && <WorkflowBar accountId={form._id} refreshKey={refreshKey} onChanged={onWorkflowChanged}
+          onState={onWorkflowState} submitSignal={submitSignal} dialogOnly={hideWorkflow} />}
         {form._id && approvedClient && (
-          <AmendmentBar accountId={form._id} refreshKey={refreshKey} onState={onAmendmentState} onDecided={onAmendmentDecided} />
+          <AmendmentBar accountId={form._id} refreshKey={refreshKey} onState={onAmendmentState} onDecided={onAmendmentDecided} submitSignal={amendSubmitSignal} />
         )}
         {!locked && !approvedClient && <CompletenessChecklist accountId={form._id} refreshKey={refreshKey} />}
         {mode === "new" && form._prospect_uid && (
@@ -559,12 +596,20 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
         </Section>
       </div>
       <div className="flex justify-end gap-3 mt-5">
-        <button onClick={onClose} className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
+        <button onClick={cancel} className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
         <button onClick={save} disabled={saving || locked || (mode === "edit" && !anyDirty)}
-          className="px-4 py-2 text-sm text-white rounded-lg font-medium disabled:opacity-50"
-          style={{ background: "#1a3a5c" }}>
-          {saving ? "Saving..." : mode === "edit" ? (myDraft ? "Save to Amendment" : "Save Changes") : "Create Client"}
+          title={myDraft ? "Saves into your draft amendment" : "Saves the client as a draft; nothing goes to Compliance yet"}
+          className="px-4 py-2 text-sm border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 disabled:opacity-50">
+          {saving ? "Saving..." : "Save"}
         </button>
+        {canSubmit && (
+          <button onClick={submit} disabled={saving}
+            title="Saves, then sends to Compliance for approval"
+            className="px-4 py-2 text-sm text-white rounded-lg font-medium disabled:opacity-50"
+            style={{ background: "#1a3a5c" }}>
+            {myDraft ? "Submit to Compliance" : "Submit for Approval"}
+          </button>
+        )}
       </div>
     </Modal>
   );

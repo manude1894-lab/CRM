@@ -3,7 +3,8 @@
 Invoicing for every new client onboarding and every service request:
   1. The RM / Sales *requests* an invoice for a client (optionally for a service request), with the
      expected amount and currency, and attaches the pricing approvals. This is the instruction to the
-     Accounts Department — every Accounts user (invoice.manage) is notified.
+     Accounts Department — every Accounts user (invoice.manage) is notified. The request may first be
+     saved as a draft that only the requester sees, and submitted to Accounts later.
   2. Accounts *raises* it: Invoice No, Invoice Date, Currency, Amount and the invoice file. The requester
      is told it is ready to download and send to the client.
   3. Accounts marks it *paid*.
@@ -46,7 +47,14 @@ def _client(db: Session, account_id: int, user: User) -> Account:
     return acc
 
 
+def _unsent(inv: Invoice) -> bool:
+    """A requester's draft request, not yet submitted to Accounts."""
+    return inv.status == DRAFT and inv.requested_by_id is not None and inv.requested_at is None
+
+
 def _visible(db: Session, inv: Invoice, user: User) -> bool:
+    if _unsent(inv) and inv.requested_by_id != user.id:
+        return False
     acc = db.get(Account, inv.account_id)
     return acc is not None and access_control.user_can_access_account(db, acc, user)
 
@@ -59,6 +67,9 @@ def list_invoices(db: Session, user: User, skip: int = 0, limit: int = 100,
     if clause is not None:
         visible_accounts = [a.id for a in db.query(Account.id).filter(clause).all()]
         query = query.filter(Invoice.account_id.in_(visible_accounts or [-1]))
+    # Draft requests stay with their requester until submitted.
+    query = query.filter(or_(Invoice.status != DRAFT, Invoice.requested_by_id.is_(None),
+                             Invoice.requested_at.isnot(None), Invoice.requested_by_id == user.id))
     if account_id:
         query = query.filter(Invoice.account_id == account_id)
     if status:
@@ -100,21 +111,40 @@ def request_invoice(db: Session, data: InvoiceRequest, user: User) -> Invoice:
     if data.currency not in CURRENCIES:
         raise HTTPException(status_code=400, detail=f"Currency must be one of {', '.join(CURRENCIES)}")
     inv = Invoice(account_id=acc.id, description=data.description, amount=data.amount, currency=data.currency,
-                  notes=data.notes, status=REQUESTED, requested_by_id=user.id, requested_at=datetime.now(timezone.utc))
+                  notes=data.notes, status=DRAFT, requested_by_id=user.id)
     db.add(inv)
     db.flush()
     if data.instruction_id:
         db.get(Instruction, data.instruction_id).invoice_id = inv.id
-    log_event(db, "invoice_request", f"Invoice requested for {acc.company_name}: {data.description}, {data.currency} {data.amount}",
+    if not data.submit:
+        log_event(db, "invoice_request_draft", f"Invoice request saved as draft for {acc.company_name}: {data.description}",
+                  user_id=user.id, subject_type="Invoice", subject_id=inv.id, account_id=acc.id)
+        db.commit()
+        db.refresh(inv)
+        return inv
+    return _send_to_accounts(db, inv, acc, user)
+
+
+def _send_to_accounts(db: Session, inv: Invoice, acc: Account, user: User) -> Invoice:
+    inv.status, inv.requested_at = REQUESTED, datetime.now(timezone.utc)
+    log_event(db, "invoice_request", f"Invoice requested for {acc.company_name}: {inv.description}, {inv.currency} {inv.amount}",
               user_id=user.id, subject_type="Invoice", subject_id=inv.id, account_id=acc.id)
     db.commit()
     db.refresh(inv)
     for u in _accounts_team(db):
         if u.id != user.id:
             notification_service.notify_user(
-                db, u.id, f"Invoice instruction from {user.name}: {acc.company_name}, {data.description} ({data.currency} {data.amount}).",
+                db, u.id, f"Invoice instruction from {user.name}: {acc.company_name}, {inv.description} ({inv.currency} {inv.amount}).",
                 "invoice_requested")
     return inv
+
+
+def submit_request(db: Session, invoice_id: int, user: User) -> Invoice:
+    """The requester sends their draft request to Accounts."""
+    inv = get_invoice(db, invoice_id, user)
+    if not _unsent(inv) or inv.requested_by_id != user.id:
+        raise HTTPException(status_code=400, detail="Only your own draft invoice request can be submitted")
+    return _send_to_accounts(db, inv, _client(db, inv.account_id, user), user)
 
 
 def create_invoice(db: Session, data: InvoiceCreate, user: User) -> Invoice:

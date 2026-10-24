@@ -82,6 +82,26 @@ def test_invoice_belongs_to_a_client(db, make_user, make_account, make_role):
         invoice_service.request_invoice(db, InvoiceRequest(account_id=99999, description="Nobody", amount=1), rm)
 
 
+def test_draft_invoice_request_reaches_accounts_only_when_submitted(db, make_user, make_account, make_role):
+    rm = make_user()
+    accounts = make_user(business_role=make_role("Accountant", ["invoice.manage", "view.all_clients"]))
+    acc = make_account(spoc=rm, profile_status="Active")
+    inv = invoice_service.request_invoice(db, InvoiceRequest(account_id=acc.id, description="SPV fee", amount=500, submit=False), rm)
+    assert inv.status == "Draft" and inv.requested_at is None
+    assert db.query(Notification).filter(Notification.user_id == accounts.id).count() == 0
+    assert inv.id not in [i.id for i in invoice_service.list_invoices(db, accounts)[0]]
+    assert inv.id in [i.id for i in invoice_service.list_invoices(db, rm)[0]]
+    with pytest.raises(HTTPException):
+        invoice_service.get_invoice(db, inv.id, accounts)
+
+    inv = invoice_service.submit_request(db, inv.id, rm)
+    assert inv.status == "Requested" and inv.requested_at is not None
+    assert db.query(Notification).filter(Notification.user_id == accounts.id).count() == 1
+    assert inv.id in [i.id for i in invoice_service.list_invoices(db, accounts)[0]]
+    with pytest.raises(HTTPException):
+        invoice_service.submit_request(db, inv.id, rm)
+
+
 def test_countries_master(client, make_user):
     admin, rm = make_user("Ada", role="admin"), make_user("Rita")
     r = client.post("/api/v1/countries", json={"name": "Atlantis"}, headers=auth(admin))

@@ -34,7 +34,8 @@ export default function ClientProfilePage({ accountId, initialTab = "overview", 
   const load = () => accountsApi.get(accountId).then((a) => { setAccount(a); setError(null); })
     .catch((e) => setError(e.response?.data?.detail || "Failed to load the client"));
   useEffect(() => { load(); }, [accountId]);
-  const refresh = () => { load(); setVersion((v) => v + 1); onChanged?.(); };
+  // Remount the tabs once the reloaded client is in, so they show its new status (e.g. locked after Submit).
+  const refresh = () => { load().then(() => setVersion((v) => v + 1)); onChanged?.(); };
 
   if (error) return <ErrorBanner message={error} onRetry={load} />;
   if (!account) return <Spinner />;

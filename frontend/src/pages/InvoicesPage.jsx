@@ -12,6 +12,8 @@ const STATUS_STYLE = {
   Requested: "bg-amber-100 text-amber-800", Draft: "bg-amber-50 text-amber-700", Raised: "bg-blue-50 text-blue-700",
   Paid: "bg-emerald-50 text-emerald-700", Overdue: "bg-red-50 text-red-700",
 };
+// A requester's draft request, not yet sent to Accounts (only the requester sees it).
+const unsent = (i) => i.status === "Draft" && i.requested_by_id && !i.requested_at;
 const money = (currency, amount) => `${currency || "AED"} ${Number(amount || 0).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 /**
@@ -26,7 +28,7 @@ export default function InvoicesPage() {
   const [error, setError] = useState(null);
   const [status, setStatus] = useState("");
   const [search, setSearch] = useState("");
-  const [requesting, setRequesting] = useState(false);
+  const [requesting, setRequesting] = useState(false); // true for a new request, or the draft being edited
   const [raising, setRaising] = useState(null);
   const [files, setFiles] = useState(null); // invoice whose attachments are open
 
@@ -40,7 +42,7 @@ export default function InvoicesPage() {
   const q = search.trim().toLowerCase();
   const rows = invoices.filter((i) => (!status || i.status === status)
     && (!q || [i.company_name, i.client_id, i.invoice_number, i.description].some((v) => (v || "").toLowerCase().includes(q))));
-  const waiting = invoices.filter((i) => ["Requested", "Draft"].includes(i.status)).length;
+  const waiting = invoices.filter((i) => ["Requested", "Draft"].includes(i.status) && !unsent(i)).length;
   const outstanding = invoices.filter((i) => ["Raised", "Overdue"].includes(i.status));
 
   const markPaid = async (inv) => {
@@ -91,7 +93,7 @@ export default function InvoicesPage() {
                   </td>
                   <td className="py-2.5 px-3 text-xs text-gray-600 max-w-xs">{i.description}{i.notes && <div className="text-gray-400">{i.notes}</div>}</td>
                   <td className="py-2.5 px-3 text-right whitespace-nowrap">{money(i.currency, i.amount)}</td>
-                  <td className="py-2.5 px-3"><span className={`text-[11px] font-semibold px-2 py-0.5 rounded ${STATUS_STYLE[i.status] || "bg-gray-100"}`}>{i.status}</span></td>
+                  <td className="py-2.5 px-3"><span className={`text-[11px] font-semibold px-2 py-0.5 rounded ${STATUS_STYLE[i.status] || "bg-gray-100"}`}>{unsent(i) ? "Draft · not sent" : i.status}</span></td>
                   <td className="py-2.5 px-3 text-xs text-gray-600 whitespace-nowrap">
                     {i.invoice_number ? <><div className="font-mono">{i.invoice_number}</div><div className="text-gray-400">{fmtDate(i.raised_date)}{i.paid_date ? ` · paid ${fmtDate(i.paid_date)}` : ""}</div></> : "—"}
                   </td>
@@ -101,7 +103,10 @@ export default function InvoicesPage() {
                       <button onClick={() => setFiles(i)} className="px-2 py-1 text-xs border border-gray-200 rounded-lg hover:bg-gray-50">
                         Files{i.attachment_count ? ` (${i.attachment_count})` : ""}
                       </button>
-                      {accountsTeam && ["Requested", "Draft"].includes(i.status) && (
+                      {unsent(i) && (
+                        <button onClick={() => setRequesting(i)} className="px-2 py-1 text-xs text-white rounded-lg" style={{ background: "#1a3a5c" }}>Edit / Submit</button>
+                      )}
+                      {accountsTeam && ["Requested", "Draft"].includes(i.status) && !unsent(i) && (
                         <button onClick={() => setRaising(i)} className="px-2 py-1 text-xs text-white rounded-lg" style={{ background: "#1a3a5c" }}>Raise</button>
                       )}
                       {accountsTeam && ["Raised", "Overdue"].includes(i.status) && (
@@ -119,23 +124,26 @@ export default function InvoicesPage() {
         </div>
       )}
 
-      {requesting && <RequestModal onClose={() => setRequesting(false)} onDone={() => { setRequesting(false); load(); }} />}
+      {requesting && <RequestModal draft={requesting === true ? null : requesting} onClose={() => setRequesting(false)} onDone={() => { setRequesting(false); load(); }} />}
       {raising && <RaiseModal invoice={raising} onClose={() => setRaising(null)} onDone={() => { setRaising(null); load(); }} />}
       {files && <FilesModal invoice={files} accountsTeam={accountsTeam} onClose={() => { setFiles(null); load(); }} />}
     </div>
   );
 }
 
-/** RM / Sales — the instruction to Accounts, with the pricing approvals. */
-function RequestModal({ onClose, onDone }) {
+/** RM / Sales — the instruction to Accounts, with the pricing approvals. Save keeps it as a draft
+ * (Accounts is not told); Submit sends it to Accounts. `draft` reopens a saved draft. */
+function RequestModal({ draft, onClose, onDone }) {
   const [clients, setClients] = useState([]);
   const [requests, setRequests] = useState([]);
-  const [form, setForm] = useState({ account_id: "", instruction_id: "", description: "", amount: "", currency: "AED", notes: "" });
+  const [form, setForm] = useState(draft
+    ? { account_id: String(draft.account_id), instruction_id: "", description: draft.description || "", amount: draft.amount ?? "", currency: draft.currency || "AED", notes: draft.notes || "" }
+    : { account_id: "", instruction_id: "", description: "", amount: "", currency: "AED", notes: "" });
   const [approvals, setApprovals] = useState([]);
   const [busy, setBusy] = useState(false);
   useEffect(() => { accountsApi.list({ limit: 1000 }).then((r) => setClients(r.items || r || [])).catch(() => {}); }, []);
   useEffect(() => {
-    if (!form.account_id) return setRequests([]);
+    if (!form.account_id || draft) return setRequests([]);
     instructionsApi.list({ account_id: form.account_id, limit: 200 }).then((r) => setRequests((r.items || []).filter((x) => !x.invoice_id))).catch(() => {});
   }, [form.account_id]);
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
@@ -144,34 +152,36 @@ function RequestModal({ onClose, onDone }) {
     setForm((f) => ({ ...f, instruction_id: e.target.value, description: sr ? sr.instruction_type : f.description, amount: sr?.charge_amount ?? f.amount }));
   };
 
-  const submit = async () => {
+  const save = async (send) => {
     if (!form.account_id || !form.description.trim() || form.amount === "") return toast.error("Choose the client and enter the description and amount");
-    setBusy(true);
+    setBusy(send ? "submit" : "save");
     try {
-      const inv = await invoicesApi.request({
-        account_id: Number(form.account_id), instruction_id: form.instruction_id ? Number(form.instruction_id) : null,
-        description: form.description.trim(), amount: form.amount, currency: form.currency, notes: form.notes.trim() || null,
-      });
+      const fields = { description: form.description.trim(), amount: form.amount, currency: form.currency, notes: form.notes.trim() || null };
+      let inv;
+      if (draft) inv = await invoicesApi.update(draft.id, fields);
+      else inv = await invoicesApi.request({ ...fields, account_id: Number(form.account_id), instruction_id: form.instruction_id ? Number(form.instruction_id) : null, submit: send });
       for (const f of approvals) await invoicesApi.attach(inv.id, f, "Pricing Approval");
-      toast.success("Invoice requested. Accounts has been notified.");
+      if (draft && send) await invoicesApi.submitRequest(draft.id);
+      toast.success(send ? "Invoice requested. Accounts has been notified." : "Saved as a draft. Accounts sees it once you submit it.");
       onDone();
     } catch (e) { toast.error(e.response?.data?.detail || "Request failed"); } finally { setBusy(false); }
   };
 
   return (
-    <Modal title="Request an invoice" onClose={onClose}>
+    <Modal title={draft ? "Draft invoice request" : "Request an invoice"} onClose={onClose}>
       <Field label="Client" required>
-        <Select value={form.account_id} onChange={(e) => setForm((f) => ({ ...f, account_id: e.target.value, instruction_id: "" }))}>
+        <Select value={form.account_id} disabled={!!draft} onChange={(e) => setForm((f) => ({ ...f, account_id: e.target.value, instruction_id: "" }))}>
           <option value="">— choose —</option>
           {clients.map((c) => <option key={c.id} value={c.id}>{c.company_name}{c.client_id ? ` (${c.client_id})` : ""}</option>)}
+          {draft && !clients.some((c) => c.id === draft.account_id) && <option value={draft.account_id}>{draft.company_name}</option>}
         </Select>
       </Field>
-      <Field label="For a service request (optional; leave empty for the onboarding invoice)">
+      {!draft && <Field label="For a service request (optional; leave empty for the onboarding invoice)">
         <Select value={form.instruction_id} onChange={pickRequest} disabled={!form.account_id}>
           <option value="">— client onboarding / other —</option>
           {requests.map((r) => <option key={r.id} value={r.id}>{r.instruction_type} · {r.status}{r.charge_amount ? ` · ${r.charge_amount}` : ""}</option>)}
         </Select>
-      </Field>
+      </Field>}
       <Field label="Description" required><Input value={form.description} onChange={set("description")} maxLength={500} placeholder="e.g. Company formation, ADGM SPV" /></Field>
       <div className="grid grid-cols-2 gap-3">
         <Field label="Amount" required><Input type="number" min="0" step="0.01" value={form.amount} onChange={set("amount")} /></Field>
@@ -183,8 +193,9 @@ function RequestModal({ onClose, onDone }) {
           className="text-xs file:mr-2 file:py-1 file:px-2 file:rounded file:border file:border-gray-200 file:text-xs file:bg-white" />
       </Field>
       <div className="flex justify-end gap-2 mt-2">
-        <Button onClick={onClose}>Cancel</Button>
-        <Button variant="primary" onClick={submit} disabled={busy}>{busy ? "Sending…" : "Send to Accounts"}</Button>
+        <Button onClick={onClose} disabled={!!busy}>Cancel</Button>
+        <Button onClick={() => save(false)} disabled={!!busy} title="Keeps it as your draft; Accounts is not told yet">{busy === "save" ? "Saving…" : "Save"}</Button>
+        <Button variant="primary" onClick={() => save(true)} disabled={!!busy} title="Sends the request to Accounts">{busy === "submit" ? "Sending…" : "Submit to Accounts"}</Button>
       </div>
     </Modal>
   );

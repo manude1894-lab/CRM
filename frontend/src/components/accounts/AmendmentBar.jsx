@@ -11,7 +11,7 @@ import { ChangeList, DecisionButtons, DecisionNote } from "../compliance/Complia
  * onState(state) reports the current amendment so the form can show the staged values and decide
  * whether it is editable.
  */
-export default function AmendmentBar({ accountId, refreshKey, onState, onDecided }) {
+export default function AmendmentBar({ accountId, refreshKey, onState, onDecided, submitSignal = 0 }) {
   const [state, setState] = useState(null);
   const [busy, setBusy] = useState(false);
   const [showChanges, setShowChanges] = useState(true);
@@ -70,7 +70,7 @@ export default function AmendmentBar({ accountId, refreshKey, onState, onDecided
           <div className="text-[11px] text-gray-600">{text}</div>
           {req?.maker_comment && <div className="text-[11px] text-gray-500 mt-0.5">Maker: “{req.maker_comment}”</div>}
         </div>
-        <DecisionButtons actions={state.actions} busy={busy} onAction={act} labels={{ start: "Amend client", withdraw: "Withdraw amendment" }} />
+        <DecisionButtons actions={state.actions} busy={busy} onAction={act} labels={{ start: "Amend client", withdraw: "Withdraw amendment" }} submitSignal={submitSignal} />
       </div>
       {state.previous && <div className="px-3 pb-2"><DecisionNote request={state.previous} /></div>}
       {req && count > 0 && (

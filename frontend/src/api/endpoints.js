@@ -103,6 +103,7 @@ export const invoicesApi = {
   update: (id, data) => api.patch(`/invoices/${id}`, data).then((r) => r.data),
   cancel: (id, reason) => api.post(`/invoices/${id}/cancel`, { reason }),
   request: (data) => api.post("/invoices/request", data).then((r) => r.data),
+  submitRequest: (id) => api.post(`/invoices/${id}/submit`).then((r) => r.data),
   raise: (id, data) => api.post(`/invoices/${id}/raise`, data).then((r) => r.data),
   paid: (id, data = {}) => api.post(`/invoices/${id}/paid`, data).then((r) => r.data),
   attachments: (id) => api.get(`/invoices/${id}/attachments`).then((r) => r.data),

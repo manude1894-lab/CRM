@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Modal, Field, Select, Textarea } from "../ui";
 import { useMasters } from "../../hooks/useMasters";
 import { fmtDate } from "../../utils/constants";
@@ -80,10 +80,18 @@ export function DecisionNote({ request }) {
  * approve | reject | withdraw | submit | resubmit | discard. Reject asks for a reason from the
  * master list and an explanation of at least 15 characters (BRD §14).
  */
-export function DecisionButtons({ actions, busy, onAction, labels = {} }) {
+// submitSignal: each new value opens the submit dialog, if submitting is one of the actions.
+export function DecisionButtons({ actions, busy, onAction, labels = {}, submitSignal = 0 }) {
   const [dialog, setDialog] = useState(null);
   const [text, setText] = useState("");
   const [code, setCode] = useState("");
+  const handledSignal = useRef(0);
+  useEffect(() => {
+    if (!submitSignal || handledSignal.current === submitSignal) return;
+    handledSignal.current = submitSignal;
+    const a = ["submit", "resubmit"].find((x) => actions.includes(x));
+    if (a) { setText(""); setCode(""); setDialog(a); }
+  }, [submitSignal, actions]);
   const reasons = useMasters("rejection_reason", []);
   const LABEL = { approve: "Approve", reject: "Reject", withdraw: "Withdraw", submit: "Submit to Compliance", resubmit: "Resubmit to Compliance", discard: "Discard changes", ...labels };
   const asks = ["approve", "reject", "submit", "resubmit"];

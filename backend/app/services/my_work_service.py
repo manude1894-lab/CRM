@@ -2,6 +2,7 @@
 
 Each item is {key, label, count, page, hint}; the dashboard shows the ones with something to do.
 """
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.auth.permissions import has_permission
@@ -31,7 +32,7 @@ def my_work(db: Session, user: User) -> list[dict]:
         final = [r for r in pending if r.request_type == "client_profile" and wf.stage_of(r) == wf.STAGE_APPROVER and r.maker_id != user.id]
         add("approver", "New clients waiting for your final approval", len(final), "approvals")
     if has_permission(user, "invoice.manage"):
-        add("invoice_requests", "Invoice instructions to raise", db.query(Invoice).filter(Invoice.status.in_(("Requested", "Draft"))).count(), "invoices")
+        add("invoice_requests", "Invoice instructions to raise", db.query(Invoice).filter(Invoice.status.in_(("Requested", "Draft")), or_(Invoice.requested_by_id.is_(None), Invoice.requested_at.isnot(None))).count(), "invoices")
         add("invoice_unpaid", "Raised invoices not yet paid", db.query(Invoice).filter(Invoice.status.in_(("Raised", "Overdue"))).count(), "invoices")
     if has_permission(user, "prospect.assign"):
         add("prospects_unassigned", "Prospects waiting to be assigned", db.query(Prospect).filter(Prospect.owner_id.is_(None), Prospect.status != "Lost").count(), "prospects")
@@ -49,4 +50,7 @@ def my_work(db: Session, user: User) -> list[dict]:
         Prospect.owner_id == user.id, Prospect.converted_account_id.is_(None), Prospect.status != "Lost").count(), "prospects")
     add("my_invoices_ready", "My invoices ready to send to the client", db.query(Invoice).filter(
         Invoice.requested_by_id == user.id, Invoice.status == "Raised").count(), "invoices")
+    add("my_invoice_drafts", "My invoice requests not yet submitted", db.query(Invoice).filter(
+        Invoice.requested_by_id == user.id, Invoice.status == "Draft", Invoice.requested_at.is_(None)).count(), "invoices",
+        "Submit them to Accounts")
     return items
