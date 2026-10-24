@@ -24,12 +24,15 @@ import { formatTimestamp } from "./utils/auditFormat";
 // only with one of these permissions. No `desks` = everyone.
 const NAV = [
   { key: "dashboard", label: "Dashboard", icon: "dashboard", component: Dashboard, group: null },
+  // Names and grouping per Triam's input of 19-10-2026.
   { key: "prospects", label: "Prospects", icon: "kanban", component: ProspectsPage, desks: ["prospect.assign", "client.approve", "read_only"], group: "Onboarding" },
-  { key: "accounts", label: "Clients", icon: "accounts", component: AccountsPage, group: "Onboarding" },
+  { key: "accounts", label: "New Client Onboarding", icon: "accounts", component: AccountsPage, props: { scope: "onboarding" }, group: "Onboarding" },
   // New clients and client amendments awaiting Compliance (MLRO) and Approver decisions (BRD §7–§11).
-  { key: "approvals", label: "Compliance", icon: "shield", component: ApprovalsPage, perm: ["client.approve", "client.final_approve"], group: "Onboarding" },
-  { key: "activities", label: "Visit & Call Reports", icon: "activities", component: ActivitiesPage, desks: ["client.approve", "read_only", "prospect.assign"], group: "Servicing" },
-  { key: "instructions", label: "Service Requests", icon: "instructions", component: InstructionsPage, desks: ["client.approve", "invoice.manage", "read_only"], group: "Servicing" },
+  { key: "approvals", label: "Compliance Approval", icon: "shield", component: ApprovalsPage, perm: ["client.approve", "client.final_approve"], group: "Compliance" },
+  // Existing clients (BRD §11): amendments, servicing.
+  { key: "maintenance", label: "Client Data Maintenance", icon: "edit", component: AccountsPage, props: { scope: "maintenance" }, group: "Client Servicing" },
+  { key: "activities", label: "Call Reports / Contact Notes", icon: "activities", component: ActivitiesPage, desks: ["client.approve", "read_only", "prospect.assign"], group: "Client Servicing" },
+  { key: "instructions", label: "Service Requests", icon: "instructions", component: InstructionsPage, desks: ["client.approve", "invoice.manage", "read_only"], group: "Client Servicing" },
   { key: "invoices", label: "Invoices", icon: "invoices", component: InvoicesPage, desks: ["client.approve", "invoice.manage", "read_only"], group: "Finance & Reports" },
   { key: "reports", label: "Reports", icon: "reports", component: ReportsPage, group: "Finance & Reports" },
   { key: "admin", label: "Admin", icon: "admin", component: AdminPage, roles: ["admin"], group: "Administration" },
@@ -145,9 +148,10 @@ export default function App() {
         <main className="flex-1 overflow-y-auto p-6">
           <PageErrorBoundary key={page}>
           <PageComponent
+            {...(activeItem.props || {})}
             onNavigate={(t) => { setJumpTo(t); setPage(t.page); }}
-            initialAccountId={jumpTo?.page === "accounts" ? jumpTo.accountId : undefined}
-            initialOpenForm={jumpTo?.page === "accounts" ? !!jumpTo.openForm : undefined}
+            initialAccountId={jumpTo?.page === activeItem.key ? jumpTo.accountId : undefined}
+            initialOpenForm={jumpTo?.page === activeItem.key ? !!jumpTo.openForm : undefined}
             initialProspectId={jumpTo?.page === "accounts" ? jumpTo.prospectId : undefined}
           />
           </PageErrorBoundary>

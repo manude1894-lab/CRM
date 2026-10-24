@@ -134,3 +134,15 @@ def test_import_of_existing_clients(db, make_user):
     assert (old.kyc_verified_by, old.client_category, old.contact_email, old.is_one_time_service) == ("Kalyan", "Existing", "info@old.ae", False)
     assert db.query(Account).filter(Account.company_name == "Leaving Ltd").one().profile_status == "Marked for Exit"
     assert db.query(Account).count() == 2
+
+
+def test_prospect_contact_email_must_be_valid():
+    from pydantic import ValidationError
+    from app.schemas.prospect import ProspectCreate, ProspectUpdate
+    assert ProspectCreate(company_name="S T Krishna's new co.", contact_email=" stkrishna1@yahoo.co.in ").contact_email == "stkrishna1@yahoo.co.in"
+    assert ProspectCreate(company_name="No Email Co", contact_email="").contact_email is None
+    for bad in ("stkrishna1@yahoo", "stkrishna1.yahoo.co.in", "a b@c.com"):
+        with pytest.raises(ValidationError):
+            ProspectCreate(company_name="x", contact_email=bad)
+        with pytest.raises(ValidationError):
+            ProspectUpdate(contact_email=bad)

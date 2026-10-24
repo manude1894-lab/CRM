@@ -63,15 +63,15 @@ export default function InstructionsPage() {
   const invoiceById = useMemo(() => Object.fromEntries(invoices.map((inv) => [inv.id, inv])), [invoices]);
   const optionsFor = useRequestOptions([...instructions.map((i) => i.triam_entity), form.triam_entity]);
   const formOpts = optionsFor(form.triam_entity);
-  const formEntities = (() => {
-    const served = clientEntities(accountById[form.account_id]);
-    return served.length ? served : triamEntities.items.map((e) => e.code);
-  })();
+  // Triam input 19-10-2026: the Triam entity is chosen first, then one of the clients it serves.
+  const activeEntities = triamEntities.items.filter((e) => e.is_active !== false).map((e) => e.code);
+  const entityClients = accounts.filter((a) => (modal === "edit" || SERVICEABLE.includes(a.profile_status))
+    && (!form.triam_entity || clientEntities(a).includes(form.triam_entity)));
   const allStatuses = [...new Set(instructions.map((i) => i.status))];
-  // Picking the client picks its anchor entity; a new entity resets the type and status to that entity's lists.
-  const chooseClient = (accountId) => setForm((p) => ({ ...p, account_id: accountId,
-    triam_entity: clientEntities(accountById[accountId])[0] || "", instruction_type: "", other_description: "", status: "", invoice_id: "" }));
-  const chooseEntity = (entity) => setForm((p) => ({ ...p, triam_entity: entity, instruction_type: "", other_description: "", status: "" }));
+  // A new entity resets the type and status to that entity's lists, and the client if that entity doesn't serve it.
+  const chooseEntity = (entity) => setForm((p) => ({ ...p, triam_entity: entity, instruction_type: "", other_description: "", status: "",
+    ...(p.account_id && !clientEntities(accountById[p.account_id]).includes(entity) ? { account_id: "", invoice_id: "" } : {}) }));
+  const chooseClient = (accountId) => setForm((p) => ({ ...p, account_id: accountId, invoice_id: "" }));
   const clientInvoices = invoices.filter((inv) => inv.account_id === Number(form.account_id) && inv.status !== "Cancelled");
 
   const filtered = instructions.filter((i) => {
@@ -225,17 +225,17 @@ export default function InstructionsPage() {
       {modal && (
         <Modal title={modal === "new" ? "New Service Request" : "Edit Service Request"} onClose={() => setModal(null)}>
           <div className="grid grid-cols-2 gap-x-4">
-            <Field label="Client" required>
-              <Select value={form.account_id || ""} disabled={modal === "edit"} onChange={(e) => chooseClient(e.target.value)}>
-                <option value="">— choose client —</option>
-                {accounts.filter((a) => modal === "edit" || SERVICEABLE.includes(a.profile_status))
-                  .map((a) => <option key={a.id} value={a.id}>{a.client_id ? `${a.client_id} – ` : ""}{a.company_name}</option>)}
+            <Field label="Triam entity" required>
+              <Select value={form.triam_entity || ""} disabled={modal === "edit"} onChange={(e) => chooseEntity(e.target.value)}>
+                <option value="">— choose —</option>
+                {[...new Set([...activeEntities, ...(form.triam_entity ? [form.triam_entity] : [])])]
+                  .map((e) => <option key={e} value={e}>{triamEntities.labelOf(e) || e}</option>)}
               </Select>
             </Field>
-            <Field label="Triam entity" required>
-              <Select value={form.triam_entity || ""} onChange={(e) => chooseEntity(e.target.value)}>
-                <option value="">— choose —</option>
-                {formEntities.map((e) => <option key={e} value={e}>{triamEntities.labelOf(e) || e}</option>)}
+            <Field label="Client" required>
+              <Select value={form.account_id || ""} disabled={modal === "edit" || !form.triam_entity} onChange={(e) => chooseClient(e.target.value)}>
+                <option value="">{form.triam_entity ? (entityClients.length ? "— choose client —" : "— no approved clients for this entity —") : "— choose the entity first —"}</option>
+                {entityClients.map((a) => <option key={a.id} value={a.id}>{a.client_id ? `${a.client_id} – ` : ""}{a.company_name}</option>)}
               </Select>
             </Field>
             <Field label="Request Type" required>

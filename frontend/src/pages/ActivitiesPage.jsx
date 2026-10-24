@@ -62,7 +62,7 @@ export default function ActivitiesPage() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title="Visit & Call Reports"
+      <PageHeader title="Call Reports / Contact Notes"
         subtitle={`${activities.length} report${activities.length === 1 ? "" : "s"}`}
         actions={<>
 <div className="flex gap-2">

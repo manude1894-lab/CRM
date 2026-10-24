@@ -21,7 +21,7 @@ const list = (v) => (Array.isArray(v) && v.length ? v.join(", ") : null);
  * One client on its own page: header with status and actions, then tabs for everything about the
  * client. The tabs reuse the existing screens (profile form, parties, documents, servicing, history).
  */
-export default function ClientProfilePage({ accountId, initialTab = "overview", users, countries, onBack, onChanged }) {
+export default function ClientProfilePage({ accountId, initialTab = "overview", users, countries, onBack, onChanged, backLabel = "Clients" }) {
   const [account, setAccount] = useState(null);
   const [error, setError] = useState(null);
   const [tab, setTab] = useState(initialTab);
@@ -58,7 +58,7 @@ export default function ClientProfilePage({ accountId, initialTab = "overview", 
   return (
     <div className="space-y-4">
       <PageHeader
-        back={{ label: "Clients", onClick: onBack }}
+        back={{ label: backLabel, onClick: onBack }}
         title={a.company_name}
         subtitle={[a.client_id || `Temporary ID ${a.temp_id || a.account_uid}`, individual ? "Individual" : "Corporate", a.anchor_entity, userName(a.spoc_id) && `Anchor RM: ${userName(a.spoc_id)}`].filter(Boolean).join(" · ")}
         actions={!readOnly && <>

@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { accountsApi, usersApi, countriesApi, prospectsApi } from "../api/endpoints";
-import { Badge, Button, EmptyState, ErrorBanner, FilterBar, Icon, PageHeader, SearchInput, Select, Spinner } from "../components/ui";
+import { Badge, Button, EmptyState, ErrorBanner, FilterBar, Icon, Modal, PageHeader, SearchInput, Select, Spinner } from "../components/ui";
 import AccountCard from "../components/accounts/AccountCard";
 import AccountFormModal from "../components/accounts/AccountFormModal";
 import BulkActionBar from "../components/accounts/BulkActionBar";
@@ -13,12 +13,25 @@ import { fmtDate, exportFilename } from "../utils/constants";
 import { useAuthStore } from "../store/auth";
 
 const BLANK_BULK = { spoc_id: "", risk_rating: "" };
-const STATUSES = ["New", "WIP", "Awaiting Approval", "Approved", "Active", "Inactive", "Marked for Exit", "Exited"];
+// Triam input 19-10-2026: clients being onboarded and existing clients are separate menu items.
+const SCOPES = {
+  onboarding: {
+    title: "New Client Onboarding", statuses: ["New", "WIP", "Awaiting Approval"],
+    subtitle: (n) => `${n} client${n === 1 ? "" : "s"} being onboarded`,
+    empty: "Clients appear here once they are created from a prospect sent to the RM.",
+  },
+  maintenance: {
+    title: "Client Data Maintenance", statuses: ["Approved", "Active", "Inactive", "Marked for Exit", "Exited"],
+    subtitle: (n) => `${n} existing client${n === 1 ? "" : "s"} · changes go to Compliance for approval (BRD §11)`,
+    empty: "Clients appear here once the Approver has approved them, or when they are imported.",
+  },
+};
 const VIEW_KEY = "triam.clients.view";
 
 const readView = () => { try { return localStorage.getItem(VIEW_KEY) || "table"; } catch { return "table"; } };
 
-export default function AccountsPage({ initialAccountId, initialOpenForm, initialProspectId, onNavigate } = {}) {
+export default function AccountsPage({ scope = "onboarding", initialAccountId, initialOpenForm, initialProspectId, onNavigate } = {}) {
+  const cfg = SCOPES[scope];
   const appliedInitialRef = useRef(false);
   const [accounts, setAccounts] = useState([]);
   const [users, setUsers] = useState([]);
@@ -43,16 +56,22 @@ export default function AccountsPage({ initialAccountId, initialOpenForm, initia
   const [bulkApplying, setBulkApplying] = useState(false);
   const fileInputRef = useRef(null);
   const isAdmin = useAuthStore((s) => s.isAdmin());
+  const me = useAuthStore((s) => s.user);
+  const canAssign = useAuthStore((s) => s.can("prospect.assign"));
+  const [prospects, setProspects] = useState([]);
+  const [shownProspect, setShownProspect] = useState(null);
 
   // `silent` refreshes in the background without the full-page spinner.
   const load = async ({ silent = false } = {}) => {
     try {
       if (!silent) setLoading(true);
       setError(null);
-      const [accRes, usersRes, countriesRes] = await Promise.all([
-        accountsApi.list({ limit: 200 }), usersApi.list(), countriesApi.list().catch(() => []),
+      const [accRes, usersRes, countriesRes, prospectRes] = await Promise.all([
+        accountsApi.list({ limit: 500 }), usersApi.list(), countriesApi.list().catch(() => []),
+        scope === "onboarding" ? prospectsApi.list().catch(() => []) : Promise.resolve([]),
       ]);
       setAccounts(accRes.items || []);
+      setProspects(prospectRes || []);
       setUsers(usersRes || []);
       setCountries(countriesRes || []);
     } catch (e) {
@@ -63,9 +82,14 @@ export default function AccountsPage({ initialAccountId, initialOpenForm, initia
 
   // Arriving from elsewhere (e.g. "Review" in the Compliance inbox) opens that client's page.
   useEffect(() => {
-    if (!appliedInitialRef.current && initialAccountId && accounts.some((a) => a.id === initialAccountId)) {
-      setOpen({ id: initialAccountId, tab: initialOpenForm ? "profile" : "overview" });
+    const target = accounts.find((a) => a.id === initialAccountId);
+    if (!appliedInitialRef.current && initialAccountId && target) {
       appliedInitialRef.current = true;
+      if (!cfg.statuses.includes(target.profile_status || "New")) {
+        onNavigate?.({ page: scope === "onboarding" ? "maintenance" : "accounts", accountId: target.id, openForm: initialOpenForm });
+        return;
+      }
+      setOpen({ id: initialAccountId, tab: initialOpenForm ? "profile" : "overview" });
     }
   }, [initialAccountId, accounts]);
 
@@ -132,41 +156,81 @@ export default function AccountsPage({ initialAccountId, initialOpenForm, initia
 
   if (open) {
     return (
-      <ClientProfilePage key={open.id} accountId={open.id} initialTab={open.tab} users={users} countries={countries}
+      <ClientProfilePage key={open.id} accountId={open.id} initialTab={open.tab} users={users} countries={countries} backLabel={cfg.title}
         onBack={() => { setOpen(null); load({ silent: true }); }} onChanged={() => load({ silent: true })} />
     );
   }
 
+  // Only this menu item's clients: being onboarded, or existing (Triam input 19-10-2026).
+  const scoped = accounts.filter((a) => cfg.statuses.includes(a.profile_status || "New"));
   // Matches legal name, Unique Search Name (BRD §3) or Client ID (BRD §18).
   const q = search.toLowerCase();
-  const filtered = accounts.filter((a) => (!q || [a.company_name, a.search_name, a.client_id, a.temp_id, a.account_uid].some((v) => (v || "").toLowerCase().includes(q)))
+  const filtered = scoped.filter((a) => (!q || [a.company_name, a.search_name, a.client_id, a.temp_id, a.account_uid].some((v) => (v || "").toLowerCase().includes(q)))
     && (!statusFilter || (a.profile_status || "New") === statusFilter)
     && (!riskFilter || a.risk_rating === riskFilter));
   const ids = filtered.map((a) => a.id);
   const openClient = (a) => setOpen({ id: a.id, tab: "overview" });
+  // Prospects sent to an RM and still waiting for their client: the RM sees their own, the Prospecting
+  // Coordinator and administrators see all. Newest first (Triam input 19-10-2026).
+  const waiting = prospects
+    .filter((p) => p.owner_id && !p.converted_account_id && p.status !== "Lost" && (isAdmin || p.owner_id === me?.id || canAssign))
+    .sort((x, y) => String(y.assigned_at || y.created_at).localeCompare(String(x.assigned_at || x.created_at)));
+  const createFrom = (p) => { setShownProspect(null); setNewClient({ key: Date.now(), prospect: p }); };
 
   return (
     <div className="space-y-4">
-      <PageHeader title="Clients"
-        subtitle={`${accounts.length} client${accounts.length === 1 ? "" : "s"} · new clients are created from an assigned prospect`}
+      <PageHeader title={cfg.title} subtitle={cfg.subtitle(scoped.length)}
         actions={<>
           <Button onClick={exportCSV}>Export CSV</Button>
-          {isAdmin && (
+          {isAdmin && scope === "maintenance" && (
             <>
               <input ref={fileInputRef} type="file" accept=".csv,text/csv" className="hidden"
                 onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImportFile(f); e.target.value = ""; }} />
               <Button onClick={() => fileInputRef.current?.click()} disabled={importing}>{importing ? "Reading…" : "Import CSV"}</Button>
             </>
           )}
-          <Button variant="primary" onClick={() => onNavigate?.({ page: "prospects" })}>Go to Prospects</Button>
+          {scope === "onboarding" && <Button variant="primary" onClick={() => onNavigate?.({ page: "prospects" })}>Go to Prospects</Button>}
         </>}
       />
+
+      {scope === "onboarding" && (
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-x-auto">
+          <div className="px-4 py-3 border-b border-gray-100 text-sm font-semibold text-gray-800">
+            {isAdmin || canAssign ? "Prospects sent to RMs" : "Prospects sent to me"}
+            <span className="ml-2 text-xs font-normal text-gray-400">{waiting.length} waiting for the client to be created</span>
+          </div>
+          {waiting.length === 0 ? <p className="px-4 py-5 text-sm text-gray-400">No prospects waiting.</p> : (
+            <table className="w-full text-sm">
+              <thead><tr className="border-b border-gray-100 bg-gray-50 text-xs text-gray-500">
+                {["Date Sent", "Prospect Name", "Contact Name", "Contact Phone", "Contact Email", "Services the prospect is looking for"].map((h) => (
+                  <th key={h} className="py-2.5 px-3 font-semibold text-left">{h}</th>
+                ))}
+              </tr></thead>
+              <tbody>
+                {waiting.map((p) => (
+                  <tr key={p.id} className="border-b border-gray-50 align-top">
+                    <td className="py-2.5 px-3 text-xs text-gray-600 whitespace-nowrap">{fmtDate(p.assigned_at || p.created_at)}</td>
+                    <td className="py-2.5 px-3">
+                      <button onClick={() => setShownProspect(p)} className="font-medium text-brand-700 hover:underline text-left">{p.company_name}</button>
+                      <div className="text-[11px] text-gray-400 font-mono">{p.prospect_uid}{isAdmin || p.owner_id !== me?.id ? ` · ${userName(p.owner_id)}` : ""}</div>
+                    </td>
+                    <td className="py-2.5 px-3 text-xs text-gray-600">{p.contact_name || "—"}</td>
+                    <td className="py-2.5 px-3 text-xs text-gray-600">{p.contact_phone || "—"}</td>
+                    <td className="py-2.5 px-3 text-xs text-gray-600">{p.contact_email || "—"}</td>
+                    <td className="py-2.5 px-3 text-xs text-gray-600 max-w-xs">{p.notes || "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
 
       <FilterBar>
         <SearchInput value={search} onChange={setSearch} placeholder="Search by name, search name or Client ID…" />
         <div className="w-44"><Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
           <option value="">All statuses</option>
-          {STATUSES.map((s) => <option key={s}>{s}</option>)}
+          {cfg.statuses.map((s) => <option key={s}>{s}</option>)}
         </Select></div>
         <div className="w-40"><Select value={riskFilter} onChange={(e) => setRiskFilter(e.target.value)}>
           <option value="">All risk levels</option>
@@ -189,9 +253,8 @@ export default function AccountsPage({ initialAccountId, initialOpenForm, initia
 
       {filtered.length === 0 ? (
         <EmptyState
-          title={accounts.length === 0 ? "No clients yet" : "No clients match these filters"}
-          text={accounts.length === 0 ? "Clients are created from a prospect: assign it to an RM, then choose Create client." : "Try a different search or clear the filters."}
-          action={accounts.length === 0 && <Button variant="primary" onClick={() => onNavigate?.({ page: "prospects" })}>Go to Prospects</Button>} />
+          title={scoped.length === 0 ? `No clients in ${cfg.title}` : "No clients match these filters"}
+          text={scoped.length === 0 ? cfg.empty : "Try a different search or clear the filters."} />
       ) : view === "table" ? (
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-x-auto">
           <table className="w-full text-sm">
@@ -241,6 +304,25 @@ export default function AccountsPage({ initialAccountId, initialOpenForm, initia
             _prospect_uid: newClient.prospect.prospect_uid, spoc_id: newClient.prospect.owner_id ? String(newClient.prospect.owner_id) : "" }}
           onClose={() => setNewClient(null)} onChanged={() => load({ silent: true })}
           onOpenExisting={(a) => { setNewClient(null); openClient(a); }} />
+      )}
+
+      {shownProspect && (
+        <Modal title={shownProspect.company_name} onClose={() => setShownProspect(null)}>
+          <dl className="grid grid-cols-3 gap-x-3 gap-y-2 text-sm mb-4">
+            {[["Prospect ID", shownProspect.prospect_uid], ["Date sent", fmtDate(shownProspect.assigned_at)],
+              ["Sent by", userName(shownProspect.assigned_by_id)], ["RM", userName(shownProspect.owner_id)],
+              ["Contact name", shownProspect.contact_name], ["Contact phone", shownProspect.contact_phone],
+              ["Contact email", shownProspect.contact_email], ["Source", shownProspect.source],
+              ["Services the prospect is looking for", shownProspect.notes], ["Assignor's comments", shownProspect.assignor_comments]]
+              .map(([k, v]) => (<React.Fragment key={k}><dt className="text-gray-500">{k}</dt><dd className="col-span-2 text-gray-800 whitespace-pre-line">{v || "—"}</dd></React.Fragment>))}
+          </dl>
+          <div className="flex justify-end gap-3">
+            <Button onClick={() => setShownProspect(null)}>Close</Button>
+            {(shownProspect.owner_id === me?.id || isAdmin || canAssign) && (
+              <Button variant="primary" onClick={() => createFrom(shownProspect)}>Create client</Button>
+            )}
+          </div>
+        </Modal>
       )}
 
       {importPreview && (

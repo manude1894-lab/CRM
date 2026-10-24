@@ -173,7 +173,7 @@ export default function Dashboard({ onNavigate = () => {} } = {}) {
         <StatCard label="Prospects to assign" value={kpis.prospects_unassigned} attention hint="Assign an RM" icon="warn" onClick={() => onNavigate({ page: "prospects" })} />
         <StatCard label="Clients being prepared" value={kpis.clients_in_progress} icon="accounts" onClick={() => onNavigate({ page: "accounts" })} />
         <StatCard label="Awaiting approval" value={kpis.clients_awaiting_approval} attention hint="With Compliance / Approver" icon="shield" onClick={() => onNavigate({ page: "approvals" })} />
-        <StatCard label="Approved & active clients" value={kpis.clients_active} icon="check" onClick={() => onNavigate({ page: "accounts" })} />
+        <StatCard label="Approved & active clients" value={kpis.clients_active} icon="check" onClick={() => onNavigate({ page: "maintenance" })} />
         <StatCard label="Open service requests" value={kpis.service_requests_open} icon="instructions" onClick={() => onNavigate({ page: "instructions" })} />
         <StatCard label="Unpaid invoices" value={kpis.invoices_unpaid} attention hint="Follow up payment" icon="invoices" onClick={() => onNavigate({ page: "invoices" })} />
         <StatCard label={`AML reviews due (${DUE_SOON_DAYS} days)`} value={kpis.aml_reviews_due} attention hint="Plan the reviews" icon="calendar" onClick={() => onNavigate({ page: "reports" })} />
