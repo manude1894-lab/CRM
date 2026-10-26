@@ -535,18 +535,6 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
           </Section>
         )}
 
-        {/* BRD §6 — the people behind the client, filled in as part of onboarding. Each person is saved on its own. */}
-        <Section title={isIndividual ? "Joint Holders" : "Shareholders / UBOs, Directors & Authorised Signatories"} hasData={!!form._id}>
-          {form._id ? (
-            <Embedded>
-              <AccountPartyModal account={{ id: form._id, account_type: form.account_type, company_name: form.company_name }}
-                onClose={() => {}} onChange={() => { setRefreshKey((k) => k + 1); onChanged(); }} />
-            </Embedded>
-          ) : (
-            <p className="text-xs text-gray-500">Save Client Info first, then add the {isIndividual ? "joint holders" : "shareholders / UBOs, directors and authorised signatories"} here.</p>
-          )}
-        </Section>
-
         <Section title="Introducer" hasData={form.has_introducer != null} {...sectionProps("introducer")}>
           <div className="grid grid-cols-2 gap-3">
             <YesNo label="Introduced by a third party" value={form.has_introducer} onChange={setValue("has_introducer")} />
@@ -555,6 +543,23 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
             <Field label="Introducer Name"><Input value={form.introducer_name} onChange={set("introducer_name")} /></Field>
           )}
         </Section>
+
+        {/* BRD §5.1–5.3 — the people behind the client, one section each, as many records as needed.
+            Each person is saved on its own. */}
+        {(isIndividual ? [["Joint Holder", "Joint Holders"]]
+          : [["Shareholder", "Shareholder / UBO Information"], ["Director", "Directors"], ["Authorised Signatory", "Authorised Signatories"]]
+        ).map(([role, title]) => (
+          <Section key={role} title={title} hasData={!!form._id}>
+            {form._id ? (
+              <Embedded>
+                <AccountPartyModal role={role} account={{ id: form._id, account_type: form.account_type, company_name: form.company_name }}
+                  onClose={() => {}} onChange={() => { setRefreshKey((k) => k + 1); onChanged(); }} />
+              </Embedded>
+            ) : (
+              <p className="text-xs text-gray-500">Save Client Info first, then add the {title.toLowerCase()} here.</p>
+            )}
+          </Section>
+        ))}
 
         {form._id && !hideDocuments && (
           // BRD §12 step 8 / §16 — documents are filed against the Client ID. Saved on upload.

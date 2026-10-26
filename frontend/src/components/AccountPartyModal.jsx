@@ -39,8 +39,9 @@ const cleanPayload = (obj) => Object.fromEntries(
 export const partyLabel = (role) => role;
 
 // onChange runs after a party is added, changed or removed (e.g. to refresh the missing-fields list).
-export default function AccountPartyModal({ account, onClose, onChange }) {
-  const ROLES = account.account_type === "Individual" ? INDIVIDUAL_ROLES : CORPORATE_ROLES;
+// role shows that one kind of party only, without tabs (the onboarding form has a section per kind, BRD §5.1–5.3).
+export default function AccountPartyModal({ account, onClose, onChange, role }) {
+  const ROLES = role ? [role] : account.account_type === "Individual" ? INDIVIDUAL_ROLES : CORPORATE_ROLES;
   const [tab, setTab] = useState(ROLES[0]);
   const [parties, setParties] = useState([]);
   const [removed, setRemoved] = useState([]);
@@ -99,20 +100,23 @@ export default function AccountPartyModal({ account, onClose, onChange }) {
   const switchTab = (t) => { setTab(t); cancelForm(); };
 
   const rowsForTab = parties.filter((p) => p.party_role === tab);
+  const removedShown = role ? removed.filter((r) => r.party_role === role) : removed;
   const ownershipTotal = parties
     .filter((p) => p.party_role === "Shareholder")
     .reduce((s, p) => s + Number(p.effective_ownership_percent || 0), 0);
 
   return (
     <Modal title={`Parties: ${account.company_name}`} onClose={onClose}>
-      <div className="flex border-b border-gray-100 mb-4 -mt-2">
-        {ROLES.map((r) => (
-          <button key={r} onClick={() => switchTab(r)}
-            className={`px-3 py-2 text-sm font-medium border-b-2 -mb-px ${tab === r ? "border-brand-500 text-brand-600" : "border-transparent text-gray-400 hover:text-gray-600"}`}>
-            {partyLabel(r)} ({parties.filter((p) => p.party_role === r).length})
-          </button>
-        ))}
-      </div>
+      {!role && (
+        <div className="flex border-b border-gray-100 mb-4 -mt-2">
+          {ROLES.map((r) => (
+            <button key={r} onClick={() => switchTab(r)}
+              className={`px-3 py-2 text-sm font-medium border-b-2 -mb-px ${tab === r ? "border-brand-500 text-brand-600" : "border-transparent text-gray-400 hover:text-gray-600"}`}>
+              {partyLabel(r)} ({parties.filter((p) => p.party_role === r).length})
+            </button>
+          ))}
+        </div>
+      )}
 
       {tab === "Shareholder" && !editing && (
         <p className={`text-xs mb-2 ${ownershipTotal === 100 ? "text-gray-400" : "text-amber-600 font-medium"}`}>
@@ -126,7 +130,7 @@ export default function AccountPartyModal({ account, onClose, onChange }) {
             <>
               <div className="space-y-2 mb-3">
                 {rowsForTab.length === 0
-                  ? <p className="text-sm text-gray-400 text-center py-6">No {partyLabel(tab).toLowerCase()}s on record.</p>
+                  ? <p className="text-sm text-gray-400 text-center py-6">No {partyLabel(tab).toLowerCase().replace(/y$/, "ie")}s on record.</p>
                   : rowsForTab.map((p, i) => (
                     <div key={p.id} className="flex items-center justify-between p-2.5 bg-gray-50 rounded-lg">
                       <div>
@@ -153,14 +157,14 @@ export default function AccountPartyModal({ account, onClose, onChange }) {
               <button onClick={startNew} className="w-full px-3 py-2 text-xs border border-dashed border-gray-300 rounded-lg hover:border-brand-300 hover:text-brand-600 text-gray-500 flex items-center justify-center gap-1">
                 <Icon name="plus" size={13} /> Add {partyLabel(tab)}
               </button>
-              {removed.length > 0 && (
+              {removedShown.length > 0 && (
                 <div className="mt-3">
                   <button onClick={() => setShowRemoved((v) => !v)} className="text-xs text-gray-500 hover:text-brand-600">
-                    {showRemoved ? "Hide" : "Show"} removed ({removed.length})
+                    {showRemoved ? "Hide" : "Show"} removed ({removedShown.length})
                   </button>
                   {showRemoved && (
                     <div className="mt-2 space-y-1.5">
-                      {removed.map((r) => (
+                      {removedShown.map((r) => (
                         <div key={r.id} className="p-2 rounded-lg border border-gray-100 text-xs text-gray-500">
                           <span className="line-through text-gray-600">{r.full_name}</span> · {r.party_role}
                           <div className="text-[11px] text-gray-400">
@@ -206,7 +210,8 @@ function PartyForm({ form, setForm, countries, onCancel, onSave }) {
           </Select>
         </Field>
       )}
-      <Field label={isEntity ? "Entity Name (as per license)" : "Full Name (as per passport)"} required>
+      <Field label={isEntity ? "Entity Name (as per license)" : form.party_role === "Authorised Signatory" ? "Full Name (as per Resolution)"
+        : form.party_role === "Joint Holder" ? "Full Name (as per passport)" : "Full Name (as per ID document)"} required>
         <Input value={form.full_name || ""} onChange={set(setForm, "full_name")} />
       </Field>
       <div className="grid grid-cols-2 gap-3">
@@ -271,10 +276,13 @@ function PartyForm({ form, setForm, countries, onCancel, onSave }) {
         </div>
       )}
 
-      <label className="flex items-center gap-1.5 text-xs text-gray-600 py-1">
-        <input type="checkbox" checked={!!form.is_pep} onChange={setBool(setForm, "is_pep")} />
-        Politically Exposed Person (PEP)
-      </label>
+      {/* BRD §5.3 has no PEP field for authorised signatories. */}
+      {form.party_role !== "Authorised Signatory" && (
+        <label className="flex items-center gap-1.5 text-xs text-gray-600 py-1">
+          <input type="checkbox" checked={!!form.is_pep} onChange={setBool(setForm, "is_pep")} />
+          Politically Exposed Person (PEP)
+        </label>
+      )}
 
       <div className="flex justify-end gap-3 mt-3">
         <button onClick={onCancel} className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>

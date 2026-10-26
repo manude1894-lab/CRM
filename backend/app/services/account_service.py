@@ -492,8 +492,8 @@ def _blank(v) -> bool:
     return v is None or (isinstance(v, str) and not v.strip()) or (isinstance(v, (list, dict)) and not v)
 
 
-# The form section where shareholders, directors and signatories are entered (named the same in the UI).
-PARTIES_SECTION = "Shareholders / UBOs, Directors & Authorised Signatories"
+# The form section where shareholders are entered (BRD §5.1, named the same in the UI).
+PARTIES_SECTION = "Shareholder / UBO Information"
 
 
 def missing_mandatory(account: Account) -> list[dict]:
