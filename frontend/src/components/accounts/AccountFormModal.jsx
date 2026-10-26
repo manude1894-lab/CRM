@@ -493,14 +493,14 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
           <Section title="Individual Details" hasData={!!(form.date_of_birth || form.country_of_birth || form.nationality || form.individual_mobile_number || form.individual_email || form.country_of_residence || form.is_pep || (form.nature_of_services_sought || []).length > 0)}
             {...sectionProps("individual")}>
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Date of Birth"><DateInput value={form.date_of_birth || ""} onChange={set("date_of_birth")} /></Field>
-              <Field label="Country of Birth"><CountrySelect value={form.country_of_birth} onChange={set("country_of_birth")} countries={countries} /></Field>
-              <Field label="Nationality"><CountrySelect value={form.nationality} onChange={set("nationality")} countries={countries} /></Field>
-              <Field label="Passport Expiry"><DateInput value={form.passport_expiry_date || ""} onChange={set("passport_expiry_date")} /></Field>
-              <Field label="Email"><Input type="email" value={form.individual_email} onChange={set("individual_email")} /></Field>
-              <Field label="Country of Residence"><CountrySelect value={form.country_of_residence} onChange={set("country_of_residence")} countries={countries} /></Field>
+              <Field label="Date of Birth *"><DateInput value={form.date_of_birth || ""} onChange={set("date_of_birth")} /></Field>
+              <Field label="Country of Birth *"><CountrySelect value={form.country_of_birth} onChange={set("country_of_birth")} countries={countries} /></Field>
+              <Field label="Nationality *"><CountrySelect value={form.nationality} onChange={set("nationality")} countries={countries} /></Field>
+              <Field label="Passport Expiry Date *"><DateInput value={form.passport_expiry_date || ""} onChange={set("passport_expiry_date")} /></Field>
+              <Field label="Contact Email *"><Input type="email" value={form.individual_email} onChange={set("individual_email")} /></Field>
+              <Field label="Country of Residence *"><CountrySelect value={form.country_of_residence} onChange={set("country_of_residence")} countries={countries} /></Field>
             </div>
-            <Field label="Mobile">
+            <Field label="Contact Mobile *">
               <div className="flex gap-2">
                 <Select value={form.individual_mobile_country_code || ""} onChange={set("individual_mobile_country_code")} className="!w-44 flex-shrink-0">
                   <option value="">Code</option>
@@ -519,7 +519,7 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
               <YesNo label="Is this a one-time service?" value={form.is_one_time_service} onChange={setValue("is_one_time_service")} />
             </div>
 
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mt-3 mb-1.5">Residential Address</p>
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mt-3 mb-1.5">Residential Address *</p>
             <AddressFields value={form.residential_address} onChange={setValue("residential_address")} />
 
             {isUAE(form.country_of_residence) && (
