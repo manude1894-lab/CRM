@@ -20,7 +20,8 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 @router.post("/login", response_model=Token, summary="Login with email and password")
 def login(data: LoginRequest, request: Request, db: Session = Depends(get_db)):
     ip = request.client.host if request.client else None
-    user = db.query(User).filter(User.email == data.email).first()
+    from app.services.user_service import find_by_email
+    user = find_by_email(db, data.email)
     security_service.assert_not_locked(user)
     if not user or not user.is_active or not verify_password(data.password, user.hashed_password):
         security_service.record_failure(user if user and user.is_active else None)

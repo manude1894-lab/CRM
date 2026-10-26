@@ -1,4 +1,5 @@
 """Service layer: User management (Admin-only)."""
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
 
@@ -27,6 +28,16 @@ def get_user(db: Session, user_id: int, viewer: User | None = None) -> User:
     return user
 
 
+def normalize_email(email: str) -> str:
+    return (email or "").strip().lower()
+
+
+def find_by_email(db: Session, email: str) -> User | None:
+    """Emails match whatever the capitals: "Kalyan@AskTriam.com" signs in as kalyan@asktriam.com
+    (phones capitalise the first letter). Also finds addresses stored with capitals before."""
+    return db.query(User).filter(func.lower(User.email) == normalize_email(email)).first()
+
+
 def _assert_company_email(email: str) -> None:
     """BRD §13 — when USER_EMAIL_DOMAINS is set (e.g. "asktriam.com"), users must have a
     company email address; access lasts while that address is active."""
@@ -37,8 +48,9 @@ def _assert_company_email(email: str) -> None:
 
 
 def create_user(db: Session, data: UserCreate) -> User:
+    data.email = normalize_email(data.email)
     _assert_company_email(data.email)
-    if db.query(User).filter(User.email == data.email).first():
+    if find_by_email(db, data.email):
         raise HTTPException(status_code=400, detail="Email already registered")
     _check_business_role(db, data.business_role_id)
     extra = _extra_roles(db, data.extra_role_ids)
@@ -99,8 +111,13 @@ def update_user(db: Session, user_id: int, data: UserUpdate, viewer: User | None
             raise HTTPException(status_code=400, detail="That supervisor reports to this user, so the reporting line would go round in a circle")
     if "business_role_id" in update_data:
         _check_business_role(db, update_data["business_role_id"])
-    if update_data.get("email") and update_data["email"] != user.email:
+    if update_data.get("email"):
+        update_data["email"] = normalize_email(update_data["email"])
+    if update_data.get("email") and update_data["email"] != normalize_email(user.email):
         _assert_company_email(update_data["email"])
+        other = find_by_email(db, update_data["email"])
+        if other and other.id != user.id:
+            raise HTTPException(status_code=400, detail="Email already registered")
     if "extra_role_ids" in update_data:
         user.extra_roles = _extra_roles(db, update_data.pop("extra_role_ids"))
     if "password" in update_data:

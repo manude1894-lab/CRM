@@ -88,6 +88,19 @@ def test_login_success_and_failure_are_audited(client, db):
     assert actions == ["login_failed", "login"]
 
 
+def test_login_email_ignores_capitals(client, db, make_user):
+    """Phones capitalise the first letter; the email must still match."""
+    u = User(name="Case User", email="kalyan.case@example.com", hashed_password=hash_password("secret123"), role=UserRole.RM)
+    legacy = User(name="Legacy", email="Old.Case@Example.com", hashed_password=hash_password("secret123"), role=UserRole.RM)
+    db.add_all([u, legacy]); db.commit()
+    for email in ("Kalyan.Case@example.com", " KALYAN.CASE@EXAMPLE.COM ", "old.case@example.com"):
+        assert client.post("/api/v1/auth/login", json={"email": email.strip(), "password": "secret123"}).status_code == 200, email
+    admin = make_user(role=UserRole.ADMIN)
+    r = client.post("/api/v1/users", headers=auth(admin), json={"name": "Dup", "email": "KALYAN.CASE@example.com",
+                                                                  "password": "Another-pass-2026", "role": "rm"})
+    assert r.status_code == 400 and "already registered" in r.json()["detail"]
+
+
 def test_user_can_hold_several_roles(client, db, make_user, make_role):
     """BRD §13: one email ID can be assigned more than one role."""
     mlro = make_role("MLRO", ["client.approve"])
