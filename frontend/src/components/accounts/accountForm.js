@@ -26,6 +26,8 @@ export const BLANK_ACCOUNT_FORM = {
   // BRD §5
   client_category: "", contact_mobile_country_code: "+971", contact_mobile_number: "", contact_email: "",
   nature_of_business: "", lei_number: "", lei_expiry_date: "", is_one_time_service: null,
+  // Biz Rationale Report (Triam UAT 26-10-2026)
+  br_person_met: "", br_meeting_date: "", br_meeting_time: "", br_meeting_place: "", br_meeting_mode: "", br_rationale: "",
 };
 
 // Field groups saved by each section's own Save button (BRD §10, §12).
@@ -50,6 +52,7 @@ export const SECTION_FIELDS = {
     "nature_of_business", "is_one_time_service",
   ],
   introducer: ["has_introducer", "introducer_name"],
+  bizRationale: ["br_person_met", "br_meeting_date", "br_meeting_time", "br_meeting_place", "br_meeting_mode", "br_rationale"],
   services: ["services_obtained"],
   // Status itself only changes through the workflow — this section saves engagement only.
   profileStatus: ["engagement_letter_valid_until", "engagement_letter_signed"],
@@ -89,6 +92,8 @@ export function accountToForm(a) {
     contact_mobile_number: a.contact_mobile_number || "", contact_email: a.contact_email || "",
     nature_of_business: a.nature_of_business || "", lei_number: a.lei_number || "", lei_expiry_date: a.lei_expiry_date || "",
     is_one_time_service: a.is_one_time_service ?? null,
+    br_person_met: a.br_person_met || "", br_meeting_date: a.br_meeting_date || "", br_meeting_time: a.br_meeting_time || "",
+    br_meeting_place: a.br_meeting_place || "", br_meeting_mode: a.br_meeting_mode || "", br_rationale: a.br_rationale || "",
     _id: a.id,
     // Read-only, shown in the profile header (BRD §9 / §18).
     _client_id: a.client_id || null,

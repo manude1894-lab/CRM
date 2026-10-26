@@ -2,7 +2,7 @@
 import re
 
 from pydantic import BaseModel, Field, ConfigDict, field_validator
-from typing import Optional
+from typing import Literal, Optional
 from datetime import date, datetime
 
 
@@ -273,6 +273,12 @@ class AccountBase(_ClientFieldRules):
     lei_expiry_date: Optional[date] = None
     is_one_time_service: Optional[bool] = None
     nature_of_services_sought: Optional[list[str]] = None
+    br_person_met: Optional[str] = Field(None, max_length=255)
+    br_meeting_date: Optional[date] = None
+    br_meeting_time: Optional[str] = Field(None, pattern=r"^([01]\d|2[0-3]):[0-5]\d$")
+    br_meeting_place: Optional[str] = Field(None, max_length=255)
+    br_meeting_mode: Optional[Literal["Face to Face", "Video Call"]] = None
+    br_rationale: Optional[str] = Field(None, max_length=4000)
 
 
 class AccountCreate(AccountBase):
@@ -356,6 +362,12 @@ class AccountUpdate(_ClientFieldRules):
     lei_expiry_date: Optional[date] = None
     is_one_time_service: Optional[bool] = None
     nature_of_services_sought: Optional[list[str]] = None
+    br_person_met: Optional[str] = Field(None, max_length=255)
+    br_meeting_date: Optional[date] = None
+    br_meeting_time: Optional[str] = Field(None, pattern=r"^([01]\d|2[0-3]):[0-5]\d$")
+    br_meeting_place: Optional[str] = Field(None, max_length=255)
+    br_meeting_mode: Optional[Literal["Face to Face", "Video Call"]] = None
+    br_rationale: Optional[str] = Field(None, max_length=4000)
 
 
 class AccountRead(AccountBase):

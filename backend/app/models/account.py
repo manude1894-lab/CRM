@@ -104,6 +104,13 @@ class Account(Base):
     lei_expiry_date = Column(Date, nullable=True)
     is_one_time_service = Column(Boolean, nullable=True)
     nature_of_services_sought = Column(JSON, nullable=True)  # list[str]
+    # Biz Rationale Report (Triam UAT 26-10-2026): the RM's meeting with the client and why Triam takes it on.
+    br_person_met = Column(String(255), nullable=True)
+    br_meeting_date = Column(Date, nullable=True)
+    br_meeting_time = Column(String(5), nullable=True)  # HH:MM
+    br_meeting_place = Column(String(255), nullable=True)
+    br_meeting_mode = Column(String(20), nullable=True)  # Face to Face / Video Call
+    br_rationale = Column(Text, nullable=True)
 
     owner_id = Column(Integer, ForeignKey("users.id"), nullable=True)  # who created the client
     prospect_id = Column(Integer, ForeignKey("prospects.id", ondelete="SET NULL"), nullable=True)  # BRD §4A

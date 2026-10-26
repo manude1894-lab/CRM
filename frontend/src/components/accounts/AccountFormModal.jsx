@@ -151,6 +151,8 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
     onChanged();
   };
   const canApprove = useAuthStore((s) => s.can("client.approve"));
+  const canFinalApprove = useAuthStore((s) => s.can("client.final_approve"));
+  const showCdd = canCdd || canApprove || canFinalApprove;
 
   const set = (key) => (e) => setForm({ ...form, [key]: e.target.value });
   const setChecked = (key) => (e) => setForm({ ...form, [key]: e.target.checked });
@@ -556,6 +558,29 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
           </Section>
         ))}
 
+        {/* Triam UAT 26-10-2026: mandatory for every new client, completed by the RM / Sales Manager. */}
+        <Section title="Biz Rationale Report" hasData={!!(form.br_person_met || form.br_rationale)} {...sectionProps("bizRationale")}>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Full Name of the Person Met *"><Input value={form.br_person_met} onChange={set("br_person_met")} maxLength={255} /></Field>
+            <Field label="Place of Meeting with the Customer *"><Input value={form.br_meeting_place} onChange={set("br_meeting_place")} maxLength={255} /></Field>
+            <Field label="Date of Meeting with the Customer *"><DateInput value={form.br_meeting_date || ""} onChange={set("br_meeting_date")} max={today} /></Field>
+            <Field label="Time of Meeting with the Customer *"><Input type="time" value={form.br_meeting_time} onChange={set("br_meeting_time")} /></Field>
+          </div>
+          <Field label="Mode of Meeting *">
+            <div className="flex gap-5 text-sm text-gray-700 py-1">
+              {["Face to Face", "Video Call"].map((m) => (
+                <label key={m} className="flex items-center gap-1.5">
+                  <input type="radio" name="br_meeting_mode" checked={form.br_meeting_mode === m} onChange={() => setForm({ ...form, br_meeting_mode: m })} /> {m}
+                </label>
+              ))}
+            </div>
+          </Field>
+          <Field label="Business Rationale for the Relationship *">
+            <p className="text-[11px] text-gray-500 mb-1">The purpose of establishing the relationship, the services to be obtained at the start of the relationship and the likely introduction of new services in the next 2 years.</p>
+            <Textarea rows={5} value={form.br_rationale} onChange={set("br_rationale")} maxLength={4000} />
+          </Field>
+        </Section>
+
         {form._id && !hideDocuments && (
           // BRD §12 step 8 / §16 — documents are filed against the Client ID. Saved on upload.
           <Section title="Documents" hasData={["New", "WIP"].includes(form.profile_status)}>
@@ -578,6 +603,9 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
           </div>
         </Section>
 
+        {/* Triam UAT 26-10-2026: this section belongs to Compliance, not Client Onboarding — shown to
+            Compliance and the Approver (reviewing from Compliance Approval), editable by Compliance only. */}
+        {showCdd && (
         <Section title="Customer Risk Assessment / KYC & AML (Compliance)" hasData={!!(form.risk_rating || form.cdd_completion_date)}
           {...sectionProps("aml")} onSave={cddEditable ? () => saveSection("aml") : undefined}>
           {!cddEditable && (
@@ -607,6 +635,7 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
             <p className="text-xs text-gray-400">Next AML Review Date: <span className="font-medium text-gray-600">{fmtDate(form.next_aml_review_date)}</span> (auto-calculated from Risk Rating + CDD Completion Date)</p>
           )}
         </Section>
+        )}
       </div>
       <div className="flex justify-end gap-3 mt-5">
         <button onClick={cancel} className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>

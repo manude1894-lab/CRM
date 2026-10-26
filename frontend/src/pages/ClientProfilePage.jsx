@@ -30,6 +30,8 @@ export default function ClientProfilePage({ accountId, initialTab = "overview", 
   const [tabStart, setTabStart] = useState(null); // "request" opens a new service request on the Reports & Requests tab
   const isAdmin = useAuthStore((s) => s.isAdmin());
   const readOnly = useAuthStore((s) => !s.isAdmin() && (s.user?.permissions || []).includes("read_only"));
+  // The CDD section is Compliance's (Triam UAT 26-10-2026): during onboarding only Compliance and the Approver see it.
+  const compliance = useAuthStore((s) => s.can("client.cdd_edit") || s.can("client.approve") || s.can("client.final_approve"));
 
   const load = () => accountsApi.get(accountId).then((a) => { setAccount(a); setError(null); })
     .catch((e) => setError(e.response?.data?.detail || "Failed to load the client"));
@@ -52,7 +54,10 @@ export default function ClientProfilePage({ accountId, initialTab = "overview", 
     { key: "profile", label: "Profile" },
     { key: "parties", label: individual ? "Joint Holders" : "Shareholders & Directors" },
     { key: "documents", label: "Documents" },
-    { key: "servicing", label: "Reports & Requests" },
+    // Triam UAT 26-10-2026: a client being onboarded has its Biz Rationale Report here, not call reports or
+    // service requests; existing clients keep Reports & Requests as well.
+    { key: "rationale", label: "Biz Rationale Report" },
+    ...(existing ? [{ key: "servicing", label: "Reports & Requests" }] : []),
     { key: "history", label: "History" },
   ];
 
@@ -96,7 +101,7 @@ export default function ClientProfilePage({ accountId, initialTab = "overview", 
                 ["Country of residence", a.country_of_residence], ["Passport expiry", fmtDate(a.passport_expiry_date)],
                 ["Email", a.individual_email], ["Profession / business", a.nature_of_business],
               ] : [
-                ["Unique search name", a.search_name], ["New client category", a.client_category], ["Country of incorporation", a.country],
+                ["New client category", a.client_category], ["Country of incorporation", a.country],
                 ["Contact", [a.contact_mobile_country_code && a.contact_mobile_number ? `${a.contact_mobile_country_code} ${a.contact_mobile_number}` : null, a.contact_email].filter(Boolean).join(" · ") || null],
                 ["LEI", a.lei_number ? `${a.lei_number}${a.lei_expiry_date ? ` (expires ${fmtDate(a.lei_expiry_date)})` : ""}` : null],
                 ["Incorporation date", fmtDate(a.incorporation_date)], ["Incorporation cert. no.", a.registration_number],
@@ -121,12 +126,12 @@ export default function ClientProfilePage({ accountId, initialTab = "overview", 
                 ]} />
               </Panel>
             )}
-            <Panel title="KYC / AML">
+            {(existing || compliance) && <Panel title="KYC / AML">
               <FactList items={[
                 ["CDD/AML risk level", a.risk_rating], ["Reason for EDD", a.edd_reason], ["KYC verified by", a.kyc_verified_by],
                 ["CDD completed", fmtDate(a.cdd_completion_date)], ["Next AML review", fmtDate(a.next_aml_review_date)], ["PEP", a.is_pep ? "Yes" : "No"],
               ]} />
-            </Panel>
+            </Panel>}
             {!individual && (
               <Panel title="Tax & engagement">
                 <FactList items={[
@@ -149,6 +154,16 @@ export default function ClientProfilePage({ accountId, initialTab = "overview", 
         )}
         {tab === "parties" && <Panel><Embedded><AccountPartyModal account={a} onClose={refresh} /></Embedded></Panel>}
         {tab === "documents" && <Panel><ClientDocumentsFolder accountId={a.id} onboarding={onboarding} /></Panel>}
+        {tab === "rationale" && (
+          <Panel title="Biz Rationale Report" actions={!readOnly && onboarding && <Button onClick={() => setTab("profile")}>Edit in Profile</Button>}>
+            <FactList items={[
+              ["Full name of the person met", a.br_person_met], ["Date of meeting", fmtDate(a.br_meeting_date)],
+              ["Time of meeting", a.br_meeting_time], ["Place of meeting", a.br_meeting_place], ["Mode of meeting", a.br_meeting_mode],
+            ]} />
+            <p className="text-xs font-semibold text-gray-500 mt-3 mb-1">Business rationale for the relationship</p>
+            <p className="text-sm text-gray-700 whitespace-pre-line">{a.br_rationale || "—"}</p>
+          </Panel>
+        )}
         {tab === "servicing" && <Panel><Embedded><ClientServicingModal account={a} startWith={servicingStart} onClose={() => {}} /></Embedded></Panel>}
         {tab === "history" && <Panel><Embedded><AccountHistoryModal account={a} onClose={() => {}} /></Embedded></Panel>}
       </div>

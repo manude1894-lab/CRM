@@ -38,6 +38,9 @@ def complete_client(db, maker):
         registered_address={"line1": "Office 1201, Tower A", "city": "Dubai", "country": "United Arab Emirates"},
         operating_address={"line1": "Office 1201, Tower A", "city": "Dubai", "country": "United Arab Emirates"},
         is_regulated=False, corp_tax_registered=False, has_introducer=False, engagement_letter_signed=False,
+        br_person_met="Jane Owner", br_meeting_date=date(2026, 10, 1), br_meeting_time="10:30",
+        br_meeting_place="Triam office, DIFC", br_meeting_mode="Face to Face",
+        br_rationale="Fintech start-up needing accounting; company secretarial likely within two years.",
     ), maker)
     account_party_service.create_party(db, acc.id, AccountPartyCreate(
         party_role="Shareholder", country_of_residence="United Arab Emirates", nationality="United Arab Emirates", full_name="Jane Owner", mobile_country_code="+971", mobile_number="501234567",

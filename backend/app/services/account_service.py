@@ -494,6 +494,7 @@ def _blank(v) -> bool:
 
 # The form section where shareholders are entered (BRD §5.1, named the same in the UI).
 PARTIES_SECTION = "Shareholder / UBO Information"
+BIZ_RATIONALE_SECTION = "Biz Rationale Report"
 
 
 def missing_mandatory(account: Account) -> list[dict]:
@@ -575,6 +576,12 @@ def missing_mandatory(account: Account) -> list[dict]:
                                 "label": f"Shareholding must total 100% (currently {total}%)"})
 
     # §10 KYC / AML is completed by Compliance after submission — see missing_cdd.
+
+    # Biz Rationale Report (Triam UAT 26-10-2026) — mandatory for every new client.
+    for field, label in (("br_person_met", "Full Name of the Person Met"), ("br_meeting_date", "Date of Meeting"),
+                         ("br_meeting_time", "Time of Meeting"), ("br_meeting_place", "Place of Meeting"),
+                         ("br_meeting_mode", "Mode of Meeting"), ("br_rationale", "Business Rationale for the Relationship")):
+        need(BIZ_RATIONALE_SECTION, field, label)
 
     # §9 engagement — a Yes / No answer, then the validity date when signed
     need("Profile Status & Engagement", "engagement_letter_signed", "Engagement Letter Signed (Yes / No)")
