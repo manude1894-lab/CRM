@@ -73,3 +73,11 @@ def test_api_requires_a_prospect_for_new_clients(client, make_user):
     for user in (rm, admin):  # BRD §4A: every new client, administrators included
         r = client.post("/api/v1/accounts", json=body, headers=auth(user))
         assert r.status_code == 400 and "prospect" in r.json()["detail"]
+
+
+def test_proposal_sent_date_is_stamped_on_submit(db, team):
+    """Triam UAT 26-10-2026: the date is stamped when the prospect is submitted to the RM, not typed."""
+    p = prospect_service.create_prospect(db, ProspectCreate(company_name="Stamp Ltd", notes="Company formation"), team["coordinator"])
+    assert p.proposal_sent_date is None
+    p = prospect_service.assign_prospect(db, p.id, team["rm"].id, None, team["coordinator"])
+    assert p.proposal_sent_date is not None

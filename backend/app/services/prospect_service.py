@@ -9,6 +9,7 @@ from app.schemas.prospect import ProspectCreate, ProspectUpdate, DuplicateMatch
 from app.utils.uid import next_uid
 from app.utils.fuzzy_match import top_matches
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 
 from app.audit import log_event
 from app.auth.permissions import has_permission
@@ -96,6 +97,9 @@ def assign_prospect(db: Session, prospect_id: int, rm_id: int, comments: Optiona
         raise HTTPException(status_code=400, detail=f"Assignor's comments can be at most {MAX_ASSIGNOR_WORDS} words")
     previous = p.owner_id
     p.owner_id, p.assigned_by_id, p.assigned_at, p.assignor_comments = rm.id, user.id, datetime.now(timezone.utc), comments
+    # Triam UAT 26-10-2026: the Proposal Sent Date is stamped when the prospect is submitted (UAE date), not typed.
+    if p.proposal_sent_date is None:
+        p.proposal_sent_date = datetime.now(ZoneInfo("Asia/Dubai")).date()
     log_event(db, "assign", f"Prospect {p.prospect_uid} assigned to {rm.name}", subject_type="Prospect", subject_id=p.id,
               changes={"owner_id": {"old": previous, "new": rm.id}, "comments": comments})
     db.commit()

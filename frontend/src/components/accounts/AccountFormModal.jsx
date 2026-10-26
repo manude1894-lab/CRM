@@ -22,6 +22,9 @@ import {
 import { useMasters } from "../../hooks/useMasters";
 import { selectableCodes, servicesForEntities } from "../../hooks/masterUtils";
 
+// Service lists are shown in alphabetical order (Triam UAT 26-10-2026).
+const alphabetical = (codes) => [...codes].sort((x, y) => x.localeCompare(y));
+
 const Section = ({ title, children, hasData, onSave, status, error, dirty }) => {
   const [open, setOpen] = useState(!!hasData);
   return (
@@ -66,7 +69,7 @@ const YesNo = ({ label, value, onChange }) => (
   </Field>
 );
 
-const AddressFields = ({ value, onChange }) => {
+const AddressFields = ({ value, onChange, countries }) => {
   const v = value || BLANK_ADDRESS;
   const set = (k) => (e) => onChange({ ...v, [k]: e.target.value });
   return (
@@ -77,7 +80,7 @@ const AddressFields = ({ value, onChange }) => {
       <Field label="City"><Input value={v.city || ""} onChange={set("city")} /></Field>
       <Field label="ZIP Code"><Input value={v.zip || ""} onChange={set("zip")} /></Field>
       <Field label="P.O. Box No."><Input value={v.po_box || ""} onChange={set("po_box")} /></Field>
-      <Field label="Country"><Input value={v.country || ""} onChange={set("country")} /></Field>
+      <Field label="Country"><CountrySelect value={v.country || ""} onChange={set("country")} countries={countries} /></Field>
     </div>
   );
 };
@@ -101,8 +104,6 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
   // BRD §3 — exact-name duplicate and the approver exception.
   const [exactMatch, setExactMatch] = useState(false);
   const [override, setOverride] = useState({ allow: false, reason: "" });
-  // The search name follows the legal name until the user edits it themselves.
-  const [searchTouched, setSearchTouched] = useState(!!initialForm.search_name);
   const [refreshKey, setRefreshKey] = useState(0);
   // BRD §13 — an approved client is changed only through an amendment that Compliance approves.
   const [amendment, setAmendment] = useState(null);
@@ -165,9 +166,8 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
 
   const setCompanyName = (e) => {
     const value = e.target.value;
-    setForm((f) => ({ ...f, company_name: value, ...(searchTouched ? {} : { search_name: value.replace(/\s+/g, " ").trim().slice(0, 120) }) }));
+    setForm((f) => ({ ...f, company_name: value }));
   };
-  const setSearchName = (e) => { setSearchTouched(true); setForm((f) => ({ ...f, search_name: e.target.value })); };
 
   // Create payload extras + the duplicate gate (BRD §3).
   const duplicateBlock = () => {
@@ -192,7 +192,6 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
         setForm((f) => ({ ...f, next_aml_review_date: updated.next_aml_review_date, _client_id: updated.client_id || f._client_id }));
       } else {
         const created = await accountsApi.create(withOverride({ ...payload, prospect_id: form.prospect_id || null }));
-        setSearchTouched(true);
         setForm((f) => ({ ...f, _id: created.id, search_name: created.search_name, _client_id: created.client_id, _status_updated_at: created.status_updated_at }));
         setMode("edit");
       }
@@ -238,7 +237,6 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
         const invalid = validateCoreFields(form) || duplicateBlock();
         if (invalid) throw new Error(invalid);
         const created = await accountsApi.create(withOverride({ ...patch, prospect_id: form.prospect_id || null }));
-        setSearchTouched(true);
         setForm((f) => ({ ...f, _id: created.id, search_name: created.search_name, _client_id: created.client_id, _status_updated_at: created.status_updated_at }));
         setMode("edit");
       }
@@ -296,9 +294,6 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
           onExactMatch={setExactMatch}
           onOpen={async (id) => onOpenExisting(await accountsApi.get(id))}
         />
-        <Field label="Unique Search Name *">
-          <Input value={form.search_name || ""} onChange={setSearchName} maxLength={120} placeholder="Short name used to find this client" />
-        </Field>
         {!isIndividual && (
           <>
             <div className="grid grid-cols-2 gap-3">
@@ -329,7 +324,7 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
               <Field label="Contact Email *"><Input type="email" value={form.contact_email || ""} onChange={set("contact_email")} placeholder="e.g. info@company.com" /></Field>
             </div>
             <Field label="Nature of Services sought *">
-              <MultiSelect options={selectableCodes(servicesForEntities(services.items, [form.anchor_entity, ...(form.non_anchor_entities || [])]), form.nature_of_services_sought)}
+              <MultiSelect options={alphabetical(selectableCodes(servicesForEntities(services.items, [form.anchor_entity, ...(form.non_anchor_entities || [])]), form.nature_of_services_sought))}
                 value={form.nature_of_services_sought} onChange={setValue("nature_of_services_sought")} />
             </Field>
             <div className="grid grid-cols-2 gap-3">
@@ -454,12 +449,12 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
 
             <Section title="Registered Address" hasData={Object.values(form.registered_address || {}).some(Boolean)}
               {...sectionProps("registeredAddress")}>
-              <AddressFields value={form.registered_address} onChange={setValue("registered_address")} />
+              <AddressFields value={form.registered_address} onChange={setValue("registered_address")} countries={countries} />
             </Section>
 
             <Section title="Operating Address" hasData={Object.values(form.operating_address || {}).some(Boolean)}
               {...sectionProps("operatingAddress")}>
-              <AddressFields value={form.operating_address} onChange={setValue("operating_address")} />
+              <AddressFields value={form.operating_address} onChange={setValue("operating_address")} countries={countries} />
             </Section>
 
             <Section title="Tax" hasData={!!(form.trn_vat_number || form.financial_year_end || form.corp_tax_registered)}
@@ -510,7 +505,7 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
               </div>
             </Field>
             <Field label="Nature of Services Sought *">
-              <MultiSelect options={selectableCodes(services.items, form.nature_of_services_sought)} value={form.nature_of_services_sought} onChange={setValue("nature_of_services_sought")} />
+              <MultiSelect options={alphabetical(selectableCodes(services.items, form.nature_of_services_sought))} value={form.nature_of_services_sought} onChange={setValue("nature_of_services_sought")} />
             </Field>
             <Field label="Detailed Nature of Profession / Business">
               <Textarea rows={2} value={form.nature_of_business} onChange={set("nature_of_business")} maxLength={1000} />
@@ -520,7 +515,7 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
             </div>
 
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mt-3 mb-1.5">Residential Address *</p>
-            <AddressFields value={form.residential_address} onChange={setValue("residential_address")} />
+            <AddressFields value={form.residential_address} onChange={setValue("residential_address")} countries={countries} />
 
             {isUAE(form.country_of_residence) && (
               <div className="grid grid-cols-2 gap-3 mt-3">
@@ -570,7 +565,7 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
         )}
 
         <Section title="Services Obtained" hasData={(form.services_obtained || []).length > 0} {...sectionProps("services")}>
-          <MultiSelect options={selectableCodes(servicesForEntities(services.items, [form.anchor_entity, ...(form.non_anchor_entities || [])]), form.services_obtained)} value={form.services_obtained} onChange={setValue("services_obtained")} />
+          <MultiSelect options={alphabetical(selectableCodes(servicesForEntities(services.items, [form.anchor_entity, ...(form.non_anchor_entities || [])]), form.services_obtained))} value={form.services_obtained} onChange={setValue("services_obtained")} />
         </Section>
 
         <Section title="Engagement" hasData={form.engagement_letter_signed != null || !!form.engagement_letter_valid_until}

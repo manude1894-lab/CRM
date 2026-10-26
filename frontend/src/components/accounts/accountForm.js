@@ -31,7 +31,7 @@ export const BLANK_ACCOUNT_FORM = {
 // Field groups saved by each section's own Save button (BRD §10, §12).
 export const SECTION_FIELDS = {
   core: [
-    "account_type", "company_name", "search_name", "country",
+    "account_type", "company_name", "country",
     "single_point_of_contact", "spoc_id", "non_anchor_rm_ids",
     "anchor_entity", "non_anchor_entities", "registration_number", "license_number", "incorporation_date",
     "tags",
@@ -106,7 +106,8 @@ const toSpocId = (v) => (v ? +v : null);
 // Full-form payload for create/update. `_id` and the server-computed next_aml_review_date are stripped.
 export function buildAccountPayload(form) {
   // profile_status is never sent: it changes only through Submit / Approve / status actions (BRD §9).
-  const { next_aml_review_date, tags, _id, _client_id, _status_updated_at, profile_status, _prospect_uid, ...rest } = form;
+  // search_name is kept by the system from the client name (Triam UAT 26-10-2026).
+  const { next_aml_review_date, tags, _id, _client_id, _status_updated_at, profile_status, _prospect_uid, search_name, ...rest } = form;
   const payload = cleanPayload({ ...rest, tags: (tags || []).join(", ") || null });
   return { ...payload, spoc_id: toSpocId(payload.spoc_id) };
 }

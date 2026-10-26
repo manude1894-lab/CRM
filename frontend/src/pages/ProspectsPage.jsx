@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { prospectsApi, usersApi } from "../api/endpoints";
-import { Icon, Badge, Modal, Field, Input, Select, Textarea, Spinner, ErrorBanner, PageHeader, DateInput, SelectWithOther } from "../components/ui";
+import { Icon, Badge, Modal, Field, Input, Select, Textarea, Spinner, ErrorBanner, PageHeader, SelectWithOther } from "../components/ui";
 import DuplicateWarning from "../components/DuplicateWarning";
-import { PROSPECT_STATUS_OPTIONS, PROSPECT_SOURCE_OPTIONS, isRelationshipManager } from "../utils/constants";
+import { PROSPECT_STATUS_OPTIONS, PROSPECT_SOURCE_OPTIONS, isRelationshipManager, fmtDate } from "../utils/constants";
 import { toast } from "../store/toast";
 import { useAuthStore } from "../store/auth";
 import { wordCount } from "../components/accounts/WorkflowBar";
@@ -54,16 +54,16 @@ export default function ProspectsPage({ onNavigate } = {}) {
   // Submit also sends it to the named RM (BRD §4A assignment: notified, with the assignor's comments).
   const save = async (submit = false) => {
     if (!form.company_name?.trim()) return toast.error("Enter the prospect's name");
+    if (!form.notes?.trim()) return toast.error("Enter the services the prospect is looking for");
     if (form.contact_email && !EMAIL_RE.test(form.contact_email.trim())) return toast.error("Enter the contact email as name@domain.com");
     const rmId = coordinator ? (form.owner_id ? Number(form.owner_id) : null) : me?.id;
     if (submit && !rmId) return toast.error("Choose the RM to submit the prospect to");
     if (submit && wordCount(form.assignor_comments) > 250) return toast.error("Assignor's comments can be at most 250 words");
     const { id, prospect_uid, converted_account_id, assigned_by_id, assigned_by_name, assigned_at, assignor_comments,
-      owner_name, created_at, updated_at, owner_id, ...fields } = form;
+      owner_name, created_at, updated_at, owner_id, proposal_sent_date, ...fields } = form;
     const payload = {
       ...fields,
       contact_email: form.contact_email?.trim() || null,
-      proposal_sent_date: form.proposal_sent_date || null,
       lost_reason: form.lost_reason || null,
     };
     try {
@@ -168,7 +168,7 @@ export default function ProspectsPage({ onNavigate } = {}) {
                 onChange={(e) => setForm((p) => ({ ...p, source: e.target.value }))} />
             </Field>
             {coordinator ? (
-              <Field label="Submit to RM">
+              <Field label="Submit to RM" required>
                 <Select value={form.owner_id || ""} onChange={(e) => setForm((p) => ({ ...p, owner_id: e.target.value }))}>
                   <option value="">— choose when submitting —</option>
                   {users.filter(isRelationshipManager).map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
@@ -182,18 +182,20 @@ export default function ProspectsPage({ onNavigate } = {}) {
                 {PROSPECT_STATUS_OPTIONS.map((x) => <option key={x}>{x}</option>)}
               </Select>
             </Field>
-            <Field label="Proposal Sent Date"><DateInput value={form.proposal_sent_date || ""} onChange={(e) => setForm((p) => ({ ...p, proposal_sent_date: e.target.value }))} /></Field>
           </div>
           {form.status === "Lost" && (
             <Field label="Lost Reason"><Textarea value={form.lost_reason || ""} onChange={(e) => setForm((p) => ({ ...p, lost_reason: e.target.value }))} /></Field>
           )}
-          <Field label="Services the prospect is looking for"><Textarea placeholder="Give details" value={form.notes || ""} onChange={(e) => setForm((p) => ({ ...p, notes: e.target.value }))} /></Field>
+          <Field label="Services the prospect is looking for" required><Textarea placeholder="Give details" value={form.notes || ""} onChange={(e) => setForm((p) => ({ ...p, notes: e.target.value }))} /></Field>
           {coordinator && !form.converted_account_id && (
             <Field label="Assignor's comments (optional)">
               <Textarea rows={3} value={form.assignor_comments || ""} onChange={(e) => setForm((p) => ({ ...p, assignor_comments: e.target.value }))} />
               <div className={`text-[11px] text-right mt-0.5 ${wordCount(form.assignor_comments) > 250 ? "text-red-600" : "text-gray-400"}`}>{wordCount(form.assignor_comments)} / 250 words · sent to the RM on Submit</div>
             </Field>
           )}
+          {/* Stamped by the system when the prospect is submitted to the RM (Triam UAT 26-10-2026). */}
+          <p className="text-xs text-gray-500 mt-1">Proposal Sent Date: <span className="font-medium text-gray-700">
+            {form.proposal_sent_date ? fmtDate(form.proposal_sent_date) : "set automatically when the prospect is submitted"}</span></p>
           <div className="flex justify-end gap-3 mt-4">
             <button onClick={() => setModal(false)} className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
             <button onClick={() => save(false)} className="px-4 py-2 text-sm border border-brand-300 text-brand-700 rounded-lg hover:bg-brand-50">Save</button>

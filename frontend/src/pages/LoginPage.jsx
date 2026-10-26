@@ -14,7 +14,7 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
     try {
-      const data = await authApi.login(email, password);
+      const data = await authApi.login(email.trim().toLowerCase(), password);
       setTokens(data.access_token, data.refresh_token, data.user, !!data.password_change_recommended);
     } catch (e) {
       setError(e.response?.data?.detail || "Login failed. Please check your credentials.");
@@ -76,7 +76,7 @@ export default function LoginPage() {
           <div className="space-y-4">
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">Email</label>
-              <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+              <Input type="email" value={email} onChange={(e) => setEmail(e.target.value.replace(/\s/g, ""))} autoCapitalize="none" autoCorrect="off" />
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">Password</label>

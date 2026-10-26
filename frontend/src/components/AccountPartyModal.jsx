@@ -154,9 +154,16 @@ export default function AccountPartyModal({ account, onClose, onChange, role }) 
                     </div>
                   ))}
               </div>
-              <button onClick={startNew} className="w-full px-3 py-2 text-xs border border-dashed border-gray-300 rounded-lg hover:border-brand-300 hover:text-brand-600 text-gray-500 flex items-center justify-center gap-1">
-                <Icon name="plus" size={13} /> Add {partyLabel(tab)}
-              </button>
+              {/* Triam UAT 26-10-2026: once shareholding is 100%, no further shareholder can be added. */}
+              {tab === "Shareholder" && ownershipTotal >= 100 ? (
+                <p className="px-3 py-2 text-xs rounded-lg bg-gray-50 border border-gray-200 text-gray-600 text-center">
+                  Shareholding is 100%. No further shareholder can be added; reduce an existing shareholder's share first.
+                </p>
+              ) : (
+                <button onClick={startNew} className="w-full px-3 py-2 text-xs border border-dashed border-gray-300 rounded-lg hover:border-brand-300 hover:text-brand-600 text-gray-500 flex items-center justify-center gap-1">
+                  <Icon name="plus" size={13} /> Add {partyLabel(tab)}
+                </button>
+              )}
               {removedShown.length > 0 && (
                 <div className="mt-3">
                   <button onClick={() => setShowRemoved((v) => !v)} className="text-xs text-gray-500 hover:text-brand-600">

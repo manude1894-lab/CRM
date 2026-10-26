@@ -257,7 +257,7 @@ export default function AdminPage() {
       {modal && (
         <Modal title={modal === "new" ? "Add User" : `Edit ${form.name}`} onClose={() => setModal(null)}>
           <Field label="Full Name" required><Input value={form.name || ""} onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))} /></Field>
-          <Field label="Email" required><Input type="email" value={form.email || ""} onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))} /></Field>
+          <Field label="Email" required><Input type="email" value={form.email || ""} autoCapitalize="none" onChange={(e) => setForm((p) => ({ ...p, email: e.target.value.replace(/\s/g, "").toLowerCase() }))} /></Field>
           <Field label={modal === "new" ? "Password (at least 10 characters, letters and numbers)" : "Password (leave blank to keep current)"}>
             <Input type="password" value={form.password || ""} onChange={(e) => setForm((p) => ({ ...p, password: e.target.value }))} />
           </Field>
@@ -307,7 +307,7 @@ export default function AdminPage() {
           </Field>
           <div className="flex justify-end gap-3 mt-4">
             <button onClick={() => setModal(null)} className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
-            <button onClick={save} className="px-4 py-2 text-sm text-white rounded-lg" style={{ background: "#1a3a5c" }}>Save User</button>
+            <button onClick={save} className="px-4 py-2 text-sm text-white rounded-lg" style={{ background: "#1a3a5c" }}>Save</button>
           </div>
         </Modal>
       )}
