@@ -492,6 +492,10 @@ def _blank(v) -> bool:
     return v is None or (isinstance(v, str) and not v.strip()) or (isinstance(v, (list, dict)) and not v)
 
 
+# The form section where shareholders, directors and signatories are entered (named the same in the UI).
+PARTIES_SECTION = "Shareholders / UBOs, Directors & Authorised Signatories"
+
+
 def missing_mandatory(account: Account) -> list[dict]:
     missing: list[dict] = []
 
@@ -563,11 +567,11 @@ def missing_mandatory(account: Account) -> list[dict]:
         # §6 — shareholders must exist and add up to 100%.
         shareholders = [p for p in account.parties if p.party_role == "Shareholder"]
         if not shareholders:
-            missing.append({"section": "Shareholders / UBOs", "field": "parties", "label": "At least one Shareholder / UBO"})
+            missing.append({"section": PARTIES_SECTION, "field": "parties", "label": "At least one Shareholder / UBO"})
         else:
             total = sum((Decimal(str(p.effective_ownership_percent or 0)) for p in shareholders), Decimal("0"))
             if abs(total - Decimal("100")) > Decimal("0.01"):
-                missing.append({"section": "Shareholders / UBOs", "field": "parties",
+                missing.append({"section": PARTIES_SECTION, "field": "parties",
                                 "label": f"Shareholding must total 100% (currently {total}%)"})
 
     # §10 KYC / AML is completed by Compliance after submission — see missing_cdd.

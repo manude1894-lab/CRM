@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { accountsApi, workflowApi } from "../../api/endpoints";
-import { Icon, Modal, Field, Input, Select, MultiSelect, CountrySelect, Textarea, DateInput } from "../ui";
+import { Icon, Modal, Field, Input, Select, MultiSelect, CountrySelect, Textarea, DateInput, Embedded } from "../ui";
+import AccountPartyModal from "../AccountPartyModal";
 import NameLookup from "./NameLookup";
 import CompletenessChecklist from "./CompletenessChecklist";
 import WorkflowBar from "./WorkflowBar";
@@ -533,6 +534,18 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
             </label>
           </Section>
         )}
+
+        {/* BRD §6 — the people behind the client, filled in as part of onboarding. Each person is saved on its own. */}
+        <Section title={isIndividual ? "Joint Holders" : "Shareholders / UBOs, Directors & Authorised Signatories"} hasData={!!form._id}>
+          {form._id ? (
+            <Embedded>
+              <AccountPartyModal account={{ id: form._id, account_type: form.account_type, company_name: form.company_name }}
+                onClose={() => {}} onChange={() => { setRefreshKey((k) => k + 1); onChanged(); }} />
+            </Embedded>
+          ) : (
+            <p className="text-xs text-gray-500">Save Client Info first, then add the {isIndividual ? "joint holders" : "shareholders / UBOs, directors and authorised signatories"} here.</p>
+          )}
+        </Section>
 
         <Section title="Introducer" hasData={form.has_introducer != null} {...sectionProps("introducer")}>
           <div className="grid grid-cols-2 gap-3">

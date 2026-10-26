@@ -38,7 +38,8 @@ const cleanPayload = (obj) => Object.fromEntries(
 
 export const partyLabel = (role) => role;
 
-export default function AccountPartyModal({ account, onClose }) {
+// onChange runs after a party is added, changed or removed (e.g. to refresh the missing-fields list).
+export default function AccountPartyModal({ account, onClose, onChange }) {
   const ROLES = account.account_type === "Individual" ? INDIVIDUAL_ROLES : CORPORATE_ROLES;
   const [tab, setTab] = useState(ROLES[0]);
   const [parties, setParties] = useState([]);
@@ -79,6 +80,7 @@ export default function AccountPartyModal({ account, onClose }) {
       else await accountPartiesApi.update(editing, payload, account.id);
       cancelForm();
       load();
+      onChange?.();
     } catch (e) {
       toast.error(e.response?.data?.detail || "Save failed");
     }
@@ -90,7 +92,7 @@ export default function AccountPartyModal({ account, onClose }) {
     const reason = await reasonDialog({ title: `Remove ${row.full_name}`, confirmLabel: "Remove",
       message: "The person stays on record as removed, with your reason. Their documents keep their name." });
     if (!reason) return;
-    try { await accountPartiesApi.remove(row.id, account.id, reason); load(); }
+    try { await accountPartiesApi.remove(row.id, account.id, reason); load(); onChange?.(); }
     catch (e) { toast.error(e.response?.data?.detail || "Remove failed"); }
   };
 
@@ -276,7 +278,7 @@ function PartyForm({ form, setForm, countries, onCancel, onSave }) {
 
       <div className="flex justify-end gap-3 mt-3">
         <button onClick={onCancel} className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
-        <button onClick={onSave} className="px-4 py-2 text-sm text-white rounded-lg" style={{ background: "#1a3a5c" }}>Save</button>
+        <button onClick={onSave} className="px-4 py-2 text-sm text-white rounded-lg" style={{ background: "#1a3a5c" }}>Save {form.party_role}</button>
       </div>
     </div>
   );
