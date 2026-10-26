@@ -148,7 +148,7 @@ export default function ClientProfilePage({ accountId, initialTab = "overview", 
           <Panel>
             <Embedded>
               <AccountFormModal initialForm={accountToForm(a)} users={users} countries={countries}
-                hideWorkflow hideDocuments onClose={refresh} onChanged={() => { load(); setWfVersion((v) => v + 1); onChanged?.(); }} />
+                hideWorkflow onClose={refresh} onChanged={() => { load(); setWfVersion((v) => v + 1); onChanged?.(); }} />
             </Embedded>
           </Panel>
         )}

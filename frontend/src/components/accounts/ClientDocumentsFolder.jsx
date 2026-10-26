@@ -21,8 +21,12 @@ const STAGE = {
  * BRD §14 — the client's document folder: everything filed against the Client ID, grouped by category.
  * Removal follows the client's stage (Draft / Submitted / Locked), decided by the server. The upload
  * form opens only when the user chooses to upload.
+ *
+ * Triam UAT 26-10-2026 — documents are uploaded in each section: `scope="client"` shows the firm's (or the
+ * individual's) own documents, `partyId` those of one shareholder / director / signatory / joint holder.
+ * Without either, the whole folder is shown.
  */
-export default function ClientDocumentsFolder({ accountId, onChange, onboarding = false }) {
+export default function ClientDocumentsFolder({ accountId, onChange, onboarding = false, scope, partyId, individual = false }) {
   const [folder, setFolder] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -31,7 +35,7 @@ export default function ClientDocumentsFolder({ accountId, onChange, onboarding 
   const [mode, setMode] = useState("file"); // "file" | "link" (BRD §14: URLs are allowed)
   const [linkUrl, setLinkUrl] = useState("");
   const [linkTitle, setLinkTitle] = useState("");
-  const [partyId, setPartyId] = useState("");
+  const [selectedParty, setSelectedParty] = useState("");
   const [openCats, setOpenCats] = useState({});
   const fileRef = useRef(null);
   const cats = useMasters("document_category", []);
@@ -40,17 +44,26 @@ export default function ClientDocumentsFolder({ accountId, onChange, onboarding 
   useEffect(() => { if (accountId) load(); }, [accountId]);
   if (!folder) return <p className="text-xs text-gray-400">Loading documents…</p>;
 
+  const inScope = (d) => (partyId ? d.party_id === partyId : scope === "client" ? !d.party_id : true);
+  const documents = folder.documents.filter(inScope);
   const groups = {};
-  folder.documents.forEach((d) => { (groups[d.category] = groups[d.category] || []).push(d); });
+  documents.forEach((d) => { (groups[d.category] = groups[d.category] || []).push(d); });
   const stage = STAGE[folder.stage] || STAGE.Draft;
   const statusLocked = folder.profile_status === "Awaiting Approval" || folder.profile_status === "Exited";
   // Compliance files the CDD Form / AML Risk Assessment, also while the client is with Compliance.
   const complianceOnly = (code) => !!cats.items.find((i) => i.code === code)?.meta?.compliance_only;
   const locked = statusLocked && !folder.compliance_can_file;
+  const sectionOf = (code) => cats.items.find((i) => i.code === code)?.meta?.section;
+  // Categories for a person (Passport, EID, Visa, and those for either a client or a person) or for the
+  // firm itself (everything except the person-only ones; an individual client files those too).
+  const personOnly = (code) => /^UBO/.test(sectionOf(code) || "");
+  const forEither = (code) => /Corporate & Individual/.test(sectionOf(code) || "");
+  const categoryInScope = (code) => (partyId ? (personOnly(code) || forEither(code)) && !complianceOnly(code)
+    : scope === "client" ? individual || !personOnly(code) : true);
   const categoryOptions = selectableCodes(cats.items, category)
+    .filter(categoryInScope)
     .filter((c) => !complianceOnly(c) || folder.compliance_can_file)
     .filter((c) => !statusLocked || complianceOnly(c));
-  const sectionOf = (code) => cats.items.find((i) => i.code === code)?.meta?.section;
   // Passport / EID / Visa and similar are filed for one of the client's people (BRD §14).
   const forPeople = (code) => /UBO|Director|Signatory|Individual/.test(sectionOf(code) || "");
   const parties = folder.parties || [];
@@ -66,12 +79,13 @@ export default function ClientDocumentsFolder({ accountId, onChange, onboarding 
       const fd = new FormData();
       fd.append("file", file);
       fd.append("category", category);
-      if (partyId) fd.append("party_id", partyId);
+      const forParty = partyId || selectedParty;
+      if (forParty) fd.append("party_id", forParty);
       if (notes.trim()) fd.append("notes", notes.trim());
       await documentsApi.uploadForAccount(accountId, fd);
       toast.success(`Uploaded to ${cats.labelOf(category)}`);
       setOpenCats((o) => ({ ...o, [category]: true }));
-      fileRef.current.value = ""; setNotes(""); setCategory(""); setPartyId(""); setUploading(false);
+      fileRef.current.value = ""; setNotes(""); setCategory(""); setSelectedParty(""); setUploading(false);
       await load();
       onChange?.();
     } catch (e) {
@@ -84,7 +98,7 @@ export default function ClientDocumentsFolder({ accountId, onChange, onboarding 
     if (!/^https:\/\/\S+$/i.test(linkUrl.trim())) return toast.error("Enter a valid https:// link");
     setBusy(true);
     try {
-      await documentsApi.addLink(accountId, { category, url: linkUrl.trim(), title: linkTitle.trim() || null, notes: notes.trim() || null, party_id: partyId ? Number(partyId) : null });
+      await documentsApi.addLink(accountId, { category, url: linkUrl.trim(), title: linkTitle.trim() || null, notes: notes.trim() || null, party_id: (partyId || selectedParty) ? Number(partyId || selectedParty) : null });
       toast.success(`Link added to ${cats.labelOf(category)}`);
       setOpenCats((o) => ({ ...o, [category]: true }));
       setLinkUrl(""); setLinkTitle(""); setNotes(""); setCategory(""); setUploading(false);
@@ -137,16 +151,18 @@ export default function ClientDocumentsFolder({ accountId, onChange, onboarding 
   // BRD open item 17 — the Upload button stands out only when an upload is actually pending: the folder
   // is still empty during onboarding, or Compliance has yet to file its CDD Form / AML Risk Assessment.
   const filed = new Set(folder.documents.map((d) => d.category));
-  const uploadPending = (onboarding && folder.documents.length === 0)
+  const uploadPending = (onboarding && !partyId && documents.length === 0)
     || (statusLocked && folder.compliance_can_file && !(filed.has("CDD_FORM") && filed.has("AML_RISK")));
 
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2 text-xs">
-        <span className="text-gray-500">Client folder</span>
-        <span className="font-mono font-semibold text-gray-800">{folder.client_id || folder.temp_id || "—"}</span>
-        <span className={`px-2 py-0.5 rounded font-semibold ${stage.style}`}>{folder.stage}</span>
-        <span className="text-gray-400">{folder.documents.length} document{folder.documents.length === 1 ? "" : "s"}</span>
+        {!partyId && <>
+          <span className="text-gray-500">Client folder</span>
+          <span className="font-mono font-semibold text-gray-800">{folder.client_id || folder.temp_id || "—"}</span>
+          <span className={`px-2 py-0.5 rounded font-semibold ${stage.style}`}>{folder.stage}</span>
+        </>}
+        <span className="text-gray-400">{documents.length} document{documents.length === 1 ? "" : "s"}</span>
         {!locked && !uploading && (
           <button onClick={() => setUploading(true)}
             className={`ml-auto px-2.5 py-1 text-xs rounded-lg flex items-center gap-1 ${uploadPending ? "text-white" : "border border-gray-200 text-gray-600 hover:bg-gray-50"}`}
@@ -155,13 +171,13 @@ export default function ClientDocumentsFolder({ accountId, onChange, onboarding 
           </button>
         )}
       </div>
-      <p className="text-[11px] text-gray-500 -mt-1">
+      {!partyId && <p className="text-[11px] text-gray-500 -mt-1">
         {locked ? "The client is locked; documents can't be changed right now."
           : statusLocked ? "The client is with Compliance, who can file the CDD Form and AML Risk Assessment." : stage.note}
-      </p>
+      </p>}
 
       {/* BRD §14 — prompt for uploads only when it is time: during onboarding, while the folder is empty. */}
-      {onboarding && !locked && !uploading && folder.documents.length === 0 && (
+      {onboarding && !partyId && !locked && !uploading && documents.length === 0 && (
         <div className="flex flex-wrap items-center gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2">
           <Icon name="warn" size={14} className="text-amber-600" />
           <span className="text-xs text-amber-900 flex-1">No documents yet. Upload the client's KYC and corporate documents before submitting for approval.</span>
@@ -185,8 +201,8 @@ export default function ClientDocumentsFolder({ accountId, onChange, onboarding 
               <option value="">— document category —</option>
               {categoryOptions.map((c) => <option key={c} value={c}>{cats.labelOf(c)}{sectionOf(c) ? ` (${sectionOf(c)})` : ""}</option>)}
             </select>
-            {forPeople(category) && parties.length > 0 && (
-              <select value={partyId} onChange={(e) => setPartyId(e.target.value)}
+            {!partyId && scope !== "client" && forPeople(category) && parties.length > 0 && (
+              <select value={selectedParty} onChange={(e) => setSelectedParty(e.target.value)}
                 className="border border-gray-200 rounded-lg px-2 py-1 text-xs bg-white focus:outline-none focus:border-brand-400">
                 <option value="">— belongs to (client) —</option>
                 {parties.map((pt) => <option key={pt.id} value={pt.id}>{pt.name}</option>)}
@@ -216,7 +232,7 @@ export default function ClientDocumentsFolder({ accountId, onChange, onboarding 
         </div>
       )}
 
-      {Object.keys(groups).length === 0 && <p className="text-xs text-gray-400 italic">No documents filed against this client yet.</p>}
+      {Object.keys(groups).length === 0 && <p className="text-xs text-gray-400 italic">{partyId ? "No documents for this person yet." : "No documents filed against this client yet."}</p>}
       {Object.entries(groups).sort(([a], [b]) => cats.labelOf(a).localeCompare(cats.labelOf(b))).map(([cat, docs]) => {
         const open = openCats[cat] ?? true;
         return (
@@ -231,7 +247,7 @@ export default function ClientDocumentsFolder({ accountId, onChange, onboarding 
         );
       })}
 
-      {folder.removed?.length > 0 && (
+      {!partyId && !scope && folder.removed?.length > 0 && (
         <details className="rounded-lg border border-gray-100 p-2.5">
           <summary className="text-xs font-semibold text-gray-600 cursor-pointer">Removed documents ({folder.removed.length})</summary>
           <div className="mt-1.5 space-y-1">

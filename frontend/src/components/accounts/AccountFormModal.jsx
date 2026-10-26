@@ -90,7 +90,7 @@ const AddressFields = ({ value, onChange, countries }) => {
  * - onChanged: called after any successful save so the parent can reload the list.
  * - onOpenExisting(account): user picked an existing client from the duplicate warning.
  */
-export default function AccountFormModal({ initialForm, users, countries, onClose, onChanged, onOpenExisting, hideWorkflow = false, hideDocuments = false }) {
+export default function AccountFormModal({ initialForm, users, countries, onClose, onChanged, onOpenExisting, hideWorkflow = false }) {
   const [form, setForm] = useState(initialForm);
   // What the server last saved — a section's Save is active only when it differs (unsaved changes).
   const [saved, setSaved] = useState(initialForm);
@@ -541,6 +541,15 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
           )}
         </Section>
 
+        {form._id && (
+          // BRD §12 step 8 / §16 — documents are filed against the Client ID. Saved on upload. Triam UAT
+          // 26-10-2026: each section has its own — the firm's here, each person's in their record below.
+          <Section title={isIndividual ? "Client Documents" : "Firm Documents"} hasData={["New", "WIP"].includes(form.profile_status)}>
+            <ClientDocumentsFolder accountId={form._id} scope="client" individual={isIndividual}
+              onboarding={["New", "WIP"].includes(form.profile_status)} onChange={() => setRefreshKey((k) => k + 1)} />
+          </Section>
+        )}
+
         {/* BRD §5.1–5.3 — the people behind the client, one section each, as many records as needed.
             Each person is saved on its own. */}
         {(isIndividual ? [["Joint Holder", "Joint Holders"]]
@@ -580,14 +589,6 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
             <Textarea rows={5} value={form.br_rationale} onChange={set("br_rationale")} maxLength={4000} />
           </Field>
         </Section>
-
-        {form._id && !hideDocuments && (
-          // BRD §12 step 8 / §16 — documents are filed against the Client ID. Saved on upload.
-          <Section title="Documents" hasData={["New", "WIP"].includes(form.profile_status)}>
-            <ClientDocumentsFolder accountId={form._id} onboarding={["New", "WIP"].includes(form.profile_status)}
-              onChange={() => setRefreshKey((k) => k + 1)} />
-          </Section>
-        )}
 
         <Section title="Services Obtained" hasData={(form.services_obtained || []).length > 0} {...sectionProps("services")}>
           <MultiSelect options={alphabetical(selectableCodes(servicesForEntities(services.items, [form.anchor_entity, ...(form.non_anchor_entities || [])]), form.services_obtained))} value={form.services_obtained} onChange={setValue("services_obtained")} />

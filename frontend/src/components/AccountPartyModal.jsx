@@ -4,6 +4,7 @@ import { Icon, Modal, Field, Input, Select, CountrySelect, Spinner, ErrorBanner,
 import { COUNTRY_CALLING_CODES, fmtDate, isUAE } from "../utils/constants";
 import { toast } from "../store/toast";
 import { reasonDialog } from "../store/confirm";
+import ClientDocumentsFolder from "./accounts/ClientDocumentsFolder";
 
 const CORPORATE_ROLES = ["Shareholder", "Director", "Authorised Signatory"];
 const INDIVIDUAL_ROLES = ["Joint Holder"];  // BRD: individual clients have joint holders
@@ -51,6 +52,7 @@ export default function AccountPartyModal({ account, onClose, onChange, role }) 
   const [error, setError] = useState(null);
   const [editing, setEditing] = useState(null); // null | "new" | row id
   const [form, setForm] = useState(null);
+  const [docsFor, setDocsFor] = useState(null); // party whose documents are open (Triam UAT 26-10-2026)
 
   const load = async () => {
     try {
@@ -132,7 +134,8 @@ export default function AccountPartyModal({ account, onClose, onChange, role }) 
                 {rowsForTab.length === 0
                   ? <p className="text-sm text-gray-400 text-center py-6">No {partyLabel(tab).toLowerCase().replace(/y$/, "ie")}s on record.</p>
                   : rowsForTab.map((p, i) => (
-                    <div key={p.id} className="flex items-center justify-between p-2.5 bg-gray-50 rounded-lg">
+                    <div key={p.id} className="bg-gray-50 rounded-lg">
+                    <div className="flex items-center justify-between p-2.5">
                       <div>
                         <div className="text-sm font-medium text-gray-800">
                           <span className="text-xs text-gray-400 mr-1.5">{partyLabel(tab)} {i + 1}</span>
@@ -147,10 +150,20 @@ export default function AccountPartyModal({ account, onClose, onChange, role }) 
                           {p.country_of_residence && ` · resides ${p.country_of_residence}`}
                         </div>
                       </div>
-                      <div className="flex gap-1">
+                      <div className="flex gap-1 items-center">
+                        <button onClick={() => setDocsFor(docsFor === p.id ? null : p.id)}
+                          className={`px-2 py-1 text-[11px] rounded border ${docsFor === p.id ? "border-brand-300 text-brand-700 bg-white" : "border-gray-200 text-gray-600 hover:bg-white"}`}>
+                          Documents
+                        </button>
                         <button onClick={() => startEdit(p)} className="p-1.5 rounded hover:bg-brand-50 text-gray-400 hover:text-brand-600"><Icon name="edit" size={14} /></button>
                         <button onClick={() => remove(p)} title="Remove" className="p-1.5 rounded hover:bg-red-50 text-gray-400 hover:text-red-500"><Icon name="close" size={14} /></button>
                       </div>
+                    </div>
+                    {docsFor === p.id && (
+                      <div className="px-2.5 pb-2.5 pt-1 border-t border-gray-100">
+                        <ClientDocumentsFolder accountId={account.id} partyId={p.id} onChange={() => onChange?.()} />
+                      </div>
+                    )}
                     </div>
                   ))}
               </div>
