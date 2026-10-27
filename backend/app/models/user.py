@@ -59,6 +59,36 @@ class User(Base):
         roles = ([self.business_role] if self.business_role else []) + [r for r in self.extra_roles if r.id != self.business_role_id]
         return [r for r in roles if r.is_active]
 
+    # The role the signed-in user is working in (from their token). One role at a time: they sign in to
+    # their main role and can switch to an additional one. Not set for any other user, whose permissions
+    # cover all their roles (e.g. who is notified of an invoice request). Not a database column.
+    session_role_id = None
+
+    @property
+    def default_role_id(self):
+        roles = self.all_business_roles
+        return roles[0].id if roles else None
+
+    @property
+    def working_roles(self) -> list:
+        roles = self.all_business_roles
+        if self.session_role_id is None:
+            return roles
+        return [r for r in roles if r.id == self.session_role_id] or roles[:1]
+
+    @property
+    def active_role_id(self):
+        return self.working_roles[0].id if self.session_role_id is not None and self.working_roles else None
+
+    @property
+    def active_role_name(self):
+        return self.working_roles[0].name if self.session_role_id is not None and self.working_roles else None
+
+    @property
+    def available_roles(self) -> list[dict]:
+        """The roles this user can switch between (main role first)."""
+        return [{"id": r.id, "name": r.name} for r in self.all_business_roles]
+
     @property
     def extra_role_ids(self) -> list[int]:
         return [r.id for r in self.extra_roles]
@@ -74,7 +104,7 @@ class User(Base):
         """True for client-facing staff (RM, RO, FO, Sales Manager …): no business role, or at least one
         that carries none of the central-desk permissions. Decides the menu a user gets."""
         from app.auth.permissions import CENTRAL_PERMISSIONS  # local import: auth imports models
-        roles = self.all_business_roles
+        roles = self.working_roles
         return not roles or any(not (set(r.permissions or []) & CENTRAL_PERMISSIONS) for r in roles)
 
     @property

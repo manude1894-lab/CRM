@@ -57,6 +57,10 @@ class UserRead(UserBase):
     permissions: list[str] = []
     business_role_name: Optional[str] = None
     handles_clients: bool = True  # client-facing staff; central desks get a shorter menu
+    # Signed-in user only: the role being worked in, and the roles they can switch to.
+    active_role_id: Optional[int] = None
+    active_role_name: Optional[str] = None
+    available_roles: list[dict] = []
     is_super_admin: bool = False
     locked_until: Optional[datetime] = None  # shown to admins; resetting the password unlocks
     last_login_at: Optional[datetime] = None
@@ -83,6 +87,10 @@ class Token(BaseModel):
     token_type: str = "bearer"
     user: UserRead
     password_change_recommended: bool = False  # signed in with a default password
+
+
+class SwitchRoleRequest(BaseModel):
+    role_id: int
 
 
 class RefreshTokenRequest(BaseModel):

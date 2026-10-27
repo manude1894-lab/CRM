@@ -32,6 +32,8 @@ def get_current_user(
     user = db.query(User).filter(User.id == user_id, User.is_active == True).first()
     if user is None:
         raise credentials_exception
+    # One role at a time: the token names it; tokens from before role switching mean the main role.
+    user.session_role_id = payload.get("rid") or user.default_role_id or 0
     # Every change written through this request's session is attributed to this user (app.audit).
     set_actor(db, user.id, request.client.host if request.client else None)
     # Read-only users (Inquiry & Reports) may look and run reports, but not change anything.

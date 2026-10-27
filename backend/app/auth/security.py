@@ -26,6 +26,7 @@ def _create_token(
     expires_delta: timedelta,
     token_type: str,
     secret_key: str,
+    role_id: int | None = None,
 ) -> str:
     expire = datetime.now(timezone.utc) + expires_delta
     payload: dict[str, Any] = {
@@ -35,26 +36,30 @@ def _create_token(
         "iat": int(datetime.now(timezone.utc).timestamp()),
         "type": token_type,
     }
+    if role_id is not None:
+        payload["rid"] = role_id  # the business role the user is working in (one at a time)
     return jwt.encode(payload, secret_key, algorithm=settings.JWT_ALGORITHM)
 
 
-def create_access_token(user_id: int, role: str) -> str:
+def create_access_token(user_id: int, role: str, role_id: int | None = None) -> str:
     return _create_token(
         subject=str(user_id),
         role=role,
         expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
         token_type="access",
         secret_key=settings.JWT_SECRET_KEY,
+        role_id=role_id,
     )
 
 
-def create_refresh_token(user_id: int, role: str) -> str:
+def create_refresh_token(user_id: int, role: str, role_id: int | None = None) -> str:
     return _create_token(
         subject=str(user_id),
         role=role,
         expires_delta=timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS),
         token_type="refresh",
         secret_key=settings.JWT_REFRESH_SECRET_KEY,
+        role_id=role_id,
     )
 
 

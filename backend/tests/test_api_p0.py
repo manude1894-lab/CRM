@@ -109,8 +109,26 @@ def test_user_can_hold_several_roles(client, db, make_user, make_role):
     person = make_user(business_role=mlro)
     r = client.patch(f"/api/v1/users/{person.id}", json={"extra_role_ids": [approver.id]}, headers=auth(admin))
     assert r.status_code == 200 and r.json()["extra_role_ids"] == [approver.id]
+    # One role at a time: signed in to the main role, they switch to the additional one.
     me = client.get("/api/v1/auth/me", headers=auth(person)).json()
-    assert {"client.approve", "client.final_approve"} <= set(me["permissions"])
+    assert "client.approve" in me["permissions"] and "client.final_approve" not in me["permissions"]
+    assert me["active_role_name"] == "MLRO" and [r["name"] for r in me["available_roles"]] == ["MLRO", "Approver"]
     assert me["business_role_name"] == "MLRO · Approver"
+    switched = client.post("/api/v1/auth/switch-role", json={"role_id": approver.id}, headers=auth(person))
+    assert switched.status_code == 200
+    me = client.get("/api/v1/auth/me", headers={"Authorization": f"Bearer {switched.json()['access_token']}"}).json()
+    assert "client.final_approve" in me["permissions"] and "client.approve" not in me["permissions"]
+    assert me["active_role_name"] == "Approver"
+    # the refresh token keeps the role
+    again = client.post("/api/v1/auth/refresh", json={"refresh_token": switched.json()["refresh_token"]}).json()
+    assert again["user"]["active_role_name"] == "Approver"
+    other = make_role("Accountant", ["invoice.manage"])
+    assert client.post("/api/v1/auth/switch-role", json={"role_id": other.id}, headers=auth(person)).status_code == 400
+    # Anyone else's permissions still cover all their roles (e.g. who to notify).
+    from app.auth.permissions import has_permission
+    db.expire_all()
+    fresh = db.get(type(person), person.id)
+    fresh.session_role_id = None
+    assert has_permission(fresh, "client.final_approve") and has_permission(fresh, "client.approve")
     # roles are never deleted (no delete in the CRM) — they are deactivated
     assert client.delete(f"/api/v1/roles/{approver.id}", headers=auth(admin)).status_code == 405
