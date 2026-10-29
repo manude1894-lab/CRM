@@ -91,11 +91,11 @@ def _can_see(db, acc, user) -> bool:
 
 
 def _is_checker_for(user: User, req: Optional[ApprovalRequest]) -> bool:
-    return has_permission(user, "client.approve") and (req is None or req.maker_id != user.id)
+    return has_permission(user, "client.approve") and (req is None or not access_control.same_person(req.maker, user))
 
 
 def _is_final_approver_for(user: User, req: Optional[ApprovalRequest]) -> bool:
-    return has_permission(user, "client.final_approve") and (req is None or req.maker_id != user.id)
+    return has_permission(user, "client.final_approve") and (req is None or not access_control.same_person(req.maker, user))
 
 
 def _missing(acc: Account) -> list[dict]:
@@ -128,7 +128,7 @@ def allowed_actions(db: Session, acc: Account, user: User) -> list[dict]:
         add("submit", "Submit for approval", not missing,
             f"{len(missing)} mandatory field{'s' if len(missing) != 1 else ''} still missing", code=400)
     elif status == AWAITING:
-        is_maker = req is not None and req.maker_id == user.id
+        is_maker = req is not None and access_control.same_person(req.maker, user)
         own = "You submitted this profile, so someone else must review it"
         if stage_of(req) == STAGE_APPROVER:
             final = has_permission(user, "client.final_approve")
@@ -156,7 +156,8 @@ def allowed_actions(db: Session, acc: Account, user: User) -> list[dict]:
         add("mark_exit", "Mark for Exit", True)
     elif status == MARKED_EXIT:
         last = _last_status_actor(db, acc)
-        add("confirm_exit", "Confirm Exit", approver and last != user.id,
+        marked_by_me = last is not None and access_control.same_person(db.get(User, last), user)
+        add("confirm_exit", "Confirm Exit", approver and not marked_by_me,
             "Another approver must confirm the exit you marked" if approver else "Needs an approver (CO / MLRO)")
         add("cancel_exit", "Cancel Exit", True)
     return out

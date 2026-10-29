@@ -15,10 +15,10 @@ import ReportsPage from "./pages/ReportsPage";
 import AdminPage from "./pages/AdminPage";
 import ApprovalsPage from "./pages/ApprovalsPage";
 import ChangePasswordModal from "./components/ChangePasswordModal";
+import SwitchLoginModal from "./components/SwitchLoginModal";
+import { toast } from "./store/toast";
 import { ROLE_LABEL, fmtToday } from "./utils/constants";
 import { formatTimestamp } from "./utils/auditFormat";
-import { authApi } from "./api/endpoints";
-import { toast } from "./store/toast";
 
 // The menu, grouped by area of work and ordered as the BRD flow runs: Prospect → Client → Compliance →
 // servicing → invoicing. `desks`: client-facing staff (RM, RO, FO, Sales Manager) and Admin always see
@@ -50,17 +50,7 @@ export default function App() {
   // Hooks must all run before the early "not logged in" return below (React rules of hooks).
   const can = useAuthStore((s) => s.can);
   const [page, setPage] = useState("dashboard");
-  // One role at a time: a user with additional roles signs in to the main one and switches here.
-  // The menu, clients and actions follow the role; the screens start again from the Dashboard.
-  const roles = user?.available_roles || [];
-  const switchRole = async (roleId) => {
-    try {
-      const data = await authApi.switchRole(Number(roleId));
-      useAuthStore.getState().setTokens(data.access_token, data.refresh_token, data.user);
-      setJumpTo(null); setPage("dashboard");
-      toast.success(`You are now working as ${data.user.active_role_name}`);
-    } catch (e) { toast.error(e.response?.data?.detail || "Could not switch role"); }
-  };
+  const [switchTo, setSwitchTo] = useState(null); // another of the person's logins (one login per role)
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [jumpTo, setJumpTo] = useState(null);
   const [passwordOpen, setPasswordOpen] = useState(false);
@@ -130,6 +120,10 @@ export default function App() {
             <button onClick={() => setPasswordOpen(true)} className="px-3 py-1 text-xs text-white rounded-lg" style={{ background: "#1a3a5c" }}>Change password</button>
           </div>
         )}
+        {switchTo && (
+          <SwitchLoginModal login={switchTo} onClose={() => setSwitchTo(null)}
+            onSwitched={(u) => { setSwitchTo(null); setJumpTo(null); setPage("dashboard"); toast.success(`Signed in as ${u.business_role_name || u.name} (${u.email})`); }} />
+        )}
         {passwordOpen && (
           <ChangePasswordModal onClose={() => setPasswordOpen(false)} onChanged={clearPasswordWarning}
             reason={passwordWarning ? "This account still uses a default password." : null} />
@@ -151,12 +145,15 @@ export default function App() {
                 <div className="hidden md:block leading-tight">
                   <div className="text-sm font-semibold text-gray-800">{user.name}</div>
                   <div className="text-[11px] text-gray-500">
-                    {roles.length > 1 ? (
-                      <select value={user.active_role_id || ""} onChange={(e) => switchRole(e.target.value)} title="Switch role"
-                        className="-ml-1 px-1 py-0 text-[11px] text-gray-600 bg-transparent border border-gray-200 rounded hover:border-brand-300 focus:outline-none">
-                        {roles.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+                    {user.business_role_name || ROLE_LABEL[user.role] || user.role}
+                    {(user.linked_logins || []).length > 0 && (
+                      <select value="" onChange={(e) => setSwitchTo(user.linked_logins.find((l) => String(l.id) === e.target.value))}
+                        title="Switch to another of your logins"
+                        className="ml-1.5 px-1 py-0 text-[11px] text-brand-700 bg-transparent border border-gray-200 rounded hover:border-brand-300 focus:outline-none">
+                        <option value="">Switch to…</option>
+                        {user.linked_logins.map((l) => <option key={l.id} value={l.id}>{l.role_name || "Login"} ({l.email})</option>)}
                       </select>
-                    ) : (user.active_role_name || user.business_role_name || ROLE_LABEL[user.role] || user.role)}
+                    )}
                     {(user.permissions || []).includes("read_only") && <span className="ml-1 px-1 rounded bg-gray-100 text-gray-500">Read-only</span>}
                   </div>
                   {user.last_login_at && <div className="text-[10px] text-gray-400">Logged in {formatTimestamp(user.last_login_at)}</div>}
@@ -167,7 +164,7 @@ export default function App() {
         </header>
 
         <main className="flex-1 overflow-y-auto p-6">
-          <PageErrorBoundary key={`${page}-${user?.active_role_id || ""}`}>
+          <PageErrorBoundary key={`${page}-${user?.id}`}>
           <PageComponent
             {...(activeItem.props || {})}
             onNavigate={(t) => { setJumpTo(t); setPage(t.page); }}

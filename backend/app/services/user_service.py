@@ -53,7 +53,7 @@ def create_user(db: Session, data: UserCreate) -> User:
     if find_by_email(db, data.email):
         raise HTTPException(status_code=400, detail="Email already registered")
     _check_business_role(db, data.business_role_id)
-    extra = _extra_roles(db, data.extra_role_ids)
+    main = _main_login(db, data.person_id)
     from app.services import security_service
     security_service.assert_password_ok(data.password, data.email)
     user = User(
@@ -67,8 +67,8 @@ def create_user(db: Session, data: UserCreate) -> User:
         supervisor_id=data.supervisor_id,
         business_role_id=data.business_role_id,
         mobile=data.mobile,
+        person_id=main.id if main else None,
     )
-    user.extra_roles = extra
     security_service.password_set(user)
     db.add(user)
     db.commit()
@@ -81,14 +81,18 @@ def _check_business_role(db: Session, role_id) -> None:
         raise HTTPException(status_code=400, detail="Business role not found")
 
 
-def _extra_roles(db: Session, role_ids) -> list[Role]:
-    """Additional business roles — one person may hold several (e.g. MLRO and Approver)."""
-    if not role_ids:
-        return []
-    roles = db.query(Role).filter(Role.id.in_(set(role_ids))).all()
-    if len(roles) != len(set(role_ids)):
-        raise HTTPException(status_code=400, detail="Business role not found")
-    return roles
+def _main_login(db: Session, person_id) -> User | None:
+    """An add-on login belongs to a person's main login (one login per role, Triam 29-10-2026)."""
+    if person_id is None:
+        return None
+    main = db.get(User, person_id)
+    if main is None or main.is_super_admin:
+        raise HTTPException(status_code=400, detail="User not found")
+    if main.person_id is not None:
+        raise HTTPException(status_code=400, detail="Add the login to the person's main login, not to another add-on login")
+    if not main.is_active:
+        raise HTTPException(status_code=400, detail="That person's main login is inactive")
+    return main
 
 
 def update_user(db: Session, user_id: int, data: UserUpdate, viewer: User | None = None) -> User:
@@ -118,8 +122,6 @@ def update_user(db: Session, user_id: int, data: UserUpdate, viewer: User | None
         other = find_by_email(db, update_data["email"])
         if other and other.id != user.id:
             raise HTTPException(status_code=400, detail="Email already registered")
-    if "extra_role_ids" in update_data:
-        user.extra_roles = _extra_roles(db, update_data.pop("extra_role_ids"))
     if "password" in update_data:
         from app.services import security_service
         new_password = update_data.pop("password")
@@ -128,6 +130,10 @@ def update_user(db: Session, user_id: int, data: UserUpdate, viewer: User | None
         security_service.password_set(user)  # an admin reset also unlocks the account
     for field, value in update_data.items():
         setattr(user, field, value)
+    # Deactivating a person's main login deactivates all their logins.
+    if update_data.get("is_active") is False and user.person_id is None:
+        for addon in user.addon_logins:
+            addon.is_active = False
     db.commit()
     db.refresh(user)
     return user

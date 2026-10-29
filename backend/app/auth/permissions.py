@@ -22,8 +22,7 @@ CENTRAL_PERMISSIONS = {"client.approve", "client.final_approve", "invoice.manage
 def user_permissions(user: User) -> set[str]:
     if user.role == UserRole.ADMIN:
         return set(PERMISSIONS) - {"read_only"}
-    # The signed-in user has the permissions of the role they are working in; anyone else those of all their roles.
-    granted = {p for role in user.working_roles for p in (role.permissions or []) if p in PERMISSIONS}
+    granted = {p for role in user.all_business_roles for p in (role.permissions or []) if p in PERMISSIONS}
     for p in list(granted):
         granted |= IMPLIED.get(p, set())
     return granted

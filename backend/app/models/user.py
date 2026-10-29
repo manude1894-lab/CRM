@@ -1,19 +1,10 @@
 """SQLAlchemy model: User (with RBAC role)."""
-from sqlalchemy import Column, Integer, String, DateTime, Enum as SAEnum, Boolean, ForeignKey, Table
+from sqlalchemy import Column, Integer, String, DateTime, Enum as SAEnum, Boolean, ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 import enum
 
 from app.database import Base
-
-
-# A user can hold more than one business role (BRD §13): the main role is
-# users.business_role_id, any others are listed here. Permissions are the union of all of them.
-user_extra_roles = Table(
-    "user_extra_roles", Base.metadata,
-    Column("user_id", Integer, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True),
-    Column("role_id", Integer, ForeignKey("roles.id", ondelete="CASCADE"), primary_key=True),
-)
 
 
 class UserRole(str, enum.Enum):
@@ -46,52 +37,35 @@ class User(Base):
     supervisor_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     # BRD §15 business role (CO / MLRO / RO / …) — adds permissions on top of the system tier in `role`.
     business_role_id = Column(Integer, ForeignKey("roles.id", ondelete="SET NULL"), nullable=True)
+    # A person with more than one role has one login per role, each with its own email and password
+    # (Triam, 29-10-2026). Add-on logins point to the person's main login; the main login has none.
+    person_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     business_role = relationship("Role", foreign_keys=[business_role_id])
-    extra_roles = relationship("Role", secondary=user_extra_roles, lazy="selectin")
+    main_login = relationship("User", remote_side=[id], foreign_keys=[person_id], back_populates="addon_logins")
+    addon_logins = relationship("User", foreign_keys=[person_id], back_populates="main_login")
 
     @property
     def all_business_roles(self) -> list:
-        """The main role first, then any additional ones (active roles only)."""
-        roles = ([self.business_role] if self.business_role else []) + [r for r in self.extra_roles if r.id != self.business_role_id]
-        return [r for r in roles if r.is_active]
-
-    # The role the signed-in user is working in (from their token). One role at a time: they sign in to
-    # their main role and can switch to an additional one. Not set for any other user, whose permissions
-    # cover all their roles (e.g. who is notified of an invoice request). Not a database column.
-    session_role_id = None
+        """The login's role (one per login), if active."""
+        return [self.business_role] if self.business_role and self.business_role.is_active else []
 
     @property
-    def default_role_id(self):
-        roles = self.all_business_roles
-        return roles[0].id if roles else None
+    def person_key(self) -> int:
+        """Same value for every login of one person: the main login's id."""
+        return self.person_id or self.id
 
     @property
-    def working_roles(self) -> list:
-        roles = self.all_business_roles
-        if self.session_role_id is None:
-            return roles
-        return [r for r in roles if r.id == self.session_role_id] or roles[:1]
-
-    @property
-    def active_role_id(self):
-        return self.working_roles[0].id if self.session_role_id is not None and self.working_roles else None
-
-    @property
-    def active_role_name(self):
-        return self.working_roles[0].name if self.session_role_id is not None and self.working_roles else None
-
-    @property
-    def available_roles(self) -> list[dict]:
-        """The roles this user can switch between (main role first)."""
-        return [{"id": r.id, "name": r.name} for r in self.all_business_roles]
-
-    @property
-    def extra_role_ids(self) -> list[int]:
-        return [r.id for r in self.extra_roles]
+    def linked_logins(self) -> list[dict]:
+        """The person's other active logins, main login first (shown at the top to switch to)."""
+        main = self.main_login if self.person_id else self
+        logins = [main] + [u for u in sorted(main.addon_logins, key=lambda u: u.id)]
+        return [{"id": u.id, "email": u.email, "role_name": u.business_role_name or ("Administrator" if u.role == UserRole.ADMIN else None),
+                 "is_main": u.person_id is None}
+                for u in logins if u.id != self.id and u.is_active]
 
     @property
     def permissions(self) -> list[str]:
@@ -104,7 +78,7 @@ class User(Base):
         """True for client-facing staff (RM, RO, FO, Sales Manager …): no business role, or at least one
         that carries none of the central-desk permissions. Decides the menu a user gets."""
         from app.auth.permissions import CENTRAL_PERMISSIONS  # local import: auth imports models
-        roles = self.working_roles
+        roles = self.all_business_roles
         return not roles or any(not (set(r.permissions or []) & CENTRAL_PERMISSIONS) for r in roles)
 
     @property

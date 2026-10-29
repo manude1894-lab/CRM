@@ -101,34 +101,33 @@ def test_login_email_ignores_capitals(client, db, make_user):
     assert r.status_code == 400 and "already registered" in r.json()["detail"]
 
 
-def test_user_can_hold_several_roles(client, db, make_user, make_role):
-    """BRD §13: one email ID can be assigned more than one role."""
+def test_person_has_one_login_per_role(client, db, make_user, make_role):
+    """Triam 29-10-2026: each additional role is an add-on login with its own email and password,
+    linked to the person's main login."""
     mlro = make_role("MLRO", ["client.approve"])
     approver = make_role("Approver", ["client.final_approve"])
     admin = make_user(role=UserRole.ADMIN)
-    person = make_user(business_role=mlro)
-    r = client.patch(f"/api/v1/users/{person.id}", json={"extra_role_ids": [approver.id]}, headers=auth(admin))
-    assert r.status_code == 200 and r.json()["extra_role_ids"] == [approver.id]
-    # One role at a time: signed in to the main role, they switch to the additional one.
+    person = make_user("Sajith", business_role=mlro)
+    r = client.post("/api/v1/users", headers=auth(admin), json={
+        "name": "Sajith", "email": "apprvr.sajith@example.com", "password": "Approver-2026",
+        "role": "rm", "business_role_id": approver.id, "person_id": person.id})
+    assert r.status_code == 201, r.text
+    addon = r.json()
+    assert addon["person_id"] == person.id
+    # each login has its own role only, and sees the person's other logins
     me = client.get("/api/v1/auth/me", headers=auth(person)).json()
     assert "client.approve" in me["permissions"] and "client.final_approve" not in me["permissions"]
-    assert me["active_role_name"] == "MLRO" and [r["name"] for r in me["available_roles"]] == ["MLRO", "Approver"]
-    assert me["business_role_name"] == "MLRO · Approver"
-    switched = client.post("/api/v1/auth/switch-role", json={"role_id": approver.id}, headers=auth(person))
-    assert switched.status_code == 200
-    me = client.get("/api/v1/auth/me", headers={"Authorization": f"Bearer {switched.json()['access_token']}"}).json()
-    assert "client.final_approve" in me["permissions"] and "client.approve" not in me["permissions"]
-    assert me["active_role_name"] == "Approver"
-    # the refresh token keeps the role
-    again = client.post("/api/v1/auth/refresh", json={"refresh_token": switched.json()["refresh_token"]}).json()
-    assert again["user"]["active_role_name"] == "Approver"
-    other = make_role("Accountant", ["invoice.manage"])
-    assert client.post("/api/v1/auth/switch-role", json={"role_id": other.id}, headers=auth(person)).status_code == 400
-    # Anyone else's permissions still cover all their roles (e.g. who to notify).
-    from app.auth.permissions import has_permission
+    assert [(l["email"], l["role_name"], l["is_main"]) for l in me["linked_logins"]] == [("apprvr.sajith@example.com", "Approver", False)]
+    login = client.post("/api/v1/auth/login", json={"email": "apprvr.sajith@example.com", "password": "Approver-2026"}).json()
+    assert "client.final_approve" in login["user"]["permissions"] and "client.approve" not in login["user"]["permissions"]
+    assert [l["email"] for l in login["user"]["linked_logins"]] == [person.email]
+    # an add-on can't hang off another add-on
+    r = client.post("/api/v1/users", headers=auth(admin), json={
+        "name": "Sajith", "email": "third.sajith@example.com", "password": "Another-2026", "role": "rm", "person_id": addon["id"]})
+    assert r.status_code == 400
+    # deactivating the main login deactivates all the person's logins
+    assert client.patch(f"/api/v1/users/{person.id}", json={"is_active": False}, headers=auth(admin)).status_code == 200
     db.expire_all()
-    fresh = db.get(type(person), person.id)
-    fresh.session_role_id = None
-    assert has_permission(fresh, "client.final_approve") and has_permission(fresh, "client.approve")
+    assert db.get(User, addon["id"]).is_active is False
     # roles are never deleted (no delete in the CRM) — they are deactivated
     assert client.delete(f"/api/v1/roles/{approver.id}", headers=auth(admin)).status_code == 405

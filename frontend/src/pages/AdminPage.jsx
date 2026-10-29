@@ -6,7 +6,7 @@ import CountriesPanel from "../components/admin/CountriesPanel";
 import RolesPanel from "../components/admin/RolesPanel";
 import AuditLogPanel from "../components/admin/AuditLogPanel";
 import { useAuthStore } from "../store/auth";
-import { Icon, Badge, Modal, Field, Input, Select, Spinner, ErrorBanner, PageHeader, MultiSelect } from "../components/ui";
+import { Icon, Badge, Modal, Field, Input, Select, Spinner, ErrorBanner, PageHeader } from "../components/ui";
 import { USER_TYPE_LABEL } from "../utils/constants";
 import { toast } from "../store/toast";
 import { confirmDialog } from "../store/confirm";
@@ -35,6 +35,8 @@ export default function AdminPage() {
   const [deptName, setDeptName] = useState("");
   const [editingDeptId, setEditingDeptId] = useState(null);
   const [editingDeptName, setEditingDeptName] = useState("");
+  const BLANK_ADDON = { business_role_id: "", email: "", password: "" };
+  const [addon, setAddon] = useState(BLANK_ADDON); // a new add-on login for the person being edited
 
   const load = async () => {
     try {
@@ -51,6 +53,10 @@ export default function AdminPage() {
 
   const departmentName = (id) => departments.find((d) => d.id === id)?.name || "—";
   const roleName = (id) => roles.find((r) => r.id === id)?.name;
+  const userById = (id) => users.find((u) => u.id === id);
+  // A person has one login per role (Triam 29-10-2026): add-on logins are listed under their main login.
+  const ordered = [...users].sort((a, b) => ((a.person_id || a.id) - (b.person_id || b.id)) || ((a.person_id ? 1 : 0) - (b.person_id ? 1 : 0)) || (a.id - b.id));
+  const addonsOf = (id) => users.filter((u) => u.person_id === id);
 
   const addDepartment = async () => {
     if (!deptName.trim()) return;
@@ -91,14 +97,13 @@ export default function AdminPage() {
         department_id: form.department_id ? +form.department_id : null,
         supervisor_id: form.supervisor_id ? +form.supervisor_id : null,
         business_role_id: form.business_role_id ? +form.business_role_id : null,
-        extra_role_ids: (form.extra_role_ids || []).map(Number).filter((id) => id !== +form.business_role_id),
         title: form.title || null,
         mobile: form.mobile || null,
       };
       if (modal === "new") {
         await usersApi.create(payload);
       } else {
-        const { id, created_at, updated_at, permissions, ...patch } = payload;
+        const { id, created_at, updated_at, permissions, person_id, linked_logins, ...patch } = payload;
         if (!patch.password) delete patch.password;
         await usersApi.update(form.id, patch);
       }
@@ -106,6 +111,24 @@ export default function AdminPage() {
     } catch (e) {
       toast.error(e.response?.data?.detail || "Save failed");
     }
+  };
+
+  // An add-on login: another role for the same person, with its own email and password.
+  const addAddonLogin = async () => {
+    if (!addon.business_role_id) return toast.error("Choose the role for the add-on login");
+    if (!addon.email.trim()) return toast.error("Enter the email for the add-on login");
+    if (addon.password.length < 10 || !/[A-Za-z]/.test(addon.password) || !/\d/.test(addon.password))
+      return toast.error("Password must be at least 10 characters, with letters and numbers");
+    try {
+      await usersApi.create({
+        name: form.name, email: addon.email.trim(), password: addon.password, role: "rm", is_active: true,
+        business_role_id: +addon.business_role_id, person_id: form.id,
+        department_id: form.department_id ? +form.department_id : null, supervisor_id: form.supervisor_id ? +form.supervisor_id : null,
+        title: form.title || null, mobile: form.mobile || null,
+      });
+      toast.success(`Add-on login ${addon.email.trim()} created`);
+      setAddon(BLANK_ADDON); load();
+    } catch (e) { toast.error(e.response?.data?.detail || "Could not add the login"); }
   };
 
   // Only the support account may delete a login (e.g. a test account); everyone else deactivates.
@@ -131,7 +154,7 @@ export default function AdminPage() {
     <div className="space-y-6">
       <PageHeader title="Administration"
         actions={<>
-{tab === "users" && <button onClick={() => { setForm({ name: "", email: "", password: "", role: "rm", is_active: true, department_id: "", title: "", mobile: "", supervisor_id: "", business_role_id: "", extra_role_ids: [] }); setModal("new"); }}
+{tab === "users" && <button onClick={() => { setForm({ name: "", email: "", password: "", role: "rm", is_active: true, department_id: "", title: "", mobile: "", supervisor_id: "", business_role_id: "" }); setAddon(BLANK_ADDON); setModal("new"); }}
           className="px-3 py-2 text-sm text-white rounded-lg font-medium flex items-center gap-1.5 hover:opacity-90" style={{ background: "#1a3a5c" }}>
           <Icon name="plus" size={14} /> Add User
         </button>}
@@ -166,16 +189,18 @@ export default function AdminPage() {
             </tr>
           </thead>
           <tbody>
-            {users.map((u) => (
+            {ordered.map((u) => (
               <tr key={u.id} className="border-b border-gray-50 hover:bg-gray-50">
                 <td className="py-3 px-4">
-                  <div className="flex items-center gap-3">
+                  <div className={`flex items-center gap-3 ${u.person_id ? "pl-6" : ""}`}>
                     <div className="w-8 h-8 rounded-full text-white text-xs font-bold flex items-center justify-center" style={{ background: "#1a3a5c" }}>
                       {u.name.split(" ").map((n) => n[0]).slice(0, 2).join("")}
                     </div>
                     <div>
                       <div className="text-sm font-medium text-gray-800">{u.name}</div>
-                      {u.title && <div className="text-xs text-gray-400">{u.title}</div>}
+                      {u.person_id
+                        ? <div className="text-[11px] text-gray-400">Add-on login of {userById(u.person_id)?.email || "their main login"}</div>
+                        : u.title && <div className="text-xs text-gray-400">{u.title}</div>}
                     </div>
                   </div>
                 </td>
@@ -183,10 +208,10 @@ export default function AdminPage() {
                 <td className="py-3 px-4 text-sm text-gray-600">{departmentName(u.department_id)}</td>
                 <td className="py-3 px-4">
                   <div className="flex flex-wrap gap-1">
-                    {[u.business_role_id, ...(u.extra_role_ids || [])].map(roleName).filter(Boolean).map((n) => <span key={n} className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-brand-50 text-brand-700">{n}</span>)}
+                    {roleName(u.business_role_id) && <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-brand-50 text-brand-700">{roleName(u.business_role_id)}</span>}
                     {u.role === "admin" && <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-red-50 text-red-700">Administrator</span>}
                   </div>
-                  {u.role !== "admin" && !u.business_role_id && !(u.extra_role_ids || []).length && (
+                  {u.role !== "admin" && !u.business_role_id && (
                     <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">{USER_TYPE_LABEL[u.role] || u.role}</span>
                   )}
                 </td>
@@ -199,7 +224,7 @@ export default function AdminPage() {
                   </span>
                 </td>
                 <td className="py-3 px-4">
-                  <button onClick={() => { setForm({ ...u, password: "" }); setModal("edit"); }}
+                  <button onClick={() => { setForm({ ...u, password: "" }); setAddon(BLANK_ADDON); setModal("edit"); }}
                     className="p-1.5 rounded hover:bg-brand-50 text-gray-400 hover:text-brand-600 mr-1">
                     <Icon name="edit" size={14} />
                   </button>
@@ -270,17 +295,16 @@ export default function AdminPage() {
               {Object.entries(USER_TYPE_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
             </Select>
           </Field>
-          <Field label="Main role (permissions)">
+          {form.person_id && (
+            <p className="mb-3 px-3 py-2 rounded-lg bg-gray-50 border border-gray-100 text-xs text-gray-600">
+              Add-on login of <span className="font-medium">{userById(form.person_id)?.name}</span> ({userById(form.person_id)?.email}). It has its own email, password and role.
+            </p>
+          )}
+          <Field label={form.person_id ? "Role" : "Main role (permissions)"}>
             <Select value={form.business_role_id || ""} onChange={(e) => setForm((p) => ({ ...p, business_role_id: e.target.value }))}>
               <option value="">— None —</option>
               {roles.filter((r) => r.is_active || r.id === form.business_role_id).map((r) => <option key={r.id} value={r.id}>{r.name}{r.description ? ` (${r.description})` : ""}</option>)}
             </Select>
-          </Field>
-          <Field label="Additional roles (one person can hold several, e.g. MLRO and Approver)">
-            <MultiSelect
-              options={roles.filter((r) => (r.is_active || (form.extra_role_ids || []).includes(r.id)) && r.id !== +form.business_role_id).map((r) => r.id)}
-              value={form.extra_role_ids || []} getLabel={(id) => roles.find((r) => r.id === id)?.name || id}
-              onChange={(ids) => setForm((p) => ({ ...p, extra_role_ids: ids }))} />
           </Field>
           <Field label="Department">
             <Select value={form.department_id || ""} onChange={(e) => setForm((p) => ({ ...p, department_id: e.target.value }))}>
@@ -309,6 +333,38 @@ export default function AdminPage() {
               <option value="false">Inactive</option>
             </Select>
           </Field>
+          {/* Triam 29-10-2026: another role for the same person is an add-on login with its own email and
+              password; signed in with one login, the person sees the others at the top and can switch. */}
+          {modal === "edit" && !form.person_id ? (
+            <div className="mt-2 rounded-lg border border-gray-200 p-3">
+              <div className="text-xs font-semibold text-gray-700 mb-1">Add-on logins</div>
+              <p className="text-[11px] text-gray-500 mb-2">Another role for {form.name || "this person"}, with its own email and password.</p>
+              {addonsOf(form.id).length === 0 && <p className="text-xs text-gray-400 mb-2">None yet.</p>}
+              {addonsOf(form.id).map((a) => (
+                <div key={a.id} className="flex items-center justify-between text-xs py-1 border-b border-gray-50">
+                  <span className="text-gray-700">{a.email}</span>
+                  <span className="flex items-center gap-2">
+                    <span className="px-2 py-0.5 rounded-full bg-brand-50 text-brand-700 text-[11px]">{roleName(a.business_role_id) || "—"}</span>
+                    <span className={a.is_active ? "text-green-600" : "text-gray-400"}>{a.is_active ? "Active" : "Inactive"}</span>
+                  </span>
+                </div>
+              ))}
+              <div className="grid grid-cols-3 gap-2 mt-2">
+                <Select value={addon.business_role_id} onChange={(e) => setAddon((p) => ({ ...p, business_role_id: e.target.value }))}>
+                  <option value="">— role —</option>
+                  {roles.filter((r) => r.is_active && r.id !== +form.business_role_id).map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+                </Select>
+                <Input type="email" placeholder="email@asktriam.com" value={addon.email} autoCapitalize="none"
+                  onChange={(e) => setAddon((p) => ({ ...p, email: e.target.value.replace(/\s/g, "").toLowerCase() }))} />
+                <Input type="password" placeholder="Password" value={addon.password} onChange={(e) => setAddon((p) => ({ ...p, password: e.target.value }))} />
+              </div>
+              <div className="flex justify-end mt-2">
+                <button onClick={addAddonLogin} className="px-3 py-1.5 text-xs border border-brand-300 text-brand-700 rounded-lg hover:bg-brand-50">Add login</button>
+              </div>
+            </div>
+          ) : modal === "new" && (
+            <p className="mt-2 text-[11px] text-gray-500">To give this person another role, save the user, then open them and add an add-on login (its own email and password).</p>
+          )}
           <div className="flex justify-end gap-3 mt-4">
             <button onClick={() => setModal(null)} className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
             <button onClick={save} className="px-4 py-2 text-sm text-white rounded-lg" style={{ background: "#1a3a5c" }}>Save</button>

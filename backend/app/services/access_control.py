@@ -52,6 +52,12 @@ def _account_ids_with_non_anchor(db: Session, ids: set[int]) -> list[int]:
     return [r.id for r in rows if ids.intersection(r.non_anchor_rm_ids or [])]
 
 
+def same_person(other: User | None, user: User) -> bool:
+    """True when `other` is `user` or another of the same person's logins (one login per role, Triam
+    29-10-2026). Maker-checker uses it: nobody approves their own work under a different login."""
+    return other is not None and other.person_key == user.person_key
+
+
 def account_visibility_clause(db: Session, user: User):
     """Filter for Account queries, or None when the user sees every client."""
     if not _is_restricted(user):

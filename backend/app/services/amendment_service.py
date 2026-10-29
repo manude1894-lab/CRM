@@ -36,7 +36,7 @@ from app.models import Account, AccountParty, ApprovalRequest, ApprovalStatus, U
 from app.schemas.account import AccountRead, AccountUpdate
 from app.schemas.account_party import AccountPartyCreate, AccountPartyRead, AccountPartyUpdate
 from app.services import account_party_service, account_service, client_workflow_service as wf
-from app.services import master_service, notification_service
+from app.services import access_control, master_service, notification_service
 
 TYPE = "client_amendment"
 # Statuses in which the profile is "approved" and therefore changes only through an amendment.
@@ -364,7 +364,7 @@ def view(db: Session, acc: Account, user: User) -> dict:
                 out["previous"] = db.get(ApprovalRequest, req.previous_request_id)
         else:  # Pending
             out["diff"] = req.changes
-            if approver and req.maker_id != user.id:
+            if approver and not access_control.same_person(req.maker, user):
                 out["actions"] += ["approve", "reject"]
             if req.maker_id == user.id or approver:
                 out["actions"].append("withdraw")
@@ -414,7 +414,7 @@ def _assert_checker(db: Session, acc: Account, user: User, req: ApprovalRequest)
     _assert_access(db, acc, user)
     if not has_permission(user, "client.approve"):
         raise HTTPException(status_code=403, detail="Needs an approver (CO / MLRO)")
-    if req.maker_id == user.id:
+    if access_control.same_person(req.maker, user):
         raise HTTPException(status_code=403, detail="You submitted this amendment, so another approver must review it")
 
 

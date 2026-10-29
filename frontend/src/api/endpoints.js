@@ -5,7 +5,6 @@ export const authApi = {
   login: (email, password) => api.post("/auth/login", { email, password }).then((r) => r.data),
   changePassword: (current_password, new_password) => api.post("/auth/change-password", { current_password, new_password }),
   me: () => api.get("/auth/me").then((r) => r.data),
-  switchRole: (role_id) => api.post("/auth/switch-role", { role_id }).then((r) => r.data),
 };
 
 // ─── Users ─────────────────────────────────────────────────────────────

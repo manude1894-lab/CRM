@@ -111,6 +111,26 @@ def test_maker_cannot_approve_own_submission_even_as_approver(db, people):
     assert acc.profile_status == "Approved"
 
 
+def test_same_person_cannot_approve_under_another_login(db, people, make_user, make_role):
+    """Triam 29-10-2026: one login per role — the RM login's submission can't be approved by the same
+    person's Compliance or Approver login."""
+    maker = people["maker"]
+    co_login = make_user("Rita (CO)", business_role=make_role("CO", ["client.approve"]))
+    co_login.person_id = maker.id
+    approver_login = make_user("Rita (Approver)", business_role=people["approver"].business_role)
+    approver_login.person_id = maker.id
+    db.commit()
+    acc = complete_client(db, maker)
+    flow.submit(db, acc, maker)
+    with pytest.raises(HTTPException) as e:
+        wf.approve(db, acc, co_login)
+    assert e.value.status_code == 403 and "someone else" in e.value.detail
+    flow.compliance_approve(db, acc, people["checker"])  # another person's Compliance approval is fine
+    with pytest.raises(HTTPException) as e:
+        wf.approve(db, acc, approver_login, "Approved")
+    assert e.value.status_code == 403 and "someone else" in e.value.detail
+
+
 def test_ordinary_rm_cannot_approve(db, people):
     acc = complete_client(db, people["maker"])
     flow.submit(db, acc, people["maker"])

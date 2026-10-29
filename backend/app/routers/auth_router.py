@@ -6,7 +6,7 @@ from app.audit import set_actor, log_event
 from app.database import get_db
 from app.models import User
 from app.schemas import LoginRequest, Token, RefreshTokenRequest, UserRead
-from app.schemas.user import ChangePasswordRequest, SwitchRoleRequest
+from app.schemas.user import ChangePasswordRequest
 from app.services import security_service
 from app.auth.security import hash_password
 from app.auth.security import (
@@ -40,10 +40,8 @@ def login(data: LoginRequest, request: Request, db: Session = Depends(get_db)):
     set_actor(db, user.id, ip)
     log_event(db, "login", f"{user.name} logged in", subject_type="User", subject_id=user.id)
     db.commit()
-    # Sign-in is to the main role; an additional role is chosen with /auth/switch-role.
-    user.session_role_id = user.default_role_id or 0
-    access = create_access_token(user.id, user.role.value, user.active_role_id)
-    refresh = create_refresh_token(user.id, user.role.value, user.active_role_id)
+    access = create_access_token(user.id, user.role.value)
+    refresh = create_refresh_token(user.id, user.role.value)
     return {
         "access_token": access,
         "refresh_token": refresh,
@@ -79,27 +77,9 @@ def refresh(data: RefreshTokenRequest, db: Session = Depends(get_db)):
     if not user:
         raise HTTPException(status_code=401, detail="User not found or inactive")
 
-    user.session_role_id = payload.get("rid") or user.default_role_id or 0  # stays in the same role
     return {
-        "access_token": create_access_token(user.id, user.role.value, user.active_role_id),
-        "refresh_token": create_refresh_token(user.id, user.role.value, user.active_role_id),
-        "token_type": "bearer",
-        "user": user,
-    }
-
-
-@router.post("/switch-role", response_model=Token, summary="Work in another of your roles")
-def switch_role(data: SwitchRoleRequest, request: Request, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    """A user with more than one role works in one at a time: the menu, clients and actions follow it."""
-    role = next((r for r in user.all_business_roles if r.id == data.role_id), None)
-    if role is None:
-        raise HTTPException(status_code=400, detail="That role is not one of yours")
-    user.session_role_id = role.id
-    log_event(db, "switch_role", f"{user.name} switched to the {role.name} role", subject_type="User", subject_id=user.id)
-    db.commit()
-    return {
-        "access_token": create_access_token(user.id, user.role.value, role.id),
-        "refresh_token": create_refresh_token(user.id, user.role.value, role.id),
+        "access_token": create_access_token(user.id, user.role.value),
+        "refresh_token": create_refresh_token(user.id, user.role.value),
         "token_type": "bearer",
         "user": user,
     }
