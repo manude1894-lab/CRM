@@ -163,9 +163,7 @@ export default function App() {
                             {user.linked_logins.map((l) => (
                               <button key={l.id} type="button" onClick={() => { setSwitchMenu(false); openLogin(l); }}
                                 className="block w-full text-left px-3 py-1.5 hover:bg-gray-50">
-                                <span className="flex items-center justify-between text-xs font-medium text-gray-800">
-                                  {l.role_name || "Login"}<span className="text-[10px] font-normal text-brand-600">Open in new tab ↗</span>
-                                </span>
+                                <span className="block text-xs font-medium text-gray-800">{l.role_name || "Login"}</span>
                                 <span className="block text-[11px] text-gray-500 truncate">{l.email}</span>
                               </button>
                             ))}
@@ -175,7 +173,6 @@ export default function App() {
                     )}
                     {(user.permissions || []).includes("read_only") && <span className="ml-1 px-1 rounded bg-gray-100 text-gray-500">Read-only</span>}
                   </div>
-                  {user.last_login_at && <div className="text-[10px] text-gray-400">Logged in {formatTimestamp(user.last_login_at)}</div>}
                 </div>
               </div>
             )}

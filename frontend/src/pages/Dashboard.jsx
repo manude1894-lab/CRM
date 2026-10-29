@@ -21,6 +21,9 @@ const SERVICED = ["Approved", "Active", "Inactive", "Marked for Exit"];
 
 const daysUntil = (iso) => Math.round((new Date(iso) - new Date(new Date().toDateString())) / 86400000);
 
+// "Kalyan Rao" → "Kalyan"; a name starting with initials ("S T Krishna") is used in full.
+const firstName = (name) => { const first = name.trim().split(/\s+/)[0]; return first.length > 2 ? first : name.trim(); };
+
 const greeting = () => {
   const h = new Date().getHours();
   return h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
@@ -141,7 +144,7 @@ export default function Dashboard({ onNavigate = () => {} } = {}) {
     <div className="max-w-[1400px] mx-auto space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-2">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">{greeting()}{user?.name ? `, ${user.name.split(" ")[0]}` : ""}</h1>
+          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">{greeting()}{user?.name ? `, ${firstName(user.name)}` : ""}</h1>
           {user?.previous_login_at && <p className="text-xs text-gray-400 mt-0.5">Last login {formatTimestamp(user.previous_login_at)}</p>}
         </div>
         <button onClick={load} className="text-xs text-gray-400 hover:text-brand-600">
