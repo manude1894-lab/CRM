@@ -297,7 +297,7 @@ export default function AdminPage() {
           </Field>
           {form.person_id && (
             <p className="mb-3 px-3 py-2 rounded-lg bg-gray-50 border border-gray-100 text-xs text-gray-600">
-              Add-on login of <span className="font-medium">{userById(form.person_id)?.name}</span> ({userById(form.person_id)?.email}). It has its own email, password and role.
+              Add-on login of <span className="font-medium">{userById(form.person_id)?.name}</span> ({userById(form.person_id)?.email})
             </p>
           )}
           <Field label={form.person_id ? "Role" : "Main role (permissions)"}>
@@ -338,7 +338,6 @@ export default function AdminPage() {
           {modal === "edit" && !form.person_id ? (
             <div className="mt-2 rounded-lg border border-gray-200 p-3">
               <div className="text-xs font-semibold text-gray-700 mb-1">Add-on logins</div>
-              <p className="text-[11px] text-gray-500 mb-2">Another role for {form.name || "this person"}, with its own email and password.</p>
               {addonsOf(form.id).length === 0 && <p className="text-xs text-gray-400 mb-2">None yet.</p>}
               {addonsOf(form.id).map((a) => (
                 <div key={a.id} className="flex items-center justify-between text-xs py-1 border-b border-gray-50">
@@ -362,9 +361,7 @@ export default function AdminPage() {
                 <button onClick={addAddonLogin} className="px-3 py-1.5 text-xs border border-brand-300 text-brand-700 rounded-lg hover:bg-brand-50">Add login</button>
               </div>
             </div>
-          ) : modal === "new" && (
-            <p className="mt-2 text-[11px] text-gray-500">To give this person another role, save the user, then open them and add an add-on login (its own email and password).</p>
-          )}
+          ) : null}
           <div className="flex justify-end gap-3 mt-4">
             <button onClick={() => setModal(null)} className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
             <button onClick={save} className="px-4 py-2 text-sm text-white rounded-lg" style={{ background: "#1a3a5c" }}>Save</button>

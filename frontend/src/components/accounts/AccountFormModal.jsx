@@ -562,7 +562,7 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
                   onClose={() => {}} onChange={() => { setRefreshKey((k) => k + 1); onChanged(); }} />
               </Embedded>
             ) : (
-              <p className="text-xs text-gray-500">Save Client Info first, then add the {title.toLowerCase()} here.</p>
+              <p className="text-xs text-gray-500">Save Client Info first.</p>
             )}
           </Section>
         ))}
@@ -633,7 +633,7 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
             )}
           </fieldset>
           {form.next_aml_review_date && (
-            <p className="text-xs text-gray-400">Next AML Review Date: <span className="font-medium text-gray-600">{fmtDate(form.next_aml_review_date)}</span> (auto-calculated from Risk Rating + CDD Completion Date)</p>
+            <p className="text-xs text-gray-400">Next AML Review Date: <span className="font-medium text-gray-600">{fmtDate(form.next_aml_review_date)}</span></p>
           )}
         </Section>
         )}

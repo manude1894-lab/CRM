@@ -195,7 +195,7 @@ export default function ProspectsPage({ onNavigate } = {}) {
           )}
           {/* Stamped by the system when the prospect is submitted to the RM (Triam UAT 26-10-2026). */}
           <p className="text-xs text-gray-500 mt-1">Proposal Sent Date: <span className="font-medium text-gray-700">
-            {form.proposal_sent_date ? fmtDate(form.proposal_sent_date) : "set automatically when the prospect is submitted"}</span></p>
+            {form.proposal_sent_date ? fmtDate(form.proposal_sent_date) : "—"}</span></p>
           <div className="flex justify-end gap-3 mt-4">
             <button onClick={() => setModal(false)} className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
             <button onClick={() => save(false)} className="px-4 py-2 text-sm border border-brand-300 text-brand-700 rounded-lg hover:bg-brand-50">Save</button>

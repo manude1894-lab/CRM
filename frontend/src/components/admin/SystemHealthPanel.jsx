@@ -37,7 +37,6 @@ export default function SystemHealthPanel() {
           </div>
         ))}
       </div>
-      <p className="text-[11px] text-gray-400">Settings such as secrets and mailbox details are set on the hosting platform, not in the CRM. They take effect after the next restart.</p>
     </div>
   );
 }

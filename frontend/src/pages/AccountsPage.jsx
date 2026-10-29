@@ -22,7 +22,7 @@ const SCOPES = {
   },
   maintenance: {
     title: "Client Data Maintenance", statuses: ["Approved", "Active", "Inactive", "Marked for Exit", "Exited"],
-    subtitle: (n) => `${n} existing client${n === 1 ? "" : "s"} · changes go to Compliance for approval (BRD §11)`,
+    subtitle: (n) => `${n} existing client${n === 1 ? "" : "s"}`,
     empty: "Clients appear here once the Approver has approved them, or when they are imported.",
   },
 };
