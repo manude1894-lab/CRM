@@ -76,6 +76,16 @@ def notify_permission(
     return [notify_user(db, u.id, message, notification_type, link=link, account_id=account_id) for u in users]
 
 
+def resolve(db: Session, account_id: int, *notification_types: str) -> None:
+    """The work an alert asked for is done (e.g. the client was approved): mark everyone's unread alerts
+    of that type for the client as read, so the bell only shows what still needs doing."""
+    from datetime import datetime, timezone
+    db.query(Notification).filter(Notification.account_id == account_id, Notification.notification_type.in_(notification_types),
+                                  Notification.read_at.is_(None)).update({Notification.read_at: datetime.now(timezone.utc)},
+                                                                          synchronize_session=False)
+    db.commit()
+
+
 def has_unresolved_notification(db: Session, account_id: int, notification_type: str) -> bool:
     """Dedup helper for scheduled jobs: skip if an unread notification of this type already exists for the client."""
     return db.query(Notification).filter(

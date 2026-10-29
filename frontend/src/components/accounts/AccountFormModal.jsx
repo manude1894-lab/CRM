@@ -638,7 +638,8 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
         </Section>
         )}
       </div>
-      <div className="flex justify-end gap-3 mt-5">
+      {/* Always in view while scrolling the long form. */}
+      <div className="sticky bottom-0 z-10 flex justify-end gap-3 mt-5 -mx-1 px-1 py-3 bg-white/95 backdrop-blur border-t border-gray-100">
         <button onClick={cancel} className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
         <button onClick={save} disabled={saving || locked || (mode === "edit" && !anyDirty)}
           title={myDraft ? "Saves into your draft amendment" : "Saves the client as a draft; nothing goes to Compliance yet"}

@@ -212,7 +212,8 @@ def submit(db: Session, acc: Account, user: User, comment: Optional[str] = None,
     db.commit()
     for u in _approvers(db):
         if u.id != user.id:
-            notification_service.notify_user(db, u.id, f"{user.name} submitted client {_label(acc)} for Compliance review.", "client_submitted")
+            notification_service.notify_user(db, u.id, f"{user.name} submitted client {_label(acc)} for Compliance review.", "client_submitted",
+                                             account_id=acc.id)
     return req
 
 
@@ -230,9 +231,11 @@ def approve(db: Session, acc: Account, user: User, comment: Optional[str] = None
         log_event(db, "compliance_approve", f"Client {_label(acc)} approved by Compliance and passed to the Approver",
                   subject_type="Account", subject_id=acc.id, account_id=acc.id, changes={"request_id": req.id, "comment": comment})
         db.commit()
+        notification_service.resolve(db, acc.id, "client_submitted", "approval_waiting")  # Compliance has decided
         for u in _final_approvers(db):
             if u.id != user.id:
-                notification_service.notify_user(db, u.id, f"Client {_label(acc)} passed Compliance and needs your final approval.", "client_submitted")
+                notification_service.notify_user(db, u.id, f"Client {_label(acc)} passed Compliance and needs your final approval.", "client_submitted",
+                                                 account_id=acc.id)
         if req.maker_id:
             notification_service.notify_user(db, req.maker_id, f"Compliance ({user.name}) approved client {_label(acc)}; it is now with the Approver.", "client_approved")
         return req
@@ -245,6 +248,7 @@ def approve(db: Session, acc: Account, user: User, comment: Optional[str] = None
     log_event(db, "approve", f"Client {_label(acc)} approved", subject_type="Account", subject_id=acc.id,
               account_id=acc.id, changes={"request_id": req.id, "comment": comment})
     db.commit()
+    notification_service.resolve(db, acc.id, "client_submitted", "approval_waiting")
     if req.maker_id:
         notification_service.notify_user(db, req.maker_id, f"{user.name} gave the final approval for client {_label(acc)}.", "client_approved")
     return req
@@ -278,6 +282,7 @@ def reject(db: Session, acc: Account, user: User, reason_code: str, reason_text:
     log_event(db, "reject", f"Client {_label(acc)} rejected by {step}: {reason_code}. {reason_text}", subject_type="Account",
               subject_id=acc.id, account_id=acc.id, changes={"request_id": req.id, "reason_code": reason_code, "reason_text": reason_text})
     db.commit()
+    notification_service.resolve(db, acc.id, "client_submitted", "approval_waiting")
     if req.maker_id:
         notification_service.notify_user(db, req.maker_id, f"{user.name} rejected client {_label(acc)}: {reason_code}. {reason_text}", "client_rejected")
     return req
@@ -291,6 +296,7 @@ def withdraw(db: Session, acc: Account, user: User) -> ApprovalRequest:
     log_event(db, "withdraw", f"Submission of {_label(acc)} withdrawn", subject_type="Account", subject_id=acc.id,
               account_id=acc.id, changes={"request_id": req.id})
     db.commit()
+    notification_service.resolve(db, acc.id, "client_submitted", "approval_waiting")
     return req
 
 

@@ -227,15 +227,16 @@ export default function AccountsPage({ scope = "onboarding", initialAccountId, i
       )}
 
       <FilterBar>
-        <SearchInput value={search} onChange={setSearch} placeholder="Search by name, search name or Client ID…" />
+        <SearchInput value={search} onChange={setSearch} placeholder="Search by client name or Client ID…" />
         <div className="w-44"><Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
           <option value="">All statuses</option>
           {cfg.statuses.map((s) => <option key={s}>{s}</option>)}
         </Select></div>
-        <div className="w-40"><Select value={riskFilter} onChange={(e) => setRiskFilter(e.target.value)}>
+        {/* Risk level and AML review are set by Compliance at approval, so only existing clients have them. */}
+        {scope === "maintenance" && <div className="w-40"><Select value={riskFilter} onChange={(e) => setRiskFilter(e.target.value)}>
           <option value="">All risk levels</option>
           {["High", "Medium", "Low"].map((r) => <option key={r} value={r}>{r} risk</option>)}
-        </Select></div>
+        </Select></div>}
         <div className="ml-auto flex border border-gray-200 rounded-lg overflow-hidden bg-white">
           {[["table", "table", "Table"], ["cards", "kanban", "Cards"]].map(([v, icon, label]) => (
             <button key={v} onClick={() => changeView(v)}
@@ -263,7 +264,8 @@ export default function AccountsPage({ scope = "onboarding", initialAccountId, i
                 <th className="py-2.5 px-3 w-8">
                   <input type="checkbox" checked={ids.every((id) => selectedIds.has(id))} onChange={() => toggleSelectAll(ids)} />
                 </th>
-                {["Client ID", "Client", "Status", "Risk", "Anchor RM", "PEP", "Next AML review"].map((h) => (
+                {(scope === "maintenance" ? ["Client ID", "Client", "Status", "Risk", "Anchor RM", "PEP", "Next AML review"]
+                  : ["Client ID", "Client", "Status", "Anchor RM", "PEP"]).map((h) => (
                   <th key={h} className="py-2.5 px-3 font-semibold text-left">{h}</th>
                 ))}
               </tr>
@@ -280,10 +282,10 @@ export default function AccountsPage({ scope = "onboarding", initialAccountId, i
                     <div className="text-xs text-gray-400">{a.account_type === "Individual" ? "Individual" : [a.client_category, a.country].filter(Boolean).join(" · ") || "Corporate"}{a.is_pep ? " · PEP" : ""}</div>
                   </td>
                   <td className="py-2.5 px-3"><Badge text={a.profile_status || "New"} /></td>
-                  <td className="py-2.5 px-3 text-xs text-gray-600">{a.risk_rating || "—"}</td>
+                  {scope === "maintenance" && <td className="py-2.5 px-3 text-xs text-gray-600">{a.risk_rating || "—"}</td>}
                   <td className="py-2.5 px-3 text-xs text-gray-600">{userName(a.spoc_id)}</td>
                   <td className="py-2.5 px-3 text-xs text-gray-600">{a.is_pep ? "PEP" : "—"}</td>
-                  <td className="py-2.5 px-3 text-xs text-gray-600">{fmtDate(a.next_aml_review_date) || "—"}</td>
+                  {scope === "maintenance" && <td className="py-2.5 px-3 text-xs text-gray-600">{fmtDate(a.next_aml_review_date) || "—"}</td>}
                 </tr>
               ))}
             </tbody>

@@ -51,7 +51,10 @@ export default function App() {
   const can = useAuthStore((s) => s.can);
   const [page, setPage] = useState("dashboard");
   const [switchTo, setSwitchTo] = useState(null); // another of the person's logins (one login per role)
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  // On a phone the menu starts closed and opens over the page; on a computer it is open beside the page.
+  const isPhone = typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches;
+  const [sidebarOpen, setSidebarOpen] = useState(!isPhone);
+  const [switchMenu, setSwitchMenu] = useState(false);
   const [jumpTo, setJumpTo] = useState(null);
   const [passwordOpen, setPasswordOpen] = useState(false);
   const passwordWarning = useAuthStore((s) => s.passwordChangeRecommended);
@@ -65,12 +68,16 @@ export default function App() {
   const activeItem = navItems.find((n) => n.key === page) || navItems[0];
   const PageComponent = activeItem.component;
 
-  const avatar = user?.name?.split(" ").map((n) => n[0]).slice(0, 2).join("") || "?";
+  // Letters only: "Ritu (MLRO)" → "RM", not "R(".
+  const avatar = (user?.name || "").replace(/[^A-Za-z\s]/g, " ").split(/\s+/).filter(Boolean).map((w) => w[0]).slice(0, 2).join("").toUpperCase() || "?";
+  const go = (key) => { setJumpTo(null); setPage(key); if (isPhone) setSidebarOpen(false); };
 
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden">
-      {/* Sidebar */}
-      <aside className={`flex-shrink-0 flex flex-col border-r border-gray-100 bg-white transition-all duration-200 ${sidebarOpen ? "w-60" : "w-16"}`}>
+      {/* Sidebar — beside the page on a computer; over the page on a phone. */}
+      {isPhone && sidebarOpen && <div className="fixed inset-0 z-30 bg-black/30" onClick={() => setSidebarOpen(false)} />}
+      <aside className={`flex-shrink-0 flex flex-col border-r border-gray-100 bg-white transition-all duration-200 ${
+        isPhone ? `fixed inset-y-0 left-0 z-40 w-64 shadow-xl ${sidebarOpen ? "" : "hidden"}` : sidebarOpen ? "w-60" : "w-16"}`}>
         {/* Brand: cropped wordmark when open, gold trident mark when collapsed. */}
         <div className={`flex items-center h-20 border-b border-gray-100 ${sidebarOpen ? "px-5" : "justify-center px-2"}`}>
           {sidebarOpen ? (
@@ -88,7 +95,7 @@ export default function App() {
             {item.group && item.group !== navItems[i - 1]?.group && (sidebarOpen
               ? <div className="px-3 pt-4 pb-1 text-[10px] font-semibold uppercase tracking-wider text-gray-400">{item.group}</div>
               : <div className="mx-3 my-2 border-t border-gray-100" />)}
-            <button onClick={() => { setJumpTo(null); setPage(item.key); }}
+            <button onClick={() => go(item.key)}
               title={sidebarOpen ? undefined : item.label}
               className={`w-full flex items-center gap-3 px-3 py-1.5 rounded-lg text-sm transition-colors text-left ${sidebarOpen ? "" : "justify-center"} ${page === item.key ? "text-white" : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"}`}
               style={page === item.key ? { background: "#1a3a5c" } : {}}>
@@ -128,11 +135,11 @@ export default function App() {
           <ChangePasswordModal onClose={() => setPasswordOpen(false)} onChanged={clearPasswordWarning}
             reason={passwordWarning ? "This account still uses a default password." : null} />
         )}
-        <header className="flex items-center justify-between px-6 py-3 bg-white border-b border-gray-100">
+        <header className="flex items-center justify-between gap-2 px-3 md:px-6 py-3 bg-white border-b border-gray-100">
           <button onClick={() => setSidebarOpen((o) => !o)} className="text-gray-400 hover:text-gray-600 p-1 rounded">
             <Icon name="menu" size={20} />
           </button>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 md:gap-3 min-w-0">
             <CommandPalette onNavigate={(t) => { setJumpTo(t); setPage(t.page); }} />
             <div className="text-xs text-gray-500 bg-gray-100 px-3 py-1.5 rounded-lg hidden sm:block">
               {fmtToday()}
@@ -147,12 +154,21 @@ export default function App() {
                   <div className="text-[11px] text-gray-500">
                     {user.business_role_name || ROLE_LABEL[user.role] || user.role}
                     {(user.linked_logins || []).length > 0 && (
-                      <select value="" onChange={(e) => setSwitchTo(user.linked_logins.find((l) => String(l.id) === e.target.value))}
-                        title="Switch to another of your logins"
-                        className="ml-1.5 px-1 py-0 text-[11px] text-brand-700 bg-transparent border border-gray-200 rounded hover:border-brand-300 focus:outline-none">
-                        <option value="">Switch to…</option>
-                        {user.linked_logins.map((l) => <option key={l.id} value={l.id}>{l.role_name || "Login"} ({l.email})</option>)}
-                      </select>
+                      <span className="relative ml-1.5">
+                        <button type="button" onClick={() => setSwitchMenu((o) => !o)} title="Switch to another of your logins"
+                          className="px-1.5 py-0 text-[11px] text-brand-700 border border-gray-200 rounded hover:border-brand-300">Switch ▾</button>
+                        {switchMenu && (
+                          <span className="absolute right-0 top-5 z-40 w-64 py-1 bg-white border border-gray-200 rounded-lg shadow-lg">
+                            {user.linked_logins.map((l) => (
+                              <button key={l.id} type="button" onClick={() => { setSwitchMenu(false); setSwitchTo(l); }}
+                                className="block w-full text-left px-3 py-1.5 hover:bg-gray-50">
+                                <span className="block text-xs font-medium text-gray-800">{l.role_name || "Login"}</span>
+                                <span className="block text-[11px] text-gray-500 truncate">{l.email}</span>
+                              </button>
+                            ))}
+                          </span>
+                        )}
+                      </span>
                     )}
                     {(user.permissions || []).includes("read_only") && <span className="ml-1 px-1 rounded bg-gray-100 text-gray-500">Read-only</span>}
                   </div>
@@ -163,7 +179,7 @@ export default function App() {
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-6">
+        <main className="flex-1 overflow-y-auto p-3 md:p-6">
           <PageErrorBoundary key={`${page}-${user?.id}`}>
           <PageComponent
             {...(activeItem.props || {})}

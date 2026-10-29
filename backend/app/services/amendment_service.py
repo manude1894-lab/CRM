@@ -433,6 +433,7 @@ def approve(db: Session, acc: Account, user: User, comment: Optional[str] = None
               subject_type="Account", subject_id=acc.id, account_id=acc.id,
               changes={"request_id": req.id, "maker": maker, "comment": req.reason_text, "diff": req.changes})
     db.commit()
+    notification_service.resolve(db, acc.id, "approval_waiting")  # decided: the waiting reminder is done
     if req.maker_id:
         notification_service.notify_user(db, req.maker_id, f"{user.name} approved your amendment to {_client_label(acc)}.", "amendment_approved")
     return req
@@ -460,6 +461,7 @@ def reject(db: Session, acc: Account, user: User, reason_code: str, reason_text:
               subject_type="Account", subject_id=acc.id, account_id=acc.id,
               changes={"request_id": req.id, "reason_code": reason_code, "reason_text": reason_text})
     db.commit()
+    notification_service.resolve(db, acc.id, "approval_waiting")  # decided: the waiting reminder is done
     if req.maker_id:
         notification_service.notify_user(db, req.maker_id, f"{user.name} rejected your amendment to {_client_label(acc)}: {reason_code}. {reason_text}", "amendment_rejected")
     return req
@@ -475,6 +477,7 @@ def withdraw(db: Session, acc: Account, user: User) -> ApprovalRequest:
     log_event(db, "amend_withdraw", f"Amendment to {_client_label(acc)} withdrawn from Compliance", subject_type="Account",
               subject_id=acc.id, account_id=acc.id, changes={"request_id": req.id})
     db.commit()
+    notification_service.resolve(db, acc.id, "approval_waiting")  # decided: the waiting reminder is done
     return req
 
 

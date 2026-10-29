@@ -46,8 +46,10 @@ describe("P1 fields", () => {
     expect(payload).not.toHaveProperty("_status_updated_at");
   });
 
-  it("saves the search name with core info and KYC-verified-by with AML", () => {
-    expect(SECTION_FIELDS.core).toContain("search_name");
+  it("leaves the search name to the system and saves KYC-verified-by with AML", () => {
+    // Triam UAT 26-10-2026: users don't type a short name; the server keeps one from the client name.
+    expect(SECTION_FIELDS.core).not.toContain("search_name");
+    expect(buildAccountPayload({ ...BLANK_ACCOUNT_FORM, company_name: "X Ltd", search_name: "X" })).not.toHaveProperty("search_name");
     expect(SECTION_FIELDS.aml).toContain("kyc_verified_by");
     expect(SECTION_FIELDS.licensing).toContain("licensing_authority_other");
   });

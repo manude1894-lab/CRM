@@ -39,7 +39,7 @@ export default function ApprovalsPage({ onNavigate }) {
 
   return (
     <div className="space-y-4">
-      <PageHeader title="Compliance"
+      <PageHeader title="Compliance Approval"
         subtitle={tab === "Pending" ? `${rows.length} waiting for a decision` : undefined} />
       <div className="flex gap-1 border-b border-gray-200">
         {TABS.map((t) => (
