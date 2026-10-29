@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useAuthStore } from "./store/auth";
 import { Icon, ToastHost, ConfirmDialogHost } from "./components/ui";
 import NotificationBell from "./components/NotificationBell";
@@ -15,8 +15,6 @@ import ReportsPage from "./pages/ReportsPage";
 import AdminPage from "./pages/AdminPage";
 import ApprovalsPage from "./pages/ApprovalsPage";
 import ChangePasswordModal from "./components/ChangePasswordModal";
-import SwitchLoginModal from "./components/SwitchLoginModal";
-import { toast } from "./store/toast";
 import { ROLE_LABEL, fmtToday } from "./utils/constants";
 import { formatTimestamp } from "./utils/auditFormat";
 
@@ -50,7 +48,6 @@ export default function App() {
   // Hooks must all run before the early "not logged in" return below (React rules of hooks).
   const can = useAuthStore((s) => s.can);
   const [page, setPage] = useState("dashboard");
-  const [switchTo, setSwitchTo] = useState(null); // another of the person's logins (one login per role)
   // On a phone the menu starts closed and opens over the page; on a computer it is open beside the page.
   const isPhone = typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches;
   const [sidebarOpen, setSidebarOpen] = useState(!isPhone);
@@ -59,6 +56,14 @@ export default function App() {
   const [passwordOpen, setPasswordOpen] = useState(false);
   const passwordWarning = useAuthStore((s) => s.passwordChangeRecommended);
   const clearPasswordWarning = useAuthStore((s) => s.clearPasswordWarning);
+  // Each tab is one login: its title names the role, so a person working in several tabs can tell them apart.
+  const roleLabel = user ? (user.business_role_name || ROLE_LABEL[user.role] || user.role) : null;
+  useEffect(() => { document.title = roleLabel ? `TRIAM · ${roleLabel}` : "TRIAM CRM"; }, [roleLabel]);
+  // Another of the person's logins opens in its own tab, on the sign-in page for that login.
+  const openLogin = (l) => {
+    const url = `${window.location.origin}/?as=${encodeURIComponent(l.email)}&role=${encodeURIComponent(l.role_name || "")}`;
+    window.open(url, "_blank", "noopener");
+  };
 
   if (!isAuthenticated) return <LoginPage />;
 
@@ -127,10 +132,6 @@ export default function App() {
             <button onClick={() => setPasswordOpen(true)} className="px-3 py-1 text-xs text-white rounded-lg" style={{ background: "#1a3a5c" }}>Change password</button>
           </div>
         )}
-        {switchTo && (
-          <SwitchLoginModal login={switchTo} onClose={() => setSwitchTo(null)}
-            onSwitched={(u) => { setSwitchTo(null); setJumpTo(null); setPage("dashboard"); toast.success(`Signed in as ${u.business_role_name || u.name} (${u.email})`); }} />
-        )}
         {passwordOpen && (
           <ChangePasswordModal onClose={() => setPasswordOpen(false)} onChanged={clearPasswordWarning}
             reason={passwordWarning ? "This account still uses a default password." : null} />
@@ -152,7 +153,7 @@ export default function App() {
                 <div className="hidden md:block leading-tight">
                   <div className="text-sm font-semibold text-gray-800">{user.name}</div>
                   <div className="text-[11px] text-gray-500">
-                    {user.business_role_name || ROLE_LABEL[user.role] || user.role}
+                    <span className="font-semibold text-brand-700">{roleLabel}</span>
                     {(user.linked_logins || []).length > 0 && (
                       <span className="relative ml-1.5">
                         <button type="button" onClick={() => setSwitchMenu((o) => !o)} title="Switch to another of your logins"
@@ -160,9 +161,11 @@ export default function App() {
                         {switchMenu && (
                           <span className="absolute right-0 top-5 z-40 w-64 py-1 bg-white border border-gray-200 rounded-lg shadow-lg">
                             {user.linked_logins.map((l) => (
-                              <button key={l.id} type="button" onClick={() => { setSwitchMenu(false); setSwitchTo(l); }}
+                              <button key={l.id} type="button" onClick={() => { setSwitchMenu(false); openLogin(l); }}
                                 className="block w-full text-left px-3 py-1.5 hover:bg-gray-50">
-                                <span className="block text-xs font-medium text-gray-800">{l.role_name || "Login"}</span>
+                                <span className="flex items-center justify-between text-xs font-medium text-gray-800">
+                                  {l.role_name || "Login"}<span className="text-[10px] font-normal text-brand-600">Open in new tab ↗</span>
+                                </span>
                                 <span className="block text-[11px] text-gray-500 truncate">{l.email}</span>
                               </button>
                             ))}

@@ -1,5 +1,10 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { persist, createJSONStorage } from "zustand/middleware";
+
+// Each browser tab keeps its own login (Triam 29-10-2026: a person with several logins works in one tab
+// per role, side by side). A refresh keeps the tab's login; closing the tab signs that tab out.
+// Sessions kept by earlier versions in the shared storage are removed.
+try { localStorage.removeItem("ezeetech-auth"); } catch { /* storage unavailable */ }
 
 export const useAuthStore = create(
   persist(
@@ -19,6 +24,6 @@ export const useAuthStore = create(
       // fallback covers sessions stored before permissions were added to the user payload.
       can: (flag) => get().user?.role === "admin" || (get().user?.permissions || []).includes(flag),
     }),
-    { name: "ezeetech-auth" }
+    { name: "ezeetech-auth", storage: createJSONStorage(() => sessionStorage) }
   )
 );

@@ -3,9 +3,14 @@ import { authApi } from "../api/endpoints";
 import { useAuthStore } from "../store/auth";
 import { Input } from "../components/ui";
 
+// Opened in a new tab from another of the person's logins: ?as=<email>&role=<role name>.
+const params = new URLSearchParams(window.location.search);
+const SWITCH = params.get("as") ? { email: params.get("as"), role: params.get("role") } : null;
+
 export default function LoginPage() {
   const setTokens = useAuthStore((s) => s.setTokens);
-  const [email, setEmail] = useState("");
+  const [switching, setSwitching] = useState(SWITCH);
+  const [email, setEmail] = useState(SWITCH?.email || "");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -16,6 +21,7 @@ export default function LoginPage() {
     try {
       const data = await authApi.login(email.trim().toLowerCase(), password);
       setTokens(data.access_token, data.refresh_token, data.user, !!data.password_change_recommended);
+      if (switching) window.history.replaceState(null, "", window.location.pathname);
     } catch (e) {
       setError(e.response?.data?.detail || "Login failed. Please check your credentials.");
     } finally {
@@ -66,7 +72,16 @@ export default function LoginPage() {
             <p className="text-gray-500 text-sm">Client Relationship Management</p>
           </div>
 
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">Sign in</h2>
+          <h2 className="text-2xl font-bold text-gray-900 mb-1">{switching ? `Sign in as ${switching.role || "your other role"}` : "Sign in"}</h2>
+          {switching ? (
+            <p className="text-sm text-gray-500 mb-6">
+              Opened from your other login, which stays open in its own tab. Enter the password for this login.{" "}
+              <button type="button" className="text-brand-600 hover:underline"
+                onClick={() => { setSwitching(null); setEmail(""); window.history.replaceState(null, "", window.location.pathname); }}>
+                Use a different account
+              </button>
+            </p>
+          ) : <div className="mb-5" />}
 
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-600 text-sm rounded-lg px-4 py-3 mb-4">
@@ -76,12 +91,14 @@ export default function LoginPage() {
           <div className="space-y-4">
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">Email</label>
-              <Input type="email" value={email} onChange={(e) => setEmail(e.target.value.replace(/\s/g, ""))} autoCapitalize="none" autoCorrect="off" />
+              <Input type="email" value={email} onChange={(e) => setEmail(e.target.value.replace(/\s/g, ""))} autoCapitalize="none" autoCorrect="off"
+                disabled={!!switching} />
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">Password</label>
               <Input
                 type="password"
+                autoFocus={!!switching}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && submit()}
