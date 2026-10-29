@@ -81,6 +81,10 @@ export default function AdminPage() {
   }
 
   const save = async () => {
+    // A new user needs a password (Triam UAT); when editing, blank keeps the current one.
+    if (modal === "new" && !(form.password || "").trim()) return toast.error("Enter a password for the new user");
+    if (form.password && (form.password.length < 10 || !/[A-Za-z]/.test(form.password) || !/\d/.test(form.password)))
+      return toast.error("Password must be at least 10 characters, with letters and numbers");
     try {
       const payload = {
         ...form,
@@ -258,7 +262,7 @@ export default function AdminPage() {
         <Modal title={modal === "new" ? "Add User" : `Edit ${form.name}`} onClose={() => setModal(null)}>
           <Field label="Full Name" required><Input value={form.name || ""} onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))} /></Field>
           <Field label="Email" required><Input type="email" value={form.email || ""} autoCapitalize="none" onChange={(e) => setForm((p) => ({ ...p, email: e.target.value.replace(/\s/g, "").toLowerCase() }))} /></Field>
-          <Field label={modal === "new" ? "Password (at least 10 characters, letters and numbers)" : "Password (leave blank to keep current)"}>
+          <Field label={modal === "new" ? "Password (at least 10 characters, letters and numbers)" : "Password (leave blank to keep current)"} required={modal === "new"}>
             <Input type="password" value={form.password || ""} onChange={(e) => setForm((p) => ({ ...p, password: e.target.value }))} />
           </Field>
           <Field label="User type">
