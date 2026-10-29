@@ -59,10 +59,10 @@ export default function App() {
   // Each tab is one login: its title names the role, so a person working in several tabs can tell them apart.
   const roleLabel = user ? (user.business_role_name || ROLE_LABEL[user.role] || user.role) : null;
   useEffect(() => { document.title = roleLabel ? `TRIAM · ${roleLabel}` : "TRIAM CRM"; }, [roleLabel]);
-  // Another of the person's logins opens in its own tab, on the sign-in page for that login.
+  // Another of the person's logins opens in its own tab, on the sign-in page with that email filled in.
   const openLogin = (l) => {
-    const url = `${window.location.origin}/?as=${encodeURIComponent(l.email)}&role=${encodeURIComponent(l.role_name || "")}`;
-    window.open(url, "_blank", "noopener");
+    try { localStorage.setItem("triam-switch", JSON.stringify({ email: l.email, at: Date.now() })); } catch { /* storage unavailable */ }
+    window.open(`${window.location.origin}/`, "_blank", "noopener");
   };
 
   if (!isAuthenticated) return <LoginPage />;
