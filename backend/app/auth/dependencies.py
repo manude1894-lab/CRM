@@ -3,7 +3,7 @@ from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 
-from app.auth.security import decode_token
+from app.auth.security import decode_token, issued_before_password_change
 from app.auth.permissions import has_permission
 from app.audit import set_actor
 from app.database import get_db
@@ -30,7 +30,7 @@ def get_current_user(
         raise credentials_exception
 
     user = db.query(User).filter(User.id == user_id, User.is_active == True).first()
-    if user is None:
+    if user is None or issued_before_password_change(payload, user):
         raise credentials_exception
     # Every change written through this request's session is attributed to this user (app.audit).
     set_actor(db, user.id, request.client.host if request.client else None)

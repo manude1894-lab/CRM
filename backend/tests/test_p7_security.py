@@ -64,10 +64,31 @@ def test_change_password(client, db):
     assert client.post(url, json={"current_password": "wrong", "new_password": "Better-pass-77"}, headers=h).status_code == 400
     r = client.post(url, json={"current_password": "admin123", "new_password": "weak"}, headers=h)
     assert r.status_code == 400 and "at least 10" in r.json()["detail"]
-    assert client.post(url, json={"current_password": "admin123", "new_password": "Better-pass-77"}, headers=h).status_code == 204
+    r = client.post(url, json={"current_password": "admin123", "new_password": "Better-pass-77"}, headers=h)
+    assert r.status_code == 200
+    assert client.get("/api/v1/auth/me", headers={"Authorization": f"Bearer {r.json()['access_token']}"}).status_code == 200
     db.refresh(u)
     assert verify_password("Better-pass-77", u.hashed_password) and u.password_changed_at is not None
     assert db.query(AuditLog).filter(AuditLog.action == "password_change").count() == 1
+
+
+def test_password_change_signs_out_the_other_sessions(client, db, make_user):
+    u = make_login_user(db)
+    other_tab = client.post(LOGIN, json={"email": u.email, "password": "Strong-pass-2026"}).json()
+    this_tab = client.post(LOGIN, json={"email": u.email, "password": "Strong-pass-2026"}).json()
+    bearer = lambda t: {"Authorization": f"Bearer {t}"}
+    r = client.post("/api/v1/auth/change-password", json={"current_password": "Strong-pass-2026", "new_password": "Better-pass-77"},
+                    headers=bearer(this_tab["access_token"]))
+    assert r.status_code == 200
+    assert client.get("/api/v1/auth/me", headers=bearer(other_tab["access_token"])).status_code == 401
+    assert client.post("/api/v1/auth/refresh", json={"refresh_token": other_tab["refresh_token"]}).status_code == 401
+    assert client.get("/api/v1/auth/me", headers=bearer(r.json()["access_token"])).status_code == 200
+    assert client.post("/api/v1/auth/refresh", json={"refresh_token": r.json()["refresh_token"]}).status_code == 200
+
+    # an administrator's reset ends the user's sessions too
+    admin = make_user("Ada", role=UserRole.ADMIN)
+    assert client.patch(f"/api/v1/users/{u.id}", json={"password": "Reset-pass-2026"}, headers=auth(admin)).status_code == 200
+    assert client.get("/api/v1/auth/me", headers=bearer(r.json()["access_token"])).status_code == 401
 
 
 def test_admin_cannot_set_a_weak_password(client, make_user):

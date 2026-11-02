@@ -27,12 +27,14 @@ def _create_token(
     token_type: str,
     secret_key: str,
 ) -> str:
-    expire = datetime.now(timezone.utc) + expires_delta
+    now = datetime.now(timezone.utc)
+    expire = now + expires_delta
     payload: dict[str, Any] = {
         "sub": subject,
         "role": role,
         "exp": int(expire.timestamp()),
-        "iat": int(datetime.now(timezone.utc).timestamp()),
+        "iat": int(now.timestamp()),
+        "iat_ms": int(now.timestamp() * 1000),
         "type": token_type,
     }
     return jwt.encode(payload, secret_key, algorithm=settings.JWT_ALGORITHM)
@@ -56,6 +58,17 @@ def create_refresh_token(user_id: int, role: str) -> str:
         token_type="refresh",
         secret_key=settings.JWT_REFRESH_SECRET_KEY,
     )
+
+
+def issued_before_password_change(payload: dict, user) -> bool:
+    """A password change (own or admin reset) ends every session that was open before it."""
+    changed = user.password_changed_at
+    if changed is None:
+        return False
+    if changed.tzinfo is None:
+        changed = changed.replace(tzinfo=timezone.utc)
+    issued_ms = payload.get("iat_ms") or int(payload.get("iat", 0)) * 1000
+    return issued_ms < int(changed.timestamp() * 1000)
 
 
 def decode_token(token: str, is_refresh: bool = False) -> dict:

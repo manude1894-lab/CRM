@@ -10,7 +10,7 @@ from app.schemas.user import ChangePasswordRequest
 from app.services import security_service
 from app.auth.security import hash_password
 from app.auth.security import (
-    verify_password, create_access_token, create_refresh_token, decode_token,
+    verify_password, create_access_token, create_refresh_token, decode_token, issued_before_password_change,
 )
 from app.auth.dependencies import get_current_user
 
@@ -51,7 +51,7 @@ def login(data: LoginRequest, request: Request, db: Session = Depends(get_db)):
     }
 
 
-@router.post("/change-password", status_code=status.HTTP_204_NO_CONTENT, summary="Change your own password")
+@router.post("/change-password", response_model=Token, summary="Change your own password")
 def change_password(data: ChangePasswordRequest, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     if not verify_password(data.current_password, user.hashed_password):
         raise HTTPException(status_code=400, detail="Your current password is not correct")
@@ -62,7 +62,13 @@ def change_password(data: ChangePasswordRequest, db: Session = Depends(get_db), 
     security_service.password_set(user)
     log_event(db, "password_change", f"{user.name} changed their password", subject_type="User", subject_id=user.id)
     db.commit()
-    return None
+    # Other sessions are signed out by the change; this one carries on with new tokens.
+    return {
+        "access_token": create_access_token(user.id, user.role.value),
+        "refresh_token": create_refresh_token(user.id, user.role.value),
+        "token_type": "bearer",
+        "user": user,
+    }
 
 
 @router.post("/refresh", response_model=Token, summary="Exchange refresh token for new tokens")
@@ -74,7 +80,7 @@ def refresh(data: RefreshTokenRequest, db: Session = Depends(get_db)):
         raise HTTPException(status_code=401, detail="Invalid refresh token")
 
     user = db.query(User).filter(User.id == user_id, User.is_active == True).first()
-    if not user:
+    if not user or issued_before_password_change(payload, user):
         raise HTTPException(status_code=401, detail="User not found or inactive")
 
     return {

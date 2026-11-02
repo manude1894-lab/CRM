@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { authApi } from "../api/endpoints";
 import { Modal, Field, Input } from "./ui";
 import { toast } from "../store/toast";
+import { useAuthStore } from "../store/auth";
 
 // Same rules as the server (security_service.password_problem) so the user sees them before saving.
 export const passwordProblem = (pw) => {
@@ -23,7 +24,9 @@ export default function ChangePasswordModal({ onClose, onChanged, reason }) {
     if (next !== confirm) return toast.error("The new passwords don't match");
     setBusy(true);
     try {
-      await authApi.changePassword(current, next);
+      // The change signs out every other session; this tab continues with the new tokens.
+      const { data } = await authApi.changePassword(current, next);
+      useAuthStore.getState().setTokens(data.access_token, data.refresh_token, data.user);
       toast.success("Password changed");
       onChanged?.();
       onClose();
