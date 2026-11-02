@@ -103,11 +103,12 @@ export default function ProspectsPage({ onNavigate } = {}) {
         </button>
         </>} />
 
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4 overflow-x-auto">
+      {/* Each column is at least 220px wide; on a narrow screen the board scrolls sideways instead of overlapping. */}
+      <div className="grid grid-cols-1 md:grid-cols-[repeat(5,minmax(220px,1fr))] gap-4 overflow-x-auto pb-2">
         {PROSPECT_STATUS_OPTIONS.map((col) => {
           const colItems = items.filter((p) => p.status === col);
           return (
-            <div key={col} className="min-w-[220px]">
+            <div key={col} className="min-w-0">
               <div className="flex items-center justify-between mb-2 px-1">
                 <span className="text-xs font-semibold text-gray-700">{col}</span>
                 <span className="text-xs text-gray-400 bg-gray-100 rounded-full px-2 py-0.5">{colItems.length}</span>
