@@ -25,7 +25,8 @@ import { selectableCodes, servicesForEntities } from "../../hooks/masterUtils";
 // Service lists are shown in alphabetical order (Triam UAT 26-10-2026).
 const alphabetical = (codes) => [...codes].sort((x, y) => x.localeCompare(y));
 
-const Section = ({ title, children, hasData, onSave, status, error, dirty }) => {
+// readOnly: the client is locked (submitted, approved without an amendment, exited) — fields are shown, not editable.
+const Section = ({ title, children, hasData, onSave, status, error, dirty, readOnly = false }) => {
   const [open, setOpen] = useState(!!hasData);
   return (
     <div className="mb-2 border border-gray-100 rounded-lg overflow-hidden">
@@ -40,7 +41,7 @@ const Section = ({ title, children, hasData, onSave, status, error, dirty }) => 
       </button>
       {open && (
         <div className="px-3 py-3">
-          {children}
+          {readOnly ? <fieldset disabled className="min-w-0">{children}</fieldset> : children}
           {onSave && (
             <div className="flex items-center gap-2 mt-3 pt-3 border-t border-gray-100">
               <button type="button" onClick={onSave} disabled={status === "saving" || dirty === false} title={dirty === false ? "No changes to save" : ""}
@@ -258,7 +259,7 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
     }
   };
 
-  const sectionProps = (key) => ({ onSave: locked ? undefined : () => saveSection(key), status: sectionStatus[key], error: sectionError[key], dirty: sectionDirty(key) });
+  const sectionProps = (key) => ({ onSave: locked ? undefined : () => saveSection(key), readOnly: locked, status: sectionStatus[key], error: sectionError[key], dirty: sectionDirty(key) });
   const today = new Date().toISOString().slice(0, 10);
 
   return (
@@ -282,6 +283,7 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
             temporary ID until Compliance approves it and the Client ID is issued.
           </div>
         )}
+        <fieldset disabled={locked} className="min-w-0">
         <Field label="Client Type">
           <Select value={form.account_type} onChange={set("account_type")}>
             <option>Corporate</option>
@@ -385,6 +387,7 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
         <Field label="Tags">
           <MultiSelect options={selectableCodes(tags.items, form.tags)} value={form.tags} onChange={setValue("tags")} />
         </Field>
+        </fieldset>
 
         <div className="flex items-center gap-2 mb-3 pb-3 border-b border-gray-100">
           <button type="button" onClick={() => saveSection("core", true)} disabled={locked || sectionStatus.core === "saving" || !sectionDirty("core")}
@@ -613,7 +616,7 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
             Compliance and the Approver (reviewing from Compliance Approval), editable by Compliance only. */}
         {showCdd && (
         <Section title="Customer Risk Assessment / KYC & AML (Compliance)" hasData={!!(form.risk_rating || form.cdd_completion_date)}
-          {...sectionProps("aml")} onSave={cddEditable ? () => saveSection("aml") : undefined}>
+          {...sectionProps("aml")} readOnly={false} onSave={cddEditable ? () => saveSection("aml") : undefined}>
           {!cddEditable && (
             <p className="text-xs text-gray-500 mb-2">
               {canCdd ? "Editable while the client is with Compliance." : "Completed by Compliance (MLRO) after the client is submitted."}

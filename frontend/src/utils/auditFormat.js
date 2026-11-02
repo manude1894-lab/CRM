@@ -52,6 +52,35 @@ export const ACTION_LABELS = {
   password_change: "Password changed",
   password_reset_request: "Password reset requested",
   password_reset: "Password reset",
+  // Prospects and the new-client approval flow
+  assign: "Assigned",
+  duplicate_override: "Duplicate name allowed",
+  submit: "Submitted for approval",
+  cdd_update: "CDD updated",
+  compliance_approve: "Compliance approved",
+  approve: "Approved",
+  reject: "Rejected",
+  withdraw: "Withdrawn",
+  // Existing clients: amendments and status
+  amend_start: "Amendment started",
+  amend_submit: "Amendment submitted",
+  amend_approve: "Amendment approved",
+  amend_reject: "Amendment rejected",
+  amend_withdraw: "Amendment withdrawn",
+  amend_discard: "Amendment discarded",
+  activate: "Activated",
+  deactivate: "Marked inactive",
+  reactivate: "Reactivated",
+  mark_exit: "Marked for exit",
+  cancel_exit: "Exit cancelled",
+  confirm_exit: "Exited",
+  // Documents and invoices
+  document_upload: "Document added",
+  document_delete: "Document removed",
+  invoice_request_draft: "Invoice request drafted",
+  invoice_request: "Invoice requested",
+  invoice_raise: "Invoice raised",
+  invoice_paid: "Invoice paid",
 };
 
 export function formatTimestamp(iso) {
