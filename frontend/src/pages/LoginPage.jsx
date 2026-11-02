@@ -17,7 +17,7 @@ const handedOverEmail = (() => {
 })();
 
 // The emailed reset link (/reset-password?token=…): the token is read once and taken out of the address bar.
-const resetToken = (() => {
+let resetToken = (() => {
   if (window.location.pathname !== "/reset-password") return "";
   const token = new URLSearchParams(window.location.search).get("token") || "";
   window.history.replaceState(null, "", "/");
@@ -37,6 +37,9 @@ export default function LoginPage() {
     catch { return ""; }
   });
   useEffect(() => { try { sessionStorage.removeItem("triam-idle-signout"); } catch { /* storage unavailable */ } }, []);
+  // The reset link's token belongs to this sign-in page only: after a later sign-out the page opens on Sign in.
+  const [token] = useState(resetToken);
+  useEffect(() => { resetToken = ""; }, []);
   const [loading, setLoading] = useState(false);
 
   const show = (next) => { setView(next); setError(""); setNotice(""); setPassword(""); setRepeat(""); };
@@ -46,8 +49,10 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
     try {
-      await authApi.forgotPassword(email.trim().toLowerCase());
-      setNotice("If the email is registered, a reset link is on its way. Your administrator has also been notified.");
+      const { data } = await authApi.forgotPassword(email.trim().toLowerCase());
+      setNotice(data?.email_sent
+        ? "If the email is registered, a reset link is on its way. Your administrator has also been notified."
+        : "Your administrator has been notified and will reset your password.");
     } catch (e) {
       setError(e.response?.data?.detail || "Could not send the reset link. Please try again.");
     } finally {
@@ -61,7 +66,7 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
     try {
-      await authApi.resetPassword(resetToken, password);
+      await authApi.resetPassword(token, password);
       show("signin");
       setNotice("Password changed. Sign in with your new password.");
     } catch (e) {

@@ -39,6 +39,8 @@ def test_compliance_sees_high_risk_countries_linked_to_the_client(client, db, ma
     db.commit()
     url = f"/api/v1/accounts/{acc.id}/country-risk"
     assert client.get(url, headers=auth(rm)).status_code == 403  # Compliance's view, not the RM's
+    cdd_only = make_user("Carl", business_role=make_role("CDD desk", ["client.cdd_edit", "view.all_clients"]))
+    assert client.get(url, headers=auth(cdd_only)).status_code == 200  # whoever fills in the CDD section sees it
     r = client.get(url, headers=auth(mlro))
     assert r.status_code == 200, r.text
     assert r.json() == [{"country": "Atlantis", "who": "Sea Co", "field": "Operating address"},

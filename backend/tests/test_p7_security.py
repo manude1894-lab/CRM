@@ -118,7 +118,16 @@ def test_security_headers(client):
     assert r.headers["X-Content-Type-Options"] == "nosniff" and r.headers["X-Frame-Options"] == "DENY"
 
 
-def test_forgot_password_link_works_once_and_tells_the_administrators(client, db, make_user, monkeypatch):
+@pytest.fixture()
+def reset_requests(engine, monkeypatch):
+    """Forgot-password work runs after the response in its own session: point it at the test database."""
+    from sqlalchemy.orm import sessionmaker
+    import app.database
+    monkeypatch.setattr(app.database, "SessionLocal", sessionmaker(bind=engine, autoflush=False, autocommit=False))
+    security_service._last_reset_request.clear()
+
+
+def test_forgot_password_link_works_once_and_tells_the_administrators(client, db, make_user, monkeypatch, reset_requests):
     from app.auth.security import create_reset_token
     from app.config import settings
     from app.models import Notification
@@ -131,8 +140,11 @@ def test_forgot_password_link_works_once_and_tells_the_administrators(client, db
     u = make_login_user(db)
 
     # the same answer whether or not the email exists
-    assert client.post("/api/v1/auth/forgot-password", json={"email": "nobody@example.com"}).status_code == 204
-    assert client.post("/api/v1/auth/forgot-password", json={"email": " Rita@Example.com "}).status_code == 204
+    unknown = client.post("/api/v1/auth/forgot-password", json={"email": "nobody@example.com"})
+    known = client.post("/api/v1/auth/forgot-password", json={"email": " Rita@Example.com "})
+    assert unknown.status_code == known.status_code == 200 and unknown.json() == known.json() == {"email_sent": True}
+    # a repeat within two minutes sends nothing more
+    assert client.post("/api/v1/auth/forgot-password", json={"email": "rita@example.com"}).status_code == 200
     [body] = [b for to, b in sent if to == u.email]
     assert "https://crm.example.com/reset-password?token=" in body
     assert db.query(Notification).filter(Notification.user_id == admin.id, Notification.notification_type == "password_reset_request").count() == 1
@@ -150,12 +162,13 @@ def test_forgot_password_link_works_once_and_tells_the_administrators(client, db
     assert client.get("/api/v1/auth/me", headers={"Authorization": f"Bearer {create_reset_token(u)}"}).status_code == 401
 
 
-def test_support_account_reset_request_stays_hidden(client, db, make_user):
+def test_support_account_reset_request_stays_hidden(client, db, make_user, reset_requests):
     from app.models import Notification
     admin = make_user("Ada", role=UserRole.ADMIN)
     support = make_login_user(db, email="support@example.com", role=UserRole.ADMIN)
     support.is_super_admin = True
     db.commit()
-    assert client.post("/api/v1/auth/forgot-password", json={"email": "support@example.com"}).status_code == 204
+    r = client.post("/api/v1/auth/forgot-password", json={"email": "support@example.com"})
+    assert r.status_code == 200 and r.json() == {"email_sent": False}  # email not set up in tests
     assert db.query(Notification).filter(Notification.user_id == admin.id).count() == 0
     assert db.query(AuditLog).filter(AuditLog.action == "password_reset_request").count() == 0

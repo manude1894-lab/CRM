@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import SystemHealthPanel from "../components/admin/SystemHealthPanel";
-import { usersApi, departmentsApi, rolesApi } from "../api/endpoints";
+import { authApi, usersApi, departmentsApi, rolesApi } from "../api/endpoints";
 import MasterDataPanel from "../components/admin/MasterDataPanel";
 import CountriesPanel from "../components/admin/CountriesPanel";
 import RolesPanel from "../components/admin/RolesPanel";
@@ -106,6 +106,12 @@ export default function AdminPage() {
         const { id, created_at, updated_at, permissions, person_id, linked_logins, ...patch } = payload;
         if (!patch.password) delete patch.password;
         await usersApi.update(form.id, patch);
+        // A new password ends every earlier session; an administrator who changed their own carries on signed in.
+        const me = useAuthStore.getState();
+        if (patch.password && me.user?.id === form.id) {
+          const data = await authApi.login(patch.email || me.user.email, patch.password);
+          me.setTokens(data.access_token, data.refresh_token, data.user);
+        }
       }
       setModal(null); load();
     } catch (e) {

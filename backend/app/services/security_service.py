@@ -79,9 +79,19 @@ def password_set(user: User) -> None:
 
 # ─── Forgotten password ─────────────────────────────────────────────────────
 
+RESET_REQUEST_GAP_SECONDS = 120
+_last_reset_request: dict[int, float] = {}
+
+
+def reset_emails_enabled() -> bool:
+    return bool(settings.SMTP_ENABLED and settings.APP_URL)
+
+
 def request_password_reset(db: Session, email: str) -> None:
     """Email a one-time reset link (when email is set up) and tell the administrators, who can also reset
-    it from Admin → Users. The caller always gets the same answer, so it never reveals which emails exist."""
+    it from Admin → Users. Runs after the response is sent, so the answer is the same and as fast for any
+    email; at most one request per account every two minutes is acted on."""
+    import time
     from app.audit import log_event
     from app.auth.security import create_reset_token
     from app.services import notification_service
@@ -89,7 +99,11 @@ def request_password_reset(db: Session, email: str) -> None:
     user = find_by_email(db, email)
     if not user or not user.is_active:
         return
-    if settings.SMTP_ENABLED and settings.APP_URL:
+    now = time.monotonic()
+    if now - _last_reset_request.get(user.id, -RESET_REQUEST_GAP_SECONDS) < RESET_REQUEST_GAP_SECONDS:
+        return
+    _last_reset_request[user.id] = now
+    if reset_emails_enabled():
         link = f"{settings.APP_URL.rstrip('/')}/reset-password?token={create_reset_token(user)}"
         notification_service._send_email_best_effort(
             user.email, "TRIAM: reset your password",
@@ -113,14 +127,14 @@ def request_password_reset(db: Session, email: str) -> None:
 def reset_password(db: Session, token: str, new_password: str) -> None:
     from fastapi import HTTPException
     from app.audit import log_event
-    from app.auth.security import _password_stamp, hash_password, reset_token_user_id
+    from app.auth.security import password_stamp, hash_password, reset_token_user_id
     expired = HTTPException(status_code=400, detail="This reset link has expired or was already used. Ask for a new one.")
     try:
         user_id, stamp = reset_token_user_id(token)
     except ValueError:
         raise expired
     user = db.query(User).filter(User.id == user_id, User.is_active == True).first()  # noqa: E712
-    if not user or stamp != _password_stamp(user):
+    if not user or stamp != password_stamp(user):
         raise expired
     assert_password_ok(new_password, user.email)
     user.hashed_password = hash_password(new_password)

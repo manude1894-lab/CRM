@@ -1,10 +1,11 @@
 import React, { useEffect, useRef, useState } from "react";
 import { documentsApi } from "../../api/endpoints";
 import { Icon, Spinner } from "../ui";
-import { ext, previewKind } from "../../utils/preview";
+import { IMAGE_MIME, ext, neutralizeDocument, previewKind } from "../../utils/preview";
 
 // The file is fetched with the user's sign-in and shown here; the bytes are typed by the CRM (never by the
-// upload), so a file can only be shown as a PDF, a picture, text or a Word document — nothing runs.
+// upload), so a file can only be shown as a PDF, a picture, text or a Word document. A Word document is drawn
+// without its embedded HTML parts, and its links are cleaned, so nothing in an uploaded file can run.
 export default function DocumentPreview({ doc, onClose }) {
   const kind = previewKind(doc.content_type, doc.filename);
   const [url, setUrl] = useState(null);
@@ -26,11 +27,13 @@ export default function DocumentPreview({ doc, onClose }) {
           const { renderAsync } = await import("docx-preview");
           if (cancelled) return;
           setLoading(false);
-          await renderAsync(data, docxRef.current, undefined, { inWrapper: true, ignoreLastRenderedPageBreak: true });
+          await renderAsync(data, docxRef.current, undefined,
+            { inWrapper: true, ignoreLastRenderedPageBreak: true, renderAltChunks: false, renderComments: false });
+          if (!cancelled && docxRef.current) neutralizeDocument(docxRef.current);
           return;
         } else {
           const type = kind === "pdf" ? "application/pdf"
-            : /^image\/(png|jpe?g|gif|webp|bmp)$/.test(data.type) ? data.type
+            : IMAGE_MIME.test(data.type) ? data.type
             : `image/${ext(doc.filename) === "jpg" ? "jpeg" : ext(doc.filename)}`;
           objectUrl = URL.createObjectURL(new Blob([data], { type }));
           setUrl(objectUrl);

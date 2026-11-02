@@ -1,5 +1,5 @@
 """Auth router: login, token refresh, current user."""
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from app.audit import set_actor, log_event
@@ -71,11 +71,21 @@ def change_password(data: ChangePasswordRequest, db: Session = Depends(get_db), 
     }
 
 
-@router.post("/forgot-password", status_code=status.HTTP_204_NO_CONTENT, summary="Ask for a password reset link")
-def forgot_password(data: ForgotPasswordRequest, request: Request, db: Session = Depends(get_db)):
-    set_actor(db, None, request.client.host if request.client else None)
-    security_service.request_password_reset(db, data.email)
-    return None
+@router.post("/forgot-password", summary="Ask for a password reset link")
+def forgot_password(data: ForgotPasswordRequest, background: BackgroundTasks):
+    # The lookup and any emails happen after the response, in their own session: every email gets the
+    # same, immediate answer. email_sent says whether reset emails are set up at all (not per user).
+    background.add_task(_forgot_password_task, data.email)
+    return {"email_sent": security_service.reset_emails_enabled()}
+
+
+def _forgot_password_task(email: str) -> None:
+    from app.database import SessionLocal
+    db = SessionLocal()
+    try:
+        security_service.request_password_reset(db, email)
+    finally:
+        db.close()
 
 
 @router.post("/reset-password", status_code=status.HTTP_204_NO_CONTENT, summary="Set a new password from a reset link")

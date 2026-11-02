@@ -63,10 +63,10 @@ def create_refresh_token(user_id: int, role: str) -> str:
 def issued_before_password_change(payload: dict, user) -> bool:
     """A password change (own or admin reset) ends every session that was open before it."""
     issued_ms = payload.get("iat_ms") or int(payload.get("iat", 0)) * 1000
-    return issued_ms < _password_stamp(user)
+    return issued_ms < password_stamp(user)
 
 
-def _password_stamp(user) -> int:
+def password_stamp(user) -> int:
     changed = user.password_changed_at
     if changed is None:
         return 0
@@ -79,7 +79,7 @@ def create_reset_token(user) -> str:
     """A password-reset link token. It carries the password's current stamp, so it works once:
     any password change, including this reset, makes it invalid."""
     now = datetime.now(timezone.utc)
-    payload = {"sub": str(user.id), "type": "reset", "pwd": _password_stamp(user), "iat": int(now.timestamp()),
+    payload = {"sub": str(user.id), "type": "reset", "pwd": password_stamp(user), "iat": int(now.timestamp()),
                "exp": int((now + timedelta(minutes=settings.PASSWORD_RESET_MINUTES)).timestamp())}
     return jwt.encode(payload, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
 

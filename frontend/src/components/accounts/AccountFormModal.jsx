@@ -157,7 +157,10 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
   // High-risk countries linked to the client and its parties, shown beside the CDD/AML risk level.
   const [riskLinks, setRiskLinks] = useState([]);
   useEffect(() => {
-    if (showCdd && form._id) accountsApi.countryRisk(form._id).then(setRiskLinks).catch(() => setRiskLinks([]));
+    let current = true;
+    setRiskLinks([]);
+    if (showCdd && form._id) accountsApi.countryRisk(form._id).then((links) => current && setRiskLinks(links)).catch(() => {});
+    return () => { current = false; };
   }, [showCdd, form._id, refreshKey]);
 
   const set = (key) => (e) => setForm({ ...form, [key]: e.target.value });
