@@ -15,6 +15,7 @@ import ReportsPage from "./pages/ReportsPage";
 import AdminPage from "./pages/AdminPage";
 import ApprovalsPage from "./pages/ApprovalsPage";
 import ChangePasswordModal from "./components/ChangePasswordModal";
+import IdleSignOut from "./components/IdleSignOut";
 import { ROLE_LABEL, fmtToday } from "./utils/constants";
 import { formatTimestamp } from "./utils/auditFormat";
 
@@ -194,6 +195,7 @@ export default function App() {
 
       <ToastHost />
       <ConfirmDialogHost />
+      <IdleSignOut />
     </div>
   );
 }

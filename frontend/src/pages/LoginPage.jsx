@@ -1,8 +1,9 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { authApi } from "../api/endpoints";
 import { useAuthStore } from "../store/auth";
 import { Input } from "../components/ui";
 import { passwordProblem } from "../components/ChangePasswordModal";
+import { IDLE_MINUTES } from "../components/IdleSignOut";
 
 // Opened in a new tab from another of the person's logins: that login's email is handed over through
 // local storage (read once, within a minute) so it never appears in the address bar.
@@ -30,7 +31,12 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [repeat, setRepeat] = useState("");
   const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
+  // Signed out for inactivity (IdleSignOut): said once, on the sign-in page.
+  const [notice, setNotice] = useState(() => {
+    try { return sessionStorage.getItem("triam-idle-signout") ? `You were signed out after ${IDLE_MINUTES} minutes without activity.` : ""; }
+    catch { return ""; }
+  });
+  useEffect(() => { try { sessionStorage.removeItem("triam-idle-signout"); } catch { /* storage unavailable */ } }, []);
   const [loading, setLoading] = useState(false);
 
   const show = (next) => { setView(next); setError(""); setNotice(""); setPassword(""); setRepeat(""); };
