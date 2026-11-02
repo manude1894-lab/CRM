@@ -6,10 +6,10 @@ import { reasonDialog } from "../../store/confirm";
 import { useMasters } from "../../hooks/useMasters";
 import { selectableCodes } from "../../hooks/masterUtils";
 import { fmtDate } from "../../utils/constants";
+import DocumentPreview from "./DocumentPreview";
 
 const fmtBytes = (b) =>
   b == null ? "" : b < 1024 ? `${b} B` : b < 1048576 ? `${(b / 1024).toFixed(0)} KB` : `${(b / 1048576).toFixed(1)} MB`;
-const isViewable = (ct) => /^(application\/pdf|image\/)/i.test(ct || "");
 
 const STAGE = {
   Draft: { style: "bg-blue-50 text-blue-700", note: "Documents can be added and removed while the client is being prepared." },
@@ -37,6 +37,7 @@ export default function ClientDocumentsFolder({ accountId, onChange, onboarding 
   const [linkTitle, setLinkTitle] = useState("");
   const [selectedParty, setSelectedParty] = useState("");
   const [openCats, setOpenCats] = useState({});
+  const [previewing, setPreviewing] = useState(null);
   const fileRef = useRef(null);
   const cats = useMasters("document_category", []);
 
@@ -125,8 +126,8 @@ export default function ClientDocumentsFolder({ accountId, onChange, onboarding 
             <Icon name="link" size={12} className="flex-shrink-0" /><span className="truncate">{d.filename}</span>
           </a>
         ) : (
-          <button onClick={() => documentsApi.download(d.id, d.filename)} className="flex items-center gap-1.5 text-xs text-brand-600 hover:underline min-w-0">
-            <Icon name="download" size={12} className="flex-shrink-0" /><span className="truncate">{d.filename}</span>
+          <button onClick={() => setPreviewing(d)} className="flex items-center gap-1.5 text-xs text-brand-600 hover:underline min-w-0">
+            <Icon name="view" size={12} className="flex-shrink-0" /><span className="truncate">{d.filename}</span>
           </button>
         )}
         <div className="text-[10px] text-gray-400">
@@ -136,9 +137,9 @@ export default function ClientDocumentsFolder({ accountId, onChange, onboarding 
         </div>
       </div>
       <div className="flex items-center gap-1 flex-shrink-0">
-        {!d.link_url && isViewable(d.content_type) && (
-          <button onClick={() => documentsApi.view(d.id)} title="View" className="p-1 rounded hover:bg-brand-50 text-gray-400 hover:text-brand-600">
-            <Icon name="view" size={13} />
+        {!d.link_url && (
+          <button onClick={() => documentsApi.download(d.id, d.filename)} title="Download" className="p-1 rounded hover:bg-brand-50 text-gray-400 hover:text-brand-600">
+            <Icon name="download" size={13} />
           </button>
         )}
         {d.can_delete
@@ -156,6 +157,7 @@ export default function ClientDocumentsFolder({ accountId, onChange, onboarding 
 
   return (
     <div className="space-y-3">
+      {previewing && <DocumentPreview doc={previewing} onClose={() => setPreviewing(null)} />}
       <div className="flex flex-wrap items-center gap-2 text-xs">
         {!partyId && <>
           <span className="text-gray-500">Client folder</span>

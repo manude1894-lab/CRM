@@ -6,7 +6,7 @@ from app.audit import set_actor, log_event
 from app.database import get_db
 from app.models import User
 from app.schemas import LoginRequest, Token, RefreshTokenRequest, UserRead
-from app.schemas.user import ChangePasswordRequest
+from app.schemas.user import ChangePasswordRequest, ForgotPasswordRequest, ResetPasswordRequest
 from app.services import security_service
 from app.auth.security import hash_password
 from app.auth.security import (
@@ -69,6 +69,20 @@ def change_password(data: ChangePasswordRequest, db: Session = Depends(get_db), 
         "token_type": "bearer",
         "user": user,
     }
+
+
+@router.post("/forgot-password", status_code=status.HTTP_204_NO_CONTENT, summary="Ask for a password reset link")
+def forgot_password(data: ForgotPasswordRequest, request: Request, db: Session = Depends(get_db)):
+    set_actor(db, None, request.client.host if request.client else None)
+    security_service.request_password_reset(db, data.email)
+    return None
+
+
+@router.post("/reset-password", status_code=status.HTTP_204_NO_CONTENT, summary="Set a new password from a reset link")
+def reset_password(data: ResetPasswordRequest, request: Request, db: Session = Depends(get_db)):
+    set_actor(db, None, request.client.host if request.client else None)
+    security_service.reset_password(db, data.token, data.new_password)
+    return None
 
 
 @router.post("/refresh", response_model=Token, summary="Exchange refresh token for new tokens")

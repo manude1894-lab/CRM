@@ -42,6 +42,9 @@ class Settings(BaseSettings):
     SMTP_FROM_EMAIL: str = "no-reply@ezeetechgroup.com"
     SMTP_FROM_NAME: str = "TRIAM"
     SMTP_USE_TLS: bool = True
+    # The CRM's web address, used in emailed links (password reset), e.g. https://crm.asktriam.com
+    APP_URL: str = ""
+    PASSWORD_RESET_MINUTES: int = 30
 
     # SMS notifications (BRD §17) — provider to be chosen by Triam; off until configured.
     SMS_ENABLED: bool = False

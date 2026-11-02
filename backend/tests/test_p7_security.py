@@ -116,3 +116,46 @@ def test_health_checks_admin_only_and_flag_default_admin_password(client, db, ma
 def test_security_headers(client):
     r = client.get("/health")
     assert r.headers["X-Content-Type-Options"] == "nosniff" and r.headers["X-Frame-Options"] == "DENY"
+
+
+def test_forgot_password_link_works_once_and_tells_the_administrators(client, db, make_user, monkeypatch):
+    from app.auth.security import create_reset_token
+    from app.config import settings
+    from app.models import Notification
+    from app.services import notification_service
+    sent = []
+    monkeypatch.setattr(settings, "SMTP_ENABLED", True)
+    monkeypatch.setattr(settings, "APP_URL", "https://crm.example.com/")
+    monkeypatch.setattr(notification_service, "_send_email_best_effort", lambda to, subject, body: sent.append((to, body)))
+    admin = make_user("Ada", role=UserRole.ADMIN)
+    u = make_login_user(db)
+
+    # the same answer whether or not the email exists
+    assert client.post("/api/v1/auth/forgot-password", json={"email": "nobody@example.com"}).status_code == 204
+    assert client.post("/api/v1/auth/forgot-password", json={"email": " Rita@Example.com "}).status_code == 204
+    [body] = [b for to, b in sent if to == u.email]
+    assert "https://crm.example.com/reset-password?token=" in body
+    assert db.query(Notification).filter(Notification.user_id == admin.id, Notification.notification_type == "password_reset_request").count() == 1
+
+    token = body.split("token=")[1].split()[0]
+    url = "/api/v1/auth/reset-password"
+    assert client.post(url, json={"token": token, "new_password": "weak"}).status_code == 400
+    assert client.post(url, json={"token": token, "new_password": "Fresh-pass-2026"}).status_code == 204
+    assert client.post(LOGIN, json={"email": u.email, "password": "Fresh-pass-2026"}).status_code == 200
+    # used once: the same link is refused afterwards, and so is a made-up one
+    r = client.post(url, json={"token": token, "new_password": "Other-pass-2026"})
+    assert r.status_code == 400 and "expired or was already used" in r.json()["detail"]
+    assert client.post(url, json={"token": "nonsense", "new_password": "Other-pass-2026"}).status_code == 400
+    # a reset link is not a sign-in token
+    assert client.get("/api/v1/auth/me", headers={"Authorization": f"Bearer {create_reset_token(u)}"}).status_code == 401
+
+
+def test_support_account_reset_request_stays_hidden(client, db, make_user):
+    from app.models import Notification
+    admin = make_user("Ada", role=UserRole.ADMIN)
+    support = make_login_user(db, email="support@example.com", role=UserRole.ADMIN)
+    support.is_super_admin = True
+    db.commit()
+    assert client.post("/api/v1/auth/forgot-password", json={"email": "support@example.com"}).status_code == 204
+    assert db.query(Notification).filter(Notification.user_id == admin.id).count() == 0
+    assert db.query(AuditLog).filter(AuditLog.action == "password_reset_request").count() == 0

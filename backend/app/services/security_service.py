@@ -77,6 +77,59 @@ def password_set(user: User) -> None:
     user.locked_until = None
 
 
+# ─── Forgotten password ─────────────────────────────────────────────────────
+
+def request_password_reset(db: Session, email: str) -> None:
+    """Email a one-time reset link (when email is set up) and tell the administrators, who can also reset
+    it from Admin → Users. The caller always gets the same answer, so it never reveals which emails exist."""
+    from app.audit import log_event
+    from app.auth.security import create_reset_token
+    from app.services import notification_service
+    from app.services.user_service import find_by_email
+    user = find_by_email(db, email)
+    if not user or not user.is_active:
+        return
+    if settings.SMTP_ENABLED and settings.APP_URL:
+        link = f"{settings.APP_URL.rstrip('/')}/reset-password?token={create_reset_token(user)}"
+        notification_service._send_email_best_effort(
+            user.email, "TRIAM: reset your password",
+            f"Hello {user.name},\n\nUse this link to choose a new password. It works once and expires in "
+            f"{settings.PASSWORD_RESET_MINUTES} minutes:\n\n{link}\n\nIf you did not ask for this, ignore this email.")
+    if user.is_super_admin:
+        return  # the support account is never shown to Triam's administrators
+    log_event(db, "password_reset_request", f"{user.name} asked for a password reset", user_id=user.id,
+              subject_type="User", subject_id=user.id)
+    db.commit()
+    message = f"{user.name} ({user.email}) asked for a password reset"
+    from app.models import Notification
+    for admin in db.query(User).filter(User.role == UserRole.ADMIN, User.is_active == True,  # noqa: E712
+                                       User.is_super_admin == False, User.id != user.id).all():  # noqa: E712
+        already = db.query(Notification).filter(Notification.user_id == admin.id, Notification.message == message,
+                                                Notification.read_at.is_(None)).first()
+        if not already:
+            notification_service.notify_user(db, admin.id, message, "password_reset_request")
+
+
+def reset_password(db: Session, token: str, new_password: str) -> None:
+    from fastapi import HTTPException
+    from app.audit import log_event
+    from app.auth.security import _password_stamp, hash_password, reset_token_user_id
+    expired = HTTPException(status_code=400, detail="This reset link has expired or was already used. Ask for a new one.")
+    try:
+        user_id, stamp = reset_token_user_id(token)
+    except ValueError:
+        raise expired
+    user = db.query(User).filter(User.id == user_id, User.is_active == True).first()  # noqa: E712
+    if not user or stamp != _password_stamp(user):
+        raise expired
+    assert_password_ok(new_password, user.email)
+    user.hashed_password = hash_password(new_password)
+    password_set(user)
+    if not user.is_super_admin:
+        log_event(db, "password_reset", f"{user.name} reset their password", user_id=user.id, subject_type="User", subject_id=user.id)
+    db.commit()
+
+
 # ─── Go-live health check (Admin → System Health) ───────────────────────────
 
 def _check(key, label, ok, fix, severity="high", detail=None):
@@ -106,6 +159,9 @@ def system_health(db: Session) -> list[dict]:
         _check("smtp", "Email notifications switched on", settings.SMTP_ENABLED,
                "Set SMTP_ENABLED=true with the Triam mailbox settings (SMTP_HOST, SMTP_PORT, SMTP_USERNAME, "
                "SMTP_PASSWORD, SMTP_FROM_EMAIL).", severity="medium"),
+        _check("app_url", "Password reset emails can link to the CRM", bool(settings.APP_URL),
+               "Set APP_URL to the CRM's web address on the hosting platform (e.g. https://crm.asktriam.com).",
+               severity="medium"),
         _check("sms", "SMS notifications switched on", settings.SMS_ENABLED,
                "Waiting for Triam's choice of SMS provider (SMS_ENABLED, SMS_PROVIDER, SMS_API_URL, SMS_API_KEY).", severity="low"),
         _check("backups", "Daily database backups confirmed", False,

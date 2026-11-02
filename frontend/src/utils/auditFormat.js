@@ -49,6 +49,9 @@ export const ACTION_LABELS = {
   delete: "Deleted",
   login: "Logged in",
   login_failed: "Failed login",
+  password_change: "Password changed",
+  password_reset_request: "Password reset requested",
+  password_reset: "Password reset",
 };
 
 export function formatTimestamp(iso) {

@@ -62,13 +62,37 @@ def create_refresh_token(user_id: int, role: str) -> str:
 
 def issued_before_password_change(payload: dict, user) -> bool:
     """A password change (own or admin reset) ends every session that was open before it."""
+    issued_ms = payload.get("iat_ms") or int(payload.get("iat", 0)) * 1000
+    return issued_ms < _password_stamp(user)
+
+
+def _password_stamp(user) -> int:
     changed = user.password_changed_at
     if changed is None:
-        return False
+        return 0
     if changed.tzinfo is None:
         changed = changed.replace(tzinfo=timezone.utc)
-    issued_ms = payload.get("iat_ms") or int(payload.get("iat", 0)) * 1000
-    return issued_ms < int(changed.timestamp() * 1000)
+    return int(changed.timestamp() * 1000)
+
+
+def create_reset_token(user) -> str:
+    """A password-reset link token. It carries the password's current stamp, so it works once:
+    any password change, including this reset, makes it invalid."""
+    now = datetime.now(timezone.utc)
+    payload = {"sub": str(user.id), "type": "reset", "pwd": _password_stamp(user), "iat": int(now.timestamp()),
+               "exp": int((now + timedelta(minutes=settings.PASSWORD_RESET_MINUTES)).timestamp())}
+    return jwt.encode(payload, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
+
+
+def reset_token_user_id(token: str) -> tuple[int, int]:
+    """(user id, password stamp) from a reset token, or ValueError."""
+    try:
+        payload = jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
+        if payload.get("type") != "reset":
+            raise ValueError("not a reset token")
+        return int(payload["sub"]), int(payload["pwd"])
+    except (JWTError, KeyError, TypeError) as e:
+        raise ValueError(f"Invalid token: {e}")
 
 
 def decode_token(token: str, is_refresh: bool = False) -> dict:

@@ -5,6 +5,8 @@ export const authApi = {
   login: (email, password) => api.post("/auth/login", { email, password }).then((r) => r.data),
   changePassword: (current_password, new_password) => api.post("/auth/change-password", { current_password, new_password }),
   me: () => api.get("/auth/me").then((r) => r.data),
+  forgotPassword: (email) => api.post("/auth/forgot-password", { email }),
+  resetPassword: (token, new_password) => api.post("/auth/reset-password", { token, new_password }),
 };
 
 // ─── Users ─────────────────────────────────────────────────────────────
@@ -142,14 +144,8 @@ export const documentsApi = {
     a.remove();
     window.URL.revokeObjectURL(url);
   },
-  view: async (id) => {
-    // Same bytes as download; window.open renders them by MIME type (blob URL has
-    // no Content-Disposition). Works for PDFs and images.
-    const res = await api.get(`/documents/${id}/download`, { responseType: "blob" });
-    const url = window.URL.createObjectURL(res.data);
-    window.open(url, "_blank", "noopener");
-    setTimeout(() => window.URL.revokeObjectURL(url), 60000);
-  },
+  // The file's bytes, for the in-CRM preview
+  content: (id) => api.get(`/documents/${id}/download`, { responseType: "blob" }).then((r) => r.data),
 };
 
 // ─── Notifications ─────────────────────────────────────────────────────

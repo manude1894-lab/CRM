@@ -73,6 +73,15 @@ class ChangePasswordRequest(BaseModel):
     new_password: str = Field(..., max_length=100)
 
 
+class ForgotPasswordRequest(BaseModel):
+    email: str = Field(..., max_length=255)
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str = Field(..., max_length=2000)
+    new_password: str = Field(..., max_length=100)
+
+
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str
