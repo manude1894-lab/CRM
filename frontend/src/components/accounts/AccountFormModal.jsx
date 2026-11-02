@@ -153,6 +153,11 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
   const canApprove = useAuthStore((s) => s.can("client.approve"));
   const canFinalApprove = useAuthStore((s) => s.can("client.final_approve"));
   const showCdd = canCdd || canApprove || canFinalApprove;
+  // High-risk countries linked to the client and its parties, shown beside the CDD/AML risk level.
+  const [riskLinks, setRiskLinks] = useState([]);
+  useEffect(() => {
+    if (showCdd && form._id) accountsApi.countryRisk(form._id).then(setRiskLinks).catch(() => setRiskLinks([]));
+  }, [showCdd, form._id, refreshKey]);
 
   const set = (key) => (e) => setForm({ ...form, [key]: e.target.value });
   const setChecked = (key) => (e) => setForm({ ...form, [key]: e.target.checked });
@@ -613,6 +618,14 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
             <p className="text-xs text-gray-500 mb-2">
               {canCdd ? "Editable while the client is with Compliance." : "Completed by Compliance (MLRO) after the client is submitted."}
             </p>
+          )}
+          {riskLinks.length > 0 && (
+            <div className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2">
+              <div className="text-xs font-semibold text-red-700 mb-1">High-risk countries</div>
+              <ul className="text-xs text-red-800 space-y-0.5">
+                {riskLinks.map((l, i) => <li key={i}><span className="font-semibold">{l.country}</span> · {l.who} · {l.field}</li>)}
+              </ul>
+            </div>
           )}
           <fieldset disabled={!cddEditable} className="grid grid-cols-2 gap-3 disabled:opacity-70">
             <Field label="CDD/AML Risk Level">

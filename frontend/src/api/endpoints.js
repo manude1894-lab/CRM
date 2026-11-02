@@ -167,6 +167,7 @@ export const accountsApi = {
   lookup: (q, excludeId) => api.get("/accounts/lookup", { params: { q, exclude_id: excludeId || undefined } }).then((r) => r.data),
   // Mandatory fields still missing (enforced at Submit)
   completeness: (id) => api.get(`/accounts/${id}/completeness`).then((r) => r.data),
+  countryRisk: (id) => api.get(`/accounts/${id}/country-risk`).then((r) => r.data),
   checkDuplicate: (name, excludeId) => api.get("/accounts/check-duplicate", { params: { name, exclude_id: excludeId || undefined } }).then((r) => r.data),
   bulkUpdate: (payload) => api.patch("/accounts/bulk", payload).then((r) => r.data),
 };

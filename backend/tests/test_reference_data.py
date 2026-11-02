@@ -27,3 +27,19 @@ def test_admin_changes_country_code_and_risk_with_history(client, db, make_user)
     assert "risk level Low → High" in entry.summary
     db.refresh(c)
     assert c.score == 5
+
+
+def test_compliance_sees_high_risk_countries_linked_to_the_client(client, db, make_user, make_account, make_role):
+    from app.models import AccountParty
+    db.add_all([CountryRisk(name="Atlantis", risk_level="High", score=5), CountryRisk(name="Lemuria", risk_level="Low", score=1)])
+    rm = make_user("Rita")
+    mlro = make_user("Mia", business_role=make_role("MLRO", ["client.approve", "view.all_clients"]))
+    acc = make_account(name="Sea Co", spoc=rm, country="Lemuria", operating_address={"city": "X", "country": "atlantis"})
+    db.add(AccountParty(account_id=acc.id, party_role="Shareholder", full_name="Ned", nationality="Atlantis", country_of_residence="Lemuria"))
+    db.commit()
+    url = f"/api/v1/accounts/{acc.id}/country-risk"
+    assert client.get(url, headers=auth(rm)).status_code == 403  # Compliance's view, not the RM's
+    r = client.get(url, headers=auth(mlro))
+    assert r.status_code == 200, r.text
+    assert r.json() == [{"country": "Atlantis", "who": "Sea Co", "field": "Operating address"},
+                        {"country": "Atlantis", "who": "Shareholder: Ned", "field": "Nationality"}]

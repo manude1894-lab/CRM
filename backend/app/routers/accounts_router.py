@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from typing import Optional
 
 from app.database import get_db
-from app.auth.dependencies import get_current_user, require_admin, require_rm
+from app.auth.dependencies import get_current_user, require_admin, require_rm, require_any_permission
 from app.models import User
 from app.schemas import AccountCreate, AccountRead, AccountUpdate, AccountImportRequest, AccountImportResponse
 from app.schemas.account import DuplicateMatch, AccountBulkUpdateRequest, BulkUpdateResult
@@ -51,6 +51,13 @@ def bulk_update_accounts(data: AccountBulkUpdateRequest, db: Session = Depends(g
 @router.get("/{account_id}", response_model=AccountRead)
 def get_account(account_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     return account_service.get_account(db, account_id, user)
+
+
+@router.get("/{account_id}/country-risk", summary="High-risk countries linked to the client and its parties (Compliance)")
+def account_country_risk(account_id: int, db: Session = Depends(get_db),
+                         user: User = Depends(require_any_permission("client.approve", "client.final_approve"))):
+    from app.services import countries_service
+    return countries_service.high_risk_links(db, account_service.get_account(db, account_id, user))
 
 
 @router.get("/{account_id}/completeness", summary="Mandatory fields still missing")

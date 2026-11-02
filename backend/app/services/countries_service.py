@@ -82,3 +82,31 @@ def update_country(db: Session, country_id: int, data: CountryUpdate) -> Country
     db.commit()
     db.refresh(c)
     return c
+
+
+def high_risk_links(db: Session, account) -> list[dict]:
+    """Where the client and its parties touch a High-risk country (registration, addresses, nationality,
+    residence, birth), for Compliance when setting the CDD/AML risk level."""
+    high = {c.name.strip().lower(): c.name for c in db.query(CountryRisk).filter(CountryRisk.risk_level == "High")}
+    found = []
+
+    def add(country, who, field):
+        name = high.get((country or "").strip().lower())
+        if name:
+            found.append({"country": name, "who": who, "field": field})
+
+    client = account.company_name
+    add(account.country, client, "Country of registration")
+    for field, label in (("registered_address", "Registered address"), ("operating_address", "Operating address"),
+                         ("residential_address", "Residential address")):
+        add((getattr(account, field) or {}).get("country"), client, label)
+    add(account.nationality, client, "Nationality")
+    add(account.country_of_residence, client, "Country of residence")
+    add(account.country_of_birth, client, "Country of birth")
+    for p in account.parties:
+        who = f"{p.party_role}: {p.full_name}"
+        add(p.country_of_incorp_or_birth, who, "Country of incorporation / birth")
+        add(p.nationality, who, "Nationality")
+        add(p.country_of_residence, who, "Country of residence")
+        add((p.residential_address or {}).get("country"), who, "Residential address")
+    return found
