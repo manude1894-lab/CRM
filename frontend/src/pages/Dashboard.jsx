@@ -2,7 +2,7 @@ import { formatTimestamp } from "../utils/auditFormat";
 import React, { useEffect, useState } from "react";
 import { dashboardApi, accountsApi } from "../api/endpoints";
 import { Icon, Spinner, ErrorBanner } from "../components/ui";
-import { fmtDate } from "../utils/constants";
+import { fmtDate, personLabel } from "../utils/constants";
 import { useAuthStore } from "../store/auth";
 
 const DUE_SOON_DAYS = 60;
@@ -223,7 +223,7 @@ export default function Dashboard({ onNavigate = () => {} } = {}) {
             <ul className="divide-y divide-gray-50">
               {people.map((r) => (
                 <li key={r.user_id} className="flex items-center gap-3 px-4 py-2.5">
-                  <span className="w-40 min-w-0 truncate text-sm font-medium text-gray-800">{r.name}</span>
+                  <span className="w-40 min-w-0 truncate text-sm font-medium text-gray-800" title={personLabel(r, people)}>{personLabel(r, people)}</span>
                   <span className="flex-1 hidden sm:block">
                     <span className="block h-1.5 rounded-full bg-gray-100 overflow-hidden">
                       <span className="block h-full rounded-full bg-brand-500" style={{ width: `${(r.total / maxClients) * 100}%` }} />

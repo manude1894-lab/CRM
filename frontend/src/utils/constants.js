@@ -39,6 +39,16 @@ export const ROLE_LABEL = {
 // central desks (Compliance, Approver, Accounts, Inquiry, Prospecting Coordinator) or administrators.
 export const isRelationshipManager = (u) => u.role === "rm" && u.handles_clients !== false && u.is_active !== false;
 
+/** A person's name as shown in a list; when someone else in the list has the same name (one person's
+ *  several logins, or namesakes), the role is added: "S T Krishna (Sales Manager)". */
+export const personLabel = (u, people = []) => {
+  if (!u) return "";
+  const id = u.id ?? u.user_id;
+  const name = (u.name || "").trim().toLowerCase();
+  const twin = people.some((o) => (o.id ?? o.user_id) !== id && (o.name || "").trim().toLowerCase() === name);
+  return twin && u.business_role_name ? `${u.name.trim()} (${u.business_role_name})` : u.name;
+};
+
 export const USER_TYPE_LABEL = {
   rm: "Standard user",
   admin: "Administrator",

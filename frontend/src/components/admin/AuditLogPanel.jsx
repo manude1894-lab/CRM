@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { auditApi } from "../../api/endpoints";
 import { Select, Input, DateInput } from "../ui";
 import AuditTrail from "../AuditTrail";
+import { personLabel } from "../../utils/constants";
 import { toast } from "../../store/toast";
 
 const PAGE = 50;
@@ -51,7 +52,7 @@ export default function AuditLogPanel({ users }) {
         </Select>
         <Select value={filters.user_id} onChange={set("user_id")} className="text-xs !w-auto">
           <option value="">All users</option>
-          {users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+          {users.map((u) => <option key={u.id} value={u.id}>{personLabel(u, users)}</option>)}
         </Select>
         <DateInput value={filters.date_from} onChange={set("date_from")} className="text-xs !w-auto" title="From" />
         <DateInput value={filters.date_to} onChange={set("date_to")} className="text-xs !w-auto" title="To" />

@@ -53,7 +53,7 @@ def build_dashboard(db: Session, user: User) -> dict:
         if not mine and (not u.handles_clients or u.role == UserRole.ADMIN):
             continue  # central desks (Compliance, Approver, Accounts, ...) and administrators hold no portfolio
         portfolio.append({
-            "user_id": u.id, "name": u.name, "total": len(mine),
+            "user_id": u.id, "name": u.name, "business_role_name": u.business_role_name, "total": len(mine),
             "in_progress": sum(1 for a in mine if a.profile_status in (wf.NEW, wf.WIP, wf.AWAITING)),
             "active": sum(1 for a in mine if a.profile_status in (wf.APPROVED, wf.ACTIVE)),
         })

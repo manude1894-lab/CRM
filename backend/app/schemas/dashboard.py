@@ -38,6 +38,7 @@ class AmlReviewDue(BaseModel):
 class PortfolioRow(BaseModel):
     user_id: int
     name: str
+    business_role_name: Optional[str] = None
     total: int
     in_progress: int
     active: int

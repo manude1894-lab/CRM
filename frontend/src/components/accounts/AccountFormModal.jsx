@@ -13,7 +13,7 @@ import { toast } from "../../store/toast";
 import { confirmDialog } from "../../store/confirm";
 import {
   fmtDate, REGULATOR_OPTIONS, TAG_OPTIONS, SERVICES_OBTAINED_OPTIONS,
-  PROFILE_STATUS_OPTIONS, COUNTRY_CALLING_CODES, TRIAM_ENTITY_OPTIONS, isUAE, isRelationshipManager,
+  PROFILE_STATUS_OPTIONS, COUNTRY_CALLING_CODES, TRIAM_ENTITY_OPTIONS, isUAE, isRelationshipManager, personLabel,
 } from "../../utils/constants";
 import {
   RISK_OPTIONS, BLANK_ADDRESS, SECTION_FIELDS,
@@ -341,13 +341,13 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
           <Field label="Anchor RM (SPOC)">
             <Select value={form.spoc_id || ""} onChange={(e) => setForm({ ...form, spoc_id: e.target.value, non_anchor_rm_ids: (form.non_anchor_rm_ids || []).filter((id) => id !== +e.target.value) })}>
               <option value="">— None —</option>
-              {rms.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+              {rms.map((u) => <option key={u.id} value={u.id}>{personLabel(u, rms)}</option>)}
             </Select>
           </Field>
           <Field label="Non-anchor RMs">
             <MultiSelect
               options={rms.filter((u) => u.id !== +form.spoc_id).map((u) => u.id)}
-              getLabel={(id) => users.find((u) => u.id === id)?.name}
+              getLabel={(id) => personLabel(users.find((u) => u.id === id), rms)}
               value={form.non_anchor_rm_ids}
               onChange={setValue("non_anchor_rm_ids")} />
           </Field>
