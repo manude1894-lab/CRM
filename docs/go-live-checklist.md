@@ -38,7 +38,7 @@ Five wrong passwords in a row lock an account for 15 minutes. An administrator c
 
 ## 5. Master data (Admin → Master Data)
 
-Replace the starter values with Triam's final lists: Triam entities, services, licensing authorities, regulators, tags, document categories, rejection reasons and service request types.
+Replace the starter values with Triam's final lists: Triam entities, services, registering authorities, regulators, tags, document categories, rejection reasons and service request types.
 
 ## 6. Loading existing clients
 

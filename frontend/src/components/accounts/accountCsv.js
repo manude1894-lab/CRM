@@ -27,7 +27,9 @@ export const IMPORT_HEADER_MAP = {
   "spoc": "__spoc_name", // legacy header, kept for older exported files
   "anchor rm (spoc)": "__spoc_name",
   "non-anchor rms": "__non_anchor_rm_names",
-  "licensing authority": "licensing_authority",
+  "registering authority": "licensing_authority",
+  "other registering authority": "licensing_authority_other",
+  "licensing authority": "licensing_authority", // files made before the field was renamed (02-11-2026)
   "other licensing authority": "licensing_authority_other",
   "license activities": "license_activities",
   "license start date": "license_start_date",
@@ -163,7 +165,7 @@ export const EXPORT_HEADERS = [
   "Anchor Entity", "Non-anchor Entities",
   "Tags", "Incorporation Certificate No.", "Incorporation Date", "License Number",
   "Risk Rating", "Anchor RM (SPOC)", "Non-anchor RMs",
-  "Licensing Authority", "Other Licensing Authority", "License Activities", "License Start Date", "License Expiry Date",
+  "Registering Authority", "Other Registering Authority", "License Activities", "License Start Date", "License Expiry Date",
   "Is Regulated", "Regulator", "Other Regulator", "License Category", "Regulatory License Expiry",
   "Nature of Business", "LEI Number", "LEI Expiry Date",
   ...ADDRESS_COLS.map((c) => `Registered Address ${c}`),

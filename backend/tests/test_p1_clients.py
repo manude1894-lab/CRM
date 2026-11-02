@@ -194,7 +194,7 @@ def test_missing_mandatory_for_a_new_corporate(db, make_user):
     admin = make_user(role=UserRole.ADMIN)
     acc = create(db, admin)
     labels = {m["label"] for m in account_service.missing_mandatory(acc)}
-    assert {"Anchor RM", "Licensing Authority", "Financial Year End", "At least one Shareholder / UBO"} <= labels
+    assert {"Anchor RM", "Registering Authority", "Financial Year End", "At least one Shareholder / UBO"} <= labels
     # the CDD section is Compliance's checklist, not the RM's
     assert "CDD/AML Risk Level" not in labels
     assert {m["label"] for m in account_service.missing_cdd(acc)} == {
@@ -208,7 +208,7 @@ def test_formation_clients_skip_incorporation_fields(db, make_user):
     acc = create(db, admin, client_category="Under Formation")
     labels = {m["label"] for m in account_service.missing_mandatory(acc)}
     assert "Incorporation Date" not in labels and "License Expiry Date" not in labels
-    assert "Licensing Authority" in labels  # mandatory for both
+    assert "Registering Authority" in labels  # mandatory for both
     existing = create(db, admin, company_name="Old Firm Ltd", client_category="Existing")
     assert {"Incorporation Date", "License Expiry Date"} <= {m["label"] for m in account_service.missing_mandatory(existing)}
 
@@ -219,7 +219,7 @@ def test_conditional_fields(db, make_user):
                  risk_rating="High", licensing_authority="Other")
     labels = {m["label"] for m in account_service.missing_mandatory(acc)}
     assert {"Other Regulator details", "License Category", "Introducer Name",
-            "Licensing Authority (Other) details"} <= labels
+            "Registering Authority (Other) details"} <= labels
     assert "Reason for EDD" in {m["label"] for m in account_service.missing_cdd(acc)}  # EDD applies to High risk
 
 
@@ -228,7 +228,7 @@ def test_individual_checklist(db, make_user):
     acc = create(db, admin, account_type="Individual", company_name="John Smith")
     labels = {m["label"] for m in account_service.missing_mandatory(acc)}
     assert {"Date of Birth", "Passport Expiry Date", "Nationality"} <= labels
-    assert "Licensing Authority" not in labels and "At least one Shareholder / UBO" not in labels
+    assert "Registering Authority" not in labels and "At least one Shareholder / UBO" not in labels
 
 
 def test_client_id_skips_numbers_already_taken(db, make_user, make_account):

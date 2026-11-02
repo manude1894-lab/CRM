@@ -118,7 +118,7 @@ export default function ClientProfilePage({ accountId, initialTab = "overview", 
             {!individual && (
               <Panel title="Licensing & regulatory">
                 <FactList items={[
-                  ["Licensing authority", a.licensing_authority === "Other" ? a.licensing_authority_other : a.licensing_authority],
+                  ["Registering authority", a.licensing_authority === "Other" ? a.licensing_authority_other : a.licensing_authority],
                   ["Licence number", a.license_number], ["Licence valid", a.license_start_date ? `${fmtDate(a.license_start_date)} – ${fmtDate(a.license_expiry_date)}` : null],
                   ["Regulated", yesNo(a.is_regulated)],
                   ...(a.is_regulated ? [["Regulator", a.regulator_name === "Other" ? a.regulator_other : a.regulator_name],

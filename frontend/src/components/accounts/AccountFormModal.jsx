@@ -398,7 +398,7 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
             <Section title="Licensing & Regulatory" hasData={!!(form.licensing_authority || form.license_activities || form.license_start_date || form.license_expiry_date || form.is_regulated != null || form.license_category)}
               {...sectionProps("licensing")}>
               <div className="grid grid-cols-2 gap-3">
-                <Field label="Licensing Authority">
+                <Field label="Registering Authority">
                   {authorities.items.length ? (
                     <Select value={form.licensing_authority || ""} onChange={set("licensing_authority")}>
                       <option value="">— select —</option>
@@ -409,7 +409,7 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
                   )}
                 </Field>
                 {form.licensing_authority === "Other" && (
-                  <Field label="Licensing Authority (Other) *">
+                  <Field label="Registering Authority (Other) *">
                     <Input value={form.licensing_authority_other || ""} onChange={set("licensing_authority_other")} maxLength={100} />
                   </Field>
                 )}

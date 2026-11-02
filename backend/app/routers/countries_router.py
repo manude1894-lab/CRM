@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.auth.dependencies import get_current_user, require_admin
 from app.models import User
-from app.schemas.country import CountryCreate, CountryRead
+from app.schemas.country import CountryCreate, CountryRead, CountryUpdate
 from app.services import countries_service
 
 router = APIRouter(prefix="/countries", tags=["Countries"])
@@ -21,3 +21,8 @@ def list_countries(db: Session = Depends(get_db), user: User = Depends(get_curre
 @router.post("", response_model=CountryRead, status_code=status.HTTP_201_CREATED)
 def create_country(data: CountryCreate, db: Session = Depends(get_db), user: User = Depends(require_admin)):
     return countries_service.create_country(db, data)
+
+
+@router.patch("/{country_id}", response_model=CountryRead, summary="Admin: change a country's name, code or risk")
+def update_country(country_id: int, data: CountryUpdate, db: Session = Depends(get_db), user: User = Depends(require_admin)):
+    return countries_service.update_country(db, country_id, data)

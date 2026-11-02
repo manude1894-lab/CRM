@@ -1,13 +1,17 @@
 """Service layer: Countries master (BRD §17) — the list behind every country drop-down."""
 import json
+from datetime import datetime, timezone
 from decimal import Decimal
 from pathlib import Path
 
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
+from app.audit import log_event
 from app.models import CountryRisk
-from app.schemas.country import CountryCreate
+from app.schemas.country import CountryCreate, CountryUpdate
+
+SCORE = {"Low": 1, "Medium": 3, "High": 5}
 
 _DATA_FILE = Path(__file__).resolve().parent.parent / "data" / "country_risk.json"
 
@@ -20,6 +24,7 @@ def seed_countries(db: Session) -> int:
     rows = [
         CountryRisk(
             name=c["name"],
+            code=c.get("code"),
             kyc_score=Decimal(str(c["kyc_score"])) if c.get("kyc_score") is not None else None,
             risk_level=c["risk_level"],
             score=int(c["score"]),
@@ -40,8 +45,40 @@ def create_country(db: Session, data: CountryCreate) -> CountryRisk:
     name = data.name.strip()
     if db.query(CountryRisk).filter(CountryRisk.name == name).first():
         raise HTTPException(status_code=400, detail="Country already exists")
-    c = CountryRisk(name=name, risk_level="Low", score=1)
+    c = CountryRisk(name=name, code=(data.code or "").upper() or None, risk_level=data.risk_level,
+                    score=SCORE[data.risk_level], changed_at=datetime.now(timezone.utc))
     db.add(c)
+    db.flush()
+    log_event(db, "country_add", f"Country {name} added ({c.code or 'no code'}, {c.risk_level} risk)",
+              subject_type="Country", subject_id=c.id)
+    db.commit()
+    db.refresh(c)
+    return c
+
+
+def update_country(db: Session, country_id: int, data: CountryUpdate) -> CountryRisk:
+    """Admin changes a country's name, code or risk; the change is stamped and kept in the audit log."""
+    c = db.get(CountryRisk, country_id)
+    if c is None:
+        raise HTTPException(status_code=404, detail="Country not found")
+    new = data.model_dump(exclude_unset=True)
+    if "name" in new:
+        new["name"] = new["name"].strip()
+        other = db.query(CountryRisk).filter(CountryRisk.name == new["name"], CountryRisk.id != c.id).first()
+        if other:
+            raise HTTPException(status_code=400, detail="Country already exists")
+    if "code" in new:
+        new["code"] = (new["code"] or "").upper() or None
+    changes = {k: {"old": getattr(c, k), "new": v} for k, v in new.items() if v is not None and getattr(c, k) != v}
+    if not changes:
+        return c
+    for k, v in changes.items():
+        setattr(c, k, v["new"])
+    if "risk_level" in changes:
+        c.score = SCORE[c.risk_level]
+    c.changed_at = datetime.now(timezone.utc)
+    summary = "; ".join(f"{k.replace('_', ' ')} {v['old'] or '—'} → {v['new']}" for k, v in changes.items())
+    log_event(db, "country_update", f"Country {c.name}: {summary}", subject_type="Country", subject_id=c.id, changes=changes)
     db.commit()
     db.refresh(c)
     return c

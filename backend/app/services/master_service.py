@@ -15,12 +15,21 @@ def _check_type(list_type: str) -> None:
         raise HTTPException(status_code=404, detail=f"Unknown master list '{list_type}'")
 
 
+# Shown in alphabetical order everywhere (Triam, 02-11-2026), with "Other" last; the other lists keep
+# the order the administrator sets (e.g. service request statuses follow the work).
+ALPHABETICAL_LISTS = {"service", "document_category", "service_request_type", "licensing_authority", "tag", "regulator"}
+_LAST = {"other", "any other"}
+
+
 def list_items(db: Session, list_type: str, include_inactive: bool = False) -> list[MasterItem]:
     _check_type(list_type)
     q = db.query(MasterItem).filter(MasterItem.list_type == list_type)
     if not include_inactive:
         q = q.filter(MasterItem.is_active == True)  # noqa: E712
-    return q.order_by(MasterItem.sort_order, MasterItem.label).all()
+    items = q.order_by(MasterItem.sort_order, MasterItem.label).all()
+    if list_type in ALPHABETICAL_LISTS:
+        items.sort(key=lambda i: (i.label.strip().lower() in _LAST, i.label.strip().lower()))
+    return items
 
 
 def get_item(db: Session, item_id: int) -> MasterItem:

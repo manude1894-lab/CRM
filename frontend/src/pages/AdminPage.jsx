@@ -286,9 +286,10 @@ export default function AdminPage() {
       {modal && (
         <Modal title={modal === "new" ? "Add User" : `Edit ${form.name}`} onClose={() => setModal(null)}>
           <Field label="Full Name" required><Input value={form.name || ""} onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))} /></Field>
-          <Field label="Email" required><Input type="email" value={form.email || ""} autoCapitalize="none" onChange={(e) => setForm((p) => ({ ...p, email: e.target.value.replace(/\s/g, "").toLowerCase() }))} /></Field>
+          <Field label="Email" required><Input type="email" name="crm-user-email" autoComplete="off" value={form.email || ""} autoCapitalize="none" onChange={(e) => setForm((p) => ({ ...p, email: e.target.value.replace(/\s/g, "").toLowerCase() }))} /></Field>
           <Field label={modal === "new" ? "Password (at least 10 characters, letters and numbers)" : "Password (leave blank to keep current)"} required={modal === "new"}>
-            <Input type="password" value={form.password || ""} onChange={(e) => setForm((p) => ({ ...p, password: e.target.value }))} />
+            {/* new-password: the browser must not fill in the administrator's own saved login here. */}
+            <Input type="password" name="crm-user-password" autoComplete="new-password" value={form.password || ""} onChange={(e) => setForm((p) => ({ ...p, password: e.target.value }))} />
           </Field>
           <Field label="User type">
             <Select value={form.role || "rm"} onChange={(e) => setForm((p) => ({ ...p, role: e.target.value }))}>
@@ -353,9 +354,9 @@ export default function AdminPage() {
                   <option value="">— role —</option>
                   {roles.filter((r) => r.is_active && r.id !== +form.business_role_id).map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
                 </Select>
-                <Input type="email" placeholder="email@asktriam.com" value={addon.email} autoCapitalize="none"
+                <Input type="email" name="crm-addon-email" autoComplete="off" placeholder="email@asktriam.com" value={addon.email} autoCapitalize="none"
                   onChange={(e) => setAddon((p) => ({ ...p, email: e.target.value.replace(/\s/g, "").toLowerCase() }))} />
-                <Input type="password" placeholder="Password" value={addon.password} onChange={(e) => setAddon((p) => ({ ...p, password: e.target.value }))} />
+                <Input type="password" name="crm-addon-password" autoComplete="new-password" placeholder="Password" value={addon.password} onChange={(e) => setAddon((p) => ({ ...p, password: e.target.value }))} />
               </div>
               <div className="flex justify-end mt-2">
                 <button onClick={addAddonLogin} className="px-3 py-1.5 text-xs border border-brand-300 text-brand-700 rounded-lg hover:bg-brand-50">Add login</button>

@@ -8,6 +8,8 @@ import { toast } from "../../store/toast";
 // so existing records keep their values; the stored code can't be changed after creation.
 // Lists whose values apply to particular Triam entities (none ticked = every entity).
 const ENTITY_LISTS = ["service", "service_request_type", "service_request_status"];
+// Kept in alphabetical order by the system (no manual ordering); matches master_service.ALPHABETICAL_LISTS.
+const ALPHABETICAL_LISTS = ["service", "document_category", "service_request_type", "licensing_authority", "tag", "regulator"];
 const ENTITY_HINT = {
   service: " Tick the Triam entities that offer each service.",
   service_request_type: " Tick the Triam entities each request type is for; none ticked = every entity.",
@@ -118,8 +120,10 @@ export default function MasterDataPanel() {
                   )}
                 </div>
                 <div className="flex gap-1 flex-shrink-0">
-                  <button onClick={() => move(i, -1)} disabled={i === 0} title="Move up" className="p-1 rounded hover:bg-gray-100 text-gray-400 disabled:opacity-30">▲</button>
-                  <button onClick={() => move(i, 1)} disabled={i === items.length - 1} title="Move down" className="p-1 rounded hover:bg-gray-100 text-gray-400 disabled:opacity-30">▼</button>
+                  {!ALPHABETICAL_LISTS.includes(listType) && <>
+                    <button onClick={() => move(i, -1)} disabled={i === 0} title="Move up" className="p-1 rounded hover:bg-gray-100 text-gray-400 disabled:opacity-30">▲</button>
+                    <button onClick={() => move(i, 1)} disabled={i === items.length - 1} title="Move down" className="p-1 rounded hover:bg-gray-100 text-gray-400 disabled:opacity-30">▼</button>
+                  </>}
                   <button onClick={() => { setEditingId(item.id); setEditingLabel(item.label); }} title="Rename" className="p-1 rounded hover:bg-brand-50 text-gray-400 hover:text-brand-600">
                     <Icon name="edit" size={12} />
                   </button>

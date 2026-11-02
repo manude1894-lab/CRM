@@ -20,7 +20,7 @@ MASTER_LIST_TYPES = {
     "service": "Services",
     "tag": "Client Tags",
     "regulator": "Regulators",
-    "licensing_authority": "Licensing Authorities",
+    "licensing_authority": "Registering Authorities",
     "document_category": "Document Categories",
     "rejection_reason": "Rejection Reasons",
     "service_request_type": "Service Request Types",

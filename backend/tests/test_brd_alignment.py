@@ -105,7 +105,7 @@ def test_draft_invoice_request_reaches_accounts_only_when_submitted(db, make_use
 def test_countries_master(client, make_user):
     admin, rm = make_user("Ada", role="admin"), make_user("Rita")
     r = client.post("/api/v1/countries", json={"name": "Atlantis"}, headers=auth(admin))
-    assert r.status_code == 201 and set(r.json()) == {"id", "name"}
+    assert r.status_code == 201 and set(r.json()) == {"id", "name", "code", "risk_level", "changed_at"} and r.json()["risk_level"] == "Low"
     assert client.post("/api/v1/countries", json={"name": "Lemuria"}, headers=auth(rm)).status_code == 403
     assert "Atlantis" in {c["name"] for c in client.get("/api/v1/countries", headers=auth(rm)).json()}
 

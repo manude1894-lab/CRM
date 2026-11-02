@@ -27,7 +27,7 @@ _MASTER_FIELDS = {
     "nature_of_services_sought": ("service", "Nature of Services Sought", "many"),
     "tags": ("tag", "Tags", "csv"),
     "regulator_name": ("regulator", "Name of Regulator", "one"),
-    "licensing_authority": ("licensing_authority", "Licensing Authority", "one"),
+    "licensing_authority": ("licensing_authority", "Registering Authority", "one"),
 }
 
 
@@ -540,8 +540,8 @@ def missing_mandatory(account: Account) -> list[dict]:
         need("Client info", "registration_number", "Incorporation Certificate No.", when=not forming)
         need("Client info", "incorporation_date", "Incorporation Date", when=not forming)
         need("Client info", "license_number", "Trade / Commercial License Number", when=not forming)
-        need("Licensing & Regulatory", "licensing_authority", "Licensing Authority")
-        need("Licensing & Regulatory", "licensing_authority_other", "Licensing Authority (Other) details",
+        need("Licensing & Regulatory", "licensing_authority", "Registering Authority")
+        need("Licensing & Regulatory", "licensing_authority_other", "Registering Authority (Other) details",
              when=account.licensing_authority == "Other")
         need("Licensing & Regulatory", "license_start_date", "License Start / Registration Date", when=not forming)
         need("Licensing & Regulatory", "license_expiry_date", "License Expiry Date", when=not forming)

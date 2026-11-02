@@ -42,6 +42,8 @@ export function changeLines(entry) {
 }
 
 export const ACTION_LABELS = {
+  country_add: "Country added",
+  country_update: "Country changed",
   create: "Created",
   update: "Updated",
   delete: "Deleted",
