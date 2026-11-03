@@ -1,24 +1,8 @@
 """P0 endpoints through the real FastAPI app: auth, permissions, audit on requests."""
-import pytest
-from fastapi.testclient import TestClient
 
-from app.main import app
-from app.database import get_db
-from app.auth.security import create_access_token, hash_password
+from app.auth.security import hash_password
 from app.models import UserRole, AuditLog, User
-
-
-@pytest.fixture()
-def client(db):
-    def _get_db():
-        yield db
-    app.dependency_overrides[get_db] = _get_db
-    yield TestClient(app)  # not used as a context manager -> the scheduler lifespan doesn't start
-    app.dependency_overrides.clear()
-
-
-def auth(user):
-    return {"Authorization": f"Bearer {create_access_token(user.id, user.role.value)}"}
+from tests.helpers import auth
 
 
 def test_masters_read_for_everyone_write_needs_permission(client, make_user, seed_master):

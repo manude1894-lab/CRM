@@ -8,7 +8,7 @@ from app.auth.dependencies import get_current_user, require_admin, require_rm, r
 from app.models import User
 from app.schemas import AccountCreate, AccountRead, AccountUpdate, AccountImportRequest, AccountImportResponse
 from app.schemas.account import DuplicateMatch, AccountBulkUpdateRequest, BulkUpdateResult
-from app.services import account_service
+from app.services import account_service, countries_service
 
 router = APIRouter(prefix="/accounts", tags=["Clients"])
 
@@ -56,7 +56,6 @@ def get_account(account_id: int, db: Session = Depends(get_db), user: User = Dep
 @router.get("/{account_id}/country-risk", summary="High-risk countries linked to the client and its parties (Compliance)")
 def account_country_risk(account_id: int, db: Session = Depends(get_db),
                          user: User = Depends(require_any_permission("client.cdd_edit", "client.approve", "client.final_approve"))):
-    from app.services import countries_service
     return countries_service.high_risk_links(db, account_service.get_account(db, account_id, user))
 
 

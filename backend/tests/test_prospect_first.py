@@ -6,7 +6,7 @@ from app.models import AuditLog, Notification, UserRole
 from app.schemas.account import AccountCreate
 from app.schemas.prospect import ProspectCreate
 from app.services import account_service, prospect_service
-from tests.test_api_p0 import auth, client  # noqa: F401  (fixture)
+from tests.helpers import auth
 
 
 @pytest.fixture()

@@ -8,7 +8,6 @@ from sqlalchemy.orm import Session
 from app.auth.dependencies import get_current_user, require_any_permission
 from app.database import get_db
 from app.models import User
-from app.schemas.account import AccountRead
 from app.schemas.approval import (
     AmendmentState, ApprovalRead, ApproveRequest, RejectOrComment, RejectRequest,
     StatusActionRequest, SubmitRequest, WorkflowAction, WorkflowState,

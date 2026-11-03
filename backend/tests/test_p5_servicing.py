@@ -5,7 +5,7 @@ from decimal import Decimal
 import pytest
 from fastapi import HTTPException
 
-from app.models import Activity, Instruction, Invoice, Notification
+from app.models import Invoice, Notification
 from app.schemas.activity import ActivityCreate, ActivityUpdate
 from app.schemas.instruction import InstructionCreate, InstructionUpdate
 from app.services import activity_service, instruction_service, notification_service, sms_service

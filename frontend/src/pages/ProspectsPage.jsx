@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { prospectsApi, usersApi } from "../api/endpoints";
-import { Icon, Badge, Modal, Field, Input, Select, Textarea, Spinner, ErrorBanner, PageHeader, SelectWithOther } from "../components/ui";
+import { Icon, Modal, Field, Input, Select, Textarea, Spinner, ErrorBanner, PageHeader, SelectWithOther } from "../components/ui";
 import DuplicateWarning from "../components/DuplicateWarning";
 import { PROSPECT_STATUS_OPTIONS, PROSPECT_SOURCE_OPTIONS, isRelationshipManager, personLabel, fmtDate } from "../utils/constants";
 import { toast } from "../store/toast";

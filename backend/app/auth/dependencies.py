@@ -24,7 +24,7 @@ def get_current_user(
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
-        payload = decode_token(token, is_refresh=False)
+        payload = decode_token(token)
         user_id = int(payload["sub"])
     except (ValueError, KeyError):
         raise credentials_exception

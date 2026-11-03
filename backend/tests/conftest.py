@@ -101,3 +101,30 @@ def act_as(db):
     def _act(user):
         set_actor(db, user.id if user else None, "127.0.0.1")
     return _act
+
+
+@pytest.fixture()
+def client(db):
+    """The FastAPI app on the test database (the scheduler lifespan doesn't start)."""
+    from fastapi.testclient import TestClient
+    from app.database import get_db
+    from app.main import app
+
+    def _get_db():
+        yield db
+    app.dependency_overrides[get_db] = _get_db
+    yield TestClient(app)
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture()
+def people(make_user, make_role, seed_master):
+    seed_master("rejection_reason", ["Documents missing or incomplete"])
+    checker_role = make_role("MLRO", ["client.approve"])
+    return {
+        "maker": make_user("Rita RM"),
+        "checker": make_user("Mia MLRO", business_role=checker_role),
+        "checker2": make_user("Carl CO", business_role=checker_role),
+        "other_rm": make_user("Otto RM"),
+        "approver": make_user("Ada Approver", business_role=make_role("Approver", ["client.final_approve"])),
+    }

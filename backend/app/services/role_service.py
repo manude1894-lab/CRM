@@ -2,7 +2,7 @@
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
-from app.models import Role, User, PERMISSIONS
+from app.models import Role, PERMISSIONS
 from app.schemas.role import RoleCreate, RoleUpdate
 
 

@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.models import Document, DocumentCategory, User, UserRole
 from app.audit import log_event
-from app.services import access_control, master_service
+from app.services import master_service
 
 # Allow-list — reject anything not here (executables, html, svg, ...).
 ALLOWED_CONTENT_TYPES = {

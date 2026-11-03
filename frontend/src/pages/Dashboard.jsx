@@ -221,9 +221,9 @@ export default function Dashboard({ onNavigate = () => {} } = {}) {
         <Panel title="Portfolio by RM">
           {people.length === 0 ? <EmptyState text="No relationship managers with clients yet." /> : (
             <ul className="divide-y divide-gray-50">
-              {people.map((r) => (
+              {people.map((r) => { const label = personLabel(r, people); return (
                 <li key={r.user_id} className="flex items-center gap-3 px-4 py-2.5">
-                  <span className="w-40 min-w-0 truncate text-sm font-medium text-gray-800" title={personLabel(r, people)}>{personLabel(r, people)}</span>
+                  <span className="w-40 min-w-0 truncate text-sm font-medium text-gray-800" title={label}>{label}</span>
                   <span className="flex-1 hidden sm:block">
                     <span className="block h-1.5 rounded-full bg-gray-100 overflow-hidden">
                       <span className="block h-full rounded-full bg-brand-500" style={{ width: `${(r.total / maxClients) * 100}%` }} />
@@ -233,7 +233,7 @@ export default function Dashboard({ onNavigate = () => {} } = {}) {
                     <span className="font-semibold text-gray-800">{r.total}</span> client{r.total === 1 ? "" : "s"} · {r.in_progress} onboarding · {r.active} active
                   </span>
                 </li>
-              ))}
+              ); })}
             </ul>
           )}
         </Panel>

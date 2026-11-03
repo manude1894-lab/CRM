@@ -77,10 +77,6 @@ export const SERVICES_OBTAINED_OPTIONS = [
   "Other",
 ];
 
-export const PROFILE_STATUS_OPTIONS = [
-  "New", "WIP", "Awaiting Approval", "Approved", "Active", "Inactive", "Marked for Exit", "Exited",
-];
-
 // Country calling codes for the split Contact Mobile field (BRD §5) — UAE first, then the GCC and
 // major markets.
 export const COUNTRY_CALLING_CODES = [

@@ -1,0 +1,7 @@
+# Lint (CI: python -m ruff check). Pyflakes errors: unused imports and variables, undefined names,
+# redefinitions, and syntax errors. Kept to rules that catch real mistakes, not style.
+line-length = 140
+extend-exclude = ["alembic/versions", "app/seed_test_data.py"]
+
+[lint]
+select = ["F", "E9"]

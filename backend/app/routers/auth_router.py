@@ -8,13 +8,19 @@ from app.models import User
 from app.schemas import LoginRequest, Token, RefreshTokenRequest, UserRead
 from app.schemas.user import ChangePasswordRequest, ForgotPasswordRequest, ResetPasswordRequest
 from app.services import security_service
-from app.auth.security import hash_password
 from app.auth.security import (
     verify_password, create_access_token, create_refresh_token, decode_token, issued_before_password_change,
 )
 from app.auth.dependencies import get_current_user
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
+
+
+def _tokens(user: User, **extra) -> dict:
+    """A signed-in session for this user: the Token response of login, refresh and change-password."""
+    return {"access_token": create_access_token(user.id, user.role.value),
+            "refresh_token": create_refresh_token(user.id, user.role.value),
+            "token_type": "bearer", "user": user, **extra}
 
 
 @router.post("/login", response_model=Token, summary="Login with email and password")
@@ -40,15 +46,7 @@ def login(data: LoginRequest, request: Request, db: Session = Depends(get_db)):
     set_actor(db, user.id, ip)
     log_event(db, "login", f"{user.name} logged in", subject_type="User", subject_id=user.id)
     db.commit()
-    access = create_access_token(user.id, user.role.value)
-    refresh = create_refresh_token(user.id, user.role.value)
-    return {
-        "access_token": access,
-        "refresh_token": refresh,
-        "token_type": "bearer",
-        "user": user,
-        "password_change_recommended": data.password.lower() in security_service.DEFAULT_PASSWORDS,
-    }
+    return _tokens(user, password_change_recommended=data.password.lower() in security_service.DEFAULT_PASSWORDS)
 
 
 @router.post("/change-password", response_model=Token, summary="Change your own password")
@@ -57,18 +55,11 @@ def change_password(data: ChangePasswordRequest, db: Session = Depends(get_db), 
         raise HTTPException(status_code=400, detail="Your current password is not correct")
     if data.new_password == data.current_password:
         raise HTTPException(status_code=400, detail="Choose a password different from the current one")
-    security_service.assert_password_ok(data.new_password, user.email)
-    user.hashed_password = hash_password(data.new_password)
-    security_service.password_set(user)
+    security_service.set_password(user, data.new_password)
     log_event(db, "password_change", f"{user.name} changed their password", subject_type="User", subject_id=user.id)
     db.commit()
     # Other sessions are signed out by the change; this one carries on with new tokens.
-    return {
-        "access_token": create_access_token(user.id, user.role.value),
-        "refresh_token": create_refresh_token(user.id, user.role.value),
-        "token_type": "bearer",
-        "user": user,
-    }
+    return _tokens(user)
 
 
 @router.post("/forgot-password", summary="Ask for a password reset link")
@@ -98,7 +89,7 @@ def reset_password(data: ResetPasswordRequest, request: Request, db: Session = D
 @router.post("/refresh", response_model=Token, summary="Exchange refresh token for new tokens")
 def refresh(data: RefreshTokenRequest, db: Session = Depends(get_db)):
     try:
-        payload = decode_token(data.refresh_token, is_refresh=True)
+        payload = decode_token(data.refresh_token, kind="refresh")
         user_id = int(payload["sub"])
     except (ValueError, KeyError):
         raise HTTPException(status_code=401, detail="Invalid refresh token")
@@ -106,13 +97,7 @@ def refresh(data: RefreshTokenRequest, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.id == user_id, User.is_active == True).first()
     if not user or issued_before_password_change(payload, user):
         raise HTTPException(status_code=401, detail="User not found or inactive")
-
-    return {
-        "access_token": create_access_token(user.id, user.role.value),
-        "refresh_token": create_refresh_token(user.id, user.role.value),
-        "token_type": "bearer",
-        "user": user,
-    }
+    return _tokens(user)
 
 
 @router.get("/me", response_model=UserRead, summary="Get current authenticated user")

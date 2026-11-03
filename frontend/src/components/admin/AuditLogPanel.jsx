@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { auditApi } from "../../api/endpoints";
-import { Select, Input, DateInput } from "../ui";
+import { Select, DateInput } from "../ui";
 import AuditTrail from "../AuditTrail";
+import { ACTION_LABELS } from "../../utils/auditFormat";
 import { personLabel } from "../../utils/constants";
 import { toast } from "../../store/toast";
 
@@ -10,7 +11,8 @@ const PAGE = 50;
 const SUBJECTS = [["Account", "Client"], ["AccountParty", "Client party"], ["Document", "Document"], ["Prospect", "Prospect"],
   ["Instruction", "Service request"], ["Invoice", "Invoice"], ["User", "User"], ["Role", "Role"], ["Department", "Department"],
   ["MasterItem", "Master item"]];
-const ACTIONS = ["create", "update", "delete", "login", "login_failed"];
+// Every recorded action, by its readable name.
+const ACTIONS = Object.entries(ACTION_LABELS).sort(([, a], [, b]) => a.localeCompare(b));
 
 // BRD §15 — global, read-only audit log for admins / users with audit.view.
 export default function AuditLogPanel({ users }) {
@@ -48,7 +50,7 @@ export default function AuditLogPanel({ users }) {
         </Select>
         <Select value={filters.action} onChange={set("action")} className="text-xs !w-auto">
           <option value="">All actions</option>
-          {ACTIONS.map((a) => <option key={a} value={a}>{a}</option>)}
+          {ACTIONS.map(([code, label]) => <option key={code} value={code}>{label}</option>)}
         </Select>
         <Select value={filters.user_id} onChange={set("user_id")} className="text-xs !w-auto">
           <option value="">All users</option>

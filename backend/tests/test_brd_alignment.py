@@ -11,7 +11,7 @@ from app.models import Notification
 from app.services import dashboard_service, scheduler_jobs
 from app.schemas.invoice import InvoiceRequest
 from app.services import invoice_service
-from tests.test_api_p0 import auth, client  # noqa: F401  (fixture)
+from tests.helpers import auth
 
 
 def test_no_case_or_non_brd_routes_remain():

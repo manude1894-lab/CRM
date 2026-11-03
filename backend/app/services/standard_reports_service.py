@@ -10,7 +10,7 @@ from zoneinfo import ZoneInfo
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
-from app.models import Account, AccountParty, ApprovalRequest, ApprovalStatus, Prospect, User
+from app.models import Account, ApprovalRequest, ApprovalStatus, User
 from app.services import access_control, client_workflow_service as wf
 
 # Dated documents held on the client and its parties: (field, document)

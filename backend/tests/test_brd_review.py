@@ -1,14 +1,13 @@
 """BRD line-by-line review fixes (BRD)."""
 import io
-from decimal import Decimal
 
 import pytest
 from fastapi import HTTPException, UploadFile
 
 from app.schemas.account_party import AccountPartyCreate
 from app.services import account_party_service, document_service
-from tests.test_api_p0 import auth, client  # noqa: F401  (fixture)
-from tests.test_p2_workflow import complete_client, people  # noqa: F401  (fixture)
+from tests.helpers import auth
+from tests.flow import complete_client
 
 
 def test_inquiry_role_is_read_only(client, make_user, make_role):

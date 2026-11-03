@@ -96,17 +96,16 @@ def high_risk_links(db: Session, account) -> list[dict]:
             found.append({"country": name, "who": who, "field": field})
 
     client = account.company_name
-    add(account.country, client, "Country of registration")
+    for field, label in (("country", "Country of registration"), ("nationality", "Nationality"),
+                         ("country_of_residence", "Country of residence"), ("country_of_birth", "Country of birth")):
+        add(getattr(account, field), client, label)
     for field, label in (("registered_address", "Registered address"), ("operating_address", "Operating address"),
                          ("residential_address", "Residential address")):
         add((getattr(account, field) or {}).get("country"), client, label)
-    add(account.nationality, client, "Nationality")
-    add(account.country_of_residence, client, "Country of residence")
-    add(account.country_of_birth, client, "Country of birth")
     for p in account.parties:
         who = f"{p.party_role}: {p.full_name}"
-        add(p.country_of_incorp_or_birth, who, "Country of incorporation / birth")
-        add(p.nationality, who, "Nationality")
-        add(p.country_of_residence, who, "Country of residence")
+        for field, label in (("country_of_incorp_or_birth", "Country of incorporation / birth"),
+                             ("nationality", "Nationality"), ("country_of_residence", "Country of residence")):
+            add(getattr(p, field), who, label)
         add((p.residential_address or {}).get("country"), who, "Residential address")
     return found

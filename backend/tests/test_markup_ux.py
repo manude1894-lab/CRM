@@ -8,8 +8,7 @@ from app.models import UserRole
 from app.schemas.user import UserCreate
 from app.services import my_work_service, user_service
 from tests import flow
-from tests.test_api_p0 import client  # noqa: F401  (fixture)
-from tests.test_p2_workflow import complete_client, people  # noqa: F401  (fixture)
+from tests.flow import complete_client
 
 
 def test_last_login_is_shown_at_the_next_login(client, db, make_user):

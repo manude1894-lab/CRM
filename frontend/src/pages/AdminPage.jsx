@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from "react";
 import SystemHealthPanel from "../components/admin/SystemHealthPanel";
-import { authApi, usersApi, departmentsApi, rolesApi } from "../api/endpoints";
+import { usersApi, departmentsApi, rolesApi } from "../api/endpoints";
 import MasterDataPanel from "../components/admin/MasterDataPanel";
 import CountriesPanel from "../components/admin/CountriesPanel";
 import RolesPanel from "../components/admin/RolesPanel";
 import AuditLogPanel from "../components/admin/AuditLogPanel";
 import { useAuthStore } from "../store/auth";
-import { Icon, Badge, Modal, Field, Input, Select, Spinner, ErrorBanner, PageHeader } from "../components/ui";
-import { USER_TYPE_LABEL } from "../utils/constants";
+import { Icon, Modal, Field, Input, Select, Spinner, ErrorBanner, PageHeader } from "../components/ui";
+import { USER_TYPE_LABEL, personLabel } from "../utils/constants";
 import { toast } from "../store/toast";
 import { confirmDialog } from "../store/confirm";
 
@@ -106,12 +106,6 @@ export default function AdminPage() {
         const { id, created_at, updated_at, permissions, person_id, linked_logins, ...patch } = payload;
         if (!patch.password) delete patch.password;
         await usersApi.update(form.id, patch);
-        // A new password ends every earlier session; an administrator who changed their own carries on signed in.
-        const me = useAuthStore.getState();
-        if (patch.password && me.user?.id === form.id) {
-          const data = await authApi.login(patch.email || me.user.email, patch.password);
-          me.setTokens(data.access_token, data.refresh_token, data.user);
-        }
       }
       setModal(null); load();
     } catch (e) {
@@ -293,10 +287,13 @@ export default function AdminPage() {
         <Modal title={modal === "new" ? "Add User" : `Edit ${form.name}`} onClose={() => setModal(null)}>
           <Field label="Full Name" required><Input value={form.name || ""} onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))} /></Field>
           <Field label="Email" required><Input type="email" name="crm-user-email" autoComplete="off" value={form.email || ""} autoCapitalize="none" onChange={(e) => setForm((p) => ({ ...p, email: e.target.value.replace(/\s/g, "").toLowerCase() }))} /></Field>
+          {/* Your own password is changed with Password in the menu, which keeps you signed in. */}
+          {form.id !== me?.id && (
           <Field label={modal === "new" ? "Password (at least 10 characters, letters and numbers)" : "Password (leave blank to keep current)"} required={modal === "new"}>
             {/* new-password: the browser must not fill in the administrator's own saved login here. */}
             <Input type="password" name="crm-user-password" autoComplete="new-password" value={form.password || ""} onChange={(e) => setForm((p) => ({ ...p, password: e.target.value }))} />
           </Field>
+          )}
           <Field label="User type">
             <Select value={form.role || "rm"} onChange={(e) => setForm((p) => ({ ...p, role: e.target.value }))}>
               {Object.entries(USER_TYPE_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
@@ -331,7 +328,7 @@ export default function AdminPage() {
           <Field label="Reports To">
             <Select value={form.supervisor_id || ""} onChange={(e) => setForm((p) => ({ ...p, supervisor_id: e.target.value }))}>
               <option value="">— None —</option>
-              {users.filter((u) => u.id !== form.id).map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+              {users.filter((u) => u.id !== form.id).map((u, _, list) => <option key={u.id} value={u.id}>{personLabel(u, list)}</option>)}
             </Select>
           </Field>
           <Field label="Status">

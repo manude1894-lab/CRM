@@ -1,7 +1,7 @@
 """Triam 02-11-2026: master lists in alphabetical order; countries with code, risk and change history."""
 from app.models import AuditLog, CountryRisk, UserRole
 from app.services import master_service
-from tests.test_api_p0 import auth, client  # noqa: F401  (fixture)
+from tests.helpers import auth
 
 
 def test_services_are_listed_alphabetically_with_other_last(db, seed_master):

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { authApi } from "../api/endpoints";
 import { useAuthStore } from "../store/auth";
 import { Input } from "../components/ui";
-import { passwordProblem } from "../components/ChangePasswordModal";
+import { PASSWORD_HINT, passwordProblem } from "../components/ChangePasswordModal";
 import { IDLE_MINUTES } from "../components/IdleSignOut";
 
 // Opened in a new tab from another of the person's logins: that login's email is handed over through
@@ -24,6 +24,15 @@ let resetToken = (() => {
   return token;
 })();
 
+const Label = ({ children }) => <label className="block text-xs font-medium text-gray-600 mb-1">{children}</label>;
+
+const PrimaryButton = ({ onClick, busy, busyText, children }) => (
+  <button onClick={onClick} disabled={busy} style={{ background: "#1a3a5c" }}
+    className="w-full text-white font-semibold py-2.5 rounded-lg transition-opacity hover:opacity-90 disabled:opacity-60 shadow-sm">
+    {busy ? busyText : children}
+  </button>
+);
+
 export default function LoginPage() {
   const setTokens = useAuthStore((s) => s.setTokens);
   const [view, setView] = useState(resetToken ? "reset" : "signin"); // "signin" | "forgot" | "reset"
@@ -44,50 +53,49 @@ export default function LoginPage() {
 
   const show = (next) => { setView(next); setError(""); setNotice(""); setPassword(""); setRepeat(""); };
 
-  const sendLink = async () => {
-    if (!/^\S+@\S+\.\S+$/.test(email)) return setError("Enter your email address");
+  // Each action: clear the error, show progress, and show the server's message if it fails.
+  const run = async (fallback, action) => {
     setError("");
     setLoading(true);
-    try {
+    try { await action(); }
+    catch (e) { setError(e.response?.data?.detail || fallback); }
+    finally { setLoading(false); }
+  };
+
+  const submit = () => run("Login failed. Please check your credentials.", async () => {
+    const data = await authApi.login(email.trim().toLowerCase(), password);
+    setTokens(data.access_token, data.refresh_token, data.user, !!data.password_change_recommended);
+  });
+
+  const sendLink = () => {
+    if (!/^\S+@\S+\.\S+$/.test(email)) return setError("Enter your email address");
+    return run("Could not send the reset link. Please try again.", async () => {
       const { data } = await authApi.forgotPassword(email.trim().toLowerCase());
       setNotice(data?.email_sent
         ? "If the email is registered, a reset link is on its way. Your administrator has also been notified."
         : "Your administrator has been notified and will reset your password.");
-    } catch (e) {
-      setError(e.response?.data?.detail || "Could not send the reset link. Please try again.");
-    } finally {
-      setLoading(false);
-    }
+    });
   };
 
-  const savePassword = async () => {
+  const savePassword = () => {
     if (passwordProblem(password)) return setError(passwordProblem(password));
     if (password !== repeat) return setError("The passwords don't match");
-    setError("");
-    setLoading(true);
-    try {
+    return run("Could not change the password.", async () => {
       await authApi.resetPassword(token, password);
       show("signin");
       setNotice("Password changed. Sign in with your new password.");
-    } catch (e) {
-      setError(e.response?.data?.detail || "Could not change the password.");
-    } finally {
-      setLoading(false);
-    }
+    });
   };
 
-  const submit = async () => {
-    setError("");
-    setLoading(true);
-    try {
-      const data = await authApi.login(email.trim().toLowerCase(), password);
-      setTokens(data.access_token, data.refresh_token, data.user, !!data.password_change_recommended);
-    } catch (e) {
-      setError(e.response?.data?.detail || "Login failed. Please check your credentials.");
-    } finally {
-      setLoading(false);
-    }
-  };
+  const emailInput = (props) => (
+    <Input type="email" value={email} onChange={(e) => setEmail(e.target.value.replace(/\s/g, ""))}
+      autoCapitalize="none" autoCorrect="off" {...props} />
+  );
+  const backToSignIn = (
+    <button type="button" onClick={() => show("signin")} className="w-full text-sm text-brand-600 hover:underline">
+      Back to sign in
+    </button>
+  );
 
   return (
     <div className="min-h-screen flex">
@@ -150,8 +158,8 @@ export default function LoginPage() {
           {view === "signin" && (
             <div className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Email</label>
-                <Input type="email" value={email} onChange={(e) => setEmail(e.target.value.replace(/\s/g, ""))} autoCapitalize="none" autoCorrect="off" />
+                <Label>Email</Label>
+                {emailInput()}
               </div>
               <div>
                 <div className="flex items-center justify-between mb-1">
@@ -160,71 +168,38 @@ export default function LoginPage() {
                     Forgot password?
                   </button>
                 </div>
-                <Input
-                  type="password"
-                  autoFocus={!!handedOverEmail}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && submit()}
-                />
+                <Input type="password" autoFocus={!!handedOverEmail} value={password}
+                  onChange={(e) => setPassword(e.target.value)} onKeyDown={(e) => e.key === "Enter" && submit()} />
               </div>
-              <button
-                onClick={submit}
-                disabled={loading}
-                className="w-full text-white font-semibold py-2.5 rounded-lg transition-opacity hover:opacity-90 disabled:opacity-60 shadow-sm"
-                style={{ background: "#1a3a5c" }}
-              >
-                {loading ? "Signing in..." : "Sign In"}
-              </button>
+              <PrimaryButton onClick={submit} busy={loading} busyText="Signing in...">Sign In</PrimaryButton>
             </div>
           )}
 
           {view === "forgot" && (
             <div className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Email</label>
-                <Input type="email" value={email} autoFocus onChange={(e) => setEmail(e.target.value.replace(/\s/g, ""))}
-                  onKeyDown={(e) => e.key === "Enter" && !notice && sendLink()} autoCapitalize="none" autoCorrect="off" />
+                <Label>Email</Label>
+                {emailInput({ autoFocus: true, onKeyDown: (e) => e.key === "Enter" && !notice && sendLink() })}
               </div>
-              {!notice && (
-                <button
-                  onClick={sendLink}
-                  disabled={loading}
-                  className="w-full text-white font-semibold py-2.5 rounded-lg transition-opacity hover:opacity-90 disabled:opacity-60 shadow-sm"
-                  style={{ background: "#1a3a5c" }}
-                >
-                  {loading ? "Sending..." : "Send reset link"}
-                </button>
-              )}
-              <button type="button" onClick={() => show("signin")} className="w-full text-sm text-brand-600 hover:underline">
-                Back to sign in
-              </button>
+              {!notice && <PrimaryButton onClick={sendLink} busy={loading} busyText="Sending...">Send reset link</PrimaryButton>}
+              {backToSignIn}
             </div>
           )}
 
           {view === "reset" && (
             <div className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">New password</label>
+                <Label>New password</Label>
                 <Input type="password" autoComplete="new-password" autoFocus value={password} onChange={(e) => setPassword(e.target.value)} />
-                <p className="text-[11px] mt-1 text-gray-400">At least 10 characters, with letters and numbers.</p>
+                <p className="text-[11px] mt-1 text-gray-400">{PASSWORD_HINT}</p>
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Repeat new password</label>
+                <Label>Repeat new password</Label>
                 <Input type="password" autoComplete="new-password" value={repeat} onChange={(e) => setRepeat(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && savePassword()} />
               </div>
-              <button
-                onClick={savePassword}
-                disabled={loading}
-                className="w-full text-white font-semibold py-2.5 rounded-lg transition-opacity hover:opacity-90 disabled:opacity-60 shadow-sm"
-                style={{ background: "#1a3a5c" }}
-              >
-                {loading ? "Saving..." : "Save password"}
-              </button>
-              <button type="button" onClick={() => show("signin")} className="w-full text-sm text-brand-600 hover:underline">
-                Back to sign in
-              </button>
+              <PrimaryButton onClick={savePassword} busy={loading} busyText="Saving...">Save password</PrimaryButton>
+              {backToSignIn}
             </div>
           )}
         </div>

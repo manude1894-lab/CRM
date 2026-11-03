@@ -13,7 +13,7 @@ import { toast } from "../../store/toast";
 import { confirmDialog } from "../../store/confirm";
 import {
   fmtDate, REGULATOR_OPTIONS, TAG_OPTIONS, SERVICES_OBTAINED_OPTIONS,
-  PROFILE_STATUS_OPTIONS, COUNTRY_CALLING_CODES, TRIAM_ENTITY_OPTIONS, isUAE, isRelationshipManager, personLabel,
+  COUNTRY_CALLING_CODES, TRIAM_ENTITY_OPTIONS, isUAE, isRelationshipManager, personLabel,
 } from "../../utils/constants";
 import {
   RISK_OPTIONS, BLANK_ADDRESS, SECTION_FIELDS,

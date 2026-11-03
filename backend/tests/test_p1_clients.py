@@ -5,7 +5,7 @@ import pytest
 from fastapi import HTTPException
 from pydantic import ValidationError
 
-from app.models import UserRole, AuditLog, AccountParty
+from app.models import UserRole, AuditLog
 from app.schemas.account import AccountCreate, AccountUpdate
 from app.schemas.account_party import AccountPartyCreate, AccountPartyUpdate
 from app.services import account_service, account_party_service

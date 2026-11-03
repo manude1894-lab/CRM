@@ -6,7 +6,7 @@ from fastapi import HTTPException, UploadFile
 
 from app.services import document_service
 from tests import flow
-from tests.test_p2_workflow import complete_client, people  # noqa: F401  (fixture)
+from tests.flow import complete_client
 
 
 def _file(name, ctype="application/pdf", data=b"%PDF-1.4 test"):

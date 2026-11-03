@@ -86,22 +86,20 @@ def create_reset_token(user) -> str:
 
 def reset_token_user_id(token: str) -> tuple[int, int]:
     """(user id, password stamp) from a reset token, or ValueError."""
+    payload = decode_token(token, kind="reset")
     try:
-        payload = jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
-        if payload.get("type") != "reset":
-            raise ValueError("not a reset token")
         return int(payload["sub"]), int(payload["pwd"])
-    except (JWTError, KeyError, TypeError) as e:
+    except (KeyError, TypeError, ValueError) as e:
         raise ValueError(f"Invalid token: {e}")
 
 
-def decode_token(token: str, is_refresh: bool = False) -> dict:
-    secret = settings.JWT_REFRESH_SECRET_KEY if is_refresh else settings.JWT_SECRET_KEY
+def decode_token(token: str, kind: str = "access") -> dict:
+    """The payload of a valid token of this kind ("access", "refresh" or "reset"), or ValueError."""
+    secret = settings.JWT_REFRESH_SECRET_KEY if kind == "refresh" else settings.JWT_SECRET_KEY
     try:
         payload = jwt.decode(token, secret, algorithms=[settings.JWT_ALGORITHM])
-        expected_type = "refresh" if is_refresh else "access"
-        if payload.get("type") != expected_type:
-            raise JWTError(f"Invalid token type; expected {expected_type}")
+        if payload.get("type") != kind:
+            raise JWTError(f"Invalid token type; expected {kind}")
         return payload
     except JWTError as e:
         raise ValueError(f"Invalid token: {e}")

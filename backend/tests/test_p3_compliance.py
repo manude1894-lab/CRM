@@ -5,21 +5,13 @@ from decimal import Decimal
 import pytest
 from fastapi import HTTPException, UploadFile
 
-from app.models import Account, AccountParty, ApprovalRequest, AuditLog
+from app.models import Account, AccountParty, AuditLog
 from app.schemas.account import AccountUpdate
 from app.schemas.account_party import AccountPartyCreate, AccountPartyUpdate
 from app.services import (account_party_service, account_service, amendment_service as amend,
                           client_workflow_service as wf, document_service)
-from tests.test_p2_workflow import complete_client, people  # noqa: F401  (fixture)
 from tests import flow
-
-
-def approved_client(db, people):
-    acc = complete_client(db, people["maker"])
-    flow.submit(db, acc, people["maker"])
-    flow.approve_all(db, acc, people["checker"], people["approver"])
-    wf.change_status(db, acc, people["maker"], "activate")
-    return acc
+from tests.flow import approved_client, complete_client
 
 
 # ─── Client amendments ──────────────────────────────────────────────────────

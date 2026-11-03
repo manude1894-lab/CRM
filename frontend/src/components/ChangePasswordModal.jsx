@@ -5,6 +5,7 @@ import { toast } from "../store/toast";
 import { useAuthStore } from "../store/auth";
 
 // Same rules as the server (security_service.password_problem) so the user sees them before saving.
+export const PASSWORD_HINT = "At least 10 characters, with letters and numbers.";
 export const passwordProblem = (pw) => {
   if ((pw || "").length < 10) return "At least 10 characters";
   if (!/[A-Za-z]/.test(pw) || !/\d/.test(pw)) return "Use both letters and numbers";
@@ -41,7 +42,7 @@ export default function ChangePasswordModal({ onClose, onChanged, reason }) {
       <Field label="Current password" required><Input type="password" autoComplete="current-password" value={current} onChange={(e) => setCurrent(e.target.value)} /></Field>
       <Field label="New password" required>
         <Input type="password" autoComplete="new-password" value={next} onChange={(e) => setNext(e.target.value)} />
-        <p className={`text-[11px] mt-1 ${problem ? "text-red-600" : "text-gray-400"}`}>{problem || "At least 10 characters, with letters and numbers."}</p>
+        <p className={`text-[11px] mt-1 ${problem ? "text-red-600" : "text-gray-400"}`}>{problem || PASSWORD_HINT}</p>
       </Field>
       <Field label="Repeat new password" required>
         <Input type="password" autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} />

@@ -14,9 +14,8 @@ from app.schemas.instruction import InstructionCreate
 from app.schemas.invoice import InvoiceRequest
 from app.services import (account_party_service, activity_service, amendment_service as amend,
                           document_service, instruction_service, invoice_service)
-from tests.test_api_p0 import auth, client  # noqa: F401  (fixture)
-from tests.test_p2_workflow import complete_client, people  # noqa: F401  (fixture)
-from tests.test_p3_compliance import approved_client
+from tests.helpers import auth
+from tests.flow import approved_client, complete_client
 
 
 def test_no_delete_endpoints_remain():

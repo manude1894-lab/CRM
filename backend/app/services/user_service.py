@@ -5,7 +5,6 @@ from fastapi import HTTPException
 
 from app.models import User, UserRole, Role
 from app.schemas.user import UserCreate, UserUpdate
-from app.auth.security import hash_password
 from app.services import access_control
 
 
@@ -55,11 +54,9 @@ def create_user(db: Session, data: UserCreate) -> User:
     _check_business_role(db, data.business_role_id)
     main = _main_login(db, data.person_id)
     from app.services import security_service
-    security_service.assert_password_ok(data.password, data.email)
     user = User(
         name=data.name,
         email=data.email,
-        hashed_password=hash_password(data.password),
         role=data.role,
         is_active=data.is_active,
         department_id=data.department_id,
@@ -69,7 +66,7 @@ def create_user(db: Session, data: UserCreate) -> User:
         mobile=data.mobile,
         person_id=main.id if main else None,
     )
-    security_service.password_set(user)
+    security_service.set_password(user, data.password)
     db.add(user)
     db.commit()
     db.refresh(user)
@@ -124,10 +121,7 @@ def update_user(db: Session, user_id: int, data: UserUpdate, viewer: User | None
             raise HTTPException(status_code=400, detail="Email already registered")
     if "password" in update_data:
         from app.services import security_service
-        new_password = update_data.pop("password")
-        security_service.assert_password_ok(new_password, user.email)
-        user.hashed_password = hash_password(new_password)
-        security_service.password_set(user)  # an admin reset also unlocks the account
+        security_service.set_password(user, update_data.pop("password"))  # an admin reset also unlocks the account
     for field, value in update_data.items():
         setattr(user, field, value)
     # Deactivating a person's main login deactivates all their logins.

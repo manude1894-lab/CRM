@@ -1,4 +1,4 @@
-# Runs the backend tests and the frontend tests and build on every push and pull request,
+# Runs the backend lint and tests and the frontend tests and build on every push and pull request,
 # so a change that breaks something is caught before it is deployed.
 name: Tests
 
@@ -21,6 +21,7 @@ jobs:
           cache: pip
           cache-dependency-path: backend/requirements*.txt
       - run: pip install -r requirements-dev.txt
+      - run: python -m ruff check
       - run: python -m pytest
 
   frontend:

@@ -8,9 +8,8 @@ from sqlalchemy.orm import sessionmaker
 
 from app.models import AccountParty, ApprovalRequest, Invoice, Notification, Prospect
 from app.services import scheduler_jobs
-from app.services import client_workflow_service as wf
 from tests import flow
-from tests.test_p2_workflow import complete_client, people  # noqa: F401  (fixture)
+from tests.flow import complete_client
 
 
 @pytest.fixture()

@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useAuthStore } from "../store/auth";
+import { Button } from "./ui";
 
 export const IDLE_MINUTES = 30;
 const WARN_SECONDS = 120;
@@ -35,8 +36,8 @@ export default function IdleSignOut() {
           You will be signed out in {Math.floor(left / 60)}:{String(left % 60).padStart(2, "0")}.
         </p>
         <div className="flex justify-end gap-2 mt-5">
-          <button onClick={logout} className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Sign out</button>
-          <button onClick={stay} autoFocus className="px-4 py-2 text-sm text-white rounded-lg" style={{ background: "#1a3a5c" }}>Stay signed in</button>
+          <Button onClick={logout}>Sign out</Button>
+          <Button variant="primary" onClick={stay} autoFocus>Stay signed in</Button>
         </div>
       </div>
     </div>

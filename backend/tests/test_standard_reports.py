@@ -1,11 +1,11 @@
 """BRD §20a — standard reports."""
-from datetime import date, timedelta
+from datetime import timedelta
 
 from app.schemas.prospect import ProspectCreate
 from app.services import prospect_service, standard_reports_service as rpt
 from app.services import client_workflow_service as wf
 from tests import flow
-from tests.test_p2_workflow import complete_client, people  # noqa: F401  (fixture)
+from tests.flow import complete_client
 
 
 def test_document_expiry_reports(db, make_user, make_account):

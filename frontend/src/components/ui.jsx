@@ -96,25 +96,6 @@ export const Badge = ({ text }) => {
   return <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${cls}`}>{label}</span>;
 };
 
-// ─── MetricCard ─────────────────────────────────────────────────────────
-export const MetricCard = ({ label, value, sub, color = "#1a3a5c", icon }) => (
-  <div className="relative bg-white rounded-xl border border-gray-100 p-6 shadow-sm overflow-hidden">
-    <div className="absolute top-0 left-0 right-0 h-0.5" style={{ background: color }} />
-    <div className="flex items-start justify-between">
-      <div>
-        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{label}</p>
-        <p className="text-3xl font-bold mt-1.5 tracking-tight" style={{ color }}>{value}</p>
-        {sub && <p className="text-xs text-gray-400 mt-1.5">{sub}</p>}
-      </div>
-      {icon && (
-        <div className="p-2.5 rounded-lg" style={{ background: color + "15", color }}>
-          <Icon name={icon} size={22} />
-        </div>
-      )}
-    </div>
-  </div>
-);
-
 // ─── Modal ──────────────────────────────────────────────────────────────
 // When a screen that is normally a pop-up is shown inside a page (e.g. a client tab), its Modal renders
 // inline. Pop-ups opened from inside it (confirmations, reject dialogs) still open as pop-ups.
@@ -212,40 +193,6 @@ export const FactList = ({ items }) => (
     ))}
   </dl>
 );
-
-/** "⋯" button with a small menu. items: [{ label, onClick, danger?, hidden? }] */
-export const MoreMenu = ({ items, label = "More actions" }) => {
-  const [pos, setPos] = React.useState(null); // fixed position, so the menu isn't clipped by scroll areas
-  const shown = items.filter((i) => !i.hidden);
-  if (shown.length === 0) return null;
-  const toggle = (e) => {
-    if (pos) return setPos(null);
-    const r = e.currentTarget.getBoundingClientRect();
-    const below = window.innerHeight - r.bottom > 40 + shown.length * 34;
-    const width = 240;
-    setPos({ left: Math.max(8, Math.min(r.right - width, window.innerWidth - width - 8)), width,
-      ...(below ? { top: r.bottom + 4 } : { bottom: window.innerHeight - r.top + 4 }) });
-  };
-  return (
-    <div onClick={(e) => e.stopPropagation()}>
-      <button title={label} onClick={toggle}
-        className="px-2 py-1 text-sm leading-none rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 bg-white">⋯</button>
-      {pos && (
-        <>
-          <div className="fixed inset-0 z-40" onClick={() => setPos(null)} />
-          <div className="fixed z-50 bg-white border border-gray-100 rounded-lg shadow-lg py-1" style={pos}>
-            {shown.map((i) => (
-              <button key={i.label} onClick={() => { setPos(null); i.onClick(); }}
-                className={`w-full text-left px-3 py-1.5 text-sm hover:bg-gray-50 ${i.danger ? "text-red-600" : "text-gray-700"}`}>
-                {i.label}
-              </button>
-            ))}
-          </div>
-        </>
-      )}
-    </div>
-  );
-};
 
 /** Primary / secondary buttons with one look everywhere. */
 export const Button = ({ variant = "secondary", className = "", children, ...props }) => {
@@ -480,24 +427,6 @@ export const MultiSelect = ({ options, value, onChange, getLabel = (opt) => opt 
           <input type="checkbox" checked={selected.includes(opt)} onChange={() => toggle(opt)} /> {getLabel(opt)}
         </label>
       ))}
-    </div>
-  );
-};
-
-// ─── Chart Tooltip ──────────────────────────────────────────────────────
-export const CustomTooltip = ({ active, payload, label }) => {
-  if (!active || !payload?.length) return null;
-  return (
-    <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-3 text-xs">
-      <p className="font-semibold text-gray-700 mb-1">{label}</p>
-      {payload.map((p, i) => {
-        const v = typeof p.value === "number" && p.value > 999 ? `$${(p.value / 1e6).toFixed(2)}M` : p.value;
-        return (
-          <p key={i} style={{ color: p.color }}>
-            {p.name}: {v}
-          </p>
-        );
-      })}
     </div>
   );
 };

@@ -1,7 +1,7 @@
 """The Ezee Tech support account (super admin): hidden from other users, changeable only by itself,
 and the only account that can delete user logins."""
-from app.models import Account, User
-from tests.test_api_p0 import auth, client  # noqa: F401  (fixture)
+from app.models import User
+from tests.helpers import auth
 
 
 def _support(db, make_user):

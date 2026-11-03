@@ -6,7 +6,7 @@ import pytest
 from app.auth.security import hash_password, verify_password
 from app.models import AuditLog, User, UserRole
 from app.services import security_service
-from tests.test_api_p0 import auth, client  # noqa: F401  (fixture)
+from tests.helpers import auth
 
 LOGIN = "/api/v1/auth/login"
 
@@ -135,7 +135,7 @@ def test_forgot_password_link_works_once_and_tells_the_administrators(client, db
     sent = []
     monkeypatch.setattr(settings, "SMTP_ENABLED", True)
     monkeypatch.setattr(settings, "APP_URL", "https://crm.example.com/")
-    monkeypatch.setattr(notification_service, "_send_email_best_effort", lambda to, subject, body: sent.append((to, body)))
+    monkeypatch.setattr(notification_service, "send_email_best_effort", lambda to, subject, body: sent.append((to, body)))
     admin = make_user("Ada", role=UserRole.ADMIN)
     u = make_login_user(db)
 

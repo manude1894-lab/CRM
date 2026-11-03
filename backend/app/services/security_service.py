@@ -2,15 +2,18 @@
 from __future__ import annotations
 
 import re
+import time
 from datetime import datetime, timedelta, timezone
 
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
+from app.audit import log_event
 from app.auth.permissions import has_permission
-from app.auth.security import verify_password
+from app.auth.security import create_reset_token, hash_password, password_stamp, reset_token_user_id, verify_password
 from app.config import settings
-from app.models import User, UserRole
+from app.models import Notification, User, UserRole
+from app.services import notification_service
 
 # Passwords shipped with the demo / minimal seed. Anyone still using one is told to change it.
 DEFAULT_PASSWORDS = {"admin123", "rm123", "ops123", "screen123"}
@@ -77,6 +80,13 @@ def password_set(user: User) -> None:
     user.locked_until = None
 
 
+def set_password(user: User, new_password: str) -> None:
+    """Check the rules and store a new password. Every session opened before it ends, and any lock clears."""
+    assert_password_ok(new_password, user.email)
+    user.hashed_password = hash_password(new_password)
+    password_set(user)
+
+
 # ─── Forgotten password ─────────────────────────────────────────────────────
 
 RESET_REQUEST_GAP_SECONDS = 120
@@ -91,11 +101,7 @@ def request_password_reset(db: Session, email: str) -> None:
     """Email a one-time reset link (when email is set up) and tell the administrators, who can also reset
     it from Admin → Users. Runs after the response is sent, so the answer is the same and as fast for any
     email; at most one request per account every two minutes is acted on."""
-    import time
-    from app.audit import log_event
-    from app.auth.security import create_reset_token
-    from app.services import notification_service
-    from app.services.user_service import find_by_email
+    from app.services.user_service import find_by_email  # user_service imports this module
     user = find_by_email(db, email)
     if not user or not user.is_active:
         return
@@ -105,7 +111,7 @@ def request_password_reset(db: Session, email: str) -> None:
     _last_reset_request[user.id] = now
     if reset_emails_enabled():
         link = f"{settings.APP_URL.rstrip('/')}/reset-password?token={create_reset_token(user)}"
-        notification_service._send_email_best_effort(
+        notification_service.send_email_best_effort(
             user.email, "TRIAM: reset your password",
             f"Hello {user.name},\n\nUse this link to choose a new password. It works once and expires in "
             f"{settings.PASSWORD_RESET_MINUTES} minutes:\n\n{link}\n\nIf you did not ask for this, ignore this email.")
@@ -115,7 +121,6 @@ def request_password_reset(db: Session, email: str) -> None:
               subject_type="User", subject_id=user.id)
     db.commit()
     message = f"{user.name} ({user.email}) asked for a password reset"
-    from app.models import Notification
     for admin in db.query(User).filter(User.role == UserRole.ADMIN, User.is_active == True,  # noqa: E712
                                        User.is_super_admin == False, User.id != user.id).all():  # noqa: E712
         already = db.query(Notification).filter(Notification.user_id == admin.id, Notification.message == message,
@@ -125,9 +130,6 @@ def request_password_reset(db: Session, email: str) -> None:
 
 
 def reset_password(db: Session, token: str, new_password: str) -> None:
-    from fastapi import HTTPException
-    from app.audit import log_event
-    from app.auth.security import password_stamp, hash_password, reset_token_user_id
     expired = HTTPException(status_code=400, detail="This reset link has expired or was already used. Ask for a new one.")
     try:
         user_id, stamp = reset_token_user_id(token)
@@ -136,9 +138,7 @@ def reset_password(db: Session, token: str, new_password: str) -> None:
     user = db.query(User).filter(User.id == user_id, User.is_active == True).first()  # noqa: E712
     if not user or stamp != password_stamp(user):
         raise expired
-    assert_password_ok(new_password, user.email)
-    user.hashed_password = hash_password(new_password)
-    password_set(user)
+    set_password(user, new_password)
     if not user.is_super_admin:
         log_event(db, "password_reset", f"{user.name} reset their password", user_id=user.id, subject_type="User", subject_id=user.id)
     db.commit()
