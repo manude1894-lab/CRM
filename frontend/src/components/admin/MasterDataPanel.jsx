@@ -16,6 +16,14 @@ const ENTITY_HINT = {
   service_request_status: " Tick the Triam entities each status is used by; none ticked = every entity. The order here is the order in the drop-down.",
 };
 
+// One Triam-entity chip: filled when on.
+const EntityChip = ({ on, title, onClick, children }) => (
+  <button type="button" title={title} onClick={onClick}
+    className={`text-[10px] px-1.5 py-0.5 rounded border ${on ? "border-brand-600 bg-brand-600 text-white" : "border-gray-200 text-gray-400 hover:border-gray-300"}`}>
+    {children}
+  </button>
+);
+
 export default function MasterDataPanel() {
   const [types, setTypes] = useState([]);
   const [listType, setListType] = useState(null);
@@ -57,6 +65,35 @@ export default function MasterDataPanel() {
     catch (e) { toast.error(e.response?.data?.detail || "Failed to update item"); }
   };
 
+  // Triam entities of several items at once: shown straight away, then saved; on a failure the list reloads.
+  const entityCodes = entities.map((e) => e.code);
+  const entitiesOf = (item) => item.meta?.entities || [];
+  const setEntitiesOf = async (changes) => { // [[item, codes], ...]
+    const todo = changes.filter(([item, codes]) => codes.length !== entitiesOf(item).length || codes.some((c) => !entitiesOf(item).includes(c)));
+    if (todo.length === 0) return;
+    const byId = new Map(todo.map(([item, codes]) => [item.id, entityCodes.filter((c) => codes.includes(c))]));
+    setItems((list) => list.map((it) => (byId.has(it.id) ? { ...it, meta: { ...(it.meta || {}), entities: byId.get(it.id) } } : it)));
+    try {
+      await Promise.all(todo.map(([item]) => mastersApi.update(item.id, { meta: { ...(item.meta || {}), entities: byId.get(item.id) } })));
+      invalidateMasters(listType);
+    } catch (e) {
+      toast.error(e.response?.data?.detail || "Failed to update the Triam entities");
+      load();
+    }
+  };
+  const toggleEntity = (item, code) =>
+    setEntitiesOf([[item, entitiesOf(item).includes(code) ? entitiesOf(item).filter((c) => c !== code) : [...entitiesOf(item), code]]]);
+  const allOn = (item) => entityCodes.every((c) => entitiesOf(item).includes(c));
+  const toggleAll = (item) => setEntitiesOf([[item, allOn(item) ? [] : entityCodes]]);
+  // The "All items" bar: one entity (or every entity) on or off for every item in the list.
+  const columnOn = (code) => items.length > 0 && items.every((it) => entitiesOf(it).includes(code));
+  const toggleColumn = (code) => {
+    const on = columnOn(code);
+    setEntitiesOf(items.map((it) => [it, on ? entitiesOf(it).filter((c) => c !== code) : [...new Set([...entitiesOf(it), code])]]));
+  };
+  const everythingOn = items.length > 0 && items.every(allOn);
+  const toggleEverything = () => setEntitiesOf(items.map((it) => [it, everythingOn ? [] : entityCodes]));
+
   const move = (index, delta) => {
     const other = items[index + delta];
     if (!other) return;
@@ -88,6 +125,14 @@ export default function MasterDataPanel() {
         <h3 className="text-sm font-semibold text-gray-700 mb-1">{types.find((t) => t.list_type === listType)?.title}</h3>
         <p className="text-xs text-gray-400 mb-3">Deactivate a value instead of deleting it.{ENTITY_LISTS.includes(listType) && ENTITY_HINT[listType]}</p>
 
+        {!loading && ENTITY_LISTS.includes(listType) && items.length > 0 && (
+          <div className="flex flex-wrap items-center gap-1 px-2 py-1.5 mb-1 rounded-lg border border-gray-100">
+            <span className="text-xs font-medium text-gray-500 mr-2">All items</span>
+            <EntityChip on={everythingOn} title="Every Triam entity on every item" onClick={toggleEverything}>All</EntityChip>
+            {entities.map((e) => <EntityChip key={e.code} on={columnOn(e.code)} title={e.label} onClick={() => toggleColumn(e.code)}>{e.code}</EntityChip>)}
+          </div>
+        )}
+
         {loading ? <p className="text-xs text-gray-400">Loading…</p> : (
           <div className="space-y-1 mb-4">
             {items.length === 0 && <p className="text-xs text-gray-400">No items yet.</p>}
@@ -106,16 +151,10 @@ export default function MasterDataPanel() {
                   {!item.is_active && <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-200 text-gray-500 flex-shrink-0">Inactive</span>}
                   {ENTITY_LISTS.includes(listType) && (
                     <span className="flex flex-wrap gap-1 ml-2">
-                      {entities.map((e) => {
-                        const on = (item.meta?.entities || []).includes(e.code);
-                        return (
-                          <button key={e.code} type="button" title={e.label}
-                            onClick={() => patch(item, { meta: { ...(item.meta || {}), entities: on ? item.meta.entities.filter((x) => x !== e.code) : [...(item.meta?.entities || []), e.code] } })}
-                            className={`text-[10px] px-1.5 py-0.5 rounded border ${on ? "border-brand-600 bg-brand-600 text-white" : "border-gray-200 text-gray-400 hover:border-gray-300"}`}>
-                            {e.code}
-                          </button>
-                        );
-                      })}
+                      <EntityChip on={allOn(item)} title="Every Triam entity" onClick={() => toggleAll(item)}>All</EntityChip>
+                      {entities.map((e) => (
+                        <EntityChip key={e.code} on={entitiesOf(item).includes(e.code)} title={e.label} onClick={() => toggleEntity(item, e.code)}>{e.code}</EntityChip>
+                      ))}
                     </span>
                   )}
                 </div>
