@@ -75,11 +75,11 @@ class User(Base):
 
     @property
     def handles_clients(self) -> bool:
-        """True for client-facing staff (RM, RO, FO, Sales Manager …): no business role, or at least one
-        that carries none of the central-desk permissions. Decides the menu a user gets."""
-        from app.auth.permissions import CENTRAL_PERMISSIONS  # local import: auth imports models
+        """True for client-facing staff (RM, RO, FO, Sales Manager …): no business role yet, or a role with
+        the client-portfolio permission. Decides the menu a user gets and whether they are listed as an RM."""
+        from app.auth.permissions import PORTFOLIO_PERMISSION  # local import: auth imports models
         roles = self.all_business_roles
-        return not roles or any(not (set(r.permissions or []) & CENTRAL_PERMISSIONS) for r in roles)
+        return not roles or any(PORTFOLIO_PERMISSION in (r.permissions or []) for r in roles)
 
     @property
     def business_role_name(self):

@@ -13,6 +13,7 @@ from app.database import Base
 
 # Every permission flag the app understands, with an admin-facing description.
 PERMISSIONS = {
+    "client.portfolio": "Relationship manager: holds a client portfolio and is listed among the RMs",
     "client.approve": "Approve or reject client profiles and amendments (Checker)",
     "document.delete_submitted": "Delete documents after they have been submitted (Approver)",
     "master.manage": "Maintain master data lists",
