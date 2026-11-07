@@ -4,6 +4,7 @@ import { Icon, Modal, Field, Input, Select, Textarea, Spinner, ErrorBanner, Page
 import DuplicateWarning from "../components/DuplicateWarning";
 import { PROSPECT_STATUS_OPTIONS, PROSPECT_SOURCE_OPTIONS, isRelationshipManager, personLabel, fmtDate } from "../utils/constants";
 import { toast } from "../store/toast";
+import { reasonDialog } from "../store/confirm";
 import { useAuthStore } from "../store/auth";
 import { wordCount } from "../components/accounts/WorkflowBar";
 
@@ -29,6 +30,7 @@ export default function ProspectsPage({ onNavigate } = {}) {
   const [assign, setAssign] = useState(null); // { prospect, rm_id, comments }
   const me = useAuthStore((s) => s.user);
   const coordinator = useAuthStore((s) => s.isProspectCoordinator());
+  const canOverrideDuplicate = useAuthStore((s) => s.can("client.approve"));
 
   const load = async () => {
     try {
@@ -66,8 +68,18 @@ export default function ProspectsPage({ onNavigate } = {}) {
       contact_email: form.contact_email?.trim() || null,
       lost_reason: form.lost_reason || null,
     };
+    const send = (body) => (form.id ? prospectsApi.update(form.id, body) : prospectsApi.create(body));
     try {
-      const saved = form.id ? await prospectsApi.update(form.id, payload) : await prospectsApi.create(payload);
+      let saved;
+      try {
+        saved = await send(payload);
+      } catch (e) {
+        // BRD §3: an exact duplicate is blocked; Compliance may go ahead with a recorded reason.
+        if (e.response?.status !== 409 || !canOverrideDuplicate) throw e;
+        const reason = await reasonDialog({ title: "Duplicate prospect", confirmLabel: "Create anyway", message: e.response.data.detail });
+        if (reason === null) return;
+        saved = await send({ ...payload, allow_duplicate: true, duplicate_reason: reason });
+      }
       if (submit && (saved.owner_id !== rmId || !saved.assigned_at || coordinator)) {
         await prospectsApi.assign(saved.id, { rm_id: rmId, comments: form.assignor_comments || null });
       }
