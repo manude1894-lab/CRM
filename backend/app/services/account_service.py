@@ -204,20 +204,6 @@ def get_account(db: Session, account_id: int, user: User) -> Account:
     return acc
 
 
-def _assert_shareholder_ownership_complete(account: Account) -> None:
-    """Client spec §20 — Shareholder effective ownership must total 100% before a Corporate
-    profile can be finalized (moved to Approved/Active). Individual accounts are exempt —
-    there's no Shareholder concept for a person."""
-    if account.account_type != "Corporate":
-        return
-    total = sum((p.effective_ownership_percent or Decimal("0")) for p in account.parties if p.party_role == "Shareholder")
-    if abs(total - Decimal("100")) > Decimal("0.01"):
-        raise HTTPException(
-            status_code=400,
-            detail=f"Shareholder effective ownership must total 100% before the profile can be Approved/Active (currently {total}%).",
-        )
-
-
 def _assert_date_sanity(data) -> None:
     """BRD §5 — Incorporation Date can't be in the
     future; License Expiry Date can't be in the past. Interactive create/update only —
@@ -497,6 +483,12 @@ PARTIES_SECTION = "Shareholder / UBO Information"
 BIZ_RATIONALE_SECTION = "Biz Rationale Report"
 
 
+def counts_towards_ownership(party) -> bool:
+    """Triam UAT 06-11-2026: an entity's share is looked through to the individuals behind it, so only
+    individual shareholders count towards 100% (ABC Ltd: A 25, B 25, C Ltd's owners C1 30, C2 20)."""
+    return party.party_role == "Shareholder" and party.constitution != "Entity"
+
+
 def missing_mandatory(account: Account) -> list[dict]:
     missing: list[dict] = []
 
@@ -565,15 +557,15 @@ def missing_mandatory(account: Account) -> list[dict]:
         need("Introducer", "has_introducer", "Introducer (Yes / No)")
         need("Introducer", "introducer_name", "Introducer Name", when=account.has_introducer)
 
-        # §6 — shareholders must exist and add up to 100%.
+        # §6 — shareholders must exist and the individuals among them add up to 100%.
         shareholders = [p for p in account.parties if p.party_role == "Shareholder"]
         if not shareholders:
             missing.append({"section": PARTIES_SECTION, "field": "parties", "label": "At least one Shareholder / UBO"})
         else:
-            total = sum((Decimal(str(p.effective_ownership_percent or 0)) for p in shareholders), Decimal("0"))
+            total = sum((Decimal(str(p.effective_ownership_percent or 0)) for p in shareholders if counts_towards_ownership(p)), Decimal("0"))
             if abs(total - Decimal("100")) > Decimal("0.01"):
                 missing.append({"section": PARTIES_SECTION, "field": "parties",
-                                "label": f"Shareholding must total 100% (currently {total}%)"})
+                                "label": f"Individual shareholding must total 100% (currently {total}%)"})
 
     # §10 KYC / AML is completed by Compliance after submission — see missing_cdd.
 

@@ -73,7 +73,7 @@ export default function AccountPartyModal({ account, onClose, onChange, role }) 
   };
   useEffect(() => { load(); }, [account.id]);
 
-  const startNew = () => { setForm(emptyParty(tab)); setEditing("new"); };
+  const startNew = (constitution = "Individual") => { setForm({ ...emptyParty(tab), constitution }); setEditing("new"); };
   const startEdit = (row) => { setForm({ ...row, residential_address: { ...BLANK_ADDRESS, ...(row.residential_address || {}) } }); setEditing(row.id); };
   const cancelForm = () => { setEditing(null); setForm(null); };
 
@@ -105,8 +105,9 @@ export default function AccountPartyModal({ account, onClose, onChange, role }) 
 
   const rowsForTab = parties.filter((p) => p.party_role === tab);
   const removedShown = role ? removed.filter((r) => r.party_role === role) : removed;
+  // Triam UAT 06-11-2026: only individuals count towards 100%; an entity's share is looked through.
   const ownershipTotal = parties
-    .filter((p) => p.party_role === "Shareholder")
+    .filter((p) => p.party_role === "Shareholder" && p.constitution !== "Entity")
     .reduce((s, p) => s + Number(p.effective_ownership_percent || 0), 0);
 
   return (
@@ -124,7 +125,7 @@ export default function AccountPartyModal({ account, onClose, onChange, role }) 
 
       {tab === "Shareholder" && !editing && (
         <p className={`text-xs mb-2 ${ownershipTotal === 100 ? "text-gray-400" : "text-amber-600 font-medium"}`}>
-          Total effective ownership: {ownershipTotal.toFixed(2)}%{ownershipTotal !== 100 && " (should total 100%)"}
+          Total individual ownership: {ownershipTotal.toFixed(2)}%{ownershipTotal !== 100 && " (should total 100%)"} · entity shareholders are not counted
         </p>
       )}
 
@@ -148,7 +149,7 @@ export default function AccountPartyModal({ account, onClose, onChange, role }) 
                         <div className="text-xs text-gray-400">
                           {p.constitution}
                           {p.country_of_incorp_or_birth && ` · ${p.country_of_incorp_or_birth}`}
-                          {p.party_role === "Shareholder" && p.effective_ownership_percent != null && ` · ${p.effective_ownership_percent}% ownership`}
+                          {p.party_role === "Shareholder" && p.constitution !== "Entity" && p.effective_ownership_percent != null && ` · ${p.effective_ownership_percent}% ownership`}
                           {p.country_of_residence && ` · resides ${p.country_of_residence}`}
                         </div>
                       </div>
@@ -171,11 +172,12 @@ export default function AccountPartyModal({ account, onClose, onChange, role }) 
               </div>
               {/* Triam UAT 26-10-2026: once shareholding is 100%, no further shareholder can be added. */}
               {readOnly ? null : tab === "Shareholder" && ownershipTotal >= 100 ? (
-                <p className="px-3 py-2 text-xs rounded-lg bg-gray-50 border border-gray-200 text-gray-600 text-center">
-                  Shareholding is 100%. No further shareholder can be added; reduce an existing shareholder's share first.
-                </p>
+                <div className="px-3 py-2 text-xs rounded-lg bg-gray-50 border border-gray-200 text-gray-600 text-center">
+                  Individual shareholding is 100%. No further individual can be added; reduce an existing share first.
+                  <button onClick={() => startNew("Entity")} className="block mx-auto mt-1 text-brand-600 hover:underline">Add an entity shareholder</button>
+                </div>
               ) : (
-                <button onClick={startNew} className="w-full px-3 py-2 text-xs border border-dashed border-gray-300 rounded-lg hover:border-brand-300 hover:text-brand-600 text-gray-500 flex items-center justify-center gap-1">
+                <button onClick={() => startNew()} className="w-full px-3 py-2 text-xs border border-dashed border-gray-300 rounded-lg hover:border-brand-300 hover:text-brand-600 text-gray-500 flex items-center justify-center gap-1">
                   <Icon name="plus" size={13} /> Add {partyLabel(tab)}
                 </button>
               )}
@@ -253,7 +255,10 @@ function PartyForm({ form, setForm, countries, onCancel, onSave }) {
           <Input value={form.nominee_director_name || ""} onChange={set(setForm, "nominee_director_name")} />
         </Field>
       )}
-      {isShareholder && (
+      {isShareholder && isEntity && (
+        <p className="text-xs text-gray-500 mb-3">No percentage for an entity. Add the individuals behind it with their effective share; they make up the 100%.</p>
+      )}
+      {isShareholder && !isEntity && (
         <Field label="Effective Ownership Share (%)" required>
           <Input type="number" min="0" max="100" step="0.01" value={form.effective_ownership_percent ?? ""} onChange={set(setForm, "effective_ownership_percent")} />
         </Field>

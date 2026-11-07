@@ -213,10 +213,13 @@ def _diff(db: Session, before: dict, after: dict) -> dict:
 def _simulate(db: Session, acc: Account, payload: dict, user: User, check_mandatory: bool = False) -> tuple[dict, dict, list]:
     """Replay on the live record, capture before/after, then roll everything back."""
     before = _state(acc)
+    # Only gaps this amendment creates count. A client approved or imported before a rule existed must
+    # stay amendable: an address change can't be refused over something it doesn't touch.
+    existing_gaps = {(m["field"], m["label"]) for m in account_service.missing_mandatory(acc)} if check_mandatory else set()
     try:
         temp = _replay(db, acc, payload, user)
         after = _state(acc, temp)
-        missing = account_service.missing_mandatory(acc) if check_mandatory else []
+        missing = [m for m in account_service.missing_mandatory(acc) if (m["field"], m["label"]) not in existing_gaps] if check_mandatory else []
     finally:
         db.rollback()
     return before, after, missing

@@ -27,8 +27,9 @@ def _validate_party(account: Account, p: AccountParty) -> None:
 
     - Shareholders: contact mobile (country code + number) and email are mandatory (BRD §6).
     - Any email given must be a valid address.
-    - Effective ownership: 0–100 with at most 2 decimals, and the shareholders' total may not
-      exceed 100% ("add Shareholders/UBOs until total ownership reaches 100%").
+    - Effective ownership: 0–100 with at most 2 decimals, and the individual shareholders' total may
+      not exceed 100% ("add Shareholders/UBOs until total ownership reaches 100%").
+    - An entity shareholder has no percentage (Triam UAT 06-11-2026): it is cleared if one is sent.
     """
     if p.email and not _EMAIL_RE.match(p.email.strip()):
         raise HTTPException(status_code=400, detail="Contact Email is not a valid email address")
@@ -46,7 +47,9 @@ def _validate_party(account: Account, p: AccountParty) -> None:
         ) if not (value or "").strip()]
         if missing:
             raise HTTPException(status_code=400, detail=f"{p.party_role} {', '.join(missing)} {'is' if len(missing) == 1 else 'are'} required")
-    if p.party_role == "Shareholder":
+    if p.party_role == "Shareholder" and p.constitution == "Entity":
+        p.effective_ownership_percent = None
+    elif p.party_role == "Shareholder":
         pct = p.effective_ownership_percent
         if pct is None:
             raise HTTPException(status_code=400, detail="Shareholder Effective Ownership Share (%) is required")
@@ -54,9 +57,9 @@ def _validate_party(account: Account, p: AccountParty) -> None:
         if pct <= 0 or pct > 100 or pct != pct.quantize(Decimal("0.01")):
             raise HTTPException(status_code=400, detail="Effective Ownership Share must be more than 0 and at most 100, with up to 2 decimals")
         others = sum((Decimal(str(o.effective_ownership_percent or 0)) for o in account.parties
-                      if o.party_role == "Shareholder" and o is not p and o.id != p.id), Decimal("0"))
+                      if account_service.counts_towards_ownership(o) and o is not p and o.id != p.id), Decimal("0"))
         if others + pct > Decimal("100"):
-            raise HTTPException(status_code=400, detail=f"Total shareholding would be {others + pct}%. It can't exceed 100% (other shareholders hold {others}%).")
+            raise HTTPException(status_code=400, detail=f"Total individual shareholding would be {others + pct}%. It can't exceed 100% (other individuals hold {others}%).")
     # BRD §6–8: Country of Residence is mandatory for every party; Country of Birth for signatories.
     required = [("Country of Residence", p.country_of_residence)]
     if p.constitution != "Entity":
