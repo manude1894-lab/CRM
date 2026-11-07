@@ -145,7 +145,7 @@ export const documentsApi = {
     window.URL.revokeObjectURL(url);
   },
   // The file's bytes, for the in-CRM preview
-  content: (id) => api.get(`/documents/${id}/download`, { responseType: "blob" }).then((r) => r.data),
+  content: (id) => api.get(`/documents/${id}/content`, { responseType: "blob" }).then((r) => r.data),
 };
 
 // ─── Notifications ─────────────────────────────────────────────────────

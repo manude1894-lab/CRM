@@ -45,6 +45,8 @@ export default function DocumentPreview({ doc, onClose }) {
     return () => { cancelled = true; if (objectUrl) URL.revokeObjectURL(objectUrl); };
   }, [doc.id]);
 
+  // Triam UAT 05-11-2026: on approved cases only Admins download; others read the document here.
+  const mayDownload = doc.can_download !== false;
   const download = () => documentsApi.download(doc.id, doc.filename);
 
   useEffect(() => {
@@ -58,10 +60,10 @@ export default function DocumentPreview({ doc, onClose }) {
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-5xl h-full max-h-[92vh] flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100">
           <h2 className="text-sm font-semibold text-gray-800 truncate flex-1" title={doc.filename}>{doc.filename}</h2>
-          <button onClick={download}
+          {mayDownload && <button onClick={download}
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs border border-gray-200 rounded-lg hover:bg-gray-50">
             <Icon name="download" size={13} /> Download
-          </button>
+          </button>}
           <button onClick={onClose} title="Close" className="text-gray-400 hover:text-gray-600"><Icon name="close" size={20} /></button>
         </div>
         <div className="flex-1 min-h-0 bg-gray-100 overflow-auto">
@@ -69,10 +71,11 @@ export default function DocumentPreview({ doc, onClose }) {
           {!loading && (failed || !kind) && (
             <div className="h-full flex flex-col items-center justify-center gap-3 text-sm text-gray-500 p-6 text-center">
               {failed ? "The document could not be opened." : "Preview is not available for this file type."}
-              <Button variant="primary" onClick={download}>Download</Button>
+              {mayDownload ? <Button variant="primary" onClick={download}>Download</Button>
+                : <span className="text-xs">An Administrator can download it for you.</span>}
             </div>
           )}
-          {kind === "pdf" && url && <iframe src={url} title={doc.filename} className="w-full h-full border-0 bg-white" />}
+          {kind === "pdf" && url && <iframe src={mayDownload ? url : `${url}#toolbar=0`} title={doc.filename} className="w-full h-full border-0 bg-white" />}
           {kind === "image" && url && (
             <div className="min-h-full flex items-center justify-center p-4"><img src={url} alt={doc.filename} className="max-w-full max-h-full object-contain shadow" /></div>
           )}

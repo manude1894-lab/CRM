@@ -139,7 +139,7 @@ export default function ClientDocumentsFolder({ accountId, onChange, onboarding 
         </div>
       </div>
       <div className="flex items-center gap-1 flex-shrink-0">
-        {!d.link_url && (
+        {!d.link_url && d.can_download !== false && (
           <button onClick={() => documentsApi.download(d.id, d.filename)} title="Download" className="p-1 rounded hover:bg-brand-50 text-gray-400 hover:text-brand-600">
             <Icon name="download" size={13} />
           </button>

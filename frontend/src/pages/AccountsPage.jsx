@@ -182,7 +182,7 @@ export default function AccountsPage({ scope = "onboarding", initialAccountId, i
     <div className="space-y-4">
       <PageHeader title={cfg.title} subtitle={cfg.subtitle(scoped.length)}
         actions={<>
-          <Button onClick={exportCSV}>Export CSV</Button>
+          {isAdmin && <Button onClick={exportCSV}>Export CSV</Button>}
           {isAdmin && scope === "maintenance" && (
             <>
               <input ref={fileInputRef} type="file" accept=".csv,text/csv" className="hidden"

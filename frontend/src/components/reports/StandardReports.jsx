@@ -3,12 +3,14 @@ import { reportsApi } from "../../api/endpoints";
 import { Button, DateInput, Field, Input, Spinner } from "../ui";
 import { csvDate, exportFilename, fmtDate } from "../../utils/constants";
 import { toast } from "../../store/toast";
+import { useAuthStore } from "../../store/auth";
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 const show = (v) => (typeof v === "string" && ISO_DATE.test(v) ? fmtDate(v) : v ?? "—");
 
 /** BRD §20a — the standard reports, shown on screen and exported to CSV. */
 export default function StandardReports() {
+  const isAdmin = useAuthStore((s) => s.isAdmin());
   const [list, setList] = useState([]);
   const [key, setKey] = useState("documents-expiring");
   const [params, setParams] = useState({ days: 30, date_from: "", date_to: "" });
@@ -63,7 +65,7 @@ export default function StandardReports() {
             </>
           )}
           {["documents-expiring", "prospects-assigned"].includes(key) && <div className="mb-4"><Button onClick={() => run()}>Run</Button></div>}
-          <div className="mb-4 ml-auto"><Button onClick={exportCsv} disabled={!report?.rows?.length}>Export CSV</Button></div>
+          {isAdmin && <div className="mb-4 ml-auto"><Button onClick={exportCsv} disabled={!report?.rows?.length}>Export CSV</Button></div>}
         </div>
         {busy || !report ? <Spinner /> : (
           <>
