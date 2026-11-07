@@ -132,6 +132,9 @@ class Account(Base):
         return self.prospect.prospect_uid if self.prospect is not None else self.account_uid
 
     # Current parties only; removed ones stay in the table (removed_at set) and are listed by removed_parties.
+    # While Awaiting Approval: "Compliance" or "Approver". Filled in by the client list, not stored.
+    approval_stage = None
+
     parties = relationship("AccountParty", primaryjoin="and_(Account.id == AccountParty.account_id, AccountParty.removed_at.is_(None))",
                            cascade="all, delete-orphan", order_by="AccountParty.id", overlaps="removed_parties")
     removed_parties = relationship("AccountParty", primaryjoin="and_(Account.id == AccountParty.account_id, AccountParty.removed_at.isnot(None))",

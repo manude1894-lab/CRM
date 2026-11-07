@@ -7,7 +7,11 @@ import { toast } from "../store/toast";
 import { useAuthStore } from "../store/auth";
 import { ChangeList, DecisionButtons, REQUEST_TYPE_LABEL } from "../components/compliance/ComplianceParts";
 
-const TABS = ["Pending", "Approved", "Rejected", "Withdrawn"];
+// Triam UAT 05-11-2026: pending work is split by level. Each tab reads one status from the server; the two
+// pending tabs then keep the requests at their level.
+const LEVEL_TABS = { "Awaiting Compliance Approval": "Compliance", "Awaiting Final Approval": "Approver" };
+const CLOSED_TABS = ["Approved", "Rejected", "Withdrawn"];
+const levelOf = (r) => (r.request_type === "client_profile" ? r.stage || "Compliance" : "Compliance");
 const TYPES = [["", "All"], ["client_profile", "New Clients"], ["client_amendment", "Client Amendments"]];
 const TYPE_STYLE = { client_profile: "bg-blue-50 text-blue-700", client_amendment: "bg-amber-50 text-amber-800" };
 
@@ -16,7 +20,10 @@ const TYPE_STYLE = { client_profile: "bg-blue-50 text-blue-700", client_amendmen
  * amendments (Compliance only — BRD §11). A checker can never approve their own submission.
  */
 export default function ApprovalsPage({ onNavigate }) {
-  const [tab, setTab] = useState("Pending");
+  const seesCompliance = useAuthStore((s) => s.can("client.approve") || s.isReadOnly());
+  const TABS = [...Object.keys(LEVEL_TABS).filter((t) => seesCompliance || LEVEL_TABS[t] === "Approver"), ...CLOSED_TABS];
+  const [tab, setTab] = useState(TABS[0]);
+  const level = LEVEL_TABS[tab];
   const [type, setType] = useState("");
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -27,7 +34,10 @@ export default function ApprovalsPage({ onNavigate }) {
 
   const load = async () => {
     setLoading(true); setError(null);
-    try { setRows(await workflowApi.inbox(tab, type)); }
+    try {
+      const found = await workflowApi.inbox(level ? "Pending" : tab, type);
+      setRows(level ? found.filter((r) => levelOf(r) === level) : found);
+    }
     catch (e) { setError(e.response?.data?.detail || "Failed to load the Compliance inbox"); }
     finally { setLoading(false); }
   };
@@ -42,7 +52,7 @@ export default function ApprovalsPage({ onNavigate }) {
   return (
     <div className="space-y-4">
       <PageHeader title="Compliance Approval"
-        subtitle={tab === "Pending" ? `${rows.length} waiting for a decision` : undefined} />
+        subtitle={level ? `${rows.length} waiting for a decision` : undefined} />
       <div className="flex gap-1 border-b border-gray-200">
         {TABS.map((t) => (
           <button key={t} onClick={() => setTab(t)}
@@ -68,7 +78,7 @@ export default function ApprovalsPage({ onNavigate }) {
                 <th className="text-left py-2.5 px-4 font-semibold">Client</th>
                 <th className="text-left py-2.5 px-4 font-semibold">Submitted by</th>
                 <th className="text-left py-2.5 px-4 font-semibold">Submitted</th>
-                {tab !== "Pending" && <th className="text-left py-2.5 px-4 font-semibold">Decision</th>}
+                {!level && <th className="text-left py-2.5 px-4 font-semibold">Decision</th>}
                 <th className="py-2.5 px-4" />
               </tr>
             </thead>
@@ -94,7 +104,7 @@ export default function ApprovalsPage({ onNavigate }) {
                   </td>
                   <td className="py-2.5 px-4 text-xs text-gray-600">{r.maker_name || "—"}</td>
                   <td className="py-2.5 px-4 text-xs text-gray-600">{formatTimestamp(r.submitted_at)}</td>
-                  {tab !== "Pending" && (
+                  {!level && (
                     <td className="py-2.5 px-4 text-xs text-gray-600">
                       {r.checker_name || "—"} · {formatTimestamp(r.decided_at)}
                       {r.reason_code && <div className="text-red-600">{reasons.labelOf(r.reason_code)}. {r.reason_text}</div>}
@@ -102,13 +112,13 @@ export default function ApprovalsPage({ onNavigate }) {
                   )}
                   <td className="py-2.5 px-4 text-right">
                     <button onClick={() => open(r)} className="px-3 py-1.5 text-xs text-white rounded-lg" style={{ background: "#1a3a5c" }}>
-                      {tab === "Pending" && !readOnly ? "Review" : "Open"}
+                      {level && !readOnly ? "Review" : "Open"}
                     </button>
                   </td>
                 </tr>
               ))}
               {rows.length === 0 && (
-                <tr><td colSpan={6} className="py-10 text-center text-sm text-gray-400">{tab === "Pending" ? "Nothing waiting for Compliance." : `No ${tab.toLowerCase()} requests.`}</td></tr>
+                <tr><td colSpan={6} className="py-10 text-center text-sm text-gray-400">{level ? "Nothing waiting at this level." : `No ${tab.toLowerCase()} requests.`}</td></tr>
               )}
             </tbody>
           </table>

@@ -282,7 +282,10 @@ export default function AccountsPage({ scope = "onboarding", initialAccountId, i
                     <div className="font-medium text-gray-800">{a.company_name}</div>
                     <div className="text-xs text-gray-400">{a.account_type === "Individual" ? "Individual" : [a.client_category, a.country].filter(Boolean).join(" · ") || "Corporate"}{a.is_pep ? " · PEP" : ""}</div>
                   </td>
-                  <td className="py-2.5 px-3"><Badge text={a.profile_status || "New"} /></td>
+                  <td className="py-2.5 px-3">
+                    <Badge text={a.profile_status || "New"} />
+                    {a.approval_stage && <div className="text-[11px] text-amber-700 mt-0.5">{a.approval_stage === "Approver" ? "Pending with the Approver" : "Pending with Compliance"}</div>}
+                  </td>
                   {scope === "maintenance" && <td className="py-2.5 px-3 text-xs text-gray-600">{a.risk_rating || "—"}</td>}
                   <td className="py-2.5 px-3 text-xs text-gray-600">{userName(a.spoc_id)}</td>
                   <td className="py-2.5 px-3 text-xs text-gray-600">{a.is_pep ? "PEP" : "—"}</td>

@@ -61,8 +61,8 @@ export default function WorkflowBar({ accountId, refreshKey, onChanged, submitSi
     try {
       let next;
       if (action === "submit") next = await workflowApi.submit(accountId, text, kycDeclared);
-      else if (action === "approve") next = await workflowApi.approve(accountId, text);
-      else if (action === "reject") next = await workflowApi.reject(accountId, reasonCode, text);
+      else if (action === "approve") next = await workflowApi.approve(accountId, text, state.stage);
+      else if (action === "reject") next = await workflowApi.reject(accountId, reasonCode, text, state.stage);
       else if (action === "withdraw") next = await workflowApi.withdraw(accountId);
       else next = await workflowApi.status(accountId, action, text);
       setState(next);
@@ -71,6 +71,8 @@ export default function WorkflowBar({ accountId, refreshKey, onChanged, submitSi
       onChanged?.(next);
     } catch (e) {
       toast.error(e.response?.data?.detail || "Action failed");
+      // Someone else may have acted first: show the current state rather than a stale one.
+      if (e.response?.status === 409 || e.response?.status === 403) { setDialog(null); load(); }
     } finally { setBusy(false); }
   };
 

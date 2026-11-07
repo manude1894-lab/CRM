@@ -7,7 +7,7 @@ from decimal import Decimal
 from datetime import date, datetime, timezone
 from dateutil.relativedelta import relativedelta
 
-from app.models import Account, User, UserRole, ClientIdSequence
+from app.models import Account, ApprovalRequest, ApprovalStatus, User, UserRole, ClientIdSequence
 from app.auth.permissions import has_permission
 from app.audit import log_event
 from app.schemas.account import AccountCreate, AccountUpdate, AccountImportRow, AccountImportRowResult, AccountBulkUpdateRequest, BulkUpdateResult
@@ -185,6 +185,11 @@ def list_accounts(
 
     total = query.count()
     items = query.order_by(Account.company_name).offset(skip).limit(limit).all()
+    # Triam UAT 05-11-2026: the list says at which level a case awaiting approval is pending.
+    awaiting = {a.id: a for a in items if a.profile_status == client_workflow_service.AWAITING}
+    if awaiting:
+        for req in db.query(ApprovalRequest).filter(ApprovalRequest.account_id.in_(awaiting), ApprovalRequest.status == ApprovalStatus.PENDING.value).all():
+            awaiting[req.account_id].approval_stage = client_workflow_service.stage_of(req)
     return items, total
 
 

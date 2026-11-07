@@ -39,6 +39,14 @@ def build_dashboard(db: Session, user: User) -> dict:
     pending = db.query(ApprovalRequest).filter(ApprovalRequest.status == ApprovalStatus.PENDING.value).all()
     pending = [r for r in pending if r.account_id in visible_ids]
 
+    names = {a.id: a.company_name for a in accounts}
+    # Triam UAT 05/06-11-2026: pending approvals by level. An amendment goes to Compliance only (BRD §11).
+    pending_rows = sorted(({
+        "account_id": r.account_id, "company_name": names[r.account_id], "request_type": r.request_type,
+        "level": wf.stage_of(r) if r.request_type == "client_profile" else wf.STAGE_COMPLIANCE,
+        "submitted_by": r.maker.name if r.maker else None, "submitted_at": r.submitted_at,
+    } for r in pending), key=lambda row: str(row["submitted_at"]))
+
     horizon = today + timedelta(days=AML_REVIEW_WINDOW_DAYS)
     aml_due = sorted(
         ({"account_id": a.id, "client_id": a.client_id, "company_name": a.company_name, "risk_rating": a.risk_rating,
@@ -85,6 +93,7 @@ def build_dashboard(db: Session, user: User) -> dict:
             "compliance": sum(1 for r in pending if r.request_type != "client_profile" or wf.stage_of(r) == wf.STAGE_COMPLIANCE),
             "approver": sum(1 for r in pending if r.request_type == "client_profile" and wf.stage_of(r) == wf.STAGE_APPROVER),
         },
+        "pending_approvals": pending_rows,
         "rejected_clients": rejected,
         "aml_reviews_due": aml_due,
         "portfolio_by_rm": portfolio,

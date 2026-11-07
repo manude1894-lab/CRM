@@ -372,6 +372,7 @@ class AccountUpdate(_ClientFieldRules):
 
 class AccountRead(AccountBase):
     id: int
+    approval_stage: Optional[str] = None
     account_uid: str
     client_id: Optional[str] = None
     temp_id: Optional[str] = None

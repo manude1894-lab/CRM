@@ -62,8 +62,8 @@ export const auditApi = {
 export const workflowApi = {
   get: (accountId) => api.get(`/accounts/${accountId}/workflow`).then((r) => r.data),
   submit: (accountId, comment, kycDeclared) => api.post(`/accounts/${accountId}/submit`, { comment: comment || null, kyc_declared: !!kycDeclared }).then((r) => r.data),
-  approve: (accountId, comment) => api.post(`/accounts/${accountId}/approve`, { comment: comment || null }).then((r) => r.data),
-  reject: (accountId, reason_code, reason_text) => api.post(`/accounts/${accountId}/reject`, { reason_code, reason_text }).then((r) => r.data),
+  approve: (accountId, comment, expected_stage) => api.post(`/accounts/${accountId}/approve`, { comment: comment || null, expected_stage: expected_stage || null }).then((r) => r.data),
+  reject: (accountId, reason_code, reason_text, expected_stage) => api.post(`/accounts/${accountId}/reject`, { reason_code, reason_text, expected_stage: expected_stage || null }).then((r) => r.data),
   withdraw: (accountId) => api.post(`/accounts/${accountId}/withdraw`).then((r) => r.data),
   status: (accountId, action, reason) => api.post(`/accounts/${accountId}/status`, { action, reason: reason || null }).then((r) => r.data),
   inbox: (status = "Pending", request_type) => api.get("/approvals", { params: { status, request_type: request_type || undefined } }).then((r) => r.data),

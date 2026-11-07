@@ -12,11 +12,13 @@ class SubmitRequest(BaseModel):
 
 class ApproveRequest(BaseModel):
     comment: Optional[str] = Field(None, max_length=4000)  # Compliance / Approver comments, up to 250 words
+    expected_stage: Optional[str] = None  # the level shown on the user's screen when they decided
 
 
 class RejectRequest(BaseModel):
     reason_code: str = Field(..., min_length=1, max_length=60)
     reason_text: str = Field(..., max_length=2000)
+    expected_stage: Optional[str] = None
 
 
 class RejectOrComment(BaseModel):

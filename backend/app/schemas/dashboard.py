@@ -44,6 +44,15 @@ class PortfolioRow(BaseModel):
     active: int
 
 
+class PendingApproval(BaseModel):
+    account_id: int
+    company_name: str
+    request_type: str
+    level: str  # "Compliance" or "Approver"
+    submitted_by: Optional[str] = None
+    submitted_at: Optional[datetime] = None
+
+
 class RejectedClient(BaseModel):
     account_id: int
     company_name: str
@@ -58,6 +67,7 @@ class DashboardResponse(BaseModel):
     kpis: KPISummary
     client_status_breakdown: List[StatusCount]
     approvals_pending: ApprovalsPending
+    pending_approvals: List[PendingApproval] = []
     rejected_clients: List[RejectedClient] = []
     aml_reviews_due: List[AmlReviewDue]
     portfolio_by_rm: List[PortfolioRow]

@@ -45,14 +45,14 @@ def submit(account_id: int, data: SubmitRequest, db: Session = Depends(get_db), 
 @router.post("/accounts/{account_id}/approve", response_model=WorkflowState)
 def approve(account_id: int, data: ApproveRequest, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     acc = account_service.get_account(db, account_id, user)
-    wf.approve(db, acc, user, data.comment)
+    wf.approve(db, acc, user, data.comment, data.expected_stage)
     return _state(db, acc, user)
 
 
 @router.post("/accounts/{account_id}/reject", response_model=WorkflowState)
 def reject(account_id: int, data: RejectRequest, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     acc = account_service.get_account(db, account_id, user)
-    wf.reject(db, acc, user, data.reason_code, data.reason_text)
+    wf.reject(db, acc, user, data.reason_code, data.reason_text, data.expected_stage)
     return _state(db, acc, user)
 
 

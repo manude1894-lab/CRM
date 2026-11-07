@@ -58,6 +58,40 @@ function Panel({ title, right, children }) {
   );
 }
 
+/** Triam UAT 06-11-2026: pending approvals in two tabs, one per level. */
+function PendingApprovals({ rows, onOpen }) {
+  const [level, setLevel] = useState("Compliance");
+  const LEVELS = [["Compliance", "Awaiting Compliance Approval"], ["Approver", "Awaiting Final Approval"]];
+  const shown = rows.filter((r) => r.level === level);
+  return (
+    <section className="bg-white rounded-xl border border-gray-200/70">
+      <div className="flex flex-wrap gap-1 px-3 pt-2 border-b border-gray-100" role="tablist">
+        {LEVELS.map(([key, label]) => (
+          <button key={key} role="tab" aria-selected={level === key} onClick={() => setLevel(key)}
+            className={`px-3 py-2 text-sm -mb-px border-b-2 ${level === key ? "border-brand-500 text-brand-700 font-semibold" : "border-transparent text-gray-500 hover:text-gray-700"}`}>
+            {label} <span className="ml-1 text-xs tabular-nums">{rows.filter((r) => r.level === key).length}</span>
+          </button>
+        ))}
+      </div>
+      {shown.length === 0 ? <EmptyState text="Nothing waiting at this level." /> : (
+        <ul className="divide-y divide-gray-50">
+          {shown.map((r) => (
+            <li key={`${r.request_type}-${r.account_id}`}>
+              <button onClick={() => onOpen(r.account_id)} className="w-full flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 text-left hover:bg-gray-50">
+                <span className="min-w-0">
+                  <span className="block text-sm font-medium text-gray-800 truncate">{r.company_name}</span>
+                  <span className="block text-xs text-gray-500">{r.request_type === "client_profile" ? "New client" : "Client amendment"}{r.submitted_by ? ` · submitted by ${r.submitted_by}` : ""}</span>
+                </span>
+                <span className="text-xs text-gray-500 whitespace-nowrap">{fmtDate(r.submitted_at)}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
 function EmptyState({ text }) {
   return (
     <div className="flex items-center gap-2 px-4 py-6 text-sm text-gray-400">
@@ -182,6 +216,8 @@ export default function Dashboard({ onNavigate = () => {} } = {}) {
         <StatCard label="Unpaid invoices" value={kpis.invoices_unpaid} attention hint="Follow up payment" icon="invoices" onClick={() => onNavigate({ page: "invoices" })} />
         <StatCard label={`AML reviews due (${DUE_SOON_DAYS} days)`} value={kpis.aml_reviews_due} attention hint="Plan the reviews" icon="calendar" onClick={() => onNavigate({ page: "reports" })} />
       </div>
+
+      <PendingApprovals rows={data.pending_approvals || []} onOpen={goClient} />
 
       {/* Triam UAT 05-11-2026: rejected cases with who rejected them, when and why. */}
       {(data.rejected_clients || []).length > 0 && (
