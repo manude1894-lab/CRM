@@ -3,6 +3,7 @@ RM submits → Compliance (MLRO) completes the CDD section and approves → Appr
 from datetime import date
 from decimal import Decimal
 
+from app.models import Document
 from app.schemas.account import AccountCreate, AccountUpdate
 from app.schemas.account_party import AccountPartyCreate
 from app.services import account_service, account_party_service, client_workflow_service as wf
@@ -30,8 +31,9 @@ def approve_all(db, acc, mlro, approver):
     return wf.approve(db, acc, approver, "Final approval given")
 
 
-def complete_client(db, maker):
-    """A Corporate client with every BRD mandatory field filled in."""
+def complete_client(db, maker, with_document=True):
+    """A Corporate client with every BRD mandatory field filled in (with_document=False: an empty folder,
+    for tests about the folder itself)."""
     acc = account_service.create_account(db, AccountCreate(
         company_name="Complete Co", nature_of_business="Fintech", anchor_entity="TCPL", spoc_id=maker.id,
         country="United Arab Emirates", registration_number="CI-123", incorporation_date=date(2020, 1, 1),
@@ -51,9 +53,20 @@ def complete_client(db, maker):
         party_role="Shareholder", country_of_residence="United Arab Emirates", nationality="United Arab Emirates", full_name="Jane Owner", mobile_country_code="+971", mobile_number="501234567",
         email="jane@example.com", effective_ownership_percent=Decimal("100"),
     ), maker)
+    if with_document:
+        add_document(db, acc, maker)
     db.refresh(acc)
-    assert account_service.missing_mandatory(acc) == []
+    assert with_document is False or account_service.missing_mandatory(acc) == []
     return acc
+
+
+def add_document(db, acc, user, **fields):
+    """A supporting document filed on the client: at least one is needed to submit (UAT-02)."""
+    doc = Document(account_id=acc.id, category="Other", filename="licence.pdf", content_type="application/pdf",
+                   size_bytes=8, content=b"%PDF-1.4", uploaded_by_id=user.id, **fields)
+    db.add(doc)
+    db.commit()
+    return doc
 
 
 def approved_client(db, people):

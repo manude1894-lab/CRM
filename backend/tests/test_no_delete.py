@@ -101,7 +101,7 @@ def test_party_removed_by_amendment_is_kept_on_record(db, people):
 def test_document_removal_keeps_the_file(db, people, seed_master):
     seed_master("document_category", ["PASSPORT"])
     maker = people["maker"]
-    acc = complete_client(db, maker)
+    acc = complete_client(db, maker, with_document=False)
     f = UploadFile(file=io.BytesIO(b"%PDF-1.4 test"), filename="passport.pdf", headers={"content-type": "application/pdf"})
     doc = document_service.create_for_account(db, acc.id, f, "PASSPORT", maker)
     document_service.delete(db, doc.id, maker, "Wrong person's passport")

@@ -497,6 +497,10 @@ def is_offshore(account) -> bool:
     return any(word in (v or "").lower() for v in values for word in ("offshore", "bvi"))
 
 
+def has_supporting_document(account) -> bool:
+    return any(d.removed_at is None and d.invoice_id is None and d.instruction_id is None for d in account.documents)
+
+
 def counts_towards_ownership(party) -> bool:
     """Triam UAT 06-11-2026: an entity's share is looked through to the individuals behind it, so only
     individual shareholders count towards 100% (ABC Ltd: A 25, B 25, C Ltd's owners C1 30, C2 20)."""
@@ -589,6 +593,11 @@ def missing_mandatory(account: Account) -> list[dict]:
                          ("br_meeting_time", "Time of Meeting"), ("br_meeting_place", "Place of Meeting"),
                          ("br_meeting_mode", "Mode of Meeting"), ("br_rationale", "Business Rationale for the Relationship")):
         need(BIZ_RATIONALE_SECTION, field, label)
+
+    # Triam UAT 04-11-2026, for individual and non-individual clients alike. A person's document counts.
+    # Invoice and service request files aren't onboarding documents.
+    if not has_supporting_document(account):
+        missing.append({"section": "Documents", "field": "documents", "label": "At least one supporting document"})
 
     # §9 engagement — a Yes / No answer, then the validity date when signed
     need("Profile Status & Engagement", "engagement_letter_signed", "Engagement Letter Signed (Yes / No)")

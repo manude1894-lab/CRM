@@ -218,7 +218,7 @@ def test_blank_address_blocks_are_not_changes(db, people):
 def test_client_folder_shows_stage_and_who_can_remove(db, people, seed_master, make_user):
     seed_master("document_category", ["PASSPORT"])
     maker, checker = people["maker"], people["checker"]
-    acc = complete_client(db, maker)
+    acc = complete_client(db, maker, with_document=False)
     _upload(db, acc, maker)
     f = document_service.client_folder(db, acc.id, maker)
     [d] = f["documents"]

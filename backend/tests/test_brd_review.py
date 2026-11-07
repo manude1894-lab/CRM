@@ -23,7 +23,7 @@ def test_documents_can_belong_to_a_party(db, people, seed_master):
     """§14 — passports / EID / visas are filed in the UBO, Director, Signatory or Joint Holder's section."""
     seed_master("document_category", ["PASSPORT"])
     maker = people["maker"]
-    acc = complete_client(db, maker)
+    acc = complete_client(db, maker, with_document=False)
     jane = acc.parties[0]
     f = UploadFile(file=io.BytesIO(b"%PDF-1.4"), filename="jane-passport.pdf", headers={"content-type": "application/pdf"})
     document_service.create_for_account(db, acc.id, f, "PASSPORT", maker, party_id=jane.id)
