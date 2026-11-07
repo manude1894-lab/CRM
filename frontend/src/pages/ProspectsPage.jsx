@@ -28,7 +28,7 @@ export default function ProspectsPage({ onNavigate } = {}) {
   const [form, setForm] = useState({});
   const [assign, setAssign] = useState(null); // { prospect, rm_id, comments }
   const me = useAuthStore((s) => s.user);
-  const coordinator = useAuthStore((s) => s.can("prospect.assign"));
+  const coordinator = useAuthStore((s) => s.isProspectCoordinator());
 
   const load = async () => {
     try {

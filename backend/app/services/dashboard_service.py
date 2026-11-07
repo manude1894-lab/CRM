@@ -47,8 +47,12 @@ def build_dashboard(db: Session, user: User) -> dict:
          if a.profile_status in (wf.APPROVED, wf.ACTIVE) and a.next_aml_review_date and a.next_aml_review_date <= horizon),
         key=lambda r: r["next_aml_review_date"])
 
+    # RM privacy (BRD §13): an RM's dashboard names only their own team, not every other RM.
+    team = access_control.team_user_ids(db, user.id) if access_control.is_restricted(user) else None
     portfolio = []
     for u in db.query(User).filter(User.is_active == True).order_by(User.name).all():  # noqa: E712
+        if team is not None and u.id not in team:
+            continue
         mine = [a for a in accounts if a.spoc_id == u.id]
         if not mine and (not u.handles_clients or u.role == UserRole.ADMIN):
             continue  # central desks (Compliance, Approver, Accounts, ...) and administrators hold no portfolio

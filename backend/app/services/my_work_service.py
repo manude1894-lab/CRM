@@ -37,7 +37,7 @@ def my_work(db: Session, user: User) -> list[dict]:
     if has_permission(user, "invoice.manage"):
         add("invoice_requests", "Invoice instructions to raise", db.query(Invoice).filter(Invoice.status.in_(("Requested", "Draft")), or_(Invoice.requested_by_id.is_(None), Invoice.requested_at.isnot(None))).count(), "invoices")
         add("invoice_unpaid", "Raised invoices not yet paid", db.query(Invoice).filter(Invoice.status.in_(("Raised", "Overdue"))).count(), "invoices")
-    if has_permission(user, "prospect.assign"):
+    if access_control.is_prospect_coordinator(user):
         add("prospects_unassigned", "Prospects waiting to be assigned", db.query(Prospect).filter(Prospect.owner_id.is_(None), Prospect.status != "Lost").count(), "prospects")
 
     # Everyone who prepares clients (RM / RO / FO / Sales)

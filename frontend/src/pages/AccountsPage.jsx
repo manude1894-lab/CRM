@@ -57,7 +57,7 @@ export default function AccountsPage({ scope = "onboarding", initialAccountId, i
   const fileInputRef = useRef(null);
   const isAdmin = useAuthStore((s) => s.isAdmin());
   const me = useAuthStore((s) => s.user);
-  const canAssign = useAuthStore((s) => s.can("prospect.assign"));
+  const canAssign = useAuthStore((s) => s.isProspectCoordinator());
   const [prospects, setProspects] = useState([]);
   const [shownProspect, setShownProspect] = useState(null);
 

@@ -12,7 +12,6 @@ from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 
 from app.audit import log_event
-from app.auth.permissions import has_permission
 from app.services import access_control, notification_service
 
 MAX_ASSIGNOR_WORDS = 250
@@ -20,8 +19,8 @@ MAX_ASSIGNOR_WORDS = 250
 
 def _apply_rbac_filter(query, user: User):
     # An RM sees their team's prospects and the unassigned pool (so they can take one themselves);
-    # a Prospecting Coordinator sees everything.
-    if user.role == UserRole.RM and not has_permission(user, "prospect.assign"):
+    # a Prospecting Coordinator and the central desks see everything.
+    if not access_control.sees_all_prospects(user):
         query = query.filter((Prospect.owner_id.in_(access_control.team_user_ids(query.session, user.id))) | (Prospect.owner_id.is_(None)))
     return query
 
@@ -37,7 +36,7 @@ def get_prospect(db: Session, prospect_id: int, user: User) -> Prospect:
     p = db.query(Prospect).filter(Prospect.id == prospect_id).first()
     if not p:
         raise HTTPException(status_code=404, detail="Prospect not found")
-    if user.role == UserRole.RM and not has_permission(user, "prospect.assign") and p.owner_id is not None \
+    if not access_control.sees_all_prospects(user) and p.owner_id is not None \
             and p.owner_id not in access_control.team_user_ids(db, user.id):
         raise HTTPException(status_code=403, detail="Access denied")
     return p
@@ -63,8 +62,7 @@ def create_prospect(db: Session, data: ProspectCreate, user: User) -> Prospect:
     """Entered by the Prospecting Team Coordinator (who may leave it unassigned or pick the RM) or by an
     RM directly (assigned to themselves)."""
     payload = data.model_dump()
-    coordinator = has_permission(user, "prospect.assign")
-    if not coordinator:
+    if not access_control.is_prospect_coordinator(user):
         payload["owner_id"] = user.id if user.role == UserRole.RM else payload.get("owner_id")
     p = Prospect(prospect_uid=next_uid(db, Prospect, "prospect_uid", "PROS"), **payload)
     if p.owner_id:
@@ -83,8 +81,7 @@ def assign_prospect(db: Session, prospect_id: int, rm_id: int, comments: Optiona
     p = get_prospect(db, prospect_id, user)
     if p.converted_account_id:
         raise HTTPException(status_code=400, detail="A client has already been created from this prospect")
-    coordinator = has_permission(user, "prospect.assign")
-    if not coordinator:
+    if not access_control.is_prospect_coordinator(user):
         if rm_id != user.id:
             raise HTTPException(status_code=403, detail="Only the Prospecting Coordinator can assign a prospect to someone else")
         if p.owner_id not in (None, user.id):
@@ -127,7 +124,7 @@ def update_prospect(db: Session, prospect_id: int, data: ProspectUpdate, user: U
     update = data.model_dump(exclude_unset=True)
     new_owner = update.pop("owner_id", p.owner_id)
     if new_owner != p.owner_id:
-        if not has_permission(user, "prospect.assign"):
+        if not access_control.is_prospect_coordinator(user):
             raise HTTPException(status_code=403, detail="Use Assign to change the prospect's RM")
         p.owner_id, p.assigned_by_id, p.assigned_at = new_owner, user.id, datetime.now(timezone.utc) if new_owner else None
     for field, value in update.items():

@@ -43,6 +43,29 @@ def _is_restricted(user: User) -> bool:
     return user.role == UserRole.RM and not has_permission(user, "view.all_clients")
 
 
+def is_restricted(user: User) -> bool:
+    """True when the user is limited to their own team's work (RM privacy, BRD §13)."""
+    return _is_restricted(user)
+
+
+# ─── Prospects ──────────────────────────────────────────────────────────────
+
+def is_prospect_coordinator(user: User) -> bool:
+    """True for the desk that assigns prospects to any RM (BRD §4A).
+
+    prospect.assign alone is not enough: Triam gave that flag to every role (03-11-2026), and a
+    client-facing user must stay limited to their own work whatever flags their role carries."""
+    if user.role == UserRole.ADMIN:
+        return True
+    return (has_permission(user, "prospect.assign") and not user.handles_clients
+            and not has_permission(user, "read_only"))
+
+
+def sees_all_prospects(user: User) -> bool:
+    """Everyone except RMs, who see their team's prospects and the unassigned pool (BRD §4A, §13)."""
+    return user.role != UserRole.RM or is_prospect_coordinator(user) or has_permission(user, "view.all_clients")
+
+
 # ─── Clients ────────────────────────────────────────────────────────────────
 
 def _account_ids_with_non_anchor(db: Session, ids: set[int]) -> list[int]:
