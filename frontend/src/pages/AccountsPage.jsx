@@ -9,14 +9,14 @@ import ClientProfilePage from "./ClientProfilePage";
 import { BLANK_ACCOUNT_FORM } from "../components/accounts/accountForm";
 import { buildAccountsCsv, parseImportRows } from "../components/accounts/accountCsv";
 import { toast } from "../store/toast";
-import { fmtDate, exportFilename } from "../utils/constants";
+import { fmtDate, exportFilename, WITH_RM_STATUSES } from "../utils/constants";
 import { useAuthStore } from "../store/auth";
 
 const BLANK_BULK = { spoc_id: "", risk_rating: "" };
 // Triam input 19-10-2026: clients being onboarded and existing clients are separate menu items.
 const SCOPES = {
   onboarding: {
-    title: "New Client Onboarding", statuses: ["New", "WIP", "Awaiting Approval"],
+    title: "New Client Onboarding", statuses: [...WITH_RM_STATUSES, "Awaiting Approval"],
     subtitle: (n) => `${n} client${n === 1 ? "" : "s"} being onboarded`,
     empty: "Clients appear here once they are created from a prospect sent to the RM.",
   },

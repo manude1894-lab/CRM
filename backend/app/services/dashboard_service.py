@@ -8,8 +8,8 @@ from app.models import Account, ApprovalRequest, ApprovalStatus, Instruction, In
 from app.services import access_control, client_workflow_service as wf
 from app.services import instruction_service, invoice_service, prospect_service
 
-# BRD §9 status lifecycle, in order.
-CLIENT_STATUSES = [wf.NEW, wf.WIP, wf.AWAITING, wf.APPROVED, wf.ACTIVE, wf.INACTIVE, wf.MARKED_EXIT, wf.EXITED]
+# BRD §9 status lifecycle, in order, with the Rejected status of BRD §8, §19, §20 beside WIP.
+CLIENT_STATUSES = [wf.NEW, wf.WIP, wf.REJECTED, wf.AWAITING, wf.APPROVED, wf.ACTIVE, wf.INACTIVE, wf.MARKED_EXIT, wf.EXITED]
 AML_REVIEW_WINDOW_DAYS = 60
 
 
@@ -47,6 +47,13 @@ def build_dashboard(db: Session, user: User) -> dict:
          if a.profile_status in (wf.APPROVED, wf.ACTIVE) and a.next_aml_review_date and a.next_aml_review_date <= horizon),
         key=lambda r: r["next_aml_review_date"])
 
+    rejected = []
+    for a in accounts:
+        rejection = wf.last_rejection(db, a)
+        if rejection:
+            rejected.append({"account_id": a.id, "company_name": a.company_name, **rejection})
+    rejected.sort(key=lambda r: str(r["rejected_at"]), reverse=True)
+
     # RM privacy (BRD §13): an RM's dashboard names only their own team, not every other RM.
     team = access_control.team_user_ids(db, user.id) if access_control.is_restricted(user) else None
     portfolio = []
@@ -58,7 +65,7 @@ def build_dashboard(db: Session, user: User) -> dict:
             continue  # central desks (Compliance, Approver, Accounts, ...) and administrators hold no portfolio
         portfolio.append({
             "user_id": u.id, "name": u.name, "business_role_name": u.business_role_name, "total": len(mine),
-            "in_progress": sum(1 for a in mine if a.profile_status in (wf.NEW, wf.WIP, wf.AWAITING)),
+            "in_progress": sum(1 for a in mine if a.profile_status in (*wf.WITH_RM, wf.AWAITING)),
             "active": sum(1 for a in mine if a.profile_status in (wf.APPROVED, wf.ACTIVE)),
         })
 
@@ -66,7 +73,7 @@ def build_dashboard(db: Session, user: User) -> dict:
         "kpis": {
             "prospects_open": len(open_prospects),
             "prospects_unassigned": sum(1 for p in open_prospects if p.owner_id is None),
-            "clients_in_progress": by_status[wf.NEW] + by_status[wf.WIP],
+            "clients_in_progress": by_status[wf.NEW] + by_status[wf.WIP] + by_status[wf.REJECTED],
             "clients_awaiting_approval": by_status[wf.AWAITING],
             "clients_active": by_status[wf.APPROVED] + by_status[wf.ACTIVE],
             "service_requests_open": open_srs,
@@ -78,6 +85,7 @@ def build_dashboard(db: Session, user: User) -> dict:
             "compliance": sum(1 for r in pending if r.request_type != "client_profile" or wf.stage_of(r) == wf.STAGE_COMPLIANCE),
             "approver": sum(1 for r in pending if r.request_type == "client_profile" and wf.stage_of(r) == wf.STAGE_APPROVER),
         },
+        "rejected_clients": rejected,
         "aml_reviews_due": aml_due,
         "portfolio_by_rm": portfolio,
     }

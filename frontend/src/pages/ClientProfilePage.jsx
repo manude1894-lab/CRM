@@ -10,7 +10,7 @@ import WorkflowBar from "../components/accounts/WorkflowBar";
 import CompletenessChecklist from "../components/accounts/CompletenessChecklist";
 import { accountToForm } from "../components/accounts/accountForm";
 import { useAuthStore } from "../store/auth";
-import { fmtDate } from "../utils/constants";
+import { fmtDate, WITH_RM_STATUSES } from "../utils/constants";
 import { fmtFYE } from "../utils/fye";
 
 const yesNo = (v) => (v === true ? "Yes" : v === false ? "No" : null);
@@ -44,7 +44,7 @@ export default function ClientProfilePage({ accountId, initialTab = "overview", 
   const a = account;
   const userName = (id) => users.find((u) => u.id === id)?.name || null;
   const individual = a.account_type === "Individual";
-  const onboarding = ["New", "WIP"].includes(a.profile_status);
+  const onboarding = WITH_RM_STATUSES.includes(a.profile_status);
   const existing = ["Approved", "Active", "Inactive", "Marked for Exit", "Exited"].includes(a.profile_status);
   const [servicingStart, setServicingStart] = [tabStart, setTabStart];
 

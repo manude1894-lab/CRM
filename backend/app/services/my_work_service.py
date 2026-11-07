@@ -42,12 +42,8 @@ def my_work(db: Session, user: User) -> list[dict]:
 
     # Everyone who prepares clients (RM / RO / FO / Sales)
     mine = _visible_accounts(db, user).filter((Account.spoc_id == user.id) | (Account.owner_id == user.id))
-    in_progress = mine.filter(Account.profile_status.in_((wf.NEW, wf.WIP))).all()
-    returned_ids = {r.account_id for r in db.query(ApprovalRequest.account_id).filter(
-        ApprovalRequest.request_type == "client_profile", ApprovalRequest.status == ApprovalStatus.REJECTED.value,
-        ApprovalRequest.account_id.in_([a.id for a in in_progress] or [-1])).all()}
-    add("my_returned", "My clients returned with comments", len(returned_ids), "accounts", "Fix the points raised and submit again")
-    add("my_in_progress", "My clients being prepared", len(in_progress) - len(returned_ids), "accounts")
+    add("my_returned", "My rejected clients", mine.filter(Account.profile_status == wf.REJECTED).count(), "accounts", "Fix the points raised and submit again")
+    add("my_in_progress", "My clients being prepared", mine.filter(Account.profile_status.in_((wf.NEW, wf.WIP))).count(), "accounts")
     add("my_with_review", "My clients with Compliance / Approver", mine.filter(Account.profile_status == wf.AWAITING).count(), "accounts")
     add("my_prospects", "My prospects without a client yet", db.query(Prospect).filter(
         Prospect.owner_id == user.id, Prospect.converted_account_id.is_(None), Prospect.status != "Lost").count(), "prospects")

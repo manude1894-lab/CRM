@@ -77,6 +77,9 @@ export const SERVICES_OBTAINED_OPTIONS = [
   "Other",
 ];
 
+// Client statuses still with the RM: being prepared or corrected, editable and ready to be submitted.
+export const WITH_RM_STATUSES = ["New", "WIP", "Rejected"];
+
 // Country calling codes for the split Contact Mobile field (BRD §5) — UAE first, then the GCC and
 // major markets.
 export const COUNTRY_CALLING_CODES = [

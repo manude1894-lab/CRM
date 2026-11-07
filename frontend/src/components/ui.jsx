@@ -51,6 +51,7 @@ export const Badge = ({ text }) => {
     // Client lifecycle (BRD §9)
     New: "bg-gray-100 text-gray-600",
     WIP: "bg-sky-100 text-sky-700",
+    Rejected: "bg-red-100 text-red-700",
     "Awaiting Approval": "bg-amber-100 text-amber-700",
     Approved: "bg-emerald-100 text-emerald-700",
     Active: "bg-emerald-100 text-emerald-700",

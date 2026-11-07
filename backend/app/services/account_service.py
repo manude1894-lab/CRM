@@ -391,7 +391,7 @@ def apply_update(db: Session, acc: Account, data: AccountUpdate, user: User) -> 
     # temporary ID is shown. Approved clients that pre-date Client IDs get one on their next save.
     # Once issued, a Client ID never changes (even if the Anchor Entity later does).
     if not acc.client_id and acc.anchor_entity and acc.profile_status not in (
-            client_workflow_service.NEW, client_workflow_service.WIP, client_workflow_service.AWAITING):
+            *client_workflow_service.WITH_RM, client_workflow_service.AWAITING):
         acc.client_id = next_client_id(db, acc.anchor_entity)
     if not acc.search_name:
         acc.search_name = _default_search_name(db, acc.company_name, acc.anchor_entity)

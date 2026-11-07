@@ -93,6 +93,7 @@ function Lifecycle({ statuses, onOpen }) {
 
 export default function Dashboard({ onNavigate = () => {} } = {}) {
   const user = useAuthStore((s) => s.user);
+  const coordinator = useAuthStore((s) => s.isProspectCoordinator());
   const [data, setData] = useState(null);
   const [accounts, setAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -173,7 +174,7 @@ export default function Dashboard({ onNavigate = () => {} } = {}) {
       {/* BRD §2 — snapshot MI. */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <StatCard label="Open prospects" value={kpis.prospects_open} icon="kanban" onClick={() => onNavigate({ page: "prospects" })} />
-        <StatCard label="Prospects to assign" value={kpis.prospects_unassigned} attention hint="Assign an RM" icon="warn" onClick={() => onNavigate({ page: "prospects" })} />
+        <StatCard label={coordinator ? "Prospects to assign" : "Unassigned prospects"} value={kpis.prospects_unassigned} attention hint={coordinator ? "Assign an RM" : "Available to take"} icon="warn" onClick={() => onNavigate({ page: "prospects" })} />
         <StatCard label="Clients being prepared" value={kpis.clients_in_progress} icon="accounts" onClick={() => onNavigate({ page: "accounts" })} />
         <StatCard label="Awaiting approval" value={kpis.clients_awaiting_approval} attention hint="With Compliance / Approver" icon="shield" onClick={() => onNavigate({ page: "approvals" })} />
         <StatCard label="Approved & active clients" value={kpis.clients_active} icon="check" onClick={() => onNavigate({ page: "maintenance" })} />
@@ -181,6 +182,23 @@ export default function Dashboard({ onNavigate = () => {} } = {}) {
         <StatCard label="Unpaid invoices" value={kpis.invoices_unpaid} attention hint="Follow up payment" icon="invoices" onClick={() => onNavigate({ page: "invoices" })} />
         <StatCard label={`AML reviews due (${DUE_SOON_DAYS} days)`} value={kpis.aml_reviews_due} attention hint="Plan the reviews" icon="calendar" onClick={() => onNavigate({ page: "reports" })} />
       </div>
+
+      {/* Triam UAT 05-11-2026: rejected cases with who rejected them, when and why. */}
+      {(data.rejected_clients || []).length > 0 && (
+        <Panel title="Rejected clients" right={<span className="text-xs font-medium text-red-600">{data.rejected_clients.length}</span>}>
+          <ul className="divide-y divide-gray-50">
+            {data.rejected_clients.map((r) => (
+              <li key={r.account_id}>
+                <button onClick={() => goClient(r.account_id)} className="w-full text-left px-4 py-2.5 hover:bg-gray-50">
+                  <span className="block text-sm font-medium text-gray-800">{r.company_name}</span>
+                  <span className="block text-xs text-red-700">Rejected by {r.rejected_by || "—"} ({r.level === "Approver" ? "Approver" : "Compliance"}) · {fmtDate(r.rejected_at)}</span>
+                  <span className="block text-xs text-gray-500 line-clamp-2">{r.reason_code ? `${r.reason_code}. ` : ""}{r.reason_text}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </Panel>
+      )}
 
       <Panel title="Client lifecycle"
         right={<span className="text-xs text-gray-400">With Compliance {data.approvals_pending.compliance} · With the Approver {data.approvals_pending.approver}</span>}>

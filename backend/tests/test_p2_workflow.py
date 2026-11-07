@@ -108,7 +108,7 @@ def test_reject_needs_listed_reason_and_meaningful_text(db, people):
     with pytest.raises(HTTPException):
         wf.reject(db, acc, checker, "Not a real reason", "The passport copy for Jane is expired, please re-upload")
     wf.reject(db, acc, checker, "Documents missing or incomplete", "The passport copy for Jane is expired, please re-upload")
-    assert acc.profile_status == "WIP"
+    assert acc.profile_status == "Rejected"
     req = db.query(ApprovalRequest).filter(ApprovalRequest.account_id == acc.id).one()
     assert req.status == "Rejected" and req.reason_code == "Documents missing or incomplete"
     # The maker is told why.
@@ -275,7 +275,7 @@ def test_approver_can_reject_back_to_the_rm(db, people):
     flow.submit(db, acc, maker)
     flow.compliance_approve(db, acc, checker)
     wf.reject(db, acc, approver, "Documents missing or incomplete", "The engagement letter has not been signed yet")
-    assert acc.profile_status == "WIP"
+    assert acc.profile_status == "Rejected"
     note = db.query(Notification).filter(Notification.user_id == maker.id, Notification.notification_type == "client_rejected").one()
     assert "engagement letter" in note.message
     assert acc.client_id == "TCPL/00001"  # already issued at the Compliance step; kept

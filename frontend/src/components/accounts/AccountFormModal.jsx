@@ -14,6 +14,7 @@ import { confirmDialog } from "../../store/confirm";
 import {
   fmtDate, REGULATOR_OPTIONS, TAG_OPTIONS, SERVICES_OBTAINED_OPTIONS,
   COUNTRY_CALLING_CODES, TRIAM_ENTITY_OPTIONS, isUAE, isRelationshipManager, personLabel,
+  WITH_RM_STATUSES,
 } from "../../utils/constants";
 import {
   RISK_OPTIONS, BLANK_ADDRESS, SECTION_FIELDS,
@@ -555,9 +556,9 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
         {form._id && (
           // BRD §12 step 8 / §16 — documents are filed against the Client ID. Saved on upload. Triam UAT
           // 26-10-2026: each section has its own — the firm's here, each person's in their record below.
-          <Section title={isIndividual ? "Client Documents" : "Firm Documents"} hasData={["New", "WIP"].includes(form.profile_status)}>
+          <Section title={isIndividual ? "Client Documents" : "Firm Documents"} hasData={WITH_RM_STATUSES.includes(form.profile_status)}>
             <ClientDocumentsFolder accountId={form._id} scope="client" individual={isIndividual}
-              onboarding={["New", "WIP"].includes(form.profile_status)} onChange={() => setRefreshKey((k) => k + 1)} />
+              onboarding={WITH_RM_STATUSES.includes(form.profile_status)} onChange={() => setRefreshKey((k) => k + 1)} />
           </Section>
         )}
 

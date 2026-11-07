@@ -6,11 +6,13 @@ New clients are approved in two steps (BRD §7–§10). While Awaiting Approval 
 pending request's `stage` says where it is:
   Compliance — the MLRO completes the CDD section and approves with comments (Client ID issued)
   Approver   — the Approver gives the final approval with comments → Approved
-A rejection at either step returns the client to the RM (WIP) with the reason.
+A rejection at either step returns the client to the RM as Rejected, with the reason (BRD §8, §19, §20).
+It stays Rejected while the RM corrects it, until it is submitted again.
 
     New ──save──> WIP ──Submit──> Awaiting Approval ──Approve──> Approved ──Activate──> Active
                    ^                 │  │                                     │   ^
-                   └──Reject/Withdraw┘  │                       Deactivate/Reactivate (Inactive)
+                   └───────Withdraw──┘  │                       Deactivate/Reactivate (Inactive)
+    Rejected <────────Reject────────────┘   (Rejected ──Submit──> Awaiting Approval)
                                                                Mark for Exit ─> Marked for Exit ─> Exited
 """
 from __future__ import annotations
@@ -30,6 +32,9 @@ from app.services import access_control, master_service, notification_service
 
 NEW, WIP, AWAITING, APPROVED, ACTIVE = "New", "WIP", "Awaiting Approval", "Approved", "Active"
 INACTIVE, MARKED_EXIT, EXITED = "Inactive", "Marked for Exit", "Exited"
+REJECTED = "Rejected"
+# With the RM, being prepared or corrected: editable and ready to be submitted.
+WITH_RM = (NEW, WIP, REJECTED)
 
 MIN_REJECT_TEXT = 15
 MAX_COMMENT_WORDS = 250
@@ -123,7 +128,7 @@ def allowed_actions(db: Session, acc: Account, user: User) -> list[dict]:
         out.append({"action": action, "label": label, "allowed": bool(ok), "reason": None if ok else why,
                     "_code": None if ok else code})
 
-    if status in (NEW, WIP):
+    if status in WITH_RM:
         missing = _missing(acc)
         add("submit", "Submit for approval", not missing,
             f"{len(missing)} mandatory field{'s' if len(missing) != 1 else ''} still missing", code=400)
@@ -278,7 +283,7 @@ def reject(db: Session, acc: Account, user: User, reason_code: str, reason_text:
     step = stage_of(req)
     req.status, req.checker_id, req.decided_at = ApprovalStatus.REJECTED.value, user.id, _now()
     req.reason_code, req.reason_text = reason_code, reason_text
-    _set_status(acc, WIP, user)
+    _set_status(acc, REJECTED, user)
     log_event(db, "reject", f"Client {_label(acc)} rejected by {step}: {reason_code}. {reason_text}", subject_type="Account",
               subject_id=acc.id, account_id=acc.id, changes={"request_id": req.id, "reason_code": reason_code, "reason_text": reason_text})
     db.commit()
@@ -323,6 +328,21 @@ def change_status(db: Session, acc: Account, user: User, action: str, reason: Op
 
 
 # ─── Reads ──────────────────────────────────────────────────────────────────
+
+def last_rejection(db: Session, acc: Account) -> Optional[dict]:
+    """Who rejected a Rejected client, at which level, when and why (Triam UAT 05-11-2026)."""
+    if acc.profile_status != REJECTED:
+        return None
+    req = (db.query(ApprovalRequest)
+           .filter(ApprovalRequest.account_id == acc.id, ApprovalRequest.request_type == "client_profile",
+                   ApprovalRequest.status == ApprovalStatus.REJECTED.value)
+           .order_by(ApprovalRequest.id.desc()).first())
+    if req is None:
+        return None
+    return {"rejected_by": req.checker.name if req.checker else None, "rejected_at": req.decided_at,
+            "level": STAGE_APPROVER if req.compliance_checker_id else STAGE_COMPLIANCE,
+            "reason_code": req.reason_code, "reason_text": req.reason_text}
+
 
 def history(db: Session, account_id: int) -> list[ApprovalRequest]:
     """Client review history: onboarding submissions and amendments (drafts never reached Compliance)."""
