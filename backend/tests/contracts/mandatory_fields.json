@@ -35,6 +35,8 @@
       "groups": ["common", "corporate_always", "existing_company", "tax"], "extra": ["licensing_authority_other"]},
     {"name": "Has introducer and engagement letter", "form": {"account_type": "Corporate", "client_category": "Existing", "has_introducer": true, "engagement_letter_signed": true},
       "groups": ["common", "corporate_always", "existing_company", "tax"], "extra": ["introducer_name", "engagement_letter_valid_until"]},
+    {"name": "Foundation", "form": {"account_type": "Corporate", "client_category": "Existing", "services_obtained": ["Set up Foundations"]},
+      "groups": ["common", "corporate_always", "existing_company", "tax"], "extra": []},
     {"name": "Individual", "form": {"account_type": "Individual"}, "groups": ["common"],
       "extra": ["date_of_birth", "passport_expiry_date", "country_of_birth", "nationality", "country_of_residence", "individual_mobile_number",
         "individual_mobile_country_code", "individual_email", "nature_of_services_sought", "residential_address"]}

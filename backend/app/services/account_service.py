@@ -525,6 +525,16 @@ def has_supporting_document(account) -> bool:
     return any(d.removed_at is None and d.invoice_id is None and d.instruction_id is None for d in account.documents)
 
 
+FOUNDATION_SERVICE = "Set up Foundations"
+FOUNDATION_ROLES = ("Founder", "Council Member", "Beneficiary", "Guardian")
+
+
+def is_foundation(account) -> bool:
+    """Triam UAT 05-11-2026: a foundation has Founders, Council Members, Beneficiaries and Guardians
+    instead of Shareholders and Directors."""
+    return FOUNDATION_SERVICE in [*(account.services_obtained or []), *(account.nature_of_services_sought or [])]
+
+
 def counts_towards_ownership(party) -> bool:
     """Triam UAT 06-11-2026: an entity's share is looked through to the individuals behind it, so only
     individual shareholders count towards 100% (ABC Ltd: A 25, B 25, C Ltd's owners C1 30, C2 20)."""
@@ -605,7 +615,11 @@ def missing_mandatory(account: Account) -> list[dict]:
 
         # §6 — shareholders must exist and the individuals among them add up to 100%.
         shareholders = [p for p in account.parties if p.party_role == "Shareholder"]
-        if not shareholders:
+        if is_foundation(account):
+            # No shares in a foundation, so no 100% rule; it needs its Founder.
+            if not any(p.party_role == "Founder" for p in account.parties):
+                missing.append({"section": "Founders", "field": "parties", "label": "At least one Founder"})
+        elif not shareholders:
             missing.append({"section": PARTIES_SECTION, "field": "parties", "label": "At least one Shareholder / UBO"})
         else:
             total = sum((Decimal(str(p.effective_ownership_percent or 0)) for p in shareholders if counts_towards_ownership(p)), Decimal("0"))

@@ -62,6 +62,10 @@ export const SECTION_FIELDS = {
   aml: ["risk_rating", "cdd_completion_date", "edd_reason", "kyc_verified_by"],
 };
 
+// Triam UAT 05-11-2026: a foundation has these people instead of Shareholders and Directors.
+export const FOUNDATION_ROLES = ["Founder", "Council Member", "Beneficiary", "Guardian"];
+export const isFoundation = (a) => [...(a?.services_obtained || []), ...(a?.nature_of_services_sought || [])].includes("Set up Foundations");
+
 const ALWAYS_MANDATORY = ["anchor_entity", "services_obtained", "spoc_id", "search_name", "company_name",
   "br_person_met", "br_meeting_date", "br_meeting_time", "br_meeting_place", "br_meeting_mode", "br_rationale", "engagement_letter_signed"];
 

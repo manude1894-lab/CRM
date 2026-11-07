@@ -18,7 +18,7 @@ import {
 } from "../../utils/constants";
 import {
   RISK_OPTIONS, BLANK_ADDRESS, SECTION_FIELDS,
-  buildAccountPayload, buildSectionPatch, validateCoreFields, accountToForm, mandatoryFields, isOffshore, sameAddress,
+  buildAccountPayload, buildSectionPatch, validateCoreFields, accountToForm, mandatoryFields, isOffshore, sameAddress, isFoundation,
 } from "./accountForm";
 import { dialCodeForCountry, dialCodeOptions } from "../../utils/dialCodes";
 import { useMasters } from "../../hooks/useMasters";
@@ -592,6 +592,7 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
         {/* BRD §5.1–5.3 — the people behind the client, one section each, as many records as needed.
             Each person is saved on its own. */}
         {(isIndividual ? [["Joint Holder", "Joint Holders"]]
+          : isFoundation(form) ? [["Founder", "Founders"], ["Council Member", "Council Members"], ["Beneficiary", "Beneficiaries"], ["Guardian", "Guardians"], ["Authorised Signatory", "Authorised Signatories"]]
           : [["Shareholder", "Shareholder / UBO Information"], ["Director", "Directors"], ["Authorised Signatory", "Authorised Signatories"]]
         ).map(([role, title]) => (
           <Section key={role} title={title} hasData={!!form._id}>

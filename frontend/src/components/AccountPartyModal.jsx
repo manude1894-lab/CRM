@@ -7,6 +7,7 @@ import { useAuthStore } from "../store/auth";
 import { confirmDialog, reasonDialog } from "../store/confirm";
 import { dialCodeForCountry, dialCodeOptions } from "../utils/dialCodes";
 import ClientDocumentsFolder from "./accounts/ClientDocumentsFolder";
+import { FOUNDATION_ROLES, isFoundation } from "./accounts/accountForm";
 
 const CORPORATE_ROLES = ["Shareholder", "Director", "Authorised Signatory"];
 const INDIVIDUAL_ROLES = ["Joint Holder"];  // BRD: individual clients have joint holders
@@ -55,7 +56,8 @@ export const samePerson = (a, b) => a.id !== b.id && (a.full_name || "").trim().
 // role shows that one kind of party only, without tabs (the onboarding form has a section per kind, BRD §5.1–5.3).
 export default function AccountPartyModal({ account, onClose, onChange, role }) {
   const readOnly = useAuthStore((s) => s.isReadOnly());
-  const ROLES = role ? [role] : account.account_type === "Individual" ? INDIVIDUAL_ROLES : CORPORATE_ROLES;
+  const ROLES = role ? [role] : account.account_type === "Individual" ? INDIVIDUAL_ROLES
+    : isFoundation(account) ? [...FOUNDATION_ROLES, "Authorised Signatory"] : CORPORATE_ROLES;
   const [tab, setTab] = useState(ROLES[0]);
   const [parties, setParties] = useState([]);
   const [removed, setRemoved] = useState([]);
@@ -138,7 +140,8 @@ export default function AccountPartyModal({ account, onClose, onChange, role }) 
     <Modal title={`Parties: ${account.company_name}`} onClose={onClose}>
       {!role && (
         <div className="flex border-b border-gray-100 mb-4 -mt-2">
-          {ROLES.map((r) => (
+          {/* People already recorded stay visible, e.g. shareholders on a client that later became a foundation. */}
+          {[...ROLES, ...new Set(parties.map((p) => p.party_role).filter((r) => !ROLES.includes(r)))].map((r) => (
             <button key={r} onClick={() => switchTab(r)}
               className={`px-3 py-2 text-sm font-medium border-b-2 -mb-px ${tab === r ? "border-brand-500 text-brand-600" : "border-transparent text-gray-400 hover:text-gray-600"}`}>
               {partyLabel(r)} ({parties.filter((p) => p.party_role === r).length})
@@ -248,7 +251,7 @@ function PartyForm({ form, setForm, countries, onCancel, onSave, copyFrom = [] }
   const isShareholder = form.party_role === "Shareholder";
   const isDirector = form.party_role === "Director";
   // BRD §5.3 / §6: signatories and joint holders need mobile and email too.
-  const contactRequired = ["Shareholder", "Authorised Signatory", "Joint Holder"].includes(form.party_role);
+  const contactRequired = ["Shareholder", "Authorised Signatory", "Joint Holder", ...FOUNDATION_ROLES].includes(form.party_role);
   const isEntity = form.constitution === "Entity";
   const isUAEResident = isUAE(form.country_of_residence);
 

@@ -42,7 +42,9 @@ def _validate_party(account: Account, p: AccountParty) -> None:
         raise HTTPException(status_code=400, detail="An Individual client has Joint Holders, not shareholders, directors or signatories")
     if not individual_client and p.party_role == "Joint Holder":
         raise HTTPException(status_code=400, detail="Joint Holders apply to Individual clients only")
-    if p.party_role in ("Shareholder", "Authorised Signatory", "Joint Holder"):
+    if p.party_role in account_service.FOUNDATION_ROLES and not account_service.is_foundation(account):
+        raise HTTPException(status_code=400, detail=f"A {p.party_role} applies only when Set up Foundations is selected")
+    if p.party_role in ("Shareholder", "Authorised Signatory", "Joint Holder", *account_service.FOUNDATION_ROLES):
         # BRD §5.3 / §6: signatories and joint holders need mobile and email too.
         missing = [label for label, value in (
             ("Contact Mobile country code", p.mobile_country_code),

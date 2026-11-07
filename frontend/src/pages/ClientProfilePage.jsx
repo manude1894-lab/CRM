@@ -8,7 +8,7 @@ import ClientServicingModal from "../components/accounts/ClientServicingModal";
 import AccountHistoryModal from "../components/accounts/AccountHistoryModal";
 import WorkflowBar from "../components/accounts/WorkflowBar";
 import CompletenessChecklist from "../components/accounts/CompletenessChecklist";
-import { accountToForm } from "../components/accounts/accountForm";
+import { accountToForm, isFoundation } from "../components/accounts/accountForm";
 import { useAuthStore } from "../store/auth";
 import { fmtDate, WITH_RM_STATUSES } from "../utils/constants";
 import { fmtFYE } from "../utils/fye";
@@ -51,7 +51,7 @@ export default function ClientProfilePage({ accountId, initialTab = "overview", 
   const tabs = [
     { key: "overview", label: "Overview" },
     { key: "profile", label: "Profile" },
-    { key: "parties", label: individual ? "Joint Holders" : "Shareholders & Directors" },
+    { key: "parties", label: individual ? "Joint Holders" : isFoundation(a) ? "Founders & Council" : "Shareholders & Directors" },
     { key: "documents", label: "Documents" },
     // Triam UAT 26-10-2026: a client being onboarded has its Biz Rationale Report here, not call reports or
     // service requests; existing clients keep Reports & Requests as well.
