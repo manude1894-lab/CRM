@@ -4,7 +4,7 @@ import { Icon, Modal, Field, Input, Select, CountrySelect, Spinner, ErrorBanner,
 import { COUNTRY_CALLING_CODES, fmtDate, isUAE } from "../utils/constants";
 import { toast } from "../store/toast";
 import { useAuthStore } from "../store/auth";
-import { reasonDialog } from "../store/confirm";
+import { confirmDialog, reasonDialog } from "../store/confirm";
 import { dialCodeForCountry, dialCodeOptions } from "../utils/dialCodes";
 import ClientDocumentsFolder from "./accounts/ClientDocumentsFolder";
 
@@ -41,6 +41,16 @@ const cleanPayload = (obj) => Object.fromEntries(
 
 export const partyLabel = (role) => role;
 
+// The details that belong to the person, not to their role on this client.
+const PERSON_FIELDS = ["constitution", "full_name", "dob_or_incorp_date", "id_or_license_expiry", "country_of_incorp_or_birth",
+  "mobile_country_code", "mobile_number", "email", "nationality", "country_of_residence", "residential_address",
+  "uae_visa_number", "uae_visa_expiry", "is_pep"];
+const pick = (row, fields) => Object.fromEntries(fields.map((f) => [f, row[f]]));
+
+// Triam UAT 04-11-2026: one person can hold several roles. Recognised by name and date of birth.
+export const samePerson = (a, b) => a.id !== b.id && (a.full_name || "").trim().toLowerCase() === (b.full_name || "").trim().toLowerCase()
+  && (a.dob_or_incorp_date || null) === (b.dob_or_incorp_date || null);
+
 // onChange runs after a party is added, changed or removed (e.g. to refresh the missing-fields list).
 // role shows that one kind of party only, without tabs (the onboarding form has a section per kind, BRD §5.1–5.3).
 export default function AccountPartyModal({ account, onClose, onChange, role }) {
@@ -74,7 +84,11 @@ export default function AccountPartyModal({ account, onClose, onChange, role }) 
   };
   useEffect(() => { load(); }, [account.id]);
 
-  const startNew = (constitution = "Individual") => { setForm({ ...emptyParty(tab), constitution }); setEditing("new"); };
+  const startNew = (constitution = "Individual") => {
+    setForm({ ...emptyParty(tab), constitution }); setEditing("new");
+    // Another section may have added someone since this one opened: they should be offered for copying.
+    accountPartiesApi.list(account.id).then((ps) => setParties(ps || [])).catch(() => {});
+  };
   const startEdit = (row) => { setForm({ ...row, residential_address: { ...BLANK_ADDRESS, ...(row.residential_address || {}) } }); setEditing(row.id); };
   const cancelForm = () => { setEditing(null); setForm(null); };
 
@@ -84,6 +98,15 @@ export default function AccountPartyModal({ account, onClose, onChange, role }) 
       const payload = cleanPayload(form);
       if (editing === "new") await accountPartiesApi.create(account.id, payload);
       else await accountPartiesApi.update(editing, payload, account.id);
+      // The same person's other records: offer to keep them in step, so details are entered only once.
+      const before = parties.find((p) => p.id === editing);
+      const others = before ? parties.filter((p) => samePerson(p, before)) : [];
+      const changed = before && JSON.stringify(pick(before, PERSON_FIELDS)) !== JSON.stringify(pick(payload, PERSON_FIELDS));
+      if (others.length && changed && await confirmDialog({ title: "Same person in other roles", confirmLabel: "Update them too",
+        message: `${before.full_name} is also recorded as ${others.map((o) => o.party_role).join(", ")}. Apply these details there too?` })) {
+        const details = cleanPayload(pick(form, PERSON_FIELDS));
+        await Promise.all(others.map((o) => accountPartiesApi.update(o.id, details, account.id)));
+      }
       cancelForm();
       load();
       onChange?.();
@@ -149,6 +172,9 @@ export default function AccountPartyModal({ account, onClose, onChange, role }) 
                         </div>
                         <div className="text-xs text-gray-400">
                           {p.constitution}
+                          {parties.filter((o) => samePerson(o, p)).map((o) => (
+                            <span key={o.id} className="ml-1 px-1 rounded bg-brand-50 text-brand-700">also {o.party_role}</span>
+                          ))}
                           {p.country_of_incorp_or_birth && ` · ${p.country_of_incorp_or_birth}`}
                           {p.party_role === "Shareholder" && p.constitution !== "Entity" && p.effective_ownership_percent != null && ` · ${p.effective_ownership_percent}% ownership`}
                           {p.country_of_residence && ` · resides ${p.country_of_residence}`}
@@ -159,7 +185,7 @@ export default function AccountPartyModal({ account, onClose, onChange, role }) 
                           className={`px-2 py-1 text-[11px] rounded border ${docsFor === p.id ? "border-brand-300 text-brand-700 bg-white" : "border-gray-200 text-gray-600 hover:bg-white"}`}>
                           Documents
                         </button>
-                        {!readOnly && <button onClick={() => startEdit(p)} className="p-1.5 rounded hover:bg-brand-50 text-gray-400 hover:text-brand-600"><Icon name="edit" size={14} /></button>}
+                        {!readOnly && <button onClick={() => startEdit(p)} title="Edit" className="p-1.5 rounded hover:bg-brand-50 text-gray-400 hover:text-brand-600"><Icon name="edit" size={14} /></button>}
                         {!readOnly && <button onClick={() => remove(p)} title="Remove" className="p-1.5 rounded hover:bg-red-50 text-gray-400 hover:text-red-500"><Icon name="close" size={14} /></button>}
                       </div>
                     </div>
@@ -205,7 +231,8 @@ export default function AccountPartyModal({ account, onClose, onChange, role }) 
           )}
 
           {editing && (
-            <PartyForm form={form} setForm={setForm} countries={countries} onCancel={cancelForm} onSave={save} />
+            <PartyForm form={form} setForm={setForm} countries={countries} onCancel={cancelForm} onSave={save}
+              copyFrom={editing === "new" ? parties.filter((p, i, all) => all.findIndex((o) => o.id === p.id || samePerson(o, p)) === i) : []} />
           )}
         </>
       )}
@@ -217,7 +244,7 @@ const set = (setForm, k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }
 const setBool = (setForm, k) => (e) => setForm((p) => ({ ...p, [k]: e.target.checked }));
 const setAddr = (setForm, k) => (e) => setForm((p) => ({ ...p, residential_address: { ...p.residential_address, [k]: e.target.value } }));
 
-function PartyForm({ form, setForm, countries, onCancel, onSave }) {
+function PartyForm({ form, setForm, countries, onCancel, onSave, copyFrom = [] }) {
   const isShareholder = form.party_role === "Shareholder";
   const isDirector = form.party_role === "Director";
   // BRD §5.3 / §6: signatories and joint holders need mobile and email too.
@@ -225,8 +252,22 @@ function PartyForm({ form, setForm, countries, onCancel, onSave }) {
   const isEntity = form.constitution === "Entity";
   const isUAEResident = isUAE(form.country_of_residence);
 
+  // Triam UAT 04-11-2026: a director who is also a UBO needs their details entered only once.
+  const copy = (e) => {
+    const source = copyFrom.find((p) => p.id === Number(e.target.value));
+    if (source) setForm((p) => ({ ...p, ...pick(source, PERSON_FIELDS), residential_address: { ...BLANK_ADDRESS, ...(source.residential_address || {}) } }));
+  };
+
   return (
     <div>
+      {copyFrom.length > 0 && (
+        <Field label="Same person as (fetch their details)">
+          <Select defaultValue="" onChange={copy}>
+            <option value="">— new person —</option>
+            {copyFrom.map((p) => <option key={p.id} value={p.id}>{p.full_name} ({p.party_role})</option>)}
+          </Select>
+        </Field>
+      )}
       {!["Authorised Signatory", "Joint Holder"].includes(form.party_role) && (
         <Field label="Constitution">
           <Select value={form.constitution} onChange={set(setForm, "constitution")}>

@@ -402,7 +402,7 @@ def submit(db: Session, acc: Account, user: User, comment: Optional[str] = None)
     db.commit()
     for u in _approvers(db):
         if u.id != user.id:
-            notification_service.notify_user(db, u.id, f"{user.name} submitted an amendment to {_client_label(acc)} for Compliance approval.", "amendment_submitted")
+            notification_service.notify_user(db, u.id, f"{user.name} submitted an amendment to {_client_label(acc)} for Compliance approval.", "amendment_submitted", account_id=acc.id)
     return req
 
 
@@ -438,7 +438,7 @@ def approve(db: Session, acc: Account, user: User, comment: Optional[str] = None
     db.commit()
     notification_service.resolve(db, acc.id, "approval_waiting")  # decided: the waiting reminder is done
     if req.maker_id:
-        notification_service.notify_user(db, req.maker_id, f"{user.name} approved your amendment to {_client_label(acc)}.", "amendment_approved")
+        notification_service.notify_user(db, req.maker_id, f"{user.name} approved your amendment to {_client_label(acc)}.", "amendment_approved", account_id=acc.id)
     return req
 
 

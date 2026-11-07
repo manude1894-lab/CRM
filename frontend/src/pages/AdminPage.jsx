@@ -6,7 +6,7 @@ import CountriesPanel from "../components/admin/CountriesPanel";
 import RolesPanel from "../components/admin/RolesPanel";
 import AuditLogPanel from "../components/admin/AuditLogPanel";
 import { useAuthStore } from "../store/auth";
-import { Icon, Modal, Field, Input, Select, Spinner, ErrorBanner, PageHeader } from "../components/ui";
+import { Icon, Modal, Field, Input, Select, Spinner, ErrorBanner, PageHeader, ShowDeactivated } from "../components/ui";
 import { USER_TYPE_LABEL, personLabel } from "../utils/constants";
 import { toast } from "../store/toast";
 import { confirmDialog } from "../store/confirm";
@@ -25,6 +25,8 @@ export default function AdminPage() {
   const isAdmin = useAuthStore((s) => s.isAdmin());
   const me = useAuthStore((s) => s.user);
   const [users, setUsers] = useState([]);
+  const [showInactive, setShowInactive] = useState(false);
+  const [showInactiveDepts, setShowInactiveDepts] = useState(false);
   const [departments, setDepartments] = useState([]);
   const [roles, setRoles] = useState([]);
   const [tab, setTab] = useState("users");
@@ -190,7 +192,7 @@ export default function AdminPage() {
           </thead>
           <tbody>
             {ordered.map((u) => (
-              <tr key={u.id} className="border-b border-gray-50 hover:bg-gray-50">
+              <tr key={u.id} className={`border-b border-gray-50 hover:bg-gray-50 ${!u.is_active && !showInactive ? "hidden" : ""}`}>
                 <td className="py-3 px-4">
                   <div className={`flex items-center gap-3 ${u.person_id ? "pl-6" : ""}`}>
                     <div className="w-8 h-8 rounded-full text-white text-xs font-bold flex items-center justify-center" style={{ background: "#1a3a5c" }}>
@@ -242,6 +244,7 @@ export default function AdminPage() {
           </tbody>
         </table>
       </div>
+      <ShowDeactivated noun="users" count={users.filter((u) => !u.is_active).length} open={showInactive} onToggle={() => setShowInactive((v) => !v)} />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="bg-white rounded-xl border border-gray-100 p-5 shadow-sm">
@@ -249,7 +252,7 @@ export default function AdminPage() {
           <div className="space-y-1.5 mb-3">
             {departments.length === 0 && <p className="text-xs text-gray-400">No departments yet.</p>}
             {departments.map((d) => (
-              <div key={d.id} className={`flex items-center justify-between p-1.5 rounded-lg ${d.is_active ? "bg-gray-50" : "bg-gray-50 opacity-60"}`}>
+              <div key={d.id} className={`${!d.is_active && !showInactiveDepts ? "hidden" : ""} flex items-center justify-between p-1.5 rounded-lg ${d.is_active ? "bg-gray-50" : "bg-gray-50 opacity-60"}`}>
                 {editingDeptId === d.id ? (
                   <input autoFocus value={editingDeptName} onChange={(e) => setEditingDeptName(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && saveDepartmentRename(d.id)}
@@ -273,6 +276,7 @@ export default function AdminPage() {
               </div>
             ))}
           </div>
+          <div className="-mt-1 mb-2"><ShowDeactivated noun="departments" count={departments.filter((d) => !d.is_active).length} open={showInactiveDepts} onToggle={() => setShowInactiveDepts((v) => !v)} /></div>
           <div className="flex gap-2">
             <input value={deptName} onChange={(e) => setDeptName(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && addDepartment()}

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { rolesApi } from "../../api/endpoints";
-import { Icon, Modal, Field, Input, Select } from "../ui";
+import { Icon, Modal, Field, Input, Select, ShowDeactivated } from "../ui";
 import { toast } from "../../store/toast";
 import { confirmDialog } from "../../store/confirm";
 
@@ -9,6 +9,7 @@ const BLANK = { name: "", description: "", department_id: "", permissions: [], i
 // BRD §15/§18 — business roles (CO, MLRO, RO, FO, Sales Manager, Dy MLRO, …) and their permissions.
 export default function RolesPanel({ departments, users, onChanged }) {
   const [roles, setRoles] = useState([]);
+  const [showInactive, setShowInactive] = useState(false);
   const [perms, setPerms] = useState([]);
   const [form, setForm] = useState(null);
 
@@ -71,7 +72,7 @@ export default function RolesPanel({ departments, users, onChanged }) {
           </thead>
           <tbody>
             {roles.map((r) => (
-              <tr key={r.id} className="border-b border-gray-50 align-top">
+              <tr key={r.id} className={`border-b border-gray-50 align-top ${!r.is_active && !showInactive ? "hidden" : ""}`}>
                 <td className="py-2.5 px-4">
                   <div className="font-medium text-gray-800">{r.name}</div>
                   <div className="text-xs text-gray-400">{[r.description, deptName(r.department_id)].filter(Boolean).join(" · ")}</div>
@@ -98,6 +99,7 @@ export default function RolesPanel({ departments, users, onChanged }) {
           </tbody>
         </table>
       </div>
+      <ShowDeactivated noun="roles" count={roles.filter((r) => !r.is_active).length} open={showInactive} onToggle={() => setShowInactive((v) => !v)} />
 
       {form && (
         <Modal title={form.id ? `Edit role: ${form.name}` : "Add Role"} onClose={() => setForm(null)}>

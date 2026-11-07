@@ -366,6 +366,13 @@ export const Textarea = (props) => (
 // selected option strings; `onChange` receives the new array.
 // Country dropdown backed by the live AML country-risk list; falls back to free text if that list is empty.
 // UAE is pinned to the top of the list (BRD §5–§6: "UAE to appear at the top").
+// Triam UAT 06-11-2026: deactivated records stay out of the way until an administrator asks for them.
+export const ShowDeactivated = ({ count, open, onToggle, noun = "records" }) => (count > 0 ? (
+  <button type="button" onClick={onToggle} className="text-xs text-gray-500 hover:text-brand-600 mt-2">
+    {open ? "Hide" : "Show"} deactivated {noun} ({count})
+  </button>
+) : null);
+
 // Triam UAT 05-11-2026: warns about an expired passport; up to 30 days past can be accepted, the server refuses older.
 export const passportNote = (iso, today = new Date()) => {
   if (!iso) return null;

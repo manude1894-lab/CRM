@@ -5,7 +5,8 @@ import { Icon } from "./ui";
 
 const POLL_MS = 45000;
 
-export default function NotificationBell() {
+export default function NotificationBell({ onNavigate }) {
+  const [loadFailed, setLoadFailed] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [notifications, setNotifications] = useState([]);
   const [open, setOpen] = useState(false);
@@ -34,17 +35,29 @@ export default function NotificationBell() {
     return () => document.removeEventListener("mousedown", onClickOutside);
   }, []);
 
-  const togglePanel = async () => {
+  const loadList = async () => {
+    setLoadFailed(false);
+    try {
+      setNotifications(await notificationsApi.list({ limit: 20 }));
+    } catch {
+      // Say so: a failed load isn't the same as having no notifications.
+      setNotifications([]);
+      setLoadFailed(true);
+    }
+  };
+
+  const togglePanel = () => {
     const next = !open;
     setOpen(next);
-    if (next) {
-      try {
-        const list = await notificationsApi.list({ limit: 20 });
-        setNotifications(list);
-      } catch {
-        setNotifications([]);
-      }
-    }
+    if (next) loadList();
+  };
+
+  // Triam UAT 06-11-2026: a notification opens what it is about.
+  const openItem = async (n) => {
+    await markRead(n);
+    const target = n.account_id ? { page: "accounts", accountId: n.account_id }
+      : n.notification_type === "prospect_assigned" ? { page: "prospects" } : null;
+    if (target) { setOpen(false); onNavigate?.(target); }
   };
 
   const markRead = async (n) => {
@@ -87,11 +100,16 @@ export default function NotificationBell() {
               <button onClick={markAllRead} className="text-xs text-brand-600 hover:underline">Mark all read</button>
             )}
           </div>
-          {notifications.length === 0 && (
+          {loadFailed && (
+            <div className="text-xs text-red-600 text-center py-6">
+              Couldn't load your notifications. <button onClick={loadList} className="underline">Try again</button>
+            </div>
+          )}
+          {!loadFailed && notifications.length === 0 && (
             <p className="text-xs text-gray-400 text-center py-6">No notifications yet.</p>
           )}
           {notifications.map((n) => (
-            <button key={n.id} onClick={() => markRead(n)}
+            <button key={n.id} onClick={() => openItem(n)}
               className={`w-full text-left px-4 py-3 border-b border-gray-50 hover:bg-gray-50 ${!n.read_at ? "bg-brand-50/40" : ""}`}>
               <p className="text-xs text-gray-700 leading-snug">{n.message}</p>
               <p className="text-[10px] text-gray-400 mt-1">{formatTimestamp(n.created_at)}</p>

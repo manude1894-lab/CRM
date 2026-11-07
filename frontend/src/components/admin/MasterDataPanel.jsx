@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { mastersApi } from "../../api/endpoints";
 import { invalidateMasters } from "../../hooks/useMasters";
-import { Icon } from "../ui";
+import { Icon, ShowDeactivated } from "../ui";
 import { toast } from "../../store/toast";
 
 // Admin maintenance of the BRD §18 master lists. Items are deactivated, never deleted,
@@ -28,6 +28,7 @@ export default function MasterDataPanel() {
   const [types, setTypes] = useState([]);
   const [listType, setListType] = useState(null);
   const [items, setItems] = useState([]);
+  const [showInactive, setShowInactive] = useState(false);
   const [loading, setLoading] = useState(false);
   const [newLabel, setNewLabel] = useState("");
   const [newCode, setNewCode] = useState("");
@@ -137,7 +138,7 @@ export default function MasterDataPanel() {
           <div className="space-y-1 mb-4">
             {items.length === 0 && <p className="text-xs text-gray-400">No items yet.</p>}
             {items.map((item, i) => (
-              <div key={item.id} className={`flex items-center justify-between gap-2 px-2 py-1.5 rounded-lg ${item.is_active ? "bg-gray-50" : "bg-gray-50 opacity-60"}`}>
+              <div key={item.id} className={`${!item.is_active && !showInactive ? "hidden" : ""} flex items-center justify-between gap-2 px-2 py-1.5 rounded-lg ${item.is_active ? "bg-gray-50" : "bg-gray-50 opacity-60"}`}>
                 <div className="flex items-center gap-2 min-w-0 flex-1">
                   {editingId === item.id ? (
                     <input autoFocus value={editingLabel} onChange={(e) => setEditingLabel(e.target.value)}
@@ -176,6 +177,7 @@ export default function MasterDataPanel() {
           </div>
         )}
 
+        <div className="mb-3"><ShowDeactivated noun="items" count={items.filter((i) => !i.is_active).length} open={showInactive} onToggle={() => setShowInactive((v) => !v)} /></div>
         <div className="flex flex-wrap gap-2 pt-3 border-t border-gray-100">
           <input value={newLabel} onChange={(e) => setNewLabel(e.target.value)} onKeyDown={(e) => e.key === "Enter" && add()}
             placeholder="New item label" className="flex-1 min-w-48 text-xs border border-gray-200 rounded-lg px-2 py-1.5" />

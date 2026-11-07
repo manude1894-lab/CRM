@@ -261,7 +261,7 @@ def approve(db: Session, acc: Account, user: User, comment: Optional[str] = None
                 notification_service.notify_user(db, u.id, f"Client {_label(acc)} passed Compliance and needs your final approval.", "client_submitted",
                                                  account_id=acc.id)
         if req.maker_id:
-            notification_service.notify_user(db, req.maker_id, f"Compliance ({user.name}) approved client {_label(acc)}; it is now with the Approver.", "client_approved")
+            notification_service.notify_user(db, req.maker_id, f"Compliance ({user.name}) approved client {_label(acc)}; it is now with the Approver.", "client_approved", account_id=acc.id)
         return req
 
     comment = _comment(comment, "Approver's comments")
@@ -274,7 +274,7 @@ def approve(db: Session, acc: Account, user: User, comment: Optional[str] = None
     db.commit()
     notification_service.resolve(db, acc.id, "client_submitted", "approval_waiting")
     if req.maker_id:
-        notification_service.notify_user(db, req.maker_id, f"{user.name} gave the final approval for client {_label(acc)}.", "client_approved")
+        notification_service.notify_user(db, req.maker_id, f"{user.name} gave the final approval for client {_label(acc)}.", "client_approved", account_id=acc.id)
     return req
 
 
@@ -310,7 +310,7 @@ def reject(db: Session, acc: Account, user: User, reason_code: str, reason_text:
     db.commit()
     notification_service.resolve(db, acc.id, "client_submitted", "approval_waiting")
     if req.maker_id:
-        notification_service.notify_user(db, req.maker_id, f"{user.name} rejected client {_label(acc)}: {reason_code}. {reason_text}", "client_rejected")
+        notification_service.notify_user(db, req.maker_id, f"{user.name} rejected client {_label(acc)}: {reason_code}. {reason_text}", "client_rejected", account_id=acc.id)
     return req
 
 

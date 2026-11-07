@@ -87,3 +87,10 @@ def test_rejected_report_lists_it(db, rejected):
     acc, rm, _ = rejected
     rows = standard_reports_service.rejected_with_rm(db, rm)["rows"]
     assert [r[0] for r in rows] == [acc.company_name] and rows[0][3] == "Ritu"
+
+
+def test_notifications_about_a_client_link_to_it(db, rejected):
+    from app.models import Notification
+    acc, rm, _ = rejected
+    note = db.query(Notification).filter(Notification.user_id == rm.id, Notification.notification_type == "client_rejected").one()
+    assert note.account_id == acc.id

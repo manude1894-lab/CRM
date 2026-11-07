@@ -146,7 +146,7 @@ export default function App() {
             <div className="text-xs text-gray-500 bg-gray-100 px-3 py-1.5 rounded-lg hidden sm:block">
               {fmtToday()}
             </div>
-            <NotificationBell />
+            <NotificationBell onNavigate={(t) => { setJumpTo({ ...t, nonce: Date.now() }); setPage(t.page); }} />
             {user && (
               <div className="flex items-center gap-2.5 pl-3 border-l border-gray-100"
                 title={[user.last_login_at && `Logged in ${formatTimestamp(user.last_login_at)}`, user.previous_login_at && `Last login ${formatTimestamp(user.previous_login_at)}`].filter(Boolean).join("\n")}>
@@ -181,7 +181,7 @@ export default function App() {
         </header>
 
         <main className="flex-1 overflow-y-auto p-3 md:p-6">
-          <PageErrorBoundary key={`${page}-${user?.id}`}>
+          <PageErrorBoundary key={`${page}-${user?.id}-${jumpTo?.nonce || ""}`}>
           <PageComponent
             {...(activeItem.props || {})}
             onNavigate={(t) => { setJumpTo(t); setPage(t.page); }}
