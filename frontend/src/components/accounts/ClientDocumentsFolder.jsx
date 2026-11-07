@@ -61,7 +61,9 @@ export default function ClientDocumentsFolder({ accountId, onChange, onboarding 
   // firm itself (everything except the person-only ones; an individual client files those too).
   const personOnly = (code) => /^UBO/.test(sectionOf(code) || "");
   const forEither = (code) => /Corporate & Individual/.test(sectionOf(code) || "");
-  const categoryInScope = (code) => (partyId ? (personOnly(code) || forEither(code)) && !complianceOnly(code)
+  // A category without a section (one an Admin added, Triam UAT 06-11-2026) can be used anywhere.
+  const anywhere = (code) => !sectionOf(code);
+  const categoryInScope = (code) => (partyId ? (personOnly(code) || forEither(code) || anywhere(code)) && !complianceOnly(code)
     : scope === "client" ? individual || !personOnly(code) : true);
   const categoryOptions = selectableCodes(cats.items, category)
     .filter(categoryInScope)

@@ -98,12 +98,13 @@ export default function ClientProfilePage({ accountId, initialTab = "overview", 
               <FactList items={individual ? [
                 ["Date of birth", fmtDate(a.date_of_birth)], ["Nationality", a.nationality], ["Country of birth", a.country_of_birth],
                 ["Country of residence", a.country_of_residence], ["Passport expiry", fmtDate(a.passport_expiry_date)],
-                ["Email", a.individual_email], ["Profession / business", a.nature_of_business],
+                ["Email", a.individual_email], ["Profession / business", a.nature_of_business], ["Screening date", fmtDate(a.screening_date)],
               ] : [
                 ["New client category", a.client_category], ["Country of incorporation", a.country],
                 ["Contact", [a.contact_mobile_country_code && a.contact_mobile_number ? `${a.contact_mobile_country_code} ${a.contact_mobile_number}` : null, a.contact_email].filter(Boolean).join(" · ") || null],
                 ["LEI", a.lei_number ? `${a.lei_number}${a.lei_expiry_date ? ` (expires ${fmtDate(a.lei_expiry_date)})` : ""}` : null],
                 ["Incorporation date", fmtDate(a.incorporation_date)], ["Incorporation cert. no.", a.registration_number],
+                ["Screening date", fmtDate(a.screening_date)],
               ]} />
             </Panel>
             <Panel title="Triam assignment">

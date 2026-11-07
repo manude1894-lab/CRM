@@ -230,6 +230,9 @@ def _assert_date_sanity(data) -> None:
     incorporation_date = getattr(data, "incorporation_date", None)
     if incorporation_date and incorporation_date > today:
         raise HTTPException(status_code=400, detail="Incorporation Date cannot be in the future")
+    screening_date = getattr(data, "screening_date", None)
+    if screening_date and screening_date > today:
+        raise HTTPException(status_code=400, detail="Screening Date cannot be in the future")
     license_expiry_date = getattr(data, "license_expiry_date", None)
     if license_expiry_date and license_expiry_date < today:
         raise HTTPException(status_code=400, detail="License Expiry Date cannot be before today")

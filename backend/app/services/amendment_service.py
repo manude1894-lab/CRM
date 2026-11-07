@@ -63,6 +63,7 @@ _LABELS = {
     "corp_tax_registered": "Corporate Tax Registered", "has_introducer": "Introducer",
     "regulatory_license_expiry_date": "Current regulatory license expiry",
     "nature_of_business": "Detailed Nature of Business", "contact_email": "Contact Email",
+    "screening_date": "Screening Date",
 }
 
 

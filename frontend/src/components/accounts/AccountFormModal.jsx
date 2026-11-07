@@ -607,6 +607,14 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
         ))}
 
         {/* Triam UAT 26-10-2026: mandatory for every new client, completed by the RM / Sales Manager. */}
+        {/* Triam UAT 05-11-2026: for Individual and Entity clients; the report is filed under Documents. */}
+        <Section title="Name Screening" hasData={!!form.screening_date} {...sectionProps("screening")}>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Screening Date"><DateInput max={today} value={form.screening_date || ""} onChange={set("screening_date")} /></Field>
+          </div>
+          <p className="text-[11px] text-gray-500">File the screening report in the client's documents, or in the person's own record.</p>
+        </Section>
+
         <Section title="Biz Rationale Report" hasData={!!(form.br_person_met || form.br_rationale)} {...sectionProps("bizRationale")}>
           <div className="grid grid-cols-2 gap-3">
             <Field label="Full Name of the Person Met" required={req("br_person_met")}><Input value={form.br_person_met} onChange={set("br_person_met")} maxLength={255} /></Field>

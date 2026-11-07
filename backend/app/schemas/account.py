@@ -142,6 +142,7 @@ class AccountImportRow(BaseModel):
     country_of_birth: Optional[str] = None
     nationality: Optional[str] = None
     passport_expiry_date: Optional[date] = None
+    screening_date: Optional[date] = None
     country_of_residence: Optional[str] = None
     residential_address: Optional[AddressBlock] = None
     individual_mobile_country_code: Optional[str] = None
@@ -257,6 +258,7 @@ class AccountBase(_ClientFieldRules):
     country_of_birth: Optional[str] = None
     nationality: Optional[str] = None
     passport_expiry_date: Optional[date] = None
+    screening_date: Optional[date] = None
     country_of_residence: Optional[str] = None
     residential_address: Optional[AddressBlock] = None
     individual_mobile_country_code: Optional[str] = None
@@ -346,6 +348,7 @@ class AccountUpdate(_ClientFieldRules):
     country_of_birth: Optional[str] = None
     nationality: Optional[str] = None
     passport_expiry_date: Optional[date] = None
+    screening_date: Optional[date] = None
     country_of_residence: Optional[str] = None
     residential_address: Optional[AddressBlock] = None
     individual_mobile_country_code: Optional[str] = None

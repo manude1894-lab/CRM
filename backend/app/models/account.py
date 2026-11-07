@@ -87,6 +87,7 @@ class Account(Base):
     country_of_birth = Column(String(120), nullable=True)
     nationality = Column(String(120), nullable=True)
     passport_expiry_date = Column(Date, nullable=True)
+    screening_date = Column(Date, nullable=True)  # name screening, Individual and Entity (Triam UAT 05-11-2026)
     country_of_residence = Column(String(120), nullable=True)
     residential_address = Column(JSON, nullable=True)  # same shape as the corporate addresses
     individual_mobile_country_code = Column(String(6), nullable=True)

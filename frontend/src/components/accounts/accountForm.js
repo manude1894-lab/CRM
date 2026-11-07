@@ -18,6 +18,7 @@ export const BLANK_ACCOUNT_FORM = {
   profile_status: "New",
   engagement_letter_signed: null, engagement_letter_valid_until: "",
   aml_classification: "", edd_reason: "", cdd_completion_date: "", kyc_verified_by: "",
+  screening_date: "",
   is_pep: false,
   date_of_birth: "", country_of_birth: "", nationality: "", passport_expiry_date: "", country_of_residence: "",
   residential_address: { ...BLANK_ADDRESS },
@@ -54,6 +55,7 @@ export const SECTION_FIELDS = {
   introducer: ["has_introducer", "introducer_name"],
   bizRationale: ["br_person_met", "br_meeting_date", "br_meeting_time", "br_meeting_place", "br_meeting_mode", "br_rationale"],
   services: ["services_obtained"],
+  screening: ["screening_date"],
   // Status itself only changes through the workflow — this section saves engagement only.
   profileStatus: ["engagement_letter_valid_until", "engagement_letter_signed"],
   // BRD §8: completed only by Compliance (MLRO).
@@ -123,6 +125,7 @@ export function accountToForm(a) {
     engagement_letter_signed: a.engagement_letter_signed ?? null, engagement_letter_valid_until: a.engagement_letter_valid_until || "",
     aml_classification: a.aml_classification || "", edd_reason: a.edd_reason || "", cdd_completion_date: a.cdd_completion_date || "",
     kyc_verified_by: a.kyc_verified_by || "",
+    screening_date: a.screening_date || "",
     next_aml_review_date: a.next_aml_review_date || null,
     is_pep: !!a.is_pep,
     date_of_birth: a.date_of_birth || "", country_of_birth: a.country_of_birth || "", nationality: a.nationality || "",
