@@ -8,8 +8,8 @@ from app.models import Account, ApprovalRequest, ApprovalStatus, Instruction, In
 from app.services import access_control, client_workflow_service as wf
 from app.services import instruction_service, invoice_service, prospect_service
 
-# BRD §9 status lifecycle, in order.
-CLIENT_STATUSES = [wf.NEW, wf.WIP, wf.AWAITING, wf.APPROVED, wf.ACTIVE, wf.INACTIVE, wf.MARKED_EXIT, wf.EXITED]
+# BRD §9 status lifecycle, in order, with the Rejected status of BRD §8, §19, §20 beside WIP.
+CLIENT_STATUSES = [wf.NEW, wf.WIP, wf.REJECTED, wf.AWAITING, wf.APPROVED, wf.ACTIVE, wf.INACTIVE, wf.MARKED_EXIT, wf.EXITED]
 AML_REVIEW_WINDOW_DAYS = 60
 
 
@@ -39,6 +39,14 @@ def build_dashboard(db: Session, user: User) -> dict:
     pending = db.query(ApprovalRequest).filter(ApprovalRequest.status == ApprovalStatus.PENDING.value).all()
     pending = [r for r in pending if r.account_id in visible_ids]
 
+    names = {a.id: a.company_name for a in accounts}
+    # Triam UAT 05/06-11-2026: pending approvals by level. An amendment goes to Compliance only (BRD §11).
+    pending_rows = sorted(({
+        "account_id": r.account_id, "company_name": names[r.account_id], "request_type": r.request_type,
+        "level": wf.stage_of(r) if r.request_type == "client_profile" else wf.STAGE_COMPLIANCE,
+        "submitted_by": r.maker.name if r.maker else None, "submitted_at": r.submitted_at,
+    } for r in pending), key=lambda row: str(row["submitted_at"]))
+
     horizon = today + timedelta(days=AML_REVIEW_WINDOW_DAYS)
     aml_due = sorted(
         ({"account_id": a.id, "client_id": a.client_id, "company_name": a.company_name, "risk_rating": a.risk_rating,
@@ -47,14 +55,25 @@ def build_dashboard(db: Session, user: User) -> dict:
          if a.profile_status in (wf.APPROVED, wf.ACTIVE) and a.next_aml_review_date and a.next_aml_review_date <= horizon),
         key=lambda r: r["next_aml_review_date"])
 
+    rejected = []
+    for a in accounts:
+        rejection = wf.last_rejection(db, a)
+        if rejection:
+            rejected.append({"account_id": a.id, "company_name": a.company_name, **rejection})
+    rejected.sort(key=lambda r: str(r["rejected_at"]), reverse=True)
+
+    # RM privacy (BRD §13): an RM's dashboard names only their own team, not every other RM.
+    team = access_control.team_user_ids(db, user.id) if access_control.is_restricted(user) else None
     portfolio = []
     for u in db.query(User).filter(User.is_active == True).order_by(User.name).all():  # noqa: E712
+        if team is not None and u.id not in team:
+            continue
         mine = [a for a in accounts if a.spoc_id == u.id]
         if not mine and (not u.handles_clients or u.role == UserRole.ADMIN):
             continue  # central desks (Compliance, Approver, Accounts, ...) and administrators hold no portfolio
         portfolio.append({
             "user_id": u.id, "name": u.name, "business_role_name": u.business_role_name, "total": len(mine),
-            "in_progress": sum(1 for a in mine if a.profile_status in (wf.NEW, wf.WIP, wf.AWAITING)),
+            "in_progress": sum(1 for a in mine if a.profile_status in (*wf.WITH_RM, wf.AWAITING)),
             "active": sum(1 for a in mine if a.profile_status in (wf.APPROVED, wf.ACTIVE)),
         })
 
@@ -62,7 +81,7 @@ def build_dashboard(db: Session, user: User) -> dict:
         "kpis": {
             "prospects_open": len(open_prospects),
             "prospects_unassigned": sum(1 for p in open_prospects if p.owner_id is None),
-            "clients_in_progress": by_status[wf.NEW] + by_status[wf.WIP],
+            "clients_in_progress": by_status[wf.NEW] + by_status[wf.WIP] + by_status[wf.REJECTED],
             "clients_awaiting_approval": by_status[wf.AWAITING],
             "clients_active": by_status[wf.APPROVED] + by_status[wf.ACTIVE],
             "service_requests_open": open_srs,
@@ -74,6 +93,8 @@ def build_dashboard(db: Session, user: User) -> dict:
             "compliance": sum(1 for r in pending if r.request_type != "client_profile" or wf.stage_of(r) == wf.STAGE_COMPLIANCE),
             "approver": sum(1 for r in pending if r.request_type == "client_profile" and wf.stage_of(r) == wf.STAGE_APPROVER),
         },
+        "pending_approvals": pending_rows,
+        "rejected_clients": rejected,
         "aml_reviews_due": aml_due,
         "portfolio_by_rm": portfolio,
     }

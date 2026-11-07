@@ -87,6 +87,7 @@ class Account(Base):
     country_of_birth = Column(String(120), nullable=True)
     nationality = Column(String(120), nullable=True)
     passport_expiry_date = Column(Date, nullable=True)
+    screening_date = Column(Date, nullable=True)  # name screening, Individual and Entity (Triam UAT 05-11-2026)
     country_of_residence = Column(String(120), nullable=True)
     residential_address = Column(JSON, nullable=True)  # same shape as the corporate addresses
     individual_mobile_country_code = Column(String(6), nullable=True)
@@ -132,6 +133,9 @@ class Account(Base):
         return self.prospect.prospect_uid if self.prospect is not None else self.account_uid
 
     # Current parties only; removed ones stay in the table (removed_at set) and are listed by removed_parties.
+    # While Awaiting Approval: "Compliance" or "Approver". Filled in by the client list, not stored.
+    approval_stage = None
+
     parties = relationship("AccountParty", primaryjoin="and_(Account.id == AccountParty.account_id, AccountParty.removed_at.is_(None))",
                            cascade="all, delete-orphan", order_by="AccountParty.id", overlaps="removed_parties")
     removed_parties = relationship("AccountParty", primaryjoin="and_(Account.id == AccountParty.account_id, AccountParty.removed_at.isnot(None))",

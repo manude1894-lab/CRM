@@ -9,14 +9,14 @@ import ClientProfilePage from "./ClientProfilePage";
 import { BLANK_ACCOUNT_FORM } from "../components/accounts/accountForm";
 import { buildAccountsCsv, parseImportRows } from "../components/accounts/accountCsv";
 import { toast } from "../store/toast";
-import { fmtDate, exportFilename } from "../utils/constants";
+import { fmtDate, exportFilename, WITH_RM_STATUSES } from "../utils/constants";
 import { useAuthStore } from "../store/auth";
 
 const BLANK_BULK = { spoc_id: "", risk_rating: "" };
 // Triam input 19-10-2026: clients being onboarded and existing clients are separate menu items.
 const SCOPES = {
   onboarding: {
-    title: "New Client Onboarding", statuses: ["New", "WIP", "Awaiting Approval"],
+    title: "New Client Onboarding", statuses: [...WITH_RM_STATUSES, "Awaiting Approval"],
     subtitle: (n) => `${n} client${n === 1 ? "" : "s"} being onboarded`,
     empty: "Clients appear here once they are created from a prospect sent to the RM.",
   },
@@ -57,7 +57,8 @@ export default function AccountsPage({ scope = "onboarding", initialAccountId, i
   const fileInputRef = useRef(null);
   const isAdmin = useAuthStore((s) => s.isAdmin());
   const me = useAuthStore((s) => s.user);
-  const canAssign = useAuthStore((s) => s.can("prospect.assign"));
+  const canAssign = useAuthStore((s) => s.isProspectCoordinator());
+  const readOnly = useAuthStore((s) => s.isReadOnly());
   const [prospects, setProspects] = useState([]);
   const [shownProspect, setShownProspect] = useState(null);
 
@@ -181,7 +182,7 @@ export default function AccountsPage({ scope = "onboarding", initialAccountId, i
     <div className="space-y-4">
       <PageHeader title={cfg.title} subtitle={cfg.subtitle(scoped.length)}
         actions={<>
-          <Button onClick={exportCSV}>Export CSV</Button>
+          {isAdmin && <Button onClick={exportCSV}>Export CSV</Button>}
           {isAdmin && scope === "maintenance" && (
             <>
               <input ref={fileInputRef} type="file" accept=".csv,text/csv" className="hidden"
@@ -189,7 +190,7 @@ export default function AccountsPage({ scope = "onboarding", initialAccountId, i
               <Button onClick={() => fileInputRef.current?.click()} disabled={importing}>{importing ? "Reading…" : "Import CSV"}</Button>
             </>
           )}
-          {scope === "onboarding" && <Button variant="primary" onClick={() => onNavigate?.({ page: "prospects" })}>Go to Prospects</Button>}
+          {scope === "onboarding" && !readOnly && <Button variant="primary" onClick={() => onNavigate?.({ page: "prospects" })}>Go to Prospects</Button>}
         </>}
       />
 
@@ -261,9 +262,9 @@ export default function AccountsPage({ scope = "onboarding", initialAccountId, i
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50 text-xs text-gray-500">
-                <th className="py-2.5 px-3 w-8">
+                {!readOnly && <th className="py-2.5 px-3 w-8">
                   <input type="checkbox" checked={ids.every((id) => selectedIds.has(id))} onChange={() => toggleSelectAll(ids)} />
-                </th>
+                </th>}
                 {(scope === "maintenance" ? ["Client ID", "Client", "Status", "Risk", "Anchor RM", "PEP", "Next AML review"]
                   : ["Client ID", "Client", "Status", "Anchor RM", "PEP"]).map((h) => (
                   <th key={h} className="py-2.5 px-3 font-semibold text-left">{h}</th>
@@ -273,15 +274,18 @@ export default function AccountsPage({ scope = "onboarding", initialAccountId, i
             <tbody>
               {filtered.map((a) => (
                 <tr key={a.id} onClick={() => openClient(a)} className="border-b border-gray-50 hover:bg-gray-50 cursor-pointer">
-                  <td className="py-2.5 px-3" onClick={(e) => e.stopPropagation()}>
+                  {!readOnly && <td className="py-2.5 px-3" onClick={(e) => e.stopPropagation()}>
                     <input type="checkbox" checked={selectedIds.has(a.id)} onChange={() => toggleSelected(a.id)} />
-                  </td>
+                  </td>}
                   <td className="py-2.5 px-3 font-mono text-xs text-gray-600">{a.client_id || <span className="text-gray-400" title="Temporary ID until Compliance approves">{a.temp_id || a.account_uid}</span>}</td>
                   <td className="py-2.5 px-3">
                     <div className="font-medium text-gray-800">{a.company_name}</div>
                     <div className="text-xs text-gray-400">{a.account_type === "Individual" ? "Individual" : [a.client_category, a.country].filter(Boolean).join(" · ") || "Corporate"}{a.is_pep ? " · PEP" : ""}</div>
                   </td>
-                  <td className="py-2.5 px-3"><Badge text={a.profile_status || "New"} /></td>
+                  <td className="py-2.5 px-3">
+                    <Badge text={a.profile_status || "New"} />
+                    {a.approval_stage && <div className="text-[11px] text-amber-700 mt-0.5">{a.approval_stage === "Approver" ? "Pending with the Approver" : "Pending with Compliance"}</div>}
+                  </td>
                   {scope === "maintenance" && <td className="py-2.5 px-3 text-xs text-gray-600">{a.risk_rating || "—"}</td>}
                   <td className="py-2.5 px-3 text-xs text-gray-600">{userName(a.spoc_id)}</td>
                   <td className="py-2.5 px-3 text-xs text-gray-600">{a.is_pep ? "PEP" : "—"}</td>
@@ -320,7 +324,7 @@ export default function AccountsPage({ scope = "onboarding", initialAccountId, i
           </dl>
           <div className="flex justify-end gap-3">
             <Button onClick={() => setShownProspect(null)}>Close</Button>
-            {(shownProspect.owner_id === me?.id || isAdmin || canAssign) && (
+            {!readOnly && (shownProspect.owner_id === me?.id || isAdmin || canAssign) && (
               <Button variant="primary" onClick={() => createFrom(shownProspect)}>Create client</Button>
             )}
           </div>

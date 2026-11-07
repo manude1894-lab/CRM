@@ -45,7 +45,7 @@ OPEN = (ApprovalStatus.DRAFT.value, ApprovalStatus.PENDING.value)
 
 # Read-only/system fields that never appear as an amendment line.
 _IGNORED = {"id", "account_uid", "client_id", "created_at", "updated_at", "profile_status", "status_updated_at",
-            "status_updated_by_id", "next_aml_review_date", "is_pep",
+            "status_updated_by_id", "next_aml_review_date", "is_pep", "approval_stage",
             "account_id"}
 
 _LABELS = {
@@ -63,6 +63,7 @@ _LABELS = {
     "corp_tax_registered": "Corporate Tax Registered", "has_introducer": "Introducer",
     "regulatory_license_expiry_date": "Current regulatory license expiry",
     "nature_of_business": "Detailed Nature of Business", "contact_email": "Contact Email",
+    "screening_date": "Screening Date",
 }
 
 
@@ -213,10 +214,13 @@ def _diff(db: Session, before: dict, after: dict) -> dict:
 def _simulate(db: Session, acc: Account, payload: dict, user: User, check_mandatory: bool = False) -> tuple[dict, dict, list]:
     """Replay on the live record, capture before/after, then roll everything back."""
     before = _state(acc)
+    # Only gaps this amendment creates count. A client approved or imported before a rule existed must
+    # stay amendable: an address change can't be refused over something it doesn't touch.
+    existing_gaps = {(m["field"], m["label"]) for m in account_service.missing_mandatory(acc)} if check_mandatory else set()
     try:
         temp = _replay(db, acc, payload, user)
         after = _state(acc, temp)
-        missing = account_service.missing_mandatory(acc) if check_mandatory else []
+        missing = [m for m in account_service.missing_mandatory(acc) if (m["field"], m["label"]) not in existing_gaps] if check_mandatory else []
     finally:
         db.rollback()
     return before, after, missing
@@ -399,7 +403,7 @@ def submit(db: Session, acc: Account, user: User, comment: Optional[str] = None)
     db.commit()
     for u in _approvers(db):
         if u.id != user.id:
-            notification_service.notify_user(db, u.id, f"{user.name} submitted an amendment to {_client_label(acc)} for Compliance approval.", "amendment_submitted")
+            notification_service.notify_user(db, u.id, f"{user.name} submitted an amendment to {_client_label(acc)} for Compliance approval.", "amendment_submitted", account_id=acc.id)
     return req
 
 
@@ -435,7 +439,7 @@ def approve(db: Session, acc: Account, user: User, comment: Optional[str] = None
     db.commit()
     notification_service.resolve(db, acc.id, "approval_waiting")  # decided: the waiting reminder is done
     if req.maker_id:
-        notification_service.notify_user(db, req.maker_id, f"{user.name} approved your amendment to {_client_label(acc)}.", "amendment_approved")
+        notification_service.notify_user(db, req.maker_id, f"{user.name} approved your amendment to {_client_label(acc)}.", "amendment_approved", account_id=acc.id)
     return req
 
 

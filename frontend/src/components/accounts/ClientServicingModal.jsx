@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { activitiesApi, instructionsApi } from "../../api/endpoints";
 import { Modal, Field, Input, Select, Textarea, Spinner, DateInput } from "../ui";
 import { toast } from "../../store/toast";
+import { useAuthStore } from "../../store/auth";
 import { useMasters } from "../../hooks/useMasters";
 import { fmtDate } from "../../utils/constants";
 import { useRequestOptions, requestLabel, clientEntities } from "../../hooks/useRequestOptions";
@@ -16,6 +17,7 @@ const STATUS_STYLE = { Completed: "bg-emerald-50 text-emerald-700", "On Hold": "
  * place on the client.
  */
 export default function ClientServicingModal({ account, onClose, startWith = null }) {
+  const readOnly = useAuthStore((s) => s.isReadOnly());
   const [tab, setTab] = useState(startWith === "request" ? "requests" : "reports");
   const [activities, setActivities] = useState(null);
   const [requests, setRequests] = useState(null);
@@ -90,15 +92,15 @@ export default function ClientServicingModal({ account, onClose, startWith = nul
         </div>
       ) : (
         <div className="space-y-2">
-          <div className="flex gap-2">
+          {!readOnly && <div className="flex gap-2">
             <button onClick={() => setForm(blankActivity(account.id, "Visit Report"))} className="px-2.5 py-1 text-xs text-white rounded-lg" style={{ background: "#1a3a5c" }}>+ Visit Report</button>
             <button onClick={() => setForm(blankActivity(account.id, "Call Report"))} className="px-2.5 py-1 text-xs text-white rounded-lg" style={{ background: "#1a3a5c" }}>+ Call Report</button>
-          </div>
+          </div>}
           {activities === null ? <Spinner /> : activities.length === 0
             ? <p className="text-sm text-gray-400 text-center py-6">No visit or call reports for this client yet.</p>
             : activities.map((a) => (
               <ActivityCard key={a.id} activity={a} compact
-                onEdit={() => setForm({ ...blankActivity(account.id), ...a, account_id: a.account_id || account.id })} />
+                onEdit={readOnly ? undefined : () => setForm({ ...blankActivity(account.id), ...a, account_id: a.account_id || account.id })} />
             ))}
         </div>
       ))}
@@ -135,7 +137,7 @@ export default function ClientServicingModal({ account, onClose, startWith = nul
         </div>
       ) : (
         <div className="space-y-2">
-          {SERVICEABLE.includes(account.profile_status) ? (
+          {readOnly ? null : SERVICEABLE.includes(account.profile_status) ? (
             <button onClick={() => setSr(blankRequest())}
               className="px-2.5 py-1 text-xs text-white rounded-lg" style={{ background: "#1a3a5c" }}>+ New Service Request</button>
           ) : <p className="text-xs text-gray-500">Service requests open once the client is approved.</p>}

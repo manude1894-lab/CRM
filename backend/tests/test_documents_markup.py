@@ -32,7 +32,7 @@ def test_only_listed_file_types_are_accepted(db, people, cats):
 
 
 def test_kyc_video_can_be_a_sharepoint_link(db, people, cats):
-    acc = complete_client(db, people["maker"])
+    acc = complete_client(db, people["maker"], with_document=False)
     with pytest.raises(HTTPException):
         document_service.create_link_for_account(db, acc.id, "KYC_VIDEO", "http://insecure.example/x", None, people["maker"])
     doc = document_service.create_link_for_account(db, acc.id, "KYC_VIDEO", "https://triam.sharepoint.com/kyc/video-123",
@@ -59,7 +59,7 @@ def test_compliance_documents_are_filed_by_compliance_during_review(db, people, 
 
 def test_removed_documents_stay_in_the_folder_history(db, people, cats):
     maker = people["maker"]
-    acc = complete_client(db, maker)
+    acc = complete_client(db, maker, with_document=False)
     doc = document_service.create_for_account(db, acc.id, _file("passport.pdf"), "PASSPORT", maker)
     document_service.delete(db, doc.id, maker)
     folder = document_service.client_folder(db, acc.id, maker)

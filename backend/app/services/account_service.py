@@ -4,10 +4,10 @@ from sqlalchemy import or_, func
 from fastapi import HTTPException
 from typing import Optional
 from decimal import Decimal
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from dateutil.relativedelta import relativedelta
 
-from app.models import Account, User, UserRole, ClientIdSequence
+from app.models import Account, ApprovalRequest, ApprovalStatus, User, UserRole, ClientIdSequence
 from app.auth.permissions import has_permission
 from app.audit import log_event
 from app.schemas.account import AccountCreate, AccountUpdate, AccountImportRow, AccountImportRowResult, AccountBulkUpdateRequest, BulkUpdateResult
@@ -185,6 +185,11 @@ def list_accounts(
 
     total = query.count()
     items = query.order_by(Account.company_name).offset(skip).limit(limit).all()
+    # Triam UAT 05-11-2026: the list says at which level a case awaiting approval is pending.
+    awaiting = {a.id: a for a in items if a.profile_status == client_workflow_service.AWAITING}
+    if awaiting:
+        for req in db.query(ApprovalRequest).filter(ApprovalRequest.account_id.in_(awaiting), ApprovalRequest.status == ApprovalStatus.PENDING.value).all():
+            awaiting[req.account_id].approval_stage = client_workflow_service.stage_of(req)
     return items, total
 
 
@@ -204,18 +209,17 @@ def get_account(db: Session, account_id: int, user: User) -> Account:
     return acc
 
 
-def _assert_shareholder_ownership_complete(account: Account) -> None:
-    """Client spec §20 — Shareholder effective ownership must total 100% before a Corporate
-    profile can be finalized (moved to Approved/Active). Individual accounts are exempt —
-    there's no Shareholder concept for a person."""
-    if account.account_type != "Corporate":
-        return
-    total = sum((p.effective_ownership_percent or Decimal("0")) for p in account.parties if p.party_role == "Shareholder")
-    if abs(total - Decimal("100")) > Decimal("0.01"):
-        raise HTTPException(
-            status_code=400,
-            detail=f"Shareholder effective ownership must total 100% before the profile can be Approved/Active (currently {total}%).",
-        )
+PASSPORT_GRACE_DAYS = 30
+
+
+def passport_too_old(expiry: Optional[date]) -> bool:
+    """Triam UAT 05-11-2026: a passport may be accepted up to 30 days past its expiry, not more."""
+    return bool(expiry) and expiry < date.today() - timedelta(days=PASSPORT_GRACE_DAYS)
+
+
+def assert_passport_acceptable(expiry: Optional[date], whose: str = "The passport") -> None:
+    if passport_too_old(expiry):
+        raise HTTPException(status_code=400, detail=f"{whose} expired more than {PASSPORT_GRACE_DAYS} days ago. Ask for the renewed passport.")
 
 
 def _assert_date_sanity(data) -> None:
@@ -226,6 +230,9 @@ def _assert_date_sanity(data) -> None:
     incorporation_date = getattr(data, "incorporation_date", None)
     if incorporation_date and incorporation_date > today:
         raise HTTPException(status_code=400, detail="Incorporation Date cannot be in the future")
+    screening_date = getattr(data, "screening_date", None)
+    if screening_date and screening_date > today:
+        raise HTTPException(status_code=400, detail="Screening Date cannot be in the future")
     license_expiry_date = getattr(data, "license_expiry_date", None)
     if license_expiry_date and license_expiry_date < today:
         raise HTTPException(status_code=400, detail="License Expiry Date cannot be before today")
@@ -268,6 +275,7 @@ def create_account(db: Session, data: AccountCreate, user: User) -> Account:
         search_name = _default_search_name(db, data.company_name, data.anchor_entity)
 
     _assert_date_sanity(data)
+    assert_passport_acceptable(data.passport_expiry_date)
     if any(getattr(data, f, None) not in (None, "") for f in CDD_FIELDS) and not has_permission(user, "client.cdd_edit"):
         raise HTTPException(status_code=403, detail="Only Compliance (MLRO) can complete the CDD / risk assessment section")
 
@@ -362,6 +370,8 @@ def apply_update(db: Session, acc: Account, data: AccountUpdate, user: User) -> 
     """Validate and apply a profile update to `acc` without committing. Shared by direct saves and
     by amendments (staged on save, then applied for real when Compliance approves)."""
     _assert_date_sanity(data)
+    if data.passport_expiry_date != acc.passport_expiry_date:
+        assert_passport_acceptable(data.passport_expiry_date)
     update_data = data.model_dump(exclude_unset=True)
     if user.role == UserRole.RM:
         update_data.pop("owner_id", None)
@@ -391,7 +401,7 @@ def apply_update(db: Session, acc: Account, data: AccountUpdate, user: User) -> 
     # temporary ID is shown. Approved clients that pre-date Client IDs get one on their next save.
     # Once issued, a Client ID never changes (even if the Anchor Entity later does).
     if not acc.client_id and acc.anchor_entity and acc.profile_status not in (
-            client_workflow_service.NEW, client_workflow_service.WIP, client_workflow_service.AWAITING):
+            *client_workflow_service.WITH_RM, client_workflow_service.AWAITING):
         acc.client_id = next_client_id(db, acc.anchor_entity)
     if not acc.search_name:
         acc.search_name = _default_search_name(db, acc.company_name, acc.anchor_entity)
@@ -497,6 +507,40 @@ PARTIES_SECTION = "Shareholder / UBO Information"
 BIZ_RATIONALE_SECTION = "Biz Rationale Report"
 
 
+def is_offshore(account) -> bool:
+    """Triam UAT 06-11-2026: tax fields don't apply to offshore companies, BVI or not. Offshore means:
+    registered in the BVI, anchored in the BVI entity, or an offshore service, tag or registering authority.
+    The form applies the same rule (isOffshore in accountForm.js); both are tested against one contract."""
+    country = (account.country or "").lower()
+    if "virgin islands" in country and "brit" in country:
+        return True
+    if (account.anchor_entity or "").upper() == "TBVI":
+        return True
+    values = [*(account.services_obtained or []), *(account.nature_of_services_sought or []), *_as_list(account.tags, "csv"),
+              account.licensing_authority, account.licensing_authority_other]
+    return any(word in (v or "").lower() for v in values for word in ("offshore", "bvi"))
+
+
+def has_supporting_document(account) -> bool:
+    return any(d.removed_at is None and d.invoice_id is None and d.instruction_id is None for d in account.documents)
+
+
+FOUNDATION_SERVICE = "Set up Foundations"
+FOUNDATION_ROLES = ("Founder", "Council Member", "Beneficiary", "Guardian")
+
+
+def is_foundation(account) -> bool:
+    """Triam UAT 05-11-2026: a foundation has Founders, Council Members, Beneficiaries and Guardians
+    instead of Shareholders and Directors."""
+    return FOUNDATION_SERVICE in [*(account.services_obtained or []), *(account.nature_of_services_sought or [])]
+
+
+def counts_towards_ownership(party) -> bool:
+    """Triam UAT 06-11-2026: an entity's share is looked through to the individuals behind it, so only
+    individual shareholders count towards 100% (ABC Ltd: A 25, B 25, C Ltd's owners C1 30, C2 20)."""
+    return party.party_role == "Shareholder" and party.constitution != "Entity"
+
+
 def missing_mandatory(account: Account) -> list[dict]:
     missing: list[dict] = []
 
@@ -515,6 +559,9 @@ def missing_mandatory(account: Account) -> list[dict]:
         need("Individual details", "company_name", "Full Name")
         need("Individual details", "date_of_birth", "Date of Birth")
         need("Individual details", "passport_expiry_date", "Passport Expiry Date")
+        if passport_too_old(account.passport_expiry_date):
+            missing.append({"section": "Individual details", "field": "passport_expiry_date",
+                            "label": f"The passport expired more than {PASSPORT_GRACE_DAYS} days ago. A renewed passport is needed"})
         need("Individual details", "country_of_birth", "Country of Birth")
         need("Individual details", "nationality", "Nationality")
         need("Individual details", "country_of_residence", "Country of Residence")
@@ -526,10 +573,11 @@ def missing_mandatory(account: Account) -> list[dict]:
         if not all((addr.get(f) or "").strip() for f in ("line1", "city", "country")):
             missing.append({"section": "Individual details", "field": "residential_address", "label": "Residential Address (line 1, city and country)"})
     else:
-        # BRD §5 — New Client Category: licence and incorporation details are mandatory for
-        # existing companies and may be blank for companies under formation.
-        category = account.client_category
-        forming = category == "Under Formation" or (category is None and "Company Formation" in (account.services_obtained or []))
+        # BRD §5 — New Client Category: licence and incorporation details are mandatory for existing
+        # companies. Triam UAT 05-11-2026: only when Under Formation is chosen, these and the addresses
+        # and tax details may be blank. Keep in step with mandatoryFields in accountForm.js.
+        forming = account.client_category == "Under Formation"
+        taxable = not forming and not is_offshore(account)
         need("Client info", "client_category", "New Client Category (Under Formation / Existing)")
         need("Client info", "company_name", "Client Name")
         need("Client info", "country", "Country of Incorporation / Registration")
@@ -558,22 +606,26 @@ def missing_mandatory(account: Account) -> list[dict]:
              when=account.is_regulated and not forming)
         for key, label in (("registered_address", "Registered Address"), ("operating_address", "Operating Address")):
             addr = getattr(account, key) or {}
-            if not all((addr.get(f) or "").strip() for f in ("line1", "city", "country")):
+            if not forming and not all((addr.get(f) or "").strip() for f in ("line1", "city", "country")):
                 missing.append({"section": label, "field": key, "label": f"{label} (line 1, city and country)"})
-        need("Tax", "financial_year_end", "Financial Year End")
-        need("Tax", "corp_tax_registered", "Corporate Tax Registered (Yes / No)")
+        need("Tax", "financial_year_end", "Financial Year End", when=taxable)
+        need("Tax", "corp_tax_registered", "Corporate Tax Registered (Yes / No)", when=taxable)
         need("Introducer", "has_introducer", "Introducer (Yes / No)")
         need("Introducer", "introducer_name", "Introducer Name", when=account.has_introducer)
 
-        # §6 — shareholders must exist and add up to 100%.
+        # §6 — shareholders must exist and the individuals among them add up to 100%.
         shareholders = [p for p in account.parties if p.party_role == "Shareholder"]
-        if not shareholders:
+        if is_foundation(account):
+            # No shares in a foundation, so no 100% rule; it needs its Founder.
+            if not any(p.party_role == "Founder" for p in account.parties):
+                missing.append({"section": "Founders", "field": "parties", "label": "At least one Founder"})
+        elif not shareholders:
             missing.append({"section": PARTIES_SECTION, "field": "parties", "label": "At least one Shareholder / UBO"})
         else:
-            total = sum((Decimal(str(p.effective_ownership_percent or 0)) for p in shareholders), Decimal("0"))
+            total = sum((Decimal(str(p.effective_ownership_percent or 0)) for p in shareholders if counts_towards_ownership(p)), Decimal("0"))
             if abs(total - Decimal("100")) > Decimal("0.01"):
                 missing.append({"section": PARTIES_SECTION, "field": "parties",
-                                "label": f"Shareholding must total 100% (currently {total}%)"})
+                                "label": f"Individual shareholding must total 100% (currently {total}%)"})
 
     # §10 KYC / AML is completed by Compliance after submission — see missing_cdd.
 
@@ -582,6 +634,16 @@ def missing_mandatory(account: Account) -> list[dict]:
                          ("br_meeting_time", "Time of Meeting"), ("br_meeting_place", "Place of Meeting"),
                          ("br_meeting_mode", "Mode of Meeting"), ("br_rationale", "Business Rationale for the Relationship")):
         need(BIZ_RATIONALE_SECTION, field, label)
+
+    for p in account.parties:
+        if p.constitution != "Entity" and passport_too_old(p.id_or_license_expiry):
+            missing.append({"section": PARTIES_SECTION, "field": "parties",
+                            "label": f"The passport of {p.full_name} expired more than {PASSPORT_GRACE_DAYS} days ago"})
+
+    # Triam UAT 04-11-2026, for individual and non-individual clients alike. A person's document counts.
+    # Invoice and service request files aren't onboarding documents.
+    if not has_supporting_document(account):
+        missing.append({"section": "Documents", "field": "documents", "label": "At least one supporting document"})
 
     # §9 engagement — a Yes / No answer, then the validity date when signed
     need("Profile Status & Engagement", "engagement_letter_signed", "Engagement Letter Signed (Yes / No)")

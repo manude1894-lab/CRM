@@ -4,6 +4,7 @@ import { Icon, Modal, Field, Input, Select, Textarea, Spinner, ErrorBanner, Page
 import DuplicateWarning from "../components/DuplicateWarning";
 import { PROSPECT_STATUS_OPTIONS, PROSPECT_SOURCE_OPTIONS, isRelationshipManager, personLabel, fmtDate } from "../utils/constants";
 import { toast } from "../store/toast";
+import { reasonDialog } from "../store/confirm";
 import { useAuthStore } from "../store/auth";
 import { wordCount } from "../components/accounts/WorkflowBar";
 
@@ -28,7 +29,9 @@ export default function ProspectsPage({ onNavigate } = {}) {
   const [form, setForm] = useState({});
   const [assign, setAssign] = useState(null); // { prospect, rm_id, comments }
   const me = useAuthStore((s) => s.user);
-  const coordinator = useAuthStore((s) => s.can("prospect.assign"));
+  const coordinator = useAuthStore((s) => s.isProspectCoordinator());
+  const canOverrideDuplicate = useAuthStore((s) => s.can("client.approve"));
+  const readOnly = useAuthStore((s) => s.isReadOnly());
 
   const load = async () => {
     try {
@@ -66,8 +69,18 @@ export default function ProspectsPage({ onNavigate } = {}) {
       contact_email: form.contact_email?.trim() || null,
       lost_reason: form.lost_reason || null,
     };
+    const send = (body) => (form.id ? prospectsApi.update(form.id, body) : prospectsApi.create(body));
     try {
-      const saved = form.id ? await prospectsApi.update(form.id, payload) : await prospectsApi.create(payload);
+      let saved;
+      try {
+        saved = await send(payload);
+      } catch (e) {
+        // BRD §3: an exact duplicate is blocked; Compliance may go ahead with a recorded reason.
+        if (e.response?.status !== 409 || !canOverrideDuplicate) throw e;
+        const reason = await reasonDialog({ title: "Duplicate prospect", confirmLabel: "Create anyway", message: e.response.data.detail });
+        if (reason === null) return;
+        saved = await send({ ...payload, allow_duplicate: true, duplicate_reason: reason });
+      }
       if (submit && (saved.owner_id !== rmId || !saved.assigned_at || coordinator)) {
         await prospectsApi.assign(saved.id, { rm_id: rmId, comments: form.assignor_comments || null });
       }
@@ -97,7 +110,7 @@ export default function ProspectsPage({ onNavigate } = {}) {
     <div className="space-y-4">
       <PageHeader title="Prospects"
         subtitle={`${items.length} prospect${items.length === 1 ? "" : "s"}`}
-        actions={<>
+        actions={!readOnly && <>
 <button onClick={openNew} className="px-3 py-2 text-sm text-white rounded-lg font-medium flex items-center gap-1.5 hover:opacity-90" style={{ background: "#1a3a5c" }}>
           <Icon name="plus" size={14} /> Add Prospect
         </button>
@@ -132,7 +145,7 @@ export default function ProspectsPage({ onNavigate } = {}) {
                       <button onClick={() => onNavigate?.({ page: "accounts", accountId: p.converted_account_id })}
                         className="mt-1 text-[11px] text-emerald-700 hover:underline">Client created. Open</button>
                     )}
-                    <div className="flex items-center gap-1 mt-2 flex-wrap" onClick={(e) => e.stopPropagation()}>
+                    {!readOnly && <div className="flex items-center gap-1 mt-2 flex-wrap" onClick={(e) => e.stopPropagation()}>
                       {!p.converted_account_id && coordinator && (
                         <button onClick={() => setAssign({ prospect: p, rm_id: p.owner_id || "", comments: p.assignor_comments || "" })}
                           className="text-xs px-2 py-0.5 rounded border border-brand-200 text-brand-700 hover:bg-brand-50">{p.owner_id ? "Reassign" : "Assign"}</button>
@@ -147,7 +160,7 @@ export default function ProspectsPage({ onNavigate } = {}) {
                       {!p.converted_account_id && PROSPECT_STATUS_OPTIONS.filter((s) => s !== p.status).map((s) => (
                         <button key={s} onClick={() => move(p, s)} className="text-xs px-2 py-0.5 rounded border border-gray-200 text-gray-500 hover:bg-gray-50">{s}</button>
                       ))}
-                    </div>
+                    </div>}
                   </div>
                 ))}
               </div>
@@ -157,7 +170,8 @@ export default function ProspectsPage({ onNavigate } = {}) {
       </div>
 
       {modal && (
-        <Modal title={form.id ? "Edit Prospect" : "New Prospect"} onClose={() => setModal(false)}>
+        <Modal title={readOnly ? "Prospect" : form.id ? "Edit Prospect" : "New Prospect"} onClose={() => setModal(false)}>
+          <fieldset disabled={readOnly} className="min-w-0">
           <Field label="Prospect's Name" required><Input value={form.company_name || ""} onChange={(e) => setForm((p) => ({ ...p, company_name: e.target.value }))} /></Field>
           <DuplicateWarning name={form.company_name} excludeId={form.id} checkFn={prospectsApi.checkDuplicate} active={!form.id} />
           <div className="grid grid-cols-2 gap-x-4">
@@ -197,10 +211,11 @@ export default function ProspectsPage({ onNavigate } = {}) {
           {/* Stamped by the system when the prospect is submitted to the RM (Triam UAT 26-10-2026). */}
           <p className="text-xs text-gray-500 mt-1">Proposal Sent Date: <span className="font-medium text-gray-700">
             {form.proposal_sent_date ? fmtDate(form.proposal_sent_date) : "—"}</span></p>
+          </fieldset>
           <div className="flex justify-end gap-3 mt-4">
-            <button onClick={() => setModal(false)} className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
-            <button onClick={() => save(false)} className="px-4 py-2 text-sm border border-brand-300 text-brand-700 rounded-lg hover:bg-brand-50">Save</button>
-            {!form.converted_account_id && (
+            <button onClick={() => setModal(false)} className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">{readOnly ? "Close" : "Cancel"}</button>
+            {!readOnly && <button onClick={() => save(false)} className="px-4 py-2 text-sm border border-brand-300 text-brand-700 rounded-lg hover:bg-brand-50">Save</button>}
+            {!readOnly && !form.converted_account_id && (
               <button onClick={() => save(true)} className="px-4 py-2 text-sm text-white rounded-lg" style={{ background: "#1a3a5c" }}>Submit</button>
             )}
           </div>

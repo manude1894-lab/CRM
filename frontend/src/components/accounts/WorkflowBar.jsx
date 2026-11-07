@@ -9,6 +9,7 @@ import { formatTimestamp } from "../../utils/auditFormat";
 const STATUS_STYLE = {
   New: "bg-gray-100 text-gray-700",
   WIP: "bg-blue-50 text-blue-700",
+  Rejected: "bg-red-100 text-red-700",
   "Awaiting Approval": "bg-amber-100 text-amber-800",
   Approved: "bg-emerald-50 text-emerald-700",
   Active: "bg-emerald-100 text-emerald-800",
@@ -60,8 +61,8 @@ export default function WorkflowBar({ accountId, refreshKey, onChanged, submitSi
     try {
       let next;
       if (action === "submit") next = await workflowApi.submit(accountId, text, kycDeclared);
-      else if (action === "approve") next = await workflowApi.approve(accountId, text);
-      else if (action === "reject") next = await workflowApi.reject(accountId, reasonCode, text);
+      else if (action === "approve") next = await workflowApi.approve(accountId, text, state.stage);
+      else if (action === "reject") next = await workflowApi.reject(accountId, reasonCode, text, state.stage);
       else if (action === "withdraw") next = await workflowApi.withdraw(accountId);
       else next = await workflowApi.status(accountId, action, text);
       setState(next);
@@ -70,6 +71,8 @@ export default function WorkflowBar({ accountId, refreshKey, onChanged, submitSi
       onChanged?.(next);
     } catch (e) {
       toast.error(e.response?.data?.detail || "Action failed");
+      // Someone else may have acted first: show the current state rather than a stale one.
+      if (e.response?.status === 409 || e.response?.status === 403) { setDialog(null); load(); }
     } finally { setBusy(false); }
   };
 
@@ -87,6 +90,9 @@ export default function WorkflowBar({ accountId, refreshKey, onChanged, submitSi
   const words = wordCount(text);
   const commentBad = !!commentLabel && (!text.trim() || words > MAX_WORDS);
   const kycMissing = dialog?.action === "submit" && !kycDeclared;
+
+  // Triam UAT 05-11-2026: a rejected client shows who rejected it, when and why.
+  const rejection = state.status === "Rejected" ? state.history.find((h) => h.request_type === "client_profile" && h.status === "Rejected") : null;
 
   const dialogEl = dialog && (
         <Modal title={dialog.label} onClose={() => setDialog(null)}>
@@ -157,6 +163,12 @@ export default function WorkflowBar({ accountId, refreshKey, onChanged, submitSi
       {state.actions.some((a) => !a.allowed && a.reason && a.action !== "submit") && (
         <div className="px-3 pb-2 text-[11px] text-gray-500">
           {state.actions.filter((a) => !a.allowed && a.reason && a.action !== "submit").map((a) => <div key={a.action}>{a.label}: {a.reason}</div>)}
+        </div>
+      )}
+      {rejection && (
+        <div className="px-3 py-2 text-xs bg-red-50 text-red-800 border-t border-red-100">
+          <div className="font-semibold">Rejected by {rejection.checker_name || "—"}{rejection.compliance_comment ? " (Approver)" : " (Compliance)"} on {fmtDate(rejection.decided_at)}</div>
+          <div className="mt-0.5">{rejection.reason_code ? `${reasons.labelOf(rejection.reason_code)}. ` : ""}{rejection.reason_text}</div>
         </div>
       )}
       {state.locked && state.status === "Awaiting Approval" && (

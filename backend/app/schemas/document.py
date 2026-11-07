@@ -26,6 +26,7 @@ class FolderDocument(DocumentRead):
     can_delete: bool = False
     stage: Optional[str] = None  # Draft / Submitted / Locked (BRD §14)
     lock_reason: Optional[str] = None
+    can_download: bool = True  # on approved clients only Admins download (Triam UAT 05-11-2026)
     party_name: Optional[str] = None  # the UBO / director / signatory / joint holder it was filed for
     link_url: Optional[str] = None
 

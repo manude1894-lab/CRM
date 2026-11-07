@@ -42,10 +42,14 @@ class ProspectBase(_ProspectRules):
 
 
 class ProspectCreate(ProspectBase):
-    pass
+    # BRD §3: an exact duplicate is blocked; Compliance may create it with a recorded reason.
+    allow_duplicate: bool = False
+    duplicate_reason: Optional[str] = None
 
 
 class ProspectUpdate(_ProspectRules):
+    allow_duplicate: bool = False
+    duplicate_reason: Optional[str] = None
     company_name: Optional[str] = Field(None, min_length=1, max_length=255)
     contact_name: Optional[str] = None
     contact_email: Optional[str] = None

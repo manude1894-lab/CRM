@@ -32,7 +32,7 @@ const NAV = [
   // Coordinator doesn't, unless an administrator adds it to the role).
   { key: "accounts", label: "New Client Onboarding", icon: "accounts", component: AccountsPage, props: { scope: "onboarding" }, desks: ["view.all_clients", "view.department_clients"], group: "Onboarding" },
   // New clients and client amendments awaiting Compliance (MLRO) and Approver decisions (BRD §7–§11).
-  { key: "approvals", label: "Compliance Approval", icon: "shield", component: ApprovalsPage, perm: ["client.approve", "client.final_approve"], group: "Compliance" },
+  { key: "approvals", label: "Compliance Approval", icon: "shield", component: ApprovalsPage, perm: ["client.approve", "client.final_approve", "read_only"], group: "Compliance" },
   // Existing clients (BRD §11): amendments, servicing.
   { key: "maintenance", label: "Client Data Maintenance", icon: "edit", component: AccountsPage, props: { scope: "maintenance" }, desks: ["view.all_clients", "view.department_clients"], group: "Client Servicing" },
   { key: "activities", label: "Call Reports / Contact Notes", icon: "activities", component: ActivitiesPage, desks: ["view.all_clients", "view.department_clients"], group: "Client Servicing" },
@@ -146,7 +146,7 @@ export default function App() {
             <div className="text-xs text-gray-500 bg-gray-100 px-3 py-1.5 rounded-lg hidden sm:block">
               {fmtToday()}
             </div>
-            <NotificationBell />
+            <NotificationBell onNavigate={(t) => { setJumpTo({ ...t, nonce: Date.now() }); setPage(t.page); }} />
             {user && (
               <div className="flex items-center gap-2.5 pl-3 border-l border-gray-100"
                 title={[user.last_login_at && `Logged in ${formatTimestamp(user.last_login_at)}`, user.previous_login_at && `Last login ${formatTimestamp(user.previous_login_at)}`].filter(Boolean).join("\n")}>
@@ -181,7 +181,7 @@ export default function App() {
         </header>
 
         <main className="flex-1 overflow-y-auto p-3 md:p-6">
-          <PageErrorBoundary key={`${page}-${user?.id}`}>
+          <PageErrorBoundary key={`${page}-${user?.id}-${jumpTo?.nonce || ""}`}>
           <PageComponent
             {...(activeItem.props || {})}
             onNavigate={(t) => { setJumpTo(t); setPage(t.page); }}

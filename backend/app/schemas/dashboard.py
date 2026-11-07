@@ -1,5 +1,5 @@
 """Pydantic schemas: Dashboard snapshot MI (BRD §2)."""
-from datetime import date
+from datetime import date, datetime
 from typing import List, Optional
 
 from pydantic import BaseModel
@@ -44,9 +44,30 @@ class PortfolioRow(BaseModel):
     active: int
 
 
+class PendingApproval(BaseModel):
+    account_id: int
+    company_name: str
+    request_type: str
+    level: str  # "Compliance" or "Approver"
+    submitted_by: Optional[str] = None
+    submitted_at: Optional[datetime] = None
+
+
+class RejectedClient(BaseModel):
+    account_id: int
+    company_name: str
+    rejected_by: Optional[str] = None
+    rejected_at: Optional[datetime] = None
+    level: str
+    reason_code: Optional[str] = None
+    reason_text: Optional[str] = None
+
+
 class DashboardResponse(BaseModel):
     kpis: KPISummary
     client_status_breakdown: List[StatusCount]
     approvals_pending: ApprovalsPending
+    pending_approvals: List[PendingApproval] = []
+    rejected_clients: List[RejectedClient] = []
     aml_reviews_due: List[AmlReviewDue]
     portfolio_by_rm: List[PortfolioRow]

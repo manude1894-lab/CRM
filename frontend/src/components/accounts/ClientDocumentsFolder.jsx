@@ -6,6 +6,7 @@ import { reasonDialog } from "../../store/confirm";
 import { useMasters } from "../../hooks/useMasters";
 import { selectableCodes } from "../../hooks/masterUtils";
 import { fmtDate } from "../../utils/constants";
+import { useAuthStore } from "../../store/auth";
 import DocumentPreview from "./DocumentPreview";
 
 const fmtBytes = (b) =>
@@ -40,6 +41,7 @@ export default function ClientDocumentsFolder({ accountId, onChange, onboarding 
   const [previewing, setPreviewing] = useState(null);
   const fileRef = useRef(null);
   const cats = useMasters("document_category", []);
+  const readOnly = useAuthStore((s) => s.isReadOnly());
 
   const load = () => documentsApi.folder(accountId).then(setFolder).catch(() => setFolder(null));
   useEffect(() => { if (accountId) load(); }, [accountId]);
@@ -53,13 +55,15 @@ export default function ClientDocumentsFolder({ accountId, onChange, onboarding 
   const statusLocked = folder.profile_status === "Awaiting Approval" || folder.profile_status === "Exited";
   // Compliance files the CDD Form / AML Risk Assessment, also while the client is with Compliance.
   const complianceOnly = (code) => !!cats.items.find((i) => i.code === code)?.meta?.compliance_only;
-  const locked = statusLocked && !folder.compliance_can_file;
+  const locked = readOnly || (statusLocked && !folder.compliance_can_file);
   const sectionOf = (code) => cats.items.find((i) => i.code === code)?.meta?.section;
   // Categories for a person (Passport, EID, Visa, and those for either a client or a person) or for the
   // firm itself (everything except the person-only ones; an individual client files those too).
   const personOnly = (code) => /^UBO/.test(sectionOf(code) || "");
   const forEither = (code) => /Corporate & Individual/.test(sectionOf(code) || "");
-  const categoryInScope = (code) => (partyId ? (personOnly(code) || forEither(code)) && !complianceOnly(code)
+  // A category without a section (one an Admin added, Triam UAT 06-11-2026) can be used anywhere.
+  const anywhere = (code) => !sectionOf(code);
+  const categoryInScope = (code) => (partyId ? (personOnly(code) || forEither(code) || anywhere(code)) && !complianceOnly(code)
     : scope === "client" ? individual || !personOnly(code) : true);
   const categoryOptions = selectableCodes(cats.items, category)
     .filter(categoryInScope)
@@ -137,7 +141,7 @@ export default function ClientDocumentsFolder({ accountId, onChange, onboarding 
         </div>
       </div>
       <div className="flex items-center gap-1 flex-shrink-0">
-        {!d.link_url && (
+        {!d.link_url && d.can_download !== false && (
           <button onClick={() => documentsApi.download(d.id, d.filename)} title="Download" className="p-1 rounded hover:bg-brand-50 text-gray-400 hover:text-brand-600">
             <Icon name="download" size={13} />
           </button>
@@ -174,7 +178,7 @@ export default function ClientDocumentsFolder({ accountId, onChange, onboarding 
         )}
       </div>
       {!partyId && <p className="text-[11px] text-gray-500 -mt-1">
-        {locked ? "The client is locked; documents can't be changed right now."
+        {readOnly ? "View only." : locked ? "The client is locked; documents can't be changed right now."
           : statusLocked ? "The client is with Compliance, who can file the CDD Form and AML Risk Assessment." : stage.note}
       </p>}
 

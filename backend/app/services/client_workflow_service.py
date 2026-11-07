@@ -6,11 +6,13 @@ New clients are approved in two steps (BRD §7–§10). While Awaiting Approval 
 pending request's `stage` says where it is:
   Compliance — the MLRO completes the CDD section and approves with comments (Client ID issued)
   Approver   — the Approver gives the final approval with comments → Approved
-A rejection at either step returns the client to the RM (WIP) with the reason.
+A rejection at either step returns the client to the RM as Rejected, with the reason (BRD §8, §19, §20).
+It stays Rejected while the RM corrects it, until it is submitted again.
 
     New ──save──> WIP ──Submit──> Awaiting Approval ──Approve──> Approved ──Activate──> Active
                    ^                 │  │                                     │   ^
-                   └──Reject/Withdraw┘  │                       Deactivate/Reactivate (Inactive)
+                   └───────Withdraw──┘  │                       Deactivate/Reactivate (Inactive)
+    Rejected <────────Reject────────────┘   (Rejected ──Submit──> Awaiting Approval)
                                                                Mark for Exit ─> Marked for Exit ─> Exited
 """
 from __future__ import annotations
@@ -30,6 +32,9 @@ from app.services import access_control, master_service, notification_service
 
 NEW, WIP, AWAITING, APPROVED, ACTIVE = "New", "WIP", "Awaiting Approval", "Approved", "Active"
 INACTIVE, MARKED_EXIT, EXITED = "Inactive", "Marked for Exit", "Exited"
+REJECTED = "Rejected"
+# With the RM, being prepared or corrected: editable and ready to be submitted.
+WITH_RM = (NEW, WIP, REJECTED)
 
 MIN_REJECT_TEXT = 15
 MAX_COMMENT_WORDS = 250
@@ -123,7 +128,7 @@ def allowed_actions(db: Session, acc: Account, user: User) -> list[dict]:
         out.append({"action": action, "label": label, "allowed": bool(ok), "reason": None if ok else why,
                     "_code": None if ok else code})
 
-    if status in (NEW, WIP):
+    if status in WITH_RM:
         missing = _missing(acc)
         add("submit", "Submit for approval", not missing,
             f"{len(missing)} mandatory field{'s' if len(missing) != 1 else ''} still missing", code=400)
@@ -133,17 +138,17 @@ def allowed_actions(db: Session, acc: Account, user: User) -> list[dict]:
         if stage_of(req) == STAGE_APPROVER:
             final = has_permission(user, "client.final_approve")
             why = own if is_maker and final else "Needs the Approver"
-            add("approve", "Final approval", _is_final_approver_for(user, req), why)
+            add("approve", "Final Approval", _is_final_approver_for(user, req), why)
             add("reject", "Reject", _is_final_approver_for(user, req), why)
         else:
             why = own if is_maker and approver else "Needs Compliance (MLRO)"
             checker = _is_checker_for(user, req)
             missing_cdd = _missing_cdd(acc) if checker else []
             if checker and missing_cdd:
-                add("approve", "Approve (Compliance)", False,
+                add("approve", "Compliance Approval", False,
                     "Complete the CDD section first: " + ", ".join(m["label"] for m in missing_cdd), code=400)
             else:
-                add("approve", "Approve (Compliance)", checker, why)
+                add("approve", "Compliance Approval", checker, why)
             add("reject", "Reject", checker, why)
             add("withdraw", "Withdraw submission", is_maker or approver, "Only the submitter or Compliance can withdraw")
     elif status == APPROVED:
@@ -165,6 +170,22 @@ def allowed_actions(db: Session, acc: Account, user: User) -> list[dict]:
 
 def _last_status_actor(db: Session, acc: Account) -> Optional[int]:
     return acc.status_updated_by_id
+
+
+def _lock(db: Session, acc: Account) -> None:
+    """Two people acting on one client at once are handled one after the other (Triam UAT 05-11-2026): the
+    row stays locked until this action commits, and the second then sees the new state and is refused.
+    FOR UPDATE is a no-op on SQLite, used in tests."""
+    db.query(Account).filter(Account.id == acc.id).with_for_update().populate_existing().one()
+
+
+def _assert_expected_stage(db: Session, acc: Account, expected_stage: Optional[str]) -> None:
+    """The level the user's screen showed when they decided. A stale screen must not apply their decision
+    to the next level, which someone holding both rights could otherwise do with a second click."""
+    if expected_stage and acc.profile_status == AWAITING:
+        stage = stage_of(pending_request(db, acc.id))
+        if stage != expected_stage:
+            raise HTTPException(status_code=409, detail=f"This client has already moved on and is now with {'the Approver' if stage == STAGE_APPROVER else 'Compliance'}. Refresh to see the latest.")
 
 
 def _require(db: Session, acc: Account, user: User, action: str) -> None:
@@ -197,6 +218,7 @@ def _label(acc: Account) -> str:
 def submit(db: Session, acc: Account, user: User, comment: Optional[str] = None, kyc_declared: bool = False) -> ApprovalRequest:
     """BRD §12 step 11 — the maker submits; every mandatory field must be complete. BRD §7:
     with mandatory RM/Sales comments and the declaration that KYC verification is done."""
+    _lock(db, acc)
     _require(db, acc, user, "submit")
     comment = _comment(comment, "RM/Sales comments")
     if not kyc_declared:
@@ -217,9 +239,11 @@ def submit(db: Session, acc: Account, user: User, comment: Optional[str] = None,
     return req
 
 
-def approve(db: Session, acc: Account, user: User, comment: Optional[str] = None) -> ApprovalRequest:
+def approve(db: Session, acc: Account, user: User, comment: Optional[str] = None, expected_stage: Optional[str] = None) -> ApprovalRequest:
     """Compliance step: the MLRO approves with comments; the Client ID is issued and the client goes to
     the Approver. Approver step: final approval with comments → Approved (BRD §10)."""
+    _lock(db, acc)
+    _assert_expected_stage(db, acc, expected_stage)
     _require(db, acc, user, "approve")
     req = pending_request(db, acc.id)
     if stage_of(req) == STAGE_COMPLIANCE:
@@ -237,7 +261,7 @@ def approve(db: Session, acc: Account, user: User, comment: Optional[str] = None
                 notification_service.notify_user(db, u.id, f"Client {_label(acc)} passed Compliance and needs your final approval.", "client_submitted",
                                                  account_id=acc.id)
         if req.maker_id:
-            notification_service.notify_user(db, req.maker_id, f"Compliance ({user.name}) approved client {_label(acc)}; it is now with the Approver.", "client_approved")
+            notification_service.notify_user(db, req.maker_id, f"Compliance ({user.name}) approved client {_label(acc)}; it is now with the Approver.", "client_approved", account_id=acc.id)
         return req
 
     comment = _comment(comment, "Approver's comments")
@@ -250,7 +274,7 @@ def approve(db: Session, acc: Account, user: User, comment: Optional[str] = None
     db.commit()
     notification_service.resolve(db, acc.id, "client_submitted", "approval_waiting")
     if req.maker_id:
-        notification_service.notify_user(db, req.maker_id, f"{user.name} gave the final approval for client {_label(acc)}.", "client_approved")
+        notification_service.notify_user(db, req.maker_id, f"{user.name} gave the final approval for client {_label(acc)}.", "client_approved", account_id=acc.id)
     return req
 
 
@@ -265,8 +289,10 @@ def _final_approvers(db: Session) -> list[User]:
     return [u for u in db.query(User).filter(User.is_active == True).all() if has_permission(u, "client.final_approve")]  # noqa: E712
 
 
-def reject(db: Session, acc: Account, user: User, reason_code: str, reason_text: str) -> ApprovalRequest:
+def reject(db: Session, acc: Account, user: User, reason_code: str, reason_text: str, expected_stage: Optional[str] = None) -> ApprovalRequest:
     """BRD §12 step 13 / §14 — rejection needs a reason from the list and a meaningful explanation."""
+    _lock(db, acc)
+    _assert_expected_stage(db, acc, expected_stage)
     _require(db, acc, user, "reject")
     reason_text = (reason_text or "").strip()
     if not reason_code:
@@ -278,17 +304,18 @@ def reject(db: Session, acc: Account, user: User, reason_code: str, reason_text:
     step = stage_of(req)
     req.status, req.checker_id, req.decided_at = ApprovalStatus.REJECTED.value, user.id, _now()
     req.reason_code, req.reason_text = reason_code, reason_text
-    _set_status(acc, WIP, user)
+    _set_status(acc, REJECTED, user)
     log_event(db, "reject", f"Client {_label(acc)} rejected by {step}: {reason_code}. {reason_text}", subject_type="Account",
               subject_id=acc.id, account_id=acc.id, changes={"request_id": req.id, "reason_code": reason_code, "reason_text": reason_text})
     db.commit()
     notification_service.resolve(db, acc.id, "client_submitted", "approval_waiting")
     if req.maker_id:
-        notification_service.notify_user(db, req.maker_id, f"{user.name} rejected client {_label(acc)}: {reason_code}. {reason_text}", "client_rejected")
+        notification_service.notify_user(db, req.maker_id, f"{user.name} rejected client {_label(acc)}: {reason_code}. {reason_text}", "client_rejected", account_id=acc.id)
     return req
 
 
 def withdraw(db: Session, acc: Account, user: User) -> ApprovalRequest:
+    _lock(db, acc)
     _require(db, acc, user, "withdraw")
     req = pending_request(db, acc.id)
     req.status, req.decided_at = ApprovalStatus.WITHDRAWN.value, _now()
@@ -324,6 +351,21 @@ def change_status(db: Session, acc: Account, user: User, action: str, reason: Op
 
 # ─── Reads ──────────────────────────────────────────────────────────────────
 
+def last_rejection(db: Session, acc: Account) -> Optional[dict]:
+    """Who rejected a Rejected client, at which level, when and why (Triam UAT 05-11-2026)."""
+    if acc.profile_status != REJECTED:
+        return None
+    req = (db.query(ApprovalRequest)
+           .filter(ApprovalRequest.account_id == acc.id, ApprovalRequest.request_type == "client_profile",
+                   ApprovalRequest.status == ApprovalStatus.REJECTED.value)
+           .order_by(ApprovalRequest.id.desc()).first())
+    if req is None:
+        return None
+    return {"rejected_by": req.checker.name if req.checker else None, "rejected_at": req.decided_at,
+            "level": STAGE_APPROVER if req.compliance_checker_id else STAGE_COMPLIANCE,
+            "reason_code": req.reason_code, "reason_text": req.reason_text}
+
+
 def history(db: Session, account_id: int) -> list[ApprovalRequest]:
     """Client review history: onboarding submissions and amendments (drafts never reached Compliance)."""
     return (db.query(ApprovalRequest)
@@ -345,8 +387,9 @@ def inbox(db: Session, user: User, status: str = ApprovalStatus.PENDING.value,
 
 
 def _in_my_queue(r: ApprovalRequest, user: User, status: str) -> bool:
-    """Compliance sees everything; an Approver sees new clients at (or past) the Approver step."""
-    if has_permission(user, "client.approve"):
+    """Compliance and Inquiry see everything (Inquiry to look only, Triam UAT 05-11-2026); an Approver
+    sees new clients at (or past) the Approver step."""
+    if has_permission(user, "client.approve") or has_permission(user, "read_only"):
         return True
     if not has_permission(user, "client.final_approve") or r.request_type != "client_profile":
         return False

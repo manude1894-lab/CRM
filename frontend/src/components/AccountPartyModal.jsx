@@ -1,10 +1,13 @@
 import React, { useEffect, useState } from "react";
 import { accountPartiesApi, countriesApi } from "../api/endpoints";
-import { Icon, Modal, Field, Input, Select, CountrySelect, Spinner, ErrorBanner, DateInput } from "./ui";
+import { Icon, Modal, Field, Input, Select, CountrySelect, Spinner, ErrorBanner, DateInput, PassportNote } from "./ui";
 import { COUNTRY_CALLING_CODES, fmtDate, isUAE } from "../utils/constants";
 import { toast } from "../store/toast";
-import { reasonDialog } from "../store/confirm";
+import { useAuthStore } from "../store/auth";
+import { confirmDialog, reasonDialog } from "../store/confirm";
+import { dialCodeForCountry, dialCodeOptions } from "../utils/dialCodes";
 import ClientDocumentsFolder from "./accounts/ClientDocumentsFolder";
+import { FOUNDATION_ROLES, isFoundation } from "./accounts/accountForm";
 
 const CORPORATE_ROLES = ["Shareholder", "Director", "Authorised Signatory"];
 const INDIVIDUAL_ROLES = ["Joint Holder"];  // BRD: individual clients have joint holders
@@ -39,10 +42,22 @@ const cleanPayload = (obj) => Object.fromEntries(
 
 export const partyLabel = (role) => role;
 
+// The details that belong to the person, not to their role on this client.
+const PERSON_FIELDS = ["constitution", "full_name", "dob_or_incorp_date", "id_or_license_expiry", "country_of_incorp_or_birth",
+  "mobile_country_code", "mobile_number", "email", "nationality", "country_of_residence", "residential_address",
+  "uae_visa_number", "uae_visa_expiry", "is_pep"];
+const pick = (row, fields) => Object.fromEntries(fields.map((f) => [f, row[f]]));
+
+// Triam UAT 04-11-2026: one person can hold several roles. Recognised by name and date of birth.
+export const samePerson = (a, b) => a.id !== b.id && (a.full_name || "").trim().toLowerCase() === (b.full_name || "").trim().toLowerCase()
+  && (a.dob_or_incorp_date || null) === (b.dob_or_incorp_date || null);
+
 // onChange runs after a party is added, changed or removed (e.g. to refresh the missing-fields list).
 // role shows that one kind of party only, without tabs (the onboarding form has a section per kind, BRD §5.1–5.3).
 export default function AccountPartyModal({ account, onClose, onChange, role }) {
-  const ROLES = role ? [role] : account.account_type === "Individual" ? INDIVIDUAL_ROLES : CORPORATE_ROLES;
+  const readOnly = useAuthStore((s) => s.isReadOnly());
+  const ROLES = role ? [role] : account.account_type === "Individual" ? INDIVIDUAL_ROLES
+    : isFoundation(account) ? [...FOUNDATION_ROLES, "Authorised Signatory"] : CORPORATE_ROLES;
   const [tab, setTab] = useState(ROLES[0]);
   const [parties, setParties] = useState([]);
   const [removed, setRemoved] = useState([]);
@@ -71,7 +86,11 @@ export default function AccountPartyModal({ account, onClose, onChange, role }) 
   };
   useEffect(() => { load(); }, [account.id]);
 
-  const startNew = () => { setForm(emptyParty(tab)); setEditing("new"); };
+  const startNew = (constitution = "Individual") => {
+    setForm({ ...emptyParty(tab), constitution }); setEditing("new");
+    // Another section may have added someone since this one opened: they should be offered for copying.
+    accountPartiesApi.list(account.id).then((ps) => setParties(ps || [])).catch(() => {});
+  };
   const startEdit = (row) => { setForm({ ...row, residential_address: { ...BLANK_ADDRESS, ...(row.residential_address || {}) } }); setEditing(row.id); };
   const cancelForm = () => { setEditing(null); setForm(null); };
 
@@ -81,6 +100,15 @@ export default function AccountPartyModal({ account, onClose, onChange, role }) 
       const payload = cleanPayload(form);
       if (editing === "new") await accountPartiesApi.create(account.id, payload);
       else await accountPartiesApi.update(editing, payload, account.id);
+      // The same person's other records: offer to keep them in step, so details are entered only once.
+      const before = parties.find((p) => p.id === editing);
+      const others = before ? parties.filter((p) => samePerson(p, before)) : [];
+      const changed = before && JSON.stringify(pick(before, PERSON_FIELDS)) !== JSON.stringify(pick(payload, PERSON_FIELDS));
+      if (others.length && changed && await confirmDialog({ title: "Same person in other roles", confirmLabel: "Update them too",
+        message: `${before.full_name} is also recorded as ${others.map((o) => o.party_role).join(", ")}. Apply these details there too?` })) {
+        const details = cleanPayload(pick(form, PERSON_FIELDS));
+        await Promise.all(others.map((o) => accountPartiesApi.update(o.id, details, account.id)));
+      }
       cancelForm();
       load();
       onChange?.();
@@ -103,15 +131,17 @@ export default function AccountPartyModal({ account, onClose, onChange, role }) 
 
   const rowsForTab = parties.filter((p) => p.party_role === tab);
   const removedShown = role ? removed.filter((r) => r.party_role === role) : removed;
+  // Triam UAT 06-11-2026: only individuals count towards 100%; an entity's share is looked through.
   const ownershipTotal = parties
-    .filter((p) => p.party_role === "Shareholder")
+    .filter((p) => p.party_role === "Shareholder" && p.constitution !== "Entity")
     .reduce((s, p) => s + Number(p.effective_ownership_percent || 0), 0);
 
   return (
     <Modal title={`Parties: ${account.company_name}`} onClose={onClose}>
       {!role && (
         <div className="flex border-b border-gray-100 mb-4 -mt-2">
-          {ROLES.map((r) => (
+          {/* People already recorded stay visible, e.g. shareholders on a client that later became a foundation. */}
+          {[...ROLES, ...new Set(parties.map((p) => p.party_role).filter((r) => !ROLES.includes(r)))].map((r) => (
             <button key={r} onClick={() => switchTab(r)}
               className={`px-3 py-2 text-sm font-medium border-b-2 -mb-px ${tab === r ? "border-brand-500 text-brand-600" : "border-transparent text-gray-400 hover:text-gray-600"}`}>
               {partyLabel(r)} ({parties.filter((p) => p.party_role === r).length})
@@ -122,7 +152,7 @@ export default function AccountPartyModal({ account, onClose, onChange, role }) 
 
       {tab === "Shareholder" && !editing && (
         <p className={`text-xs mb-2 ${ownershipTotal === 100 ? "text-gray-400" : "text-amber-600 font-medium"}`}>
-          Total effective ownership: {ownershipTotal.toFixed(2)}%{ownershipTotal !== 100 && " (should total 100%)"}
+          Total individual ownership: {ownershipTotal.toFixed(2)}%{ownershipTotal !== 100 && " (should total 100%)"} · entity shareholders are not counted
         </p>
       )}
 
@@ -145,8 +175,11 @@ export default function AccountPartyModal({ account, onClose, onChange, role }) 
                         </div>
                         <div className="text-xs text-gray-400">
                           {p.constitution}
+                          {parties.filter((o) => samePerson(o, p)).map((o) => (
+                            <span key={o.id} className="ml-1 px-1 rounded bg-brand-50 text-brand-700">also {o.party_role}</span>
+                          ))}
                           {p.country_of_incorp_or_birth && ` · ${p.country_of_incorp_or_birth}`}
-                          {p.party_role === "Shareholder" && p.effective_ownership_percent != null && ` · ${p.effective_ownership_percent}% ownership`}
+                          {p.party_role === "Shareholder" && p.constitution !== "Entity" && p.effective_ownership_percent != null && ` · ${p.effective_ownership_percent}% ownership`}
                           {p.country_of_residence && ` · resides ${p.country_of_residence}`}
                         </div>
                       </div>
@@ -155,8 +188,8 @@ export default function AccountPartyModal({ account, onClose, onChange, role }) 
                           className={`px-2 py-1 text-[11px] rounded border ${docsFor === p.id ? "border-brand-300 text-brand-700 bg-white" : "border-gray-200 text-gray-600 hover:bg-white"}`}>
                           Documents
                         </button>
-                        <button onClick={() => startEdit(p)} className="p-1.5 rounded hover:bg-brand-50 text-gray-400 hover:text-brand-600"><Icon name="edit" size={14} /></button>
-                        <button onClick={() => remove(p)} title="Remove" className="p-1.5 rounded hover:bg-red-50 text-gray-400 hover:text-red-500"><Icon name="close" size={14} /></button>
+                        {!readOnly && <button onClick={() => startEdit(p)} title="Edit" className="p-1.5 rounded hover:bg-brand-50 text-gray-400 hover:text-brand-600"><Icon name="edit" size={14} /></button>}
+                        {!readOnly && <button onClick={() => remove(p)} title="Remove" className="p-1.5 rounded hover:bg-red-50 text-gray-400 hover:text-red-500"><Icon name="close" size={14} /></button>}
                       </div>
                     </div>
                     {docsFor === p.id && (
@@ -168,12 +201,13 @@ export default function AccountPartyModal({ account, onClose, onChange, role }) 
                   ))}
               </div>
               {/* Triam UAT 26-10-2026: once shareholding is 100%, no further shareholder can be added. */}
-              {tab === "Shareholder" && ownershipTotal >= 100 ? (
-                <p className="px-3 py-2 text-xs rounded-lg bg-gray-50 border border-gray-200 text-gray-600 text-center">
-                  Shareholding is 100%. No further shareholder can be added; reduce an existing shareholder's share first.
-                </p>
+              {readOnly ? null : tab === "Shareholder" && ownershipTotal >= 100 ? (
+                <div className="px-3 py-2 text-xs rounded-lg bg-gray-50 border border-gray-200 text-gray-600 text-center">
+                  Individual shareholding is 100%. No further individual can be added; reduce an existing share first.
+                  <button onClick={() => startNew("Entity")} className="block mx-auto mt-1 text-brand-600 hover:underline">Add an entity shareholder</button>
+                </div>
               ) : (
-                <button onClick={startNew} className="w-full px-3 py-2 text-xs border border-dashed border-gray-300 rounded-lg hover:border-brand-300 hover:text-brand-600 text-gray-500 flex items-center justify-center gap-1">
+                <button onClick={() => startNew()} className="w-full px-3 py-2 text-xs border border-dashed border-gray-300 rounded-lg hover:border-brand-300 hover:text-brand-600 text-gray-500 flex items-center justify-center gap-1">
                   <Icon name="plus" size={13} /> Add {partyLabel(tab)}
                 </button>
               )}
@@ -200,7 +234,8 @@ export default function AccountPartyModal({ account, onClose, onChange, role }) 
           )}
 
           {editing && (
-            <PartyForm form={form} setForm={setForm} countries={countries} onCancel={cancelForm} onSave={save} />
+            <PartyForm form={form} setForm={setForm} countries={countries} onCancel={cancelForm} onSave={save}
+              copyFrom={editing === "new" ? parties.filter((p, i, all) => all.findIndex((o) => o.id === p.id || samePerson(o, p)) === i) : []} />
           )}
         </>
       )}
@@ -212,16 +247,30 @@ const set = (setForm, k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }
 const setBool = (setForm, k) => (e) => setForm((p) => ({ ...p, [k]: e.target.checked }));
 const setAddr = (setForm, k) => (e) => setForm((p) => ({ ...p, residential_address: { ...p.residential_address, [k]: e.target.value } }));
 
-function PartyForm({ form, setForm, countries, onCancel, onSave }) {
+function PartyForm({ form, setForm, countries, onCancel, onSave, copyFrom = [] }) {
   const isShareholder = form.party_role === "Shareholder";
   const isDirector = form.party_role === "Director";
   // BRD §5.3 / §6: signatories and joint holders need mobile and email too.
-  const contactRequired = ["Shareholder", "Authorised Signatory", "Joint Holder"].includes(form.party_role);
+  const contactRequired = ["Shareholder", "Authorised Signatory", "Joint Holder", ...FOUNDATION_ROLES].includes(form.party_role);
   const isEntity = form.constitution === "Entity";
   const isUAEResident = isUAE(form.country_of_residence);
 
+  // Triam UAT 04-11-2026: a director who is also a UBO needs their details entered only once.
+  const copy = (e) => {
+    const source = copyFrom.find((p) => p.id === Number(e.target.value));
+    if (source) setForm((p) => ({ ...p, ...pick(source, PERSON_FIELDS), residential_address: { ...BLANK_ADDRESS, ...(source.residential_address || {}) } }));
+  };
+
   return (
     <div>
+      {copyFrom.length > 0 && (
+        <Field label="Same person as (fetch their details)">
+          <Select defaultValue="" onChange={copy}>
+            <option value="">— new person —</option>
+            {copyFrom.map((p) => <option key={p.id} value={p.id}>{p.full_name} ({p.party_role})</option>)}
+          </Select>
+        </Field>
+      )}
       {!["Authorised Signatory", "Joint Holder"].includes(form.party_role) && (
         <Field label="Constitution">
           <Select value={form.constitution} onChange={set(setForm, "constitution")}>
@@ -240,6 +289,7 @@ function PartyForm({ form, setForm, countries, onCancel, onSave }) {
         </Field>
         <Field label={isEntity ? "License / CI Expiry" : "Passport Expiry"}>
           <DateInput value={form.id_or_license_expiry || ""} onChange={set(setForm, "id_or_license_expiry")} />
+          {!isEntity && <PassportNote value={form.id_or_license_expiry} />}
         </Field>
       </div>
       <Field label={isEntity ? "Country of Incorporation" : "Country of Birth"} required={form.party_role === "Authorised Signatory"}>
@@ -251,7 +301,10 @@ function PartyForm({ form, setForm, countries, onCancel, onSave }) {
           <Input value={form.nominee_director_name || ""} onChange={set(setForm, "nominee_director_name")} />
         </Field>
       )}
-      {isShareholder && (
+      {isShareholder && isEntity && (
+        <p className="text-xs text-gray-500 mb-3">No percentage for an entity. Add the individuals behind it with their effective share; they make up the 100%.</p>
+      )}
+      {isShareholder && !isEntity && (
         <Field label="Effective Ownership Share (%)" required>
           <Input type="number" min="0" max="100" step="0.01" value={form.effective_ownership_percent ?? ""} onChange={set(setForm, "effective_ownership_percent")} />
         </Field>
@@ -261,7 +314,7 @@ function PartyForm({ form, setForm, countries, onCancel, onSave }) {
         <div className="flex gap-2">
           <Select value={form.mobile_country_code || ""} onChange={set(setForm, "mobile_country_code")} className="!w-44 flex-shrink-0">
             <option value="">Code</option>
-            {COUNTRY_CALLING_CODES.map((c) => <option key={c.code} value={c.code}>{c.label}</option>)}
+            {dialCodeOptions(countries, COUNTRY_CALLING_CODES).map((c) => <option key={c.code} value={c.code}>{c.label}</option>)}
           </Select>
           <Input value={form.mobile_number || ""} onChange={set(setForm, "mobile_number")} maxLength={12} placeholder="e.g. 501234567" />
         </div>
@@ -272,7 +325,11 @@ function PartyForm({ form, setForm, countries, onCancel, onSave }) {
         <CountrySelect value={form.nationality} onChange={set(setForm, "nationality")} countries={countries} />
       </Field>
       <Field label="Country of Residence" required>
-        <CountrySelect value={form.country_of_residence} onChange={set(setForm, "country_of_residence")} countries={countries} />
+        <CountrySelect value={form.country_of_residence} countries={countries} onChange={(e) => {
+          // Triam UAT 05-11-2026: choosing the country fills the Contact Mobile code; it can still be changed.
+          const code = dialCodeForCountry(e.target.value, countries);
+          setForm((p) => ({ ...p, country_of_residence: e.target.value, ...(code ? { mobile_country_code: code } : {}) }));
+        }} />
       </Field>
 
       {form.country_of_residence && (

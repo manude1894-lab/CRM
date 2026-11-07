@@ -3,6 +3,7 @@ import re
 from datetime import datetime, timezone
 from decimal import Decimal
 
+from sqlalchemy import inspect
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
 
@@ -27,9 +28,13 @@ def _validate_party(account: Account, p: AccountParty) -> None:
 
     - Shareholders: contact mobile (country code + number) and email are mandatory (BRD §6).
     - Any email given must be a valid address.
-    - Effective ownership: 0–100 with at most 2 decimals, and the shareholders' total may not
-      exceed 100% ("add Shareholders/UBOs until total ownership reaches 100%").
+    - Effective ownership: 0–100 with at most 2 decimals, and the individual shareholders' total may
+      not exceed 100% ("add Shareholders/UBOs until total ownership reaches 100%").
+    - An entity shareholder has no percentage (Triam UAT 06-11-2026): it is cleared if one is sent.
     """
+    # Only a date being entered or changed: an old date already on record doesn't block other edits.
+    if p.constitution != "Entity" and inspect(p).attrs.id_or_license_expiry.history.added:
+        account_service.assert_passport_acceptable(p.id_or_license_expiry, f"The passport of {p.full_name}")
     if p.email and not _EMAIL_RE.match(p.email.strip()):
         raise HTTPException(status_code=400, detail="Contact Email is not a valid email address")
     individual_client = account.account_type == "Individual"
@@ -37,7 +42,9 @@ def _validate_party(account: Account, p: AccountParty) -> None:
         raise HTTPException(status_code=400, detail="An Individual client has Joint Holders, not shareholders, directors or signatories")
     if not individual_client and p.party_role == "Joint Holder":
         raise HTTPException(status_code=400, detail="Joint Holders apply to Individual clients only")
-    if p.party_role in ("Shareholder", "Authorised Signatory", "Joint Holder"):
+    if p.party_role in account_service.FOUNDATION_ROLES and not account_service.is_foundation(account):
+        raise HTTPException(status_code=400, detail=f"A {p.party_role} applies only when Set up Foundations is selected")
+    if p.party_role in ("Shareholder", "Authorised Signatory", "Joint Holder", *account_service.FOUNDATION_ROLES):
         # BRD §5.3 / §6: signatories and joint holders need mobile and email too.
         missing = [label for label, value in (
             ("Contact Mobile country code", p.mobile_country_code),
@@ -46,7 +53,9 @@ def _validate_party(account: Account, p: AccountParty) -> None:
         ) if not (value or "").strip()]
         if missing:
             raise HTTPException(status_code=400, detail=f"{p.party_role} {', '.join(missing)} {'is' if len(missing) == 1 else 'are'} required")
-    if p.party_role == "Shareholder":
+    if p.party_role == "Shareholder" and p.constitution == "Entity":
+        p.effective_ownership_percent = None
+    elif p.party_role == "Shareholder":
         pct = p.effective_ownership_percent
         if pct is None:
             raise HTTPException(status_code=400, detail="Shareholder Effective Ownership Share (%) is required")
@@ -54,9 +63,9 @@ def _validate_party(account: Account, p: AccountParty) -> None:
         if pct <= 0 or pct > 100 or pct != pct.quantize(Decimal("0.01")):
             raise HTTPException(status_code=400, detail="Effective Ownership Share must be more than 0 and at most 100, with up to 2 decimals")
         others = sum((Decimal(str(o.effective_ownership_percent or 0)) for o in account.parties
-                      if o.party_role == "Shareholder" and o is not p and o.id != p.id), Decimal("0"))
+                      if account_service.counts_towards_ownership(o) and o is not p and o.id != p.id), Decimal("0"))
         if others + pct > Decimal("100"):
-            raise HTTPException(status_code=400, detail=f"Total shareholding would be {others + pct}%. It can't exceed 100% (other shareholders hold {others}%).")
+            raise HTTPException(status_code=400, detail=f"Total individual shareholding would be {others + pct}%. It can't exceed 100% (other individuals hold {others}%).")
     # BRD §6–8: Country of Residence is mandatory for every party; Country of Birth for signatories.
     required = [("Country of Residence", p.country_of_residence)]
     if p.constitution != "Entity":

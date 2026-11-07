@@ -8,7 +8,7 @@ from zoneinfo import ZoneInfo
 from fastapi import APIRouter, Depends, Response
 from sqlalchemy.orm import Session
 
-from app.auth.dependencies import get_current_user, require_permission
+from app.auth.dependencies import get_current_user, require_admin, require_permission
 from app.database import get_db
 from app.models import User
 from app.schemas.audit import AuditEntryRead, support_name
@@ -65,7 +65,7 @@ def export_audit(
     date_from: Optional[date] = None,
     date_to: Optional[date] = None,
     db: Session = Depends(get_db),
-    user: User = Depends(require_permission("audit.view")),
+    user: User = Depends(require_admin),  # data extraction is for Admins only (Triam UAT 05-11-2026)
 ):
     """BRD §2 — activity reports for administration and user administration (users, roles, master
     data and every other recorded change), downloadable for review."""

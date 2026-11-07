@@ -34,7 +34,7 @@ def test_dashboard_snapshot_follows_the_client_lifecycle(db, make_user, make_acc
     d = dashboard_service.build_dashboard(db, rm)
     assert (d["kpis"]["clients_in_progress"], d["kpis"]["clients_awaiting_approval"], d["kpis"]["clients_active"]) == (1, 1, 1)
     assert [s["status"] for s in d["client_status_breakdown"]] == [
-        "New", "WIP", "Awaiting Approval", "Approved", "Active", "Inactive", "Marked for Exit", "Exited"]
+        "New", "WIP", "Rejected", "Awaiting Approval", "Approved", "Active", "Inactive", "Marked for Exit", "Exited"]
     assert [r["company_name"] for r in d["aml_reviews_due"]] == ["Live Co"]
     [row] = [p for p in d["portfolio_by_rm"] if p["name"] == "Rita RM"]
     assert (row["total"], row["in_progress"], row["active"]) == (3, 2, 1) and "business_role_name" in row

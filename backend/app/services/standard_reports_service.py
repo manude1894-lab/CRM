@@ -135,7 +135,7 @@ def rejected_with_rm(db: Session, user: User) -> dict:
     now = datetime.now(timezone.utc)
     rows = []
     for a in _accounts(db, user):
-        if a.profile_status != wf.WIP:
+        if a.profile_status != wf.REJECTED:
             continue
         last = (db.query(ApprovalRequest).filter(ApprovalRequest.account_id == a.id, ApprovalRequest.request_type == "client_profile")
                 .order_by(ApprovalRequest.id.desc()).first())

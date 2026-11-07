@@ -1,8 +1,18 @@
 import { describe, it, expect } from "vitest";
 import {
   BLANK_ACCOUNT_FORM, SECTION_FIELDS, accountToForm, cleanPayload,
-  buildAccountPayload, buildSectionPatch, validateCoreFields,
+  buildAccountPayload, buildSectionPatch, validateCoreFields, mandatoryFields,
 } from "./accountForm";
+import { passportNote } from "../ui";
+import contract from "../../../../backend/tests/contracts/mandatory_fields.json";
+
+// UAT-03, 10, 11, 21: the form's asterisks and the server's submit rule run the same cases.
+describe("mandatoryFields against the shared contract", () => {
+  it.each(contract.cases.map((c) => [c.name, c]))("%s", (_, c) => {
+    const expected = new Set([...c.groups.flatMap((g) => contract[g]), ...c.extra]);
+    expect([...mandatoryFields(c.form)].sort()).toEqual([...expected].sort());
+  });
+});
 
 describe("accountToForm", () => {
   it("fills missing values with form defaults and keeps the id", () => {
@@ -94,5 +104,19 @@ describe("validateCoreFields", () => {
 
   it("requires an Anchor Triam Entity (it builds the Client ID)", () => {
     expect(validateCoreFields({ company_name: "Acme" })).toMatch(/Anchor Triam Entity/);
+  });
+});
+
+describe("passportNote", () => {
+  const today = new Date("2026-11-07T10:00:00");
+  it("says nothing about a valid passport or a blank date", () => {
+    expect(passportNote("", today)).toBeNull();
+    expect(passportNote("2026-11-07", today)).toBeNull();
+    expect(passportNote("2030-01-01", today)).toBeNull();
+  });
+  it("warns within 30 days past and blocks beyond", () => {
+    expect(passportNote("2026-10-08", today)).toMatchObject({ blocked: false });
+    expect(passportNote("2026-10-07", today)).toMatchObject({ blocked: true });
+    expect(passportNote("2016-01-01", today).text).toContain("renewed passport");
   });
 });

@@ -8,9 +8,9 @@ import ClientServicingModal from "../components/accounts/ClientServicingModal";
 import AccountHistoryModal from "../components/accounts/AccountHistoryModal";
 import WorkflowBar from "../components/accounts/WorkflowBar";
 import CompletenessChecklist from "../components/accounts/CompletenessChecklist";
-import { accountToForm } from "../components/accounts/accountForm";
+import { accountToForm, isFoundation } from "../components/accounts/accountForm";
 import { useAuthStore } from "../store/auth";
-import { fmtDate } from "../utils/constants";
+import { fmtDate, WITH_RM_STATUSES } from "../utils/constants";
 import { fmtFYE } from "../utils/fye";
 
 const yesNo = (v) => (v === true ? "Yes" : v === false ? "No" : null);
@@ -28,7 +28,7 @@ export default function ClientProfilePage({ accountId, initialTab = "overview", 
   const [wfVersion, setWfVersion] = useState(0); // reloads the status bar after a profile save (e.g. the CDD section)
   const [tabStart, setTabStart] = useState(null); // "request" opens a new service request on the Reports & Requests tab
   const isAdmin = useAuthStore((s) => s.isAdmin());
-  const readOnly = useAuthStore((s) => !s.isAdmin() && (s.user?.permissions || []).includes("read_only"));
+  const readOnly = useAuthStore((s) => s.isReadOnly());
   // The CDD section is Compliance's (Triam UAT 26-10-2026): during onboarding only Compliance and the Approver see it.
   const compliance = useAuthStore((s) => s.can("client.cdd_edit") || s.can("client.approve") || s.can("client.final_approve"));
 
@@ -44,14 +44,14 @@ export default function ClientProfilePage({ accountId, initialTab = "overview", 
   const a = account;
   const userName = (id) => users.find((u) => u.id === id)?.name || null;
   const individual = a.account_type === "Individual";
-  const onboarding = ["New", "WIP"].includes(a.profile_status);
+  const onboarding = WITH_RM_STATUSES.includes(a.profile_status);
   const existing = ["Approved", "Active", "Inactive", "Marked for Exit", "Exited"].includes(a.profile_status);
   const [servicingStart, setServicingStart] = [tabStart, setTabStart];
 
   const tabs = [
     { key: "overview", label: "Overview" },
     { key: "profile", label: "Profile" },
-    { key: "parties", label: individual ? "Joint Holders" : "Shareholders & Directors" },
+    { key: "parties", label: individual ? "Joint Holders" : isFoundation(a) ? "Founders & Council" : "Shareholders & Directors" },
     { key: "documents", label: "Documents" },
     // Triam UAT 26-10-2026: a client being onboarded has its Biz Rationale Report here, not call reports or
     // service requests; existing clients keep Reports & Requests as well.
@@ -98,12 +98,13 @@ export default function ClientProfilePage({ accountId, initialTab = "overview", 
               <FactList items={individual ? [
                 ["Date of birth", fmtDate(a.date_of_birth)], ["Nationality", a.nationality], ["Country of birth", a.country_of_birth],
                 ["Country of residence", a.country_of_residence], ["Passport expiry", fmtDate(a.passport_expiry_date)],
-                ["Email", a.individual_email], ["Profession / business", a.nature_of_business],
+                ["Email", a.individual_email], ["Profession / business", a.nature_of_business], ["Screening date", fmtDate(a.screening_date)],
               ] : [
                 ["New client category", a.client_category], ["Country of incorporation", a.country],
                 ["Contact", [a.contact_mobile_country_code && a.contact_mobile_number ? `${a.contact_mobile_country_code} ${a.contact_mobile_number}` : null, a.contact_email].filter(Boolean).join(" · ") || null],
                 ["LEI", a.lei_number ? `${a.lei_number}${a.lei_expiry_date ? ` (expires ${fmtDate(a.lei_expiry_date)})` : ""}` : null],
                 ["Incorporation date", fmtDate(a.incorporation_date)], ["Incorporation cert. no.", a.registration_number],
+                ["Screening date", fmtDate(a.screening_date)],
               ]} />
             </Panel>
             <Panel title="Triam assignment">

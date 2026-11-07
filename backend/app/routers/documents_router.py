@@ -49,12 +49,18 @@ def add_account_document_link(account_id: int, data: LinkDocumentCreate, db: Ses
 
 @router.get("/documents/{document_id}/download")
 def download_document(document_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    data, filename, content_type = document_service.stream_content(db, document_id, user)
+    data, filename, content_type = document_service.stream_download(db, document_id, user)
     return Response(
         content=data,
         media_type=content_type,
         headers={"Content-Disposition": f"attachment; filename*=UTF-8''{quote(filename)}"},
     )
+
+
+@router.get("/documents/{document_id}/content", summary="The file's bytes, for reading inside the CRM")
+def document_content(document_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    data, filename, content_type = document_service.stream_content(db, document_id, user)
+    return Response(content=data, media_type=content_type, headers={"Content-Disposition": f"inline; filename*=UTF-8''{quote(filename)}"})
 
 
 @router.post("/documents/{document_id}/remove", status_code=status.HTTP_204_NO_CONTENT,

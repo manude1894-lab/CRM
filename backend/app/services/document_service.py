@@ -192,11 +192,33 @@ def get(db: Session, document_id: int, user: User) -> Document:
     return doc
 
 
+def can_download(doc: Document, account, user: User) -> bool:
+    """Triam UAT 05-11-2026: on approved cases only Admins download documents; other users read them in
+    the CRM. Invoice files stay downloadable: front-end staff send them to the client (BRD §16)."""
+    if user.role == UserRole.ADMIN or doc.invoice_id is not None:
+        return True
+    from app.services import client_workflow_service as wf
+    return account.profile_status not in (wf.APPROVED, wf.ACTIVE, wf.INACTIVE, wf.MARKED_EXIT, wf.EXITED)
+
+
 def stream_content(db: Session, document_id: int, user: User) -> tuple[bytes, str, str]:
+    """The file's bytes, for reading in the CRM: anyone who may see the client."""
     doc = get(db, document_id, user)
     if doc.link_url:
         raise HTTPException(status_code=400, detail="This document is a link. Open it from the client folder.")
     return doc.content, doc.filename, doc.content_type or "application/octet-stream"
+
+
+def stream_download(db: Session, document_id: int, user: User) -> tuple[bytes, str, str]:
+    """The file as a download, refused where only Admins may download it."""
+    content = stream_content(db, document_id, user)
+    doc = db.get(Document, document_id)
+    if not can_download(doc, doc.account, user):
+        raise HTTPException(status_code=403, detail="Documents of an approved client can be downloaded by an Administrator only. You can read it in the CRM.")
+    log_event(db, "document_download", f"{_category_label(db, doc.category)}: {doc.filename} downloaded", user_id=user.id,
+              subject_type="Document", subject_id=doc.id, account_id=doc.account_id)
+    db.commit()
+    return content
 
 
 def delete(db: Session, document_id: int, user: User, reason: str | None = None) -> None:
@@ -275,6 +297,7 @@ def client_folder(db: Session, account_id: int, user: User) -> dict:
                                           "size_bytes", "uploaded_by_id", "notes", "created_at", "link_url", "party_id")}
         out["uploaded_by_name"] = names.get(d.uploaded_by_id)
         out["party_name"] = labels.get(d.party_id) if d.party_id else None
+        out["can_download"] = can_download(d, account, user)
         out.update(extra)
         return out
 

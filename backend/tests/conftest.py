@@ -84,6 +84,37 @@ def make_role(db):
     return _make
 
 
+# The roles as they really are (migrations plus Triam's own changes in Admin), so tests run the
+# configuration real users have. Triam gave prospect.assign to every role on 03-11-2026.
+REAL_ROLE_PERMISSIONS = {
+    "Rel. Manager": ["client.portfolio", "prospect.assign"],
+    "RO": ["client.portfolio", "prospect.assign"],
+    "FO": ["client.portfolio", "prospect.assign"],
+    "Risk Officer": ["client.portfolio", "prospect.assign"],
+    "Sales Manager": ["view.department_clients", "client.portfolio", "prospect.assign"],
+    "Prospecting Coordinator": ["prospect.assign"],
+    "CO": ["client.approve", "document.delete_submitted", "audit.view", "view.all_clients", "prospect.assign"],
+    "MLRO": ["client.approve", "document.delete_submitted", "audit.view", "view.all_clients", "prospect.assign"],
+    "Dy MLRO": ["client.approve", "document.delete_submitted", "audit.view", "view.all_clients", "prospect.assign"],
+    "Approver": ["client.final_approve", "view.all_clients", "audit.view", "document.delete_submitted", "prospect.assign"],
+    "Accountant": ["invoice.manage", "view.all_clients", "prospect.assign"],
+    "Inquiry": ["view.all_clients", "read_only", "prospect.assign"],
+}
+
+
+@pytest.fixture()
+def real_user(db, make_user):
+    """A user holding one of the real roles: real_user("Rel. Manager", "Kalyan")."""
+    def _make(role_name, name=None, **kw):
+        role = db.query(Role).filter(Role.name == role_name).first()
+        if role is None:
+            role = Role(name=role_name, permissions=REAL_ROLE_PERMISSIONS[role_name], is_active=True)
+            db.add(role)
+            db.commit()
+        return make_user(name or role_name, business_role=role, **kw)
+    return _make
+
+
 @pytest.fixture()
 def seed_master(db):
     def _seed(list_type, codes, inactive=()):

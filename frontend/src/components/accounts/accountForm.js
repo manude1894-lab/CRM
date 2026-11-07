@@ -18,6 +18,7 @@ export const BLANK_ACCOUNT_FORM = {
   profile_status: "New",
   engagement_letter_signed: null, engagement_letter_valid_until: "",
   aml_classification: "", edd_reason: "", cdd_completion_date: "", kyc_verified_by: "",
+  screening_date: "",
   is_pep: false,
   date_of_birth: "", country_of_birth: "", nationality: "", passport_expiry_date: "", country_of_residence: "",
   residential_address: { ...BLANK_ADDRESS },
@@ -54,11 +55,60 @@ export const SECTION_FIELDS = {
   introducer: ["has_introducer", "introducer_name"],
   bizRationale: ["br_person_met", "br_meeting_date", "br_meeting_time", "br_meeting_place", "br_meeting_mode", "br_rationale"],
   services: ["services_obtained"],
+  screening: ["screening_date"],
   // Status itself only changes through the workflow — this section saves engagement only.
   profileStatus: ["engagement_letter_valid_until", "engagement_letter_signed"],
   // BRD §8: completed only by Compliance (MLRO).
   aml: ["risk_rating", "cdd_completion_date", "edd_reason", "kyc_verified_by"],
 };
+
+// Triam UAT 05-11-2026: a foundation has these people instead of Shareholders and Directors.
+export const FOUNDATION_ROLES = ["Founder", "Council Member", "Beneficiary", "Guardian"];
+export const isFoundation = (a) => [...(a?.services_obtained || []), ...(a?.nature_of_services_sought || [])].includes("Set up Foundations");
+
+const ALWAYS_MANDATORY = ["anchor_entity", "services_obtained", "spoc_id", "search_name", "company_name",
+  "br_person_met", "br_meeting_date", "br_meeting_time", "br_meeting_place", "br_meeting_mode", "br_rationale", "engagement_letter_signed"];
+
+// Triam UAT 06-11-2026: tax fields don't apply to offshore companies, BVI or not. The same rule as the
+// server's is_offshore; both are tested against backend/tests/contracts/mandatory_fields.json.
+export function isOffshore(form) {
+  const country = (form.country || "").toLowerCase();
+  if (country.includes("virgin islands") && country.includes("brit")) return true;
+  if ((form.anchor_entity || "").toUpperCase() === "TBVI") return true;
+  const tags = Array.isArray(form.tags) ? form.tags : (form.tags || "").split(",");
+  const values = [...(form.services_obtained || []), ...(form.nature_of_services_sought || []), ...tags,
+    form.licensing_authority, form.licensing_authority_other];
+  return values.some((v) => /offshore|bvi/i.test(v || ""));
+}
+
+// The fields this client must have before it can be submitted: the form's asterisks come from here. The
+// server decides at Submit (missing_mandatory); the shared contract keeps the two in step.
+export function mandatoryFields(form) {
+  const on = (condition, ...fields) => (condition ? fields : []);
+  if (form.account_type === "Individual") {
+    return new Set([...ALWAYS_MANDATORY, "date_of_birth", "passport_expiry_date", "country_of_birth", "nationality", "country_of_residence",
+      "individual_mobile_number", "individual_mobile_country_code", "individual_email", "nature_of_services_sought", "residential_address",
+      ...on(form.engagement_letter_signed, "engagement_letter_valid_until")]);
+  }
+  const forming = form.client_category === "Under Formation";
+  return new Set([...ALWAYS_MANDATORY, "client_category", "country", "contact_mobile_number", "contact_mobile_country_code", "contact_email",
+    "nature_of_services_sought", "licensing_authority", "is_regulated", "has_introducer",
+    ...on(!forming, "registration_number", "incorporation_date", "license_number", "license_start_date", "license_expiry_date",
+      "license_activities", "registered_address", "operating_address"),
+    ...on(!forming && !isOffshore(form), "financial_year_end", "corp_tax_registered"),
+    ...on(form.licensing_authority === "Other", "licensing_authority_other"),
+    ...on(form.is_regulated, "regulator_name", "license_category"),
+    ...on(form.is_regulated && form.regulator_name === "Other", "regulator_other"),
+    ...on(form.is_regulated && !forming, "regulatory_license_expiry_date"),
+    ...on(form.has_introducer, "introducer_name"),
+    ...on(form.engagement_letter_signed, "engagement_letter_valid_until")]);
+}
+
+// True when both addresses hold the same, non-blank details: "same as Registered" stays ticked on reopening.
+export function sameAddress(a, b) {
+  const clean = (x) => JSON.stringify(Object.keys(BLANK_ADDRESS).map((k) => (x?.[k] || "").trim()));
+  return clean(a) === clean(b) && clean(a) !== clean({});
+}
 
 // Maps an account from the API into editable form state (nulls → "", tags string → array).
 export function accountToForm(a) {
@@ -79,6 +129,7 @@ export function accountToForm(a) {
     engagement_letter_signed: a.engagement_letter_signed ?? null, engagement_letter_valid_until: a.engagement_letter_valid_until || "",
     aml_classification: a.aml_classification || "", edd_reason: a.edd_reason || "", cdd_completion_date: a.cdd_completion_date || "",
     kyc_verified_by: a.kyc_verified_by || "",
+    screening_date: a.screening_date || "",
     next_aml_review_date: a.next_aml_review_date || null,
     is_pep: !!a.is_pep,
     date_of_birth: a.date_of_birth || "", country_of_birth: a.country_of_birth || "", nationality: a.nationality || "",
