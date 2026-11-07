@@ -60,6 +60,44 @@ export const SECTION_FIELDS = {
   aml: ["risk_rating", "cdd_completion_date", "edd_reason", "kyc_verified_by"],
 };
 
+const ALWAYS_MANDATORY = ["anchor_entity", "services_obtained", "spoc_id", "search_name", "company_name",
+  "br_person_met", "br_meeting_date", "br_meeting_time", "br_meeting_place", "br_meeting_mode", "br_rationale", "engagement_letter_signed"];
+
+// Triam UAT 06-11-2026: tax fields don't apply to offshore companies, BVI or not. The same rule as the
+// server's is_offshore; both are tested against backend/tests/contracts/mandatory_fields.json.
+export function isOffshore(form) {
+  const country = (form.country || "").toLowerCase();
+  if (country.includes("virgin islands") && country.includes("brit")) return true;
+  if ((form.anchor_entity || "").toUpperCase() === "TBVI") return true;
+  const tags = Array.isArray(form.tags) ? form.tags : (form.tags || "").split(",");
+  const values = [...(form.services_obtained || []), ...(form.nature_of_services_sought || []), ...tags,
+    form.licensing_authority, form.licensing_authority_other];
+  return values.some((v) => /offshore|bvi/i.test(v || ""));
+}
+
+// The fields this client must have before it can be submitted: the form's asterisks come from here. The
+// server decides at Submit (missing_mandatory); the shared contract keeps the two in step.
+export function mandatoryFields(form) {
+  const on = (condition, ...fields) => (condition ? fields : []);
+  if (form.account_type === "Individual") {
+    return new Set([...ALWAYS_MANDATORY, "date_of_birth", "passport_expiry_date", "country_of_birth", "nationality", "country_of_residence",
+      "individual_mobile_number", "individual_mobile_country_code", "individual_email", "nature_of_services_sought", "residential_address",
+      ...on(form.engagement_letter_signed, "engagement_letter_valid_until")]);
+  }
+  const forming = form.client_category === "Under Formation";
+  return new Set([...ALWAYS_MANDATORY, "client_category", "country", "contact_mobile_number", "contact_mobile_country_code", "contact_email",
+    "nature_of_services_sought", "licensing_authority", "is_regulated", "has_introducer",
+    ...on(!forming, "registration_number", "incorporation_date", "license_number", "license_start_date", "license_expiry_date",
+      "license_activities", "registered_address", "operating_address"),
+    ...on(!forming && !isOffshore(form), "financial_year_end", "corp_tax_registered"),
+    ...on(form.licensing_authority === "Other", "licensing_authority_other"),
+    ...on(form.is_regulated, "regulator_name", "license_category"),
+    ...on(form.is_regulated && form.regulator_name === "Other", "regulator_other"),
+    ...on(form.is_regulated && !forming, "regulatory_license_expiry_date"),
+    ...on(form.has_introducer, "introducer_name"),
+    ...on(form.engagement_letter_signed, "engagement_letter_valid_until")]);
+}
+
 // Maps an account from the API into editable form state (nulls → "", tags string → array).
 export function accountToForm(a) {
   return {

@@ -1,8 +1,17 @@
 import { describe, it, expect } from "vitest";
 import {
   BLANK_ACCOUNT_FORM, SECTION_FIELDS, accountToForm, cleanPayload,
-  buildAccountPayload, buildSectionPatch, validateCoreFields,
+  buildAccountPayload, buildSectionPatch, validateCoreFields, mandatoryFields,
 } from "./accountForm";
+import contract from "../../../../backend/tests/contracts/mandatory_fields.json";
+
+// UAT-03, 10, 11, 21: the form's asterisks and the server's submit rule run the same cases.
+describe("mandatoryFields against the shared contract", () => {
+  it.each(contract.cases.map((c) => [c.name, c]))("%s", (_, c) => {
+    const expected = new Set([...c.groups.flatMap((g) => contract[g]), ...c.extra]);
+    expect([...mandatoryFields(c.form)].sort()).toEqual([...expected].sort());
+  });
+});
 
 describe("accountToForm", () => {
   it("fills missing values with form defaults and keeps the id", () => {

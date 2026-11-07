@@ -483,6 +483,20 @@ PARTIES_SECTION = "Shareholder / UBO Information"
 BIZ_RATIONALE_SECTION = "Biz Rationale Report"
 
 
+def is_offshore(account) -> bool:
+    """Triam UAT 06-11-2026: tax fields don't apply to offshore companies, BVI or not. Offshore means:
+    registered in the BVI, anchored in the BVI entity, or an offshore service, tag or registering authority.
+    The form applies the same rule (isOffshore in accountForm.js); both are tested against one contract."""
+    country = (account.country or "").lower()
+    if "virgin islands" in country and "brit" in country:
+        return True
+    if (account.anchor_entity or "").upper() == "TBVI":
+        return True
+    values = [*(account.services_obtained or []), *(account.nature_of_services_sought or []), *_as_list(account.tags, "csv"),
+              account.licensing_authority, account.licensing_authority_other]
+    return any(word in (v or "").lower() for v in values for word in ("offshore", "bvi"))
+
+
 def counts_towards_ownership(party) -> bool:
     """Triam UAT 06-11-2026: an entity's share is looked through to the individuals behind it, so only
     individual shareholders count towards 100% (ABC Ltd: A 25, B 25, C Ltd's owners C1 30, C2 20)."""
@@ -518,10 +532,11 @@ def missing_mandatory(account: Account) -> list[dict]:
         if not all((addr.get(f) or "").strip() for f in ("line1", "city", "country")):
             missing.append({"section": "Individual details", "field": "residential_address", "label": "Residential Address (line 1, city and country)"})
     else:
-        # BRD §5 — New Client Category: licence and incorporation details are mandatory for
-        # existing companies and may be blank for companies under formation.
-        category = account.client_category
-        forming = category == "Under Formation" or (category is None and "Company Formation" in (account.services_obtained or []))
+        # BRD §5 — New Client Category: licence and incorporation details are mandatory for existing
+        # companies. Triam UAT 05-11-2026: only when Under Formation is chosen, these and the addresses
+        # and tax details may be blank. Keep in step with mandatoryFields in accountForm.js.
+        forming = account.client_category == "Under Formation"
+        taxable = not forming and not is_offshore(account)
         need("Client info", "client_category", "New Client Category (Under Formation / Existing)")
         need("Client info", "company_name", "Client Name")
         need("Client info", "country", "Country of Incorporation / Registration")
@@ -550,10 +565,10 @@ def missing_mandatory(account: Account) -> list[dict]:
              when=account.is_regulated and not forming)
         for key, label in (("registered_address", "Registered Address"), ("operating_address", "Operating Address")):
             addr = getattr(account, key) or {}
-            if not all((addr.get(f) or "").strip() for f in ("line1", "city", "country")):
+            if not forming and not all((addr.get(f) or "").strip() for f in ("line1", "city", "country")):
                 missing.append({"section": label, "field": key, "label": f"{label} (line 1, city and country)"})
-        need("Tax", "financial_year_end", "Financial Year End")
-        need("Tax", "corp_tax_registered", "Corporate Tax Registered (Yes / No)")
+        need("Tax", "financial_year_end", "Financial Year End", when=taxable)
+        need("Tax", "corp_tax_registered", "Corporate Tax Registered (Yes / No)", when=taxable)
         need("Introducer", "has_introducer", "Introducer (Yes / No)")
         need("Introducer", "introducer_name", "Introducer Name", when=account.has_introducer)
 
