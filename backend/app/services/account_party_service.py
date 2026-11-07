@@ -3,6 +3,7 @@ import re
 from datetime import datetime, timezone
 from decimal import Decimal
 
+from sqlalchemy import inspect
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
 
@@ -31,6 +32,9 @@ def _validate_party(account: Account, p: AccountParty) -> None:
       not exceed 100% ("add Shareholders/UBOs until total ownership reaches 100%").
     - An entity shareholder has no percentage (Triam UAT 06-11-2026): it is cleared if one is sent.
     """
+    # Only a date being entered or changed: an old date already on record doesn't block other edits.
+    if p.constitution != "Entity" and inspect(p).attrs.id_or_license_expiry.history.added:
+        account_service.assert_passport_acceptable(p.id_or_license_expiry, f"The passport of {p.full_name}")
     if p.email and not _EMAIL_RE.match(p.email.strip()):
         raise HTTPException(status_code=400, detail="Contact Email is not a valid email address")
     individual_client = account.account_type == "Individual"

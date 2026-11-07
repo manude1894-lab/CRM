@@ -4,7 +4,7 @@ from sqlalchemy import or_, func
 from fastapi import HTTPException
 from typing import Optional
 from decimal import Decimal
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from dateutil.relativedelta import relativedelta
 
 from app.models import Account, ApprovalRequest, ApprovalStatus, User, UserRole, ClientIdSequence
@@ -209,6 +209,19 @@ def get_account(db: Session, account_id: int, user: User) -> Account:
     return acc
 
 
+PASSPORT_GRACE_DAYS = 30
+
+
+def passport_too_old(expiry: Optional[date]) -> bool:
+    """Triam UAT 05-11-2026: a passport may be accepted up to 30 days past its expiry, not more."""
+    return bool(expiry) and expiry < date.today() - timedelta(days=PASSPORT_GRACE_DAYS)
+
+
+def assert_passport_acceptable(expiry: Optional[date], whose: str = "The passport") -> None:
+    if passport_too_old(expiry):
+        raise HTTPException(status_code=400, detail=f"{whose} expired more than {PASSPORT_GRACE_DAYS} days ago. Ask for the renewed passport.")
+
+
 def _assert_date_sanity(data) -> None:
     """BRD §5 — Incorporation Date can't be in the
     future; License Expiry Date can't be in the past. Interactive create/update only —
@@ -259,6 +272,7 @@ def create_account(db: Session, data: AccountCreate, user: User) -> Account:
         search_name = _default_search_name(db, data.company_name, data.anchor_entity)
 
     _assert_date_sanity(data)
+    assert_passport_acceptable(data.passport_expiry_date)
     if any(getattr(data, f, None) not in (None, "") for f in CDD_FIELDS) and not has_permission(user, "client.cdd_edit"):
         raise HTTPException(status_code=403, detail="Only Compliance (MLRO) can complete the CDD / risk assessment section")
 
@@ -353,6 +367,8 @@ def apply_update(db: Session, acc: Account, data: AccountUpdate, user: User) -> 
     """Validate and apply a profile update to `acc` without committing. Shared by direct saves and
     by amendments (staged on save, then applied for real when Compliance approves)."""
     _assert_date_sanity(data)
+    if data.passport_expiry_date != acc.passport_expiry_date:
+        assert_passport_acceptable(data.passport_expiry_date)
     update_data = data.model_dump(exclude_unset=True)
     if user.role == UserRole.RM:
         update_data.pop("owner_id", None)
@@ -530,6 +546,9 @@ def missing_mandatory(account: Account) -> list[dict]:
         need("Individual details", "company_name", "Full Name")
         need("Individual details", "date_of_birth", "Date of Birth")
         need("Individual details", "passport_expiry_date", "Passport Expiry Date")
+        if passport_too_old(account.passport_expiry_date):
+            missing.append({"section": "Individual details", "field": "passport_expiry_date",
+                            "label": f"The passport expired more than {PASSPORT_GRACE_DAYS} days ago. A renewed passport is needed"})
         need("Individual details", "country_of_birth", "Country of Birth")
         need("Individual details", "nationality", "Nationality")
         need("Individual details", "country_of_residence", "Country of Residence")
@@ -598,6 +617,11 @@ def missing_mandatory(account: Account) -> list[dict]:
                          ("br_meeting_time", "Time of Meeting"), ("br_meeting_place", "Place of Meeting"),
                          ("br_meeting_mode", "Mode of Meeting"), ("br_rationale", "Business Rationale for the Relationship")):
         need(BIZ_RATIONALE_SECTION, field, label)
+
+    for p in account.parties:
+        if p.constitution != "Entity" and passport_too_old(p.id_or_license_expiry):
+            missing.append({"section": PARTIES_SECTION, "field": "parties",
+                            "label": f"The passport of {p.full_name} expired more than {PASSPORT_GRACE_DAYS} days ago"})
 
     # Triam UAT 04-11-2026, for individual and non-individual clients alike. A person's document counts.
     # Invoice and service request files aren't onboarding documents.

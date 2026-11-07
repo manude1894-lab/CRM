@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { accountsApi, workflowApi } from "../../api/endpoints";
-import { Icon, Modal, Field, Input, Select, MultiSelect, CountrySelect, Textarea, DateInput, Embedded } from "../ui";
+import { Icon, Modal, Field, Input, Select, MultiSelect, CountrySelect, Textarea, DateInput, Embedded, PassportNote } from "../ui";
 import AccountPartyModal from "../AccountPartyModal";
 import NameLookup from "./NameLookup";
 import CompletenessChecklist from "./CompletenessChecklist";
@@ -18,8 +18,9 @@ import {
 } from "../../utils/constants";
 import {
   RISK_OPTIONS, BLANK_ADDRESS, SECTION_FIELDS,
-  buildAccountPayload, buildSectionPatch, validateCoreFields, accountToForm, mandatoryFields, isOffshore,
+  buildAccountPayload, buildSectionPatch, validateCoreFields, accountToForm, mandatoryFields, isOffshore, sameAddress,
 } from "./accountForm";
+import { dialCodeForCountry, dialCodeOptions } from "../../utils/dialCodes";
 import { useMasters } from "../../hooks/useMasters";
 import { selectableCodes, servicesForEntities } from "../../hooks/masterUtils";
 
@@ -171,6 +172,20 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
   const set = (key) => (e) => setForm({ ...form, [key]: e.target.value });
   const setChecked = (key) => (e) => setForm({ ...form, [key]: e.target.checked });
   const setValue = (key) => (v) => setForm({ ...form, [key]: v });
+  // Triam UAT 05-11-2026: choosing the country fills the Contact Mobile code; it can still be changed.
+  const isdFor = (country, field) => { const code = dialCodeForCountry(country, countries); return code ? { [field]: code } : {}; };
+  const dialOptions = dialCodeOptions(countries, COUNTRY_CALLING_CODES);
+  const setOperatingAddress = (v) => setForm({ ...form, operating_address: v,
+    ...(v.country !== form.operating_address?.country ? isdFor(v.country, "contact_mobile_country_code") : {}) });
+  // Triam UAT 05-11-2026: the Operating Address can follow the Registered Address, and keeps following it
+  // while ticked. Starts ticked when the two are already the same.
+  const [sameAsRegistered, setSameAsRegistered] = useState(() => sameAddress(initialForm.registered_address, initialForm.operating_address));
+  const setRegisteredAddress = (v) => setForm({ ...form, registered_address: v,
+    ...(sameAsRegistered ? { operating_address: { ...v }, ...(v.country !== form.operating_address?.country ? isdFor(v.country, "contact_mobile_country_code") : {}) } : {}) });
+  const toggleSameAsRegistered = (e) => {
+    setSameAsRegistered(e.target.checked);
+    if (e.target.checked) setOperatingAddress({ ...form.registered_address });
+  };
   const rms = users.filter((u) => isRelationshipManager(u) || u.id === +form.spoc_id || (form.non_anchor_rm_ids || []).includes(u.id));
   const isIndividual = form.account_type === "Individual";
   // BRD §18 — admin-managed lists; the old constants are the fallback until the API answers.
@@ -333,7 +348,7 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
                 <div className="flex gap-2">
                   <Select value={form.contact_mobile_country_code || ""} onChange={set("contact_mobile_country_code")} className="!w-44 flex-shrink-0">
                     <option value="">Code</option>
-                    {COUNTRY_CALLING_CODES.map((c) => <option key={c.code} value={c.code}>{c.label}</option>)}
+                    {dialOptions.map((c) => <option key={c.code} value={c.code}>{c.label}</option>)}
                   </Select>
                   <Input value={form.contact_mobile_number || ""} onChange={set("contact_mobile_number")} maxLength={12} placeholder="e.g. 43334444" />
                 </div>
@@ -467,12 +482,17 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
 
             <Section title="Registered Address" hasData={Object.values(form.registered_address || {}).some(Boolean)}
               {...sectionProps("registeredAddress")}>
-              <AddressFields required={req("registered_address")} value={form.registered_address} onChange={setValue("registered_address")} countries={countries} />
+              <AddressFields required={req("registered_address")} value={form.registered_address} onChange={setRegisteredAddress} countries={countries} />
             </Section>
 
             <Section title="Operating Address" hasData={Object.values(form.operating_address || {}).some(Boolean)}
               {...sectionProps("operatingAddress")}>
-              <AddressFields required={req("operating_address")} value={form.operating_address} onChange={setValue("operating_address")} countries={countries} />
+              <label className="flex items-center gap-2 text-xs text-gray-700 mb-3">
+                <input type="checkbox" checked={sameAsRegistered} onChange={toggleSameAsRegistered} /> Same as Registered Address
+              </label>
+              <fieldset disabled={sameAsRegistered} className="min-w-0">
+                <AddressFields required={req("operating_address")} value={form.operating_address} onChange={setOperatingAddress} countries={countries} />
+              </fieldset>
             </Section>
 
             <Section title="Tax" hasData={!!(form.trn_vat_number || form.financial_year_end || form.corp_tax_registered)}
@@ -512,15 +532,15 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
               <Field label="Date of Birth" required={req("date_of_birth")}><DateInput value={form.date_of_birth || ""} onChange={set("date_of_birth")} /></Field>
               <Field label="Country of Birth" required={req("country_of_birth")}><CountrySelect value={form.country_of_birth} onChange={set("country_of_birth")} countries={countries} /></Field>
               <Field label="Nationality" required={req("nationality")}><CountrySelect value={form.nationality} onChange={set("nationality")} countries={countries} /></Field>
-              <Field label="Passport Expiry Date" required={req("passport_expiry_date")}><DateInput value={form.passport_expiry_date || ""} onChange={set("passport_expiry_date")} /></Field>
+              <Field label="Passport Expiry Date" required={req("passport_expiry_date")}><DateInput value={form.passport_expiry_date || ""} onChange={set("passport_expiry_date")} /><PassportNote value={form.passport_expiry_date} /></Field>
               <Field label="Contact Email" required={req("individual_email")}><Input type="email" value={form.individual_email} onChange={set("individual_email")} /></Field>
-              <Field label="Country of Residence" required={req("country_of_residence")}><CountrySelect value={form.country_of_residence} onChange={set("country_of_residence")} countries={countries} /></Field>
+              <Field label="Country of Residence" required={req("country_of_residence")}><CountrySelect value={form.country_of_residence} onChange={(e) => setForm({ ...form, country_of_residence: e.target.value, ...isdFor(e.target.value, "individual_mobile_country_code") })} countries={countries} /></Field>
             </div>
             <Field label="Contact Mobile" required={req("individual_mobile_number")}>
               <div className="flex gap-2">
                 <Select value={form.individual_mobile_country_code || ""} onChange={set("individual_mobile_country_code")} className="!w-44 flex-shrink-0">
                   <option value="">Code</option>
-                  {COUNTRY_CALLING_CODES.map((c) => <option key={c.code} value={c.code}>{c.label}</option>)}
+                  {dialOptions.map((c) => <option key={c.code} value={c.code}>{c.label}</option>)}
                 </Select>
                 <Input value={form.individual_mobile_number || ""} onChange={set("individual_mobile_number")} maxLength={12} placeholder="e.g. 501234567" />
               </div>

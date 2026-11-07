@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { accountPartiesApi, countriesApi } from "../api/endpoints";
-import { Icon, Modal, Field, Input, Select, CountrySelect, Spinner, ErrorBanner, DateInput } from "./ui";
+import { Icon, Modal, Field, Input, Select, CountrySelect, Spinner, ErrorBanner, DateInput, PassportNote } from "./ui";
 import { COUNTRY_CALLING_CODES, fmtDate, isUAE } from "../utils/constants";
 import { toast } from "../store/toast";
 import { useAuthStore } from "../store/auth";
 import { reasonDialog } from "../store/confirm";
+import { dialCodeForCountry, dialCodeOptions } from "../utils/dialCodes";
 import ClientDocumentsFolder from "./accounts/ClientDocumentsFolder";
 
 const CORPORATE_ROLES = ["Shareholder", "Director", "Authorised Signatory"];
@@ -244,6 +245,7 @@ function PartyForm({ form, setForm, countries, onCancel, onSave }) {
         </Field>
         <Field label={isEntity ? "License / CI Expiry" : "Passport Expiry"}>
           <DateInput value={form.id_or_license_expiry || ""} onChange={set(setForm, "id_or_license_expiry")} />
+          {!isEntity && <PassportNote value={form.id_or_license_expiry} />}
         </Field>
       </div>
       <Field label={isEntity ? "Country of Incorporation" : "Country of Birth"} required={form.party_role === "Authorised Signatory"}>
@@ -268,7 +270,7 @@ function PartyForm({ form, setForm, countries, onCancel, onSave }) {
         <div className="flex gap-2">
           <Select value={form.mobile_country_code || ""} onChange={set(setForm, "mobile_country_code")} className="!w-44 flex-shrink-0">
             <option value="">Code</option>
-            {COUNTRY_CALLING_CODES.map((c) => <option key={c.code} value={c.code}>{c.label}</option>)}
+            {dialCodeOptions(countries, COUNTRY_CALLING_CODES).map((c) => <option key={c.code} value={c.code}>{c.label}</option>)}
           </Select>
           <Input value={form.mobile_number || ""} onChange={set(setForm, "mobile_number")} maxLength={12} placeholder="e.g. 501234567" />
         </div>
@@ -279,7 +281,11 @@ function PartyForm({ form, setForm, countries, onCancel, onSave }) {
         <CountrySelect value={form.nationality} onChange={set(setForm, "nationality")} countries={countries} />
       </Field>
       <Field label="Country of Residence" required>
-        <CountrySelect value={form.country_of_residence} onChange={set(setForm, "country_of_residence")} countries={countries} />
+        <CountrySelect value={form.country_of_residence} countries={countries} onChange={(e) => {
+          // Triam UAT 05-11-2026: choosing the country fills the Contact Mobile code; it can still be changed.
+          const code = dialCodeForCountry(e.target.value, countries);
+          setForm((p) => ({ ...p, country_of_residence: e.target.value, ...(code ? { mobile_country_code: code } : {}) }));
+        }} />
       </Field>
 
       {form.country_of_residence && (

@@ -366,6 +366,25 @@ export const Textarea = (props) => (
 // selected option strings; `onChange` receives the new array.
 // Country dropdown backed by the live AML country-risk list; falls back to free text if that list is empty.
 // UAE is pinned to the top of the list (BRD §5–§6: "UAE to appear at the top").
+// Triam UAT 05-11-2026: warns about an expired passport; up to 30 days past can be accepted, the server refuses older.
+export const passportNote = (iso, today = new Date()) => {
+  if (!iso) return null;
+  const days = Math.floor((new Date(today.toDateString()) - new Date(`${iso}T00:00:00`)) / 86400000);
+  if (days <= 0) return null;
+  return days > 30
+    ? { blocked: true, text: `This passport expired ${days} days ago. Only up to 30 days past can be accepted. Ask for the renewed passport.` }
+    : { blocked: false, text: `This passport expired ${days} day${days === 1 ? "" : "s"} ago. It can be accepted for up to 30 days after expiry.` };
+};
+
+export const PassportNote = ({ value }) => {
+  const note = passportNote(value);
+  return note && (
+    <p className={`mt-1 text-[11px] flex items-start gap-1 ${note.blocked ? "text-red-600" : "text-amber-700"}`}>
+      <Icon name="warn" size={12} className="flex-shrink-0 mt-px" /> {note.text}
+    </p>
+  );
+};
+
 export const CountrySelect = ({ value, onChange, countries }) => {
   const options = (countries || []).map((c) => c.name).sort((a, b) => {
     const aUAE = a.startsWith("United Arab Emirates");

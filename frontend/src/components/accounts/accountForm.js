@@ -98,6 +98,12 @@ export function mandatoryFields(form) {
     ...on(form.engagement_letter_signed, "engagement_letter_valid_until")]);
 }
 
+// True when both addresses hold the same, non-blank details: "same as Registered" stays ticked on reopening.
+export function sameAddress(a, b) {
+  const clean = (x) => JSON.stringify(Object.keys(BLANK_ADDRESS).map((k) => (x?.[k] || "").trim()));
+  return clean(a) === clean(b) && clean(a) !== clean({});
+}
+
 // Maps an account from the API into editable form state (nulls → "", tags string → array).
 export function accountToForm(a) {
   return {
