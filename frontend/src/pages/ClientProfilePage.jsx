@@ -28,7 +28,7 @@ export default function ClientProfilePage({ accountId, initialTab = "overview", 
   const [wfVersion, setWfVersion] = useState(0); // reloads the status bar after a profile save (e.g. the CDD section)
   const [tabStart, setTabStart] = useState(null); // "request" opens a new service request on the Reports & Requests tab
   const isAdmin = useAuthStore((s) => s.isAdmin());
-  const readOnly = useAuthStore((s) => !s.isAdmin() && (s.user?.permissions || []).includes("read_only"));
+  const readOnly = useAuthStore((s) => s.isReadOnly());
   // The CDD section is Compliance's (Triam UAT 26-10-2026): during onboarding only Compliance and the Approver see it.
   const compliance = useAuthStore((s) => s.can("client.cdd_edit") || s.can("client.approve") || s.can("client.final_approve"));
 

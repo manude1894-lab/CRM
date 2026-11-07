@@ -32,7 +32,7 @@ const NAV = [
   // Coordinator doesn't, unless an administrator adds it to the role).
   { key: "accounts", label: "New Client Onboarding", icon: "accounts", component: AccountsPage, props: { scope: "onboarding" }, desks: ["view.all_clients", "view.department_clients"], group: "Onboarding" },
   // New clients and client amendments awaiting Compliance (MLRO) and Approver decisions (BRD §7–§11).
-  { key: "approvals", label: "Compliance Approval", icon: "shield", component: ApprovalsPage, perm: ["client.approve", "client.final_approve"], group: "Compliance" },
+  { key: "approvals", label: "Compliance Approval", icon: "shield", component: ApprovalsPage, perm: ["client.approve", "client.final_approve", "read_only"], group: "Compliance" },
   // Existing clients (BRD §11): amendments, servicing.
   { key: "maintenance", label: "Client Data Maintenance", icon: "edit", component: AccountsPage, props: { scope: "maintenance" }, desks: ["view.all_clients", "view.department_clients"], group: "Client Servicing" },
   { key: "activities", label: "Call Reports / Contact Notes", icon: "activities", component: ActivitiesPage, desks: ["view.all_clients", "view.department_clients"], group: "Client Servicing" },

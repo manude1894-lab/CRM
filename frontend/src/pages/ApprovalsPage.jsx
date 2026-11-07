@@ -4,6 +4,7 @@ import { Modal, Spinner, ErrorBanner, PageHeader } from "../components/ui";
 import { useMasters } from "../hooks/useMasters";
 import { formatTimestamp } from "../utils/auditFormat";
 import { toast } from "../store/toast";
+import { useAuthStore } from "../store/auth";
 import { ChangeList, DecisionButtons, REQUEST_TYPE_LABEL } from "../components/compliance/ComplianceParts";
 
 const TABS = ["Pending", "Approved", "Rejected", "Withdrawn"];
@@ -22,6 +23,7 @@ export default function ApprovalsPage({ onNavigate }) {
   const [error, setError] = useState(null);
   const [review, setReview] = useState(null); // the row being reviewed in a modal
   const reasons = useMasters("rejection_reason", []);
+  const readOnly = useAuthStore((s) => s.isReadOnly());
 
   const load = async () => {
     setLoading(true); setError(null);
@@ -100,7 +102,7 @@ export default function ApprovalsPage({ onNavigate }) {
                   )}
                   <td className="py-2.5 px-4 text-right">
                     <button onClick={() => open(r)} className="px-3 py-1.5 text-xs text-white rounded-lg" style={{ background: "#1a3a5c" }}>
-                      {tab === "Pending" ? "Review" : "Open"}
+                      {tab === "Pending" && !readOnly ? "Review" : "Open"}
                     </button>
                   </td>
                 </tr>
@@ -123,6 +125,7 @@ export default function ApprovalsPage({ onNavigate }) {
 function ReviewModal({ row, onClose, onDecided, onNavigate }) {
   const [state, setState] = useState(null);
   const [busy, setBusy] = useState(false);
+  const readOnly = useAuthStore((s) => s.isReadOnly());
 
   useEffect(() => {
     amendmentApi.get(row.account_id).then(setState).catch(() => setState({ actions: [] }));
@@ -169,7 +172,7 @@ function ReviewModal({ row, onClose, onDecided, onNavigate }) {
         <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-gray-100">
           <button onClick={goto} className="text-xs text-brand-600 hover:underline">Open the full client</button>
           {actions.length > 0 && <DecisionButtons actions={actions} busy={busy} onAction={act} />}
-          {isCurrent && actions.length === 0 && <span className="text-[11px] text-gray-400">You submitted this, so another approver must review it.</span>}
+          {isCurrent && actions.length === 0 && !readOnly && <span className="text-[11px] text-gray-400">You submitted this, so another approver must review it.</span>}
         </div>
       </div>
     </Modal>

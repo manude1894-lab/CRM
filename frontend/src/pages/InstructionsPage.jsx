@@ -5,6 +5,7 @@ import { Icon, Modal, Field, Input, Select, Textarea, Spinner, ErrorBanner, Page
 import { fmtFull, fmtDate } from "../utils/constants";
 import { useRequestOptions, pickableStatuses, firstOpenStatus, requestLabel, clientEntities } from "../hooks/useRequestOptions";
 import { toast } from "../store/toast";
+import { useAuthStore } from "../store/auth";
 import { reasonDialog } from "../store/confirm";
 
 // BRD §15 — service requests on approved clients. Request types and statuses follow the Triam entity
@@ -29,6 +30,7 @@ const emptyForm = (accountId) => ({
 const cleanPayload = (obj) => Object.fromEntries(Object.entries(obj).map(([k, v]) => [k, v === "" ? null : v]));
 
 export default function InstructionsPage() {
+  const readOnly = useAuthStore((s) => s.isReadOnly());
   const [instructions, setInstructions] = useState([]);
   const [accounts, setAccounts] = useState([]);
   const [invoices, setInvoices] = useState([]);
@@ -135,7 +137,7 @@ export default function InstructionsPage() {
     <div className="space-y-4">
       <PageHeader title="Service Requests"
         subtitle={<>{filtered.length} of {instructions.length} service requests</>}
-        actions={
+        actions={!readOnly &&
           <button onClick={openNew} className="px-3 py-2 text-sm text-white rounded-lg font-medium flex items-center gap-1.5 hover:opacity-90" style={{ background: "#1a3a5c" }}>
             <Icon name="plus" size={14} /> New Service Request
           </button>
@@ -205,7 +207,7 @@ export default function InstructionsPage() {
                   <td className="py-3 px-4 text-xs text-gray-500">{inv ? `${inv.invoice_number || `#${inv.id}`} (${inv.status})` : "—"}</td>
                   <td className="py-3 px-4">
                     <div className="flex gap-1">
-                      {!CLOSED.includes(i.status) && (<>
+                      {!readOnly && !CLOSED.includes(i.status) && (<>
                         <button onClick={() => openEdit(i)} className="p-1.5 rounded hover:bg-brand-50 text-gray-400 hover:text-brand-600">
                           <Icon name="edit" size={14} />
                         </button>

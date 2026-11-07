@@ -23,6 +23,9 @@ export const useAuthStore = create(
       // BRD §13 permission flags (from /auth/login and /auth/me). Admins have every flag; the
       // fallback covers sessions stored before permissions were added to the user payload.
       can: (flag) => get().user?.role === "admin" || (get().user?.permissions || []).includes(flag),
+      // Inquiry & Reports: sees everything, changes nothing (BRD §13). The server enforces it; screens
+      // use this to not offer actions that would be refused.
+      isReadOnly: () => get().user?.role !== "admin" && (get().user?.permissions || []).includes("read_only"),
       // The desk that assigns prospects to any RM (BRD §4A). Same rule as the server's
       // is_prospect_coordinator: holding prospect.assign doesn't make a client-facing user a coordinator.
       isProspectCoordinator: () => {

@@ -3,6 +3,7 @@ import { accountPartiesApi, countriesApi } from "../api/endpoints";
 import { Icon, Modal, Field, Input, Select, CountrySelect, Spinner, ErrorBanner, DateInput } from "./ui";
 import { COUNTRY_CALLING_CODES, fmtDate, isUAE } from "../utils/constants";
 import { toast } from "../store/toast";
+import { useAuthStore } from "../store/auth";
 import { reasonDialog } from "../store/confirm";
 import ClientDocumentsFolder from "./accounts/ClientDocumentsFolder";
 
@@ -42,6 +43,7 @@ export const partyLabel = (role) => role;
 // onChange runs after a party is added, changed or removed (e.g. to refresh the missing-fields list).
 // role shows that one kind of party only, without tabs (the onboarding form has a section per kind, BRD §5.1–5.3).
 export default function AccountPartyModal({ account, onClose, onChange, role }) {
+  const readOnly = useAuthStore((s) => s.isReadOnly());
   const ROLES = role ? [role] : account.account_type === "Individual" ? INDIVIDUAL_ROLES : CORPORATE_ROLES;
   const [tab, setTab] = useState(ROLES[0]);
   const [parties, setParties] = useState([]);
@@ -155,8 +157,8 @@ export default function AccountPartyModal({ account, onClose, onChange, role }) 
                           className={`px-2 py-1 text-[11px] rounded border ${docsFor === p.id ? "border-brand-300 text-brand-700 bg-white" : "border-gray-200 text-gray-600 hover:bg-white"}`}>
                           Documents
                         </button>
-                        <button onClick={() => startEdit(p)} className="p-1.5 rounded hover:bg-brand-50 text-gray-400 hover:text-brand-600"><Icon name="edit" size={14} /></button>
-                        <button onClick={() => remove(p)} title="Remove" className="p-1.5 rounded hover:bg-red-50 text-gray-400 hover:text-red-500"><Icon name="close" size={14} /></button>
+                        {!readOnly && <button onClick={() => startEdit(p)} className="p-1.5 rounded hover:bg-brand-50 text-gray-400 hover:text-brand-600"><Icon name="edit" size={14} /></button>}
+                        {!readOnly && <button onClick={() => remove(p)} title="Remove" className="p-1.5 rounded hover:bg-red-50 text-gray-400 hover:text-red-500"><Icon name="close" size={14} /></button>}
                       </div>
                     </div>
                     {docsFor === p.id && (
@@ -168,7 +170,7 @@ export default function AccountPartyModal({ account, onClose, onChange, role }) 
                   ))}
               </div>
               {/* Triam UAT 26-10-2026: once shareholding is 100%, no further shareholder can be added. */}
-              {tab === "Shareholder" && ownershipTotal >= 100 ? (
+              {readOnly ? null : tab === "Shareholder" && ownershipTotal >= 100 ? (
                 <p className="px-3 py-2 text-xs rounded-lg bg-gray-50 border border-gray-200 text-gray-600 text-center">
                   Shareholding is 100%. No further shareholder can be added; reduce an existing shareholder's share first.
                 </p>

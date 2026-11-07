@@ -6,6 +6,7 @@ import { reasonDialog } from "../../store/confirm";
 import { useMasters } from "../../hooks/useMasters";
 import { selectableCodes } from "../../hooks/masterUtils";
 import { fmtDate } from "../../utils/constants";
+import { useAuthStore } from "../../store/auth";
 import DocumentPreview from "./DocumentPreview";
 
 const fmtBytes = (b) =>
@@ -40,6 +41,7 @@ export default function ClientDocumentsFolder({ accountId, onChange, onboarding 
   const [previewing, setPreviewing] = useState(null);
   const fileRef = useRef(null);
   const cats = useMasters("document_category", []);
+  const readOnly = useAuthStore((s) => s.isReadOnly());
 
   const load = () => documentsApi.folder(accountId).then(setFolder).catch(() => setFolder(null));
   useEffect(() => { if (accountId) load(); }, [accountId]);
@@ -53,7 +55,7 @@ export default function ClientDocumentsFolder({ accountId, onChange, onboarding 
   const statusLocked = folder.profile_status === "Awaiting Approval" || folder.profile_status === "Exited";
   // Compliance files the CDD Form / AML Risk Assessment, also while the client is with Compliance.
   const complianceOnly = (code) => !!cats.items.find((i) => i.code === code)?.meta?.compliance_only;
-  const locked = statusLocked && !folder.compliance_can_file;
+  const locked = readOnly || (statusLocked && !folder.compliance_can_file);
   const sectionOf = (code) => cats.items.find((i) => i.code === code)?.meta?.section;
   // Categories for a person (Passport, EID, Visa, and those for either a client or a person) or for the
   // firm itself (everything except the person-only ones; an individual client files those too).
@@ -174,7 +176,7 @@ export default function ClientDocumentsFolder({ accountId, onChange, onboarding 
         )}
       </div>
       {!partyId && <p className="text-[11px] text-gray-500 -mt-1">
-        {locked ? "The client is locked; documents can't be changed right now."
+        {readOnly ? "View only." : locked ? "The client is locked; documents can't be changed right now."
           : statusLocked ? "The client is with Compliance, who can file the CDD Form and AML Risk Assessment." : stage.note}
       </p>}
 

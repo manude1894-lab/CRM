@@ -2,12 +2,14 @@ import React, { useEffect, useState } from "react";
 import { activitiesApi, accountsApi } from "../api/endpoints";
 import { Icon, Modal, Spinner, ErrorBanner, PageHeader } from "../components/ui";
 import { toast } from "../store/toast";
+import { useAuthStore } from "../store/auth";
 import { reasonDialog } from "../store/confirm";
 import ActivityForm, { ACTIVITY_TYPES, activityPayload, activityProblem, blankActivity } from "../components/activities/ActivityForm";
 import ActivityCard from "../components/activities/ActivityCard";
 
 /** Visit Reports and Call Reports across all the clients this user can see (BRD §15). */
 export default function ActivitiesPage() {
+  const readOnly = useAuthStore((s) => s.isReadOnly());
   const [activities, setActivities] = useState([]);
   const [accounts, setAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -64,7 +66,7 @@ export default function ActivitiesPage() {
     <div className="space-y-4">
       <PageHeader title="Call Reports / Contact Notes"
         subtitle={`${activities.length} report${activities.length === 1 ? "" : "s"}`}
-        actions={<>
+        actions={!readOnly && <>
 <div className="flex gap-2">
           <button onClick={() => openNew("Visit Report")} className="px-3 py-2 text-sm text-white rounded-lg font-medium flex items-center gap-1.5 hover:opacity-90" style={{ background: "#1a3a5c" }}>
             <Icon name="plus" size={14} /> Visit Report
@@ -93,8 +95,8 @@ export default function ActivitiesPage() {
       <div className="space-y-3">
         {filtered.length === 0 && <p className="text-sm text-gray-400 text-center py-8">No visit or call reports.</p>}
         {filtered.map((a) => (
-          <ActivityCard key={a.id} activity={a} onEdit={() => { setForm({ ...blankActivity(), ...a, account_id: a.account_id || "" }); setModal("edit"); }}
-            onCancel={a.status !== "Cancelled" ? () => cancelActivity(a) : undefined} />
+          <ActivityCard key={a.id} activity={a} onEdit={readOnly ? undefined : () => { setForm({ ...blankActivity(), ...a, account_id: a.account_id || "" }); setModal("edit"); }}
+            onCancel={!readOnly && a.status !== "Cancelled" ? () => cancelActivity(a) : undefined} />
         ))}
       </div>
 

@@ -72,7 +72,7 @@ def status_action(account_id: int, data: StatusActionRequest, db: Session = Depe
 
 @router.get("/approvals", response_model=list[ApprovalRead], summary="Compliance inbox (all request types)")
 def approvals_inbox(status: str = "Pending", request_type: Optional[str] = None, db: Session = Depends(get_db),
-                    user: User = Depends(require_any_permission("client.approve", "client.final_approve"))):
+                    user: User = Depends(require_any_permission("client.approve", "client.final_approve", "read_only"))):
     return [ApprovalRead.from_row(r) for r in wf.inbox(db, user, status, request_type)]
 
 

@@ -24,6 +24,7 @@ const money = (currency, amount) => `${currency || "AED"} ${Number(amount || 0).
  */
 export default function InvoicesPage() {
   const accountsTeam = useAuthStore((s) => s.can("invoice.manage"));
+  const readOnly = useAuthStore((s) => s.isReadOnly());
   const [invoices, setInvoices] = useState(null);
   const [error, setError] = useState(null);
   const [status, setStatus] = useState("");
@@ -63,7 +64,7 @@ export default function InvoicesPage() {
     <div className="space-y-4">
       <PageHeader title="Invoices"
         subtitle={<>{waiting} waiting for Accounts · {outstanding.length} raised and unpaid</>}
-        actions={<Button variant="primary" onClick={() => setRequesting(true)}><Icon name="plus" size={15} /> Request invoice</Button>} />
+        actions={!readOnly && <Button variant="primary" onClick={() => setRequesting(true)}><Icon name="plus" size={15} /> Request invoice</Button>} />
       <FilterBar>
         <SearchInput value={search} onChange={setSearch} placeholder="Search client, invoice no. or description…" />
         <div className="w-44">
@@ -103,16 +104,16 @@ export default function InvoicesPage() {
                       <button onClick={() => setFiles(i)} className="px-2 py-1 text-xs border border-gray-200 rounded-lg hover:bg-gray-50">
                         Files{i.attachment_count ? ` (${i.attachment_count})` : ""}
                       </button>
-                      {unsent(i) && (
+                      {!readOnly && unsent(i) && (
                         <button onClick={() => setRequesting(i)} className="px-2 py-1 text-xs text-white rounded-lg" style={{ background: "#1a3a5c" }}>Edit / Submit</button>
                       )}
-                      {accountsTeam && ["Requested", "Draft"].includes(i.status) && !unsent(i) && (
+                      {!readOnly && accountsTeam && ["Requested", "Draft"].includes(i.status) && !unsent(i) && (
                         <button onClick={() => setRaising(i)} className="px-2 py-1 text-xs text-white rounded-lg" style={{ background: "#1a3a5c" }}>Raise</button>
                       )}
-                      {accountsTeam && ["Raised", "Overdue"].includes(i.status) && (
+                      {!readOnly && accountsTeam && ["Raised", "Overdue"].includes(i.status) && (
                         <button onClick={() => markPaid(i)} className="px-2 py-1 text-xs border border-emerald-300 text-emerald-700 rounded-lg hover:bg-emerald-50">Mark paid</button>
                       )}
-                      {!["Paid", "Cancelled"].includes(i.status) && (accountsTeam || ["Requested", "Draft"].includes(i.status)) && (
+                      {!readOnly && !["Paid", "Cancelled"].includes(i.status) && (accountsTeam || ["Requested", "Draft"].includes(i.status)) && (
                         <button onClick={() => cancelInvoice(i)} title="Cancel invoice" className="p-1 rounded hover:bg-red-50 text-gray-400 hover:text-red-500"><Icon name="close" size={13} /></button>
                       )}
                     </div>
@@ -246,7 +247,8 @@ function FilesModal({ invoice, accountsTeam, onClose }) {
   const [busy, setBusy] = useState(false);
   const load = () => invoicesApi.attachments(invoice.id).then(setDocs).catch(() => setDocs([]));
   useEffect(() => { load(); }, [invoice.id]);
-  const canAddApproval = ["Requested", "Draft"].includes(invoice.status) || accountsTeam;
+  const readOnly = useAuthStore((s) => s.isReadOnly());
+  const canAddApproval = !readOnly && (["Requested", "Draft"].includes(invoice.status) || accountsTeam);
   const add = async (file, kind) => {
     if (!file) return;
     setBusy(true);

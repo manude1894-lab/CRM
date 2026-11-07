@@ -113,7 +113,8 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
   const approvedClient = ["Approved", "Active", "Inactive", "Marked for Exit"].includes(form.profile_status);
   const myDraft = amendment?.request?.status === "Draft" && amendment.actions.includes("submit");
   const amendLocked = !!form._id && approvedClient && !myDraft;
-  const locked = ["Awaiting Approval", "Exited"].includes(form.profile_status) || amendLocked;
+  const readOnlyUser = useAuthStore((s) => s.isReadOnly());
+  const locked = readOnlyUser || ["Awaiting Approval", "Exited"].includes(form.profile_status) || amendLocked;
   // BRD §7/§11: only Compliance completes the CDD section — before submission, while the
   // client is with Compliance, or in an amendment of an approved client.
   const canCdd = useAuthStore((st) => st.can("client.cdd_edit"));
@@ -394,12 +395,12 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
         </fieldset>
 
         <div className="flex items-center gap-2 mb-3 pb-3 border-b border-gray-100">
-          <button type="button" onClick={() => saveSection("core", true)} disabled={locked || sectionStatus.core === "saving" || !sectionDirty("core")}
+          {!locked && <button type="button" onClick={() => saveSection("core", true)} disabled={sectionStatus.core === "saving" || !sectionDirty("core")}
             title={sectionDirty("core") ? "" : "No changes to save"}
-            className={`px-3 py-1.5 text-xs rounded-lg border disabled:cursor-not-allowed ${!locked && sectionDirty("core")
+            className={`px-3 py-1.5 text-xs rounded-lg border disabled:cursor-not-allowed ${sectionDirty("core")
               ? "border-brand-600 bg-brand-600 text-white hover:bg-brand-700" : "border-gray-200 text-gray-400 bg-white"}`}>
             {sectionStatus.core === "saving" ? "Saving…" : "Save Client Info"}
-          </button>
+          </button>}
           {sectionStatus.core === "saved" && <span className="text-xs text-emerald-600">Saved</span>}
           {sectionStatus.core === "error" && <span className="text-xs text-red-600">{sectionError.core || "Save failed"}</span>}
           {!form._id && <span className="text-xs text-gray-400">Save this first to unlock the sections below</span>}
@@ -660,12 +661,12 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
       </div>
       {/* Always in view while scrolling the long form. */}
       <div className="sticky bottom-0 z-10 flex justify-end gap-3 mt-5 -mx-1 px-1 py-3 bg-white/95 backdrop-blur border-t border-gray-100">
-        <button onClick={cancel} className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
-        <button onClick={save} disabled={saving || locked || (mode === "edit" && !anyDirty)}
+        <button onClick={cancel} className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">{readOnlyUser ? "Close" : "Cancel"}</button>
+        {!readOnlyUser && <button onClick={save} disabled={saving || locked || (mode === "edit" && !anyDirty)}
           title={myDraft ? "Saves into your draft amendment" : "Saves the client as a draft; nothing goes to Compliance yet"}
           className="px-4 py-2 text-sm border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 disabled:opacity-50">
           {saving ? "Saving..." : "Save"}
-        </button>
+        </button>}
         {canSubmit && (
           <button onClick={submit} disabled={saving}
             title="Saves, then sends to Compliance for approval"

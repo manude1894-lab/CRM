@@ -365,8 +365,9 @@ def inbox(db: Session, user: User, status: str = ApprovalStatus.PENDING.value,
 
 
 def _in_my_queue(r: ApprovalRequest, user: User, status: str) -> bool:
-    """Compliance sees everything; an Approver sees new clients at (or past) the Approver step."""
-    if has_permission(user, "client.approve"):
+    """Compliance and Inquiry see everything (Inquiry to look only, Triam UAT 05-11-2026); an Approver
+    sees new clients at (or past) the Approver step."""
+    if has_permission(user, "client.approve") or has_permission(user, "read_only"):
         return True
     if not has_permission(user, "client.final_approve") or r.request_type != "client_profile":
         return False

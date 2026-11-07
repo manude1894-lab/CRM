@@ -58,6 +58,7 @@ export default function AccountsPage({ scope = "onboarding", initialAccountId, i
   const isAdmin = useAuthStore((s) => s.isAdmin());
   const me = useAuthStore((s) => s.user);
   const canAssign = useAuthStore((s) => s.isProspectCoordinator());
+  const readOnly = useAuthStore((s) => s.isReadOnly());
   const [prospects, setProspects] = useState([]);
   const [shownProspect, setShownProspect] = useState(null);
 
@@ -189,7 +190,7 @@ export default function AccountsPage({ scope = "onboarding", initialAccountId, i
               <Button onClick={() => fileInputRef.current?.click()} disabled={importing}>{importing ? "Reading…" : "Import CSV"}</Button>
             </>
           )}
-          {scope === "onboarding" && <Button variant="primary" onClick={() => onNavigate?.({ page: "prospects" })}>Go to Prospects</Button>}
+          {scope === "onboarding" && !readOnly && <Button variant="primary" onClick={() => onNavigate?.({ page: "prospects" })}>Go to Prospects</Button>}
         </>}
       />
 
@@ -261,9 +262,9 @@ export default function AccountsPage({ scope = "onboarding", initialAccountId, i
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50 text-xs text-gray-500">
-                <th className="py-2.5 px-3 w-8">
+                {!readOnly && <th className="py-2.5 px-3 w-8">
                   <input type="checkbox" checked={ids.every((id) => selectedIds.has(id))} onChange={() => toggleSelectAll(ids)} />
-                </th>
+                </th>}
                 {(scope === "maintenance" ? ["Client ID", "Client", "Status", "Risk", "Anchor RM", "PEP", "Next AML review"]
                   : ["Client ID", "Client", "Status", "Anchor RM", "PEP"]).map((h) => (
                   <th key={h} className="py-2.5 px-3 font-semibold text-left">{h}</th>
@@ -273,9 +274,9 @@ export default function AccountsPage({ scope = "onboarding", initialAccountId, i
             <tbody>
               {filtered.map((a) => (
                 <tr key={a.id} onClick={() => openClient(a)} className="border-b border-gray-50 hover:bg-gray-50 cursor-pointer">
-                  <td className="py-2.5 px-3" onClick={(e) => e.stopPropagation()}>
+                  {!readOnly && <td className="py-2.5 px-3" onClick={(e) => e.stopPropagation()}>
                     <input type="checkbox" checked={selectedIds.has(a.id)} onChange={() => toggleSelected(a.id)} />
-                  </td>
+                  </td>}
                   <td className="py-2.5 px-3 font-mono text-xs text-gray-600">{a.client_id || <span className="text-gray-400" title="Temporary ID until Compliance approves">{a.temp_id || a.account_uid}</span>}</td>
                   <td className="py-2.5 px-3">
                     <div className="font-medium text-gray-800">{a.company_name}</div>
@@ -320,7 +321,7 @@ export default function AccountsPage({ scope = "onboarding", initialAccountId, i
           </dl>
           <div className="flex justify-end gap-3">
             <Button onClick={() => setShownProspect(null)}>Close</Button>
-            {(shownProspect.owner_id === me?.id || isAdmin || canAssign) && (
+            {!readOnly && (shownProspect.owner_id === me?.id || isAdmin || canAssign) && (
               <Button variant="primary" onClick={() => createFrom(shownProspect)}>Create client</Button>
             )}
           </div>
