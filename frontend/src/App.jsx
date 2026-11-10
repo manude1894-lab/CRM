@@ -62,6 +62,19 @@ export default function App() {
     return value;
   });
   const [profileMenu, setProfileMenu] = useState(false);
+  // Ctrl+B (Cmd+B on a Mac) folds or unfolds the sidebar, as in most modern tools.
+  useEffect(() => {
+    if (isPhone) return undefined;
+    const onKey = (e) => {
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === "b"
+          && !/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName || "") && !document.activeElement?.isContentEditable) {
+        e.preventDefault();
+        setSidebarOpen((o) => !o);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [isPhone]); // eslint-disable-line react-hooks/exhaustive-deps
   const [touchX, setTouchX] = useState(null);
   useEffect(() => {
     if (!profileMenu) return undefined;
@@ -102,21 +115,26 @@ export default function App() {
         // On a phone, swiping the menu to the left closes it.
         onTouchStart={isPhone ? (e) => setTouchX(e.touches[0].clientX) : undefined}
         onTouchEnd={isPhone ? (e) => { if (touchX !== null && e.changedTouches[0].clientX - touchX < -60) setSidebarOpen(false); setTouchX(null); } : undefined}
-        className={`flex-shrink-0 flex flex-col border-r border-gray-100 bg-white transition-all duration-200 ${
+        className={`relative flex-shrink-0 flex flex-col border-r border-gray-100 bg-white transition-all duration-200 ${
         isPhone ? `fixed inset-y-0 left-0 z-40 w-64 shadow-xl ${sidebarOpen ? "" : "hidden"}` : sidebarOpen ? "w-60" : "w-16"}`}>
-        {/* Brand: cropped wordmark when open, gold trident mark when collapsed; the toggle sits beside it. */}
-        <div className={`flex items-center h-20 border-b border-gray-100 ${sidebarOpen ? "px-5 justify-between" : "flex-col justify-center gap-1 px-2"}`}>
+        {/* Brand: cropped wordmark when open, gold trident mark when collapsed. */}
+        <div className={`flex items-center h-20 border-b border-gray-100 ${sidebarOpen ? "px-5" : "justify-center px-2"}`}>
           {sidebarOpen ? (
             <img src="/triam-wordmark.png" alt="TRIAM" className="h-11 w-auto" />
           ) : (
-            <img src="/triam-trident.png" alt="TRIAM" className="h-9 w-auto" />
+            <img src="/triam-trident.png" alt="TRIAM" className="h-10 w-auto" />
           )}
-          <button onClick={() => setSidebarOpen((o) => !o)} title={sidebarOpen ? "Collapse menu" : "Expand menu"}
-            aria-label={sidebarOpen ? "Collapse menu" : "Expand menu"}
-            className="p-1 rounded-md text-gray-400 hover:text-gray-700 hover:bg-gray-100">
-            <Icon name={sidebarOpen ? "panelClose" : "panelOpen"} size={sidebarOpen ? 20 : 16} />
-          </button>
         </div>
+        {/* Collapse handle on the sidebar's edge (Ctrl+B also toggles); on a phone the menu closes by swipe or backdrop. */}
+        {!isPhone && (
+          <button onClick={() => setSidebarOpen((o) => !o)} title={`${sidebarOpen ? "Collapse" : "Expand"} menu (Ctrl+B)`}
+            aria-label={sidebarOpen ? "Collapse menu" : "Expand menu"}
+            className="absolute -right-3 top-[68px] z-30 w-6 h-6 rounded-full bg-white border border-gray-200 shadow-sm flex items-center justify-center text-gray-400 hover:text-white hover:bg-[#1a3a5c] hover:border-[#1a3a5c] transition-colors">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round">
+              <path d={sidebarOpen ? "M15 18l-6-6 6-6" : "M9 18l6-6-6-6"} />
+            </svg>
+          </button>
+        )}
 
         <nav className="flex-1 py-2 space-y-0.5 overflow-y-auto px-2">
           {navItems.map((item, i) => (
@@ -155,7 +173,10 @@ export default function App() {
           {isPhone ? (
             <button onClick={() => setSidebarOpen(true)} title="Open menu" aria-label="Open menu"
               className="p-1 rounded-md text-gray-400 hover:text-gray-700 hover:bg-gray-100">
-              <Icon name="panelOpen" size={22} />
+              {/* Fine-line "side panel" icon */}
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="4" width="18" height="16" rx="2.5" /><path d="M9 4v16" />
+              </svg>
             </button>
           ) : <span />}
           <div className="flex items-center gap-2 md:gap-3 min-w-0">
