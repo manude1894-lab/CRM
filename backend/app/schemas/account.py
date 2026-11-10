@@ -135,7 +135,7 @@ class AccountImportRow(BaseModel):
     engagement_letter_valid_until: Optional[date] = None
 
     aml_classification: Optional[str] = None
-    edd_reason: Optional[str] = Field(None, max_length=25)
+    edd_reason: Optional[str] = Field(None, max_length=250)
     cdd_completion_date: Optional[date] = None
 
     date_of_birth: Optional[date] = None
@@ -248,7 +248,7 @@ class AccountBase(_ClientFieldRules):
     engagement_letter_valid_until: Optional[date] = None
 
     aml_classification: Optional[str] = None
-    edd_reason: Optional[str] = Field(None, max_length=25)
+    edd_reason: Optional[str] = Field(None, max_length=250)
     cdd_completion_date: Optional[date] = None
 
     is_pep: Optional[bool] = None  # direct-editable only for Individual accounts (no parties to roll up from)
@@ -339,7 +339,7 @@ class AccountUpdate(_ClientFieldRules):
     engagement_letter_valid_until: Optional[date] = None
 
     aml_classification: Optional[str] = None
-    edd_reason: Optional[str] = Field(None, max_length=25)
+    edd_reason: Optional[str] = Field(None, max_length=250)
     cdd_completion_date: Optional[date] = None
 
     is_pep: Optional[bool] = None

@@ -11,7 +11,7 @@ UAE = "United Arab Emirates"
 
 
 def person(role, name="P Person", **kw):
-    base = dict(party_role=role, full_name=name, constitution="Individual", country_of_residence=UAE, nationality=UAE,
+    base = dict(party_role=role, full_name=name, constitution="Individual", residential_address={"line1": "1 Main Street", "city": "Dubai"}, country_of_incorp_or_birth="India", country_of_residence=UAE, nationality=UAE,
                 mobile_country_code="+971", mobile_number="501234567", email="p@example.com")
     return AccountPartyCreate(**{**base, **kw})
 
@@ -31,10 +31,15 @@ def gaps(acc):
     return [m["label"] for m in account_service.missing_mandatory(acc) if m["field"] == "parties"]
 
 
-def test_a_foundation_needs_a_founder_not_100_percent(db, foundation):
+def test_a_foundation_needs_a_founder_and_two_council_members_not_100_percent(db, foundation):
+    """Triam UAT 10-11-2026: at least two Council Members, checked at Submit (they're entered one at a time)."""
     acc, rm = foundation
-    assert gaps(acc) == ["At least one Founder"]
+    assert gaps(acc) == ["At least one Founder", "At least 2 Council Members (currently 0)"]
     parties.create_party(db, acc.id, person("Founder"), rm)
+    parties.create_party(db, acc.id, person("Council Member", full_name="Council One"), rm)
+    db.refresh(acc)
+    assert gaps(acc) == ["At least 2 Council Members (currently 1)"]
+    parties.create_party(db, acc.id, person("Council Member", full_name="Council Two"), rm)
     db.refresh(acc)
     assert gaps(acc) == []
 

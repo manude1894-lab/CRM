@@ -220,7 +220,9 @@ def _simulate(db: Session, acc: Account, payload: dict, user: User, check_mandat
     try:
         temp = _replay(db, acc, payload, user)
         after = _state(acc, temp)
-        missing = [m for m in account_service.missing_mandatory(acc) if (m["field"], m["label"]) not in existing_gaps] if check_mandatory else []
+        # A person added in an amendment has no record to file a document on until it is approved.
+        missing = [m for m in account_service.missing_mandatory(acc) if (m["field"], m["label"]) not in existing_gaps
+                   and m["field"] != "party_documents"] if check_mandatory else []
     finally:
         db.rollback()
     return before, after, missing

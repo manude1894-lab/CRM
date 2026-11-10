@@ -253,6 +253,16 @@ def _client_document_stage(db: Session, account) -> str:
     return SUBMITTED if submitted or account.profile_status == wf.AWAITING else DRAFT
 
 
+def _compliance_review_open(db: Session, doc: Document, account, user: User) -> bool:
+    """Compliance files the CDD Form / AML Risk Assessment during its review, so it can also take back
+    one filed by mistake then, to upload the right one (Triam UAT 11-11-2026). Removal is kept on record."""
+    from app.auth.permissions import has_permission
+    from app.services import client_workflow_service as wf
+    return (bool(_category_meta(db, doc.category).get("compliance_only")) and has_permission(user, "client.cdd_edit")
+            and account.profile_status == wf.AWAITING
+            and wf.stage_of(wf.pending_request(db, account.id)) == wf.STAGE_COMPLIANCE)
+
+
 def client_document_removal(db: Session, doc: Document, account, user: User) -> tuple[bool, str, Optional[str]]:
     """(may this user remove it, document stage, why not). BRD §14:
     - Draft: the uploader (or an Admin) may remove a document;
@@ -261,6 +271,8 @@ def client_document_removal(db: Session, doc: Document, account, user: User) -> 
     from app.auth.permissions import has_permission
     from app.services import client_workflow_service as wf
     stage = _client_document_stage(db, account)
+    if _compliance_review_open(db, doc, account, user):
+        return True, stage, None
     if stage == LOCKED:
         return False, stage, "The client is approved, so its documents can no longer be removed. Upload a newer version instead."
     if account.profile_status == wf.AWAITING:
@@ -277,7 +289,8 @@ def client_document_removal(db: Session, doc: Document, account, user: User) -> 
 def _assert_client_document_removable(db: Session, doc: Document, user: User) -> None:
     account = _account_for_read(db, doc.account_id, user)
     from app.services import client_workflow_service as wf
-    wf.assert_editable(account)
+    if not _compliance_review_open(db, doc, account, user):
+        wf.assert_editable(account)
     allowed, stage, reason = client_document_removal(db, doc, account, user)
     if not allowed:
         raise HTTPException(status_code=409 if stage == LOCKED else 403, detail=reason)
@@ -312,7 +325,7 @@ def client_folder(db: Session, account_id: int, user: User) -> dict:
         "max_upload_mb": settings.MAX_UPLOAD_MB, "documents": client_docs,
         "removed": _removed_history(db, account.id, names),
         "compliance_can_file": _compliance_can_file(db, account, user),
-        "parties": [{"id": pid, "name": name} for pid, name in parties.items()],
+        "parties": [{"id": p.id, "name": parties[p.id], "constitution": p.constitution} for p in account.parties],
     }
 
 

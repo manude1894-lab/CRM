@@ -521,12 +521,34 @@ def is_offshore(account) -> bool:
     return any(word in (v or "").lower() for v in values for word in ("offshore", "bvi"))
 
 
+def _onboarding_documents(account):
+    """Invoice and service request files aren't onboarding documents."""
+    return [d for d in account.documents if d.removed_at is None and d.invoice_id is None and d.instruction_id is None]
+
+
 def has_supporting_document(account) -> bool:
-    return any(d.removed_at is None and d.invoice_id is None and d.instruction_id is None for d in account.documents)
+    """A document filed for the client itself (the firm, or the individual client), not for one of its people."""
+    return any(d.party_id is None for d in _onboarding_documents(account))
+
+
+def person_key(party):
+    """One person in several roles (UBO and Director, say) is matched by name and date of birth, as on the form."""
+    return ((party.full_name or "").strip().lower(), party.dob_or_incorp_date)
+
+
+def people_without_documents(account) -> list[list]:
+    """Triam UAT 09/10-11-2026: each individual / non-individual needs a document of their own. Returns the
+    people with none, each as the list of their records. A document on any of a person's records covers all of them."""
+    with_docs = {d.party_id for d in _onboarding_documents(account) if d.party_id is not None}
+    people: dict = {}
+    for p in account.parties:
+        people.setdefault(person_key(p), []).append(p)
+    return [records for records in people.values() if not any(r.id in with_docs for r in records)]
 
 
 FOUNDATION_SERVICE = "Set up Foundations"
 FOUNDATION_ROLES = ("Founder", "Council Member", "Beneficiary", "Guardian")
+MIN_COUNCIL_MEMBERS = 2
 
 
 def is_foundation(account) -> bool:
@@ -619,6 +641,11 @@ def missing_mandatory(account: Account) -> list[dict]:
             # No shares in a foundation, so no 100% rule; it needs its Founder.
             if not any(p.party_role == "Founder" for p in account.parties):
                 missing.append({"section": "Founders", "field": "parties", "label": "At least one Founder"})
+            # Triam UAT 10-11-2026: at least two Council Members.
+            council = sum(1 for p in account.parties if p.party_role == "Council Member")
+            if council < MIN_COUNCIL_MEMBERS:
+                missing.append({"section": "Council Members", "field": "parties",
+                                "label": f"At least {MIN_COUNCIL_MEMBERS} Council Members (currently {council})"})
         elif not shareholders:
             missing.append({"section": PARTIES_SECTION, "field": "parties", "label": "At least one Shareholder / UBO"})
         else:
@@ -636,14 +663,24 @@ def missing_mandatory(account: Account) -> list[dict]:
         need(BIZ_RATIONALE_SECTION, field, label)
 
     for p in account.parties:
+        # Triam UAT 09-11-2026: a person's address needs Line 1 and City too (the country is Country of Residence).
+        addr = p.residential_address or {}
+        if not all((addr.get(f) or "").strip() for f in ("line1", "city")):
+            missing.append({"section": PARTIES_SECTION, "field": "parties",
+                            "label": f"Residential Address of {p.full_name} ({p.party_role}): line 1 and city"})
         if p.constitution != "Entity" and passport_too_old(p.id_or_license_expiry):
             missing.append({"section": PARTIES_SECTION, "field": "parties",
                             "label": f"The passport of {p.full_name} expired more than {PASSPORT_GRACE_DAYS} days ago"})
 
-    # Triam UAT 04-11-2026, for individual and non-individual clients alike. A person's document counts.
-    # Invoice and service request files aren't onboarding documents.
+    # Triam UAT 04-11-2026, for individual and non-individual clients alike: a document for the client itself.
     if not has_supporting_document(account):
         missing.append({"section": "Documents", "field": "documents", "label": "At least one supporting document"})
+    # Triam UAT 09/10-11-2026: and one for each person or entity on the client (UBO, Director, Signatory,
+    # Joint Holder, Founder, ...). One person in several roles needs one document.
+    for records in people_without_documents(account):
+        roles = ", ".join(dict.fromkeys(r.party_role for r in records))
+        missing.append({"section": "Documents", "field": "party_documents",
+                        "label": f"A document for {records[0].full_name} ({roles})"})
 
     # §9 engagement — a Yes / No answer, then the validity date when signed
     need("Profile Status & Engagement", "engagement_letter_signed", "Engagement Letter Signed (Yes / No)")

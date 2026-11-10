@@ -91,7 +91,7 @@ def test_staged_party_changes_are_validated_and_not_live(db, people):
     account_party_service.update_party(db, jane.id, AccountPartyUpdate(effective_ownership_percent=Decimal("50")), maker)
     with pytest.raises(HTTPException) as e:  # 50 + 60 > 100 is refused while staging, as on a direct save
         account_party_service.create_party(db, acc.id, AccountPartyCreate(
-            party_role="Shareholder", country_of_residence="United Arab Emirates", nationality="United Arab Emirates", full_name="Omar New", mobile_country_code="+971", mobile_number="509999999",
+            party_role="Shareholder", residential_address={"line1": "1 Main Street", "city": "Dubai"}, country_of_incorp_or_birth="India", country_of_residence="United Arab Emirates", nationality="United Arab Emirates", full_name="Omar New", mobile_country_code="+971", mobile_number="509999999",
             email="omar@example.com", effective_ownership_percent=Decimal("60")), maker)
     assert "can't exceed 100%" in e.value.detail
     db.expire_all()
@@ -105,7 +105,7 @@ def test_party_amendment_end_to_end(db, people):
     amend.start(db, acc, maker)
     account_party_service.update_party(db, jane_id, AccountPartyUpdate(effective_ownership_percent=Decimal("50")), maker)
     omar = account_party_service.create_party(db, acc.id, AccountPartyCreate(
-        party_role="Shareholder", country_of_residence="United Arab Emirates", nationality="United Arab Emirates", full_name="Omar New", mobile_country_code="+971", mobile_number="509999999",
+        party_role="Shareholder", residential_address={"line1": "1 Main Street", "city": "Dubai"}, country_of_incorp_or_birth="India", country_of_residence="United Arab Emirates", nationality="United Arab Emirates", full_name="Omar New", mobile_country_code="+971", mobile_number="509999999",
         email="omar@example.com", effective_ownership_percent=Decimal("50")), maker)
     account_party_service.update_party(db, omar["id"], AccountPartyUpdate(full_name="Omar Haddad"), maker, account_id=acc.id)
     listed = account_party_service.list_parties_for(db, acc.id, maker)
@@ -225,6 +225,8 @@ def test_client_folder_shows_stage_and_who_can_remove(db, people, seed_master, m
     assert f["stage"] == "Draft" and f["client_id"] is None and f["temp_id"] == acc.temp_id and d["can_delete"] is True
     assert d["uploaded_by_name"] == "Rita RM"
 
+    flow.add_document(db, acc, maker, party_id=acc.parties[0].id)  # Jane Owner's own document
+    db.refresh(acc)
     flow.submit(db, acc, maker)
     f = document_service.client_folder(db, acc.id, checker)
     assert f["stage"] == "Submitted" and f["documents"][0]["can_delete"] is False  # locked while under review

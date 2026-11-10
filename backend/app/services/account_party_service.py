@@ -23,10 +23,21 @@ def _get_account_for_write(db: Session, account_id: int, user: User) -> Account:
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 
+# Triam UAT 10-11-2026: UBOs and Directors need a contact number and Country of Birth, like the Signatory.
+CONTACT_REQUIRED = ("Shareholder", "Director", "Authorised Signatory", "Joint Holder", *account_service.FOUNDATION_ROLES)
+
+
+def needs_country_of_birth(p) -> bool:
+    """The Signatory always; an individual Shareholder / UBO or Director too (an entity has no birth country)."""
+    return p.party_role == "Authorised Signatory" or (p.party_role in ("Shareholder", "Director") and p.constitution != "Entity")
+
+
 def _validate_party(account: Account, p: AccountParty) -> None:
     """BRD §6–8 rules for one party record, checked on every save (a party is saved as a whole).
 
-    - Shareholders: contact mobile (country code + number) and email are mandatory (BRD §6).
+    - Shareholders, Directors, Signatories, Joint Holders and foundation roles: contact mobile (country code +
+      number) and email are mandatory (BRD §6; Directors since Triam UAT 10-11-2026).
+    - Country of Birth: the Signatory, and individual Shareholders and Directors (Triam UAT 10-11-2026).
     - Any email given must be a valid address.
     - Effective ownership: 0–100 with at most 2 decimals, and the individual shareholders' total may
       not exceed 100% ("add Shareholders/UBOs until total ownership reaches 100%").
@@ -44,8 +55,8 @@ def _validate_party(account: Account, p: AccountParty) -> None:
         raise HTTPException(status_code=400, detail="Joint Holders apply to Individual clients only")
     if p.party_role in account_service.FOUNDATION_ROLES and not account_service.is_foundation(account):
         raise HTTPException(status_code=400, detail=f"A {p.party_role} applies only when Set up Foundations is selected")
-    if p.party_role in ("Shareholder", "Authorised Signatory", "Joint Holder", *account_service.FOUNDATION_ROLES):
-        # BRD §5.3 / §6: signatories and joint holders need mobile and email too.
+    if p.party_role in CONTACT_REQUIRED:
+        # BRD §5.3 / §6: signatories and joint holders need mobile and email too; Directors as well (Triam UAT 10-11-2026).
         missing = [label for label, value in (
             ("Contact Mobile country code", p.mobile_country_code),
             ("Contact Mobile number", p.mobile_number),
@@ -70,7 +81,7 @@ def _validate_party(account: Account, p: AccountParty) -> None:
     required = [("Country of Residence", p.country_of_residence)]
     if p.constitution != "Entity":
         required.append(("Nationality", p.nationality))
-    if p.party_role == "Authorised Signatory":
+    if needs_country_of_birth(p):
         required.append(("Country of Birth", p.country_of_incorp_or_birth))
     missing = [label for label, value in required if not (value or "").strip()]
     if missing:

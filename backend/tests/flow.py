@@ -50,11 +50,15 @@ def complete_client(db, maker, with_document=True):
         br_rationale="Fintech start-up needing accounting; company secretarial likely within two years.",
     ), maker)
     account_party_service.create_party(db, acc.id, AccountPartyCreate(
-        party_role="Shareholder", country_of_residence="United Arab Emirates", nationality="United Arab Emirates", full_name="Jane Owner", mobile_country_code="+971", mobile_number="501234567",
+        party_role="Shareholder", country_of_residence="United Arab Emirates", nationality="United Arab Emirates", full_name="Jane Owner", mobile_country_code="+971", mobile_number="501234567", country_of_incorp_or_birth="India",
+        residential_address={"line1": "Villa 12, Street 4", "city": "Dubai"},
         email="jane@example.com", effective_ownership_percent=Decimal("100"),
     ), maker)
     if with_document:
         add_document(db, acc, maker)
+        db.refresh(acc)
+        for party in acc.parties:
+            add_document(db, acc, maker, filename="passport.pdf", party_id=party.id)
     db.refresh(acc)
     assert with_document is False or account_service.missing_mandatory(acc) == []
     return acc
@@ -62,7 +66,8 @@ def complete_client(db, maker, with_document=True):
 
 def add_document(db, acc, user, **fields):
     """A supporting document filed on the client: at least one is needed to submit (UAT-02)."""
-    doc = Document(account_id=acc.id, category="Other", filename="licence.pdf", content_type="application/pdf",
+    fields = {"filename": "licence.pdf", **fields}
+    doc = Document(account_id=acc.id, category="Other", content_type="application/pdf",
                    size_bytes=8, content=b"%PDF-1.4", uploaded_by_id=user.id, **fields)
     db.add(doc)
     db.commit()

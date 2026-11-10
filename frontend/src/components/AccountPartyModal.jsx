@@ -96,6 +96,10 @@ export default function AccountPartyModal({ account, onClose, onChange, role }) 
 
   const save = async () => {
     if (!form.full_name?.trim()) return toast.error("Full Name is required");
+    // Triam UAT 09-11-2026: the address needs Line 1 and City, as on the client (the country is Country of Residence).
+    const addr = form.residential_address || {};
+    if (form.country_of_residence && !(addr.line1?.trim() && addr.city?.trim()))
+      return toast.error("Residential Address: Address Line 1 and City are required");
     try {
       const payload = cleanPayload(form);
       if (editing === "new") await accountPartiesApi.create(account.id, payload);
@@ -251,8 +255,10 @@ function PartyForm({ form, setForm, countries, onCancel, onSave, copyFrom = [] }
   const isShareholder = form.party_role === "Shareholder";
   const isDirector = form.party_role === "Director";
   // BRD §5.3 / §6: signatories and joint holders need mobile and email too.
-  const contactRequired = ["Shareholder", "Authorised Signatory", "Joint Holder", ...FOUNDATION_ROLES].includes(form.party_role);
+  // Keep in step with CONTACT_REQUIRED / needs_country_of_birth in account_party_service.py (Triam UAT 10-11-2026).
+  const contactRequired = ["Shareholder", "Director", "Authorised Signatory", "Joint Holder", ...FOUNDATION_ROLES].includes(form.party_role);
   const isEntity = form.constitution === "Entity";
+  const birthRequired = form.party_role === "Authorised Signatory" || (["Shareholder", "Director"].includes(form.party_role) && !isEntity);
   const isUAEResident = isUAE(form.country_of_residence);
 
   // Triam UAT 04-11-2026: a director who is also a UBO needs their details entered only once.
@@ -292,7 +298,7 @@ function PartyForm({ form, setForm, countries, onCancel, onSave, copyFrom = [] }
           {!isEntity && <PassportNote value={form.id_or_license_expiry} />}
         </Field>
       </div>
-      <Field label={isEntity ? "Country of Incorporation" : "Country of Birth"} required={form.party_role === "Authorised Signatory"}>
+      <Field label={isEntity ? "Country of Incorporation" : "Country of Birth"} required={birthRequired}>
         <CountrySelect value={form.country_of_incorp_or_birth} onChange={set(setForm, "country_of_incorp_or_birth")} countries={countries} />
       </Field>
 
@@ -336,10 +342,10 @@ function PartyForm({ form, setForm, countries, onCancel, onSave, copyFrom = [] }
         <>
           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mt-3 mb-1">Residential Address</p>
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Address Line 1"><Input value={form.residential_address?.line1 || ""} onChange={setAddr(setForm, "line1")} /></Field>
+            <Field label="Address Line 1" required><Input value={form.residential_address?.line1 || ""} onChange={setAddr(setForm, "line1")} /></Field>
             <Field label="Address Line 2"><Input value={form.residential_address?.line2 || ""} onChange={setAddr(setForm, "line2")} /></Field>
             <Field label="Landmark"><Input value={form.residential_address?.landmark || ""} onChange={setAddr(setForm, "landmark")} /></Field>
-            <Field label="City"><Input value={form.residential_address?.city || ""} onChange={setAddr(setForm, "city")} /></Field>
+            <Field label="City" required><Input value={form.residential_address?.city || ""} onChange={setAddr(setForm, "city")} /></Field>
             <Field label="ZIP Code"><Input value={form.residential_address?.zip || ""} onChange={setAddr(setForm, "zip")} /></Field>
             <Field label="P.O. Box No."><Input value={form.residential_address?.po_box || ""} onChange={setAddr(setForm, "po_box")} /></Field>
           </div>

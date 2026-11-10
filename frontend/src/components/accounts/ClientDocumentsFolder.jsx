@@ -63,7 +63,9 @@ export default function ClientDocumentsFolder({ accountId, onChange, onboarding 
   const forEither = (code) => /Corporate & Individual/.test(sectionOf(code) || "");
   // A category without a section (one an Admin added, Triam UAT 06-11-2026) can be used anywhere.
   const anywhere = (code) => !sectionOf(code);
-  const categoryInScope = (code) => (partyId ? (personOnly(code) || forEither(code) || anywhere(code)) && !complianceOnly(code)
+  // Triam UAT 07/10-11-2026: an entity shareholder (C Ltd) files company documents: incorporation, licence, MoA ...
+  const entityParty = !!partyId && (folder?.parties || []).find((p) => p.id === partyId)?.constitution === "Entity";
+  const categoryInScope = (code) => (partyId ? (entityParty ? !personOnly(code) : personOnly(code) || forEither(code) || anywhere(code)) && !complianceOnly(code)
     : scope === "client" ? individual || !personOnly(code) : true);
   const categoryOptions = selectableCodes(cats.items, category)
     .filter(categoryInScope)
