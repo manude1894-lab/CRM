@@ -25,10 +25,12 @@ def my_work(db: Session, user: User) -> list[dict]:
     pending = db.query(ApprovalRequest).filter(ApprovalRequest.status == ApprovalStatus.PENDING.value).all()
     if has_permission(user, "client.approve"):
         # Not their own submissions, under this or another of their logins.
+        # Triam UAT 10-11-2026: a Final Approver doesn't give the Compliance approval, so isn't shown those.
         new_clients = [r for r in pending if r.request_type == "client_profile" and wf.stage_of(r) == wf.STAGE_COMPLIANCE
                        and not access_control.same_person(r.maker, user)]
         others = [r for r in pending if r.request_type != "client_profile" and not access_control.same_person(r.maker, user)]
-        add("compliance_new", "New clients waiting for Compliance", len(new_clients), "approvals", "Complete the CDD section, then approve or reject")
+        if wf.gives_compliance_approval(user):
+            add("compliance_new", "New clients waiting for Compliance", len(new_clients), "approvals", "Complete the CDD section, then approve or reject")
         add("compliance_changes", "Client amendments waiting for Compliance", len(others), "approvals")
     if has_permission(user, "client.final_approve"):
         final = [r for r in pending if r.request_type == "client_profile" and wf.stage_of(r) == wf.STAGE_APPROVER
