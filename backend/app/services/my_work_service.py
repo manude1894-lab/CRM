@@ -35,7 +35,7 @@ def my_work(db: Session, user: User) -> list[dict]:
     if has_permission(user, "client.final_approve"):
         final = [r for r in pending if r.request_type == "client_profile" and wf.stage_of(r) == wf.STAGE_APPROVER
                  and not access_control.same_person(r.maker, user)]
-        add("approver", "New clients waiting for your final approval", len(final), "approvals")
+        add("approver", "New clients waiting for final approval", len(final), "approvals")
     if has_permission(user, "invoice.manage"):
         add("invoice_requests", "Invoice instructions to raise", db.query(Invoice).filter(Invoice.status.in_(("Requested", "Draft")), or_(Invoice.requested_by_id.is_(None), Invoice.requested_at.isnot(None))).count(), "invoices")
         add("invoice_unpaid", "Raised invoices not yet paid", db.query(Invoice).filter(Invoice.status.in_(("Raised", "Overdue"))).count(), "invoices")
