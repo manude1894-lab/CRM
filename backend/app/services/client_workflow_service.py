@@ -95,12 +95,22 @@ def _can_see(db, acc, user) -> bool:
     return access_control.user_can_access_account(db, acc, user)
 
 
+def gives_compliance_approval(user: User) -> bool:
+    """Triam UAT 10-11-2026: the two levels are held by different people. Whoever holds the Final Approval
+    right can't give the Compliance (1st level) approval, even with that right as well (an Administrator, say)."""
+    return has_permission(user, "client.approve") and not has_permission(user, "client.final_approve")
+
+
 def _is_checker_for(user: User, req: Optional[ApprovalRequest]) -> bool:
-    return has_permission(user, "client.approve") and (req is None or not access_control.same_person(req.maker, user))
+    return gives_compliance_approval(user) and (req is None or not access_control.same_person(req.maker, user))
 
 
-def _is_final_approver_for(user: User, req: Optional[ApprovalRequest]) -> bool:
-    return has_permission(user, "client.final_approve") and (req is None or not access_control.same_person(req.maker, user))
+def _gave_compliance_approval(db: Session, req: Optional[ApprovalRequest], user: User) -> bool:
+    return req is not None and req.compliance_checker_id is not None and         access_control.same_person(db.get(User, req.compliance_checker_id), user)
+
+
+def _is_final_approver_for(user: User, req: Optional[ApprovalRequest], db: Optional[Session] = None) -> bool:
+    return has_permission(user, "client.final_approve") and (req is None or not access_control.same_person(req.maker, user))         and not (db is not None and _gave_compliance_approval(db, req, user))
 
 
 def _missing(acc: Account) -> list[dict]:
@@ -137,11 +147,11 @@ def allowed_actions(db: Session, acc: Account, user: User) -> list[dict]:
         own = "You submitted this profile, so someone else must review it"
         if stage_of(req) == STAGE_APPROVER:
             final = has_permission(user, "client.final_approve")
-            why = own if is_maker and final else "Needs the Approver"
-            add("approve", "Final Approval", _is_final_approver_for(user, req), why)
-            add("reject", "Reject", _is_final_approver_for(user, req), why)
+            why = own if is_maker and final else                 "You gave the Compliance approval, so another person gives the Final approval"                 if final and _gave_compliance_approval(db, req, user) else "Needs the Approver"
+            add("approve", "Final Approval", _is_final_approver_for(user, req, db), why)
+            add("reject", "Reject", _is_final_approver_for(user, req, db), why)
         else:
-            why = own if is_maker and approver else "Needs Compliance (MLRO)"
+            why = own if is_maker and approver else                 "Needs Compliance (MLRO). A Final Approver can't give the Compliance approval"                 if approver and not gives_compliance_approval(user) else "Needs Compliance (MLRO)"
             checker = _is_checker_for(user, req)
             missing_cdd = _missing_cdd(acc) if checker else []
             if checker and missing_cdd:
@@ -209,6 +219,11 @@ def _approvers(db: Session) -> list[User]:
     return [u for u in db.query(User).filter(User.is_active == True).all() if has_permission(u, "client.approve")]  # noqa: E712
 
 
+def _compliance_approvers(db: Session) -> list[User]:
+    """Who gives the Compliance approval on a new client (not the Final Approvers, Triam UAT 10-11-2026)."""
+    return [u for u in _approvers(db) if gives_compliance_approval(u)]
+
+
 def _label(acc: Account) -> str:
     return f"{acc.company_name} ({acc.client_id or acc.account_uid})"
 
@@ -232,7 +247,7 @@ def submit(db: Session, acc: Account, user: User, comment: Optional[str] = None,
     log_event(db, "submit", f"Client {_label(acc)} submitted for approval", subject_type="Account",
               subject_id=acc.id, account_id=acc.id, changes={"request_id": req.id})
     db.commit()
-    for u in _approvers(db):
+    for u in _compliance_approvers(db):
         if u.id != user.id:
             notification_service.notify_user(db, u.id, f"{user.name} submitted client {_label(acc)} for Compliance review.", "client_submitted",
                                              account_id=acc.id)

@@ -29,14 +29,55 @@ def test_second_checker_on_a_stale_screen_is_refused_with_a_clear_message(db, de
     assert wf.pending_request(db, acc.id).compliance_checker_id == desk["mlro"].id
 
 
-def test_a_stale_click_can_not_give_the_final_approval(db, desk, make_user):
-    from app.models import UserRole
-    admin = make_user("Admin", role=UserRole.ADMIN)
+def test_a_stale_click_can_not_give_the_final_approval(db, desk):
     acc = _at_compliance(db, desk)
-    wf.approve(db, acc, admin, "Compliance step", expected_stage="Compliance")
+    wf.approve(db, acc, desk["mlro"], "Compliance step", expected_stage="Compliance")
     with pytest.raises(HTTPException) as e:
-        wf.approve(db, acc, admin, "A second click", expected_stage="Compliance")
+        wf.approve(db, acc, desk["approver"], "Clicked on the Compliance screen", expected_stage="Compliance")
     assert e.value.status_code == 409
+    assert acc.profile_status == "Awaiting Approval"
+
+
+def _can(db, acc, user, action="approve"):
+    return {a["action"]: a for a in wf.allowed_actions(db, acc, user)}[action]
+
+
+def test_a_final_approver_can_not_give_the_compliance_approval(db, desk, make_user):
+    """Triam UAT 10-11-2026: the Approver approved at both levels alone. The levels now belong to different people."""
+    from app.models import UserRole
+    admin = make_user("Admin", role=UserRole.ADMIN)  # holds both rights
+    acc = _at_compliance(db, desk)
+    for user in (desk["approver"], admin):
+        assert _can(db, acc, user)["allowed"] is False
+        with pytest.raises(HTTPException) as e:
+            wf.approve(db, acc, user, "Both levels by one person")
+        assert e.value.status_code == 403
+    assert "Final Approver can't give the Compliance approval" in _can(db, acc, admin)["reason"]
+    assert _can(db, acc, desk["mlro"])["allowed"] is True
+    wf.approve(db, acc, desk["mlro"], "CDD checked")
+    assert _can(db, acc, admin)["allowed"] is True  # the Final level is still theirs
+    wf.approve(db, acc, admin, "Final")
+    assert acc.profile_status == "Approved"
+
+
+def test_whoever_gave_the_compliance_approval_can_not_give_the_final_one(db, desk):
+    acc = _at_compliance(db, desk)
+    wf.approve(db, acc, desk["mlro"], "CDD checked")
+    req = wf.pending_request(db, acc.id)
+    req.compliance_checker_id = desk["approver"].id  # e.g. given before the levels were split
+    db.commit()
+    assert _can(db, acc, desk["approver"])["allowed"] is False
+    assert "You gave the Compliance approval" in _can(db, acc, desk["approver"])["reason"]
+    with pytest.raises(HTTPException):
+        wf.approve(db, acc, desk["approver"], "Final")
+
+
+def test_final_approvers_are_not_told_a_client_needs_compliance(db, desk):
+    from app.services import my_work_service
+    acc = _at_compliance(db, desk)
+    keys = lambda u: {w["key"]: w["count"] for w in my_work_service.my_work(db, u)}  # noqa: E731
+    assert keys(desk["mlro"])["compliance_new"] == 1
+    assert "compliance_new" not in keys(desk["approver"])
     assert acc.profile_status == "Awaiting Approval"
 
 

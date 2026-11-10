@@ -40,8 +40,8 @@ def test_entity_shareholder_needs_no_nationality(db, people):
     acc = complete_client(db, maker)
     account_party_service.create_party(db, acc.id, AccountPartyCreate(
         party_role="Director", constitution="Entity", full_name="Corporate Director Ltd",
-        country_of_residence="United Arab Emirates", country_of_incorp_or_birth="BVI"), maker)
+        mobile_country_code="+971", mobile_number="501234567", email="cd@example.com", country_of_residence="United Arab Emirates", country_of_incorp_or_birth="BVI"), maker)
     with pytest.raises(HTTPException) as e:
         account_party_service.create_party(db, acc.id, AccountPartyCreate(
-            party_role="Director", full_name="Sam Person", country_of_residence="India"), maker)
+            party_role="Director", full_name="Sam Person", country_of_incorp_or_birth="India", mobile_country_code="+971", mobile_number="501234567", email="p@example.com", country_of_residence="India"), maker)
     assert "Nationality" in e.value.detail

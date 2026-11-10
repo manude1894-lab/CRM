@@ -25,15 +25,17 @@ def my_work(db: Session, user: User) -> list[dict]:
     pending = db.query(ApprovalRequest).filter(ApprovalRequest.status == ApprovalStatus.PENDING.value).all()
     if has_permission(user, "client.approve"):
         # Not their own submissions, under this or another of their logins.
+        # Triam UAT 10-11-2026: a Final Approver doesn't give the Compliance approval, so isn't shown those.
         new_clients = [r for r in pending if r.request_type == "client_profile" and wf.stage_of(r) == wf.STAGE_COMPLIANCE
                        and not access_control.same_person(r.maker, user)]
         others = [r for r in pending if r.request_type != "client_profile" and not access_control.same_person(r.maker, user)]
-        add("compliance_new", "New clients waiting for Compliance", len(new_clients), "approvals", "Complete the CDD section, then approve or reject")
+        if wf.gives_compliance_approval(user):
+            add("compliance_new", "New clients waiting for Compliance", len(new_clients), "approvals", "Complete the CDD section, then approve or reject")
         add("compliance_changes", "Client amendments waiting for Compliance", len(others), "approvals")
     if has_permission(user, "client.final_approve"):
         final = [r for r in pending if r.request_type == "client_profile" and wf.stage_of(r) == wf.STAGE_APPROVER
                  and not access_control.same_person(r.maker, user)]
-        add("approver", "New clients waiting for your final approval", len(final), "approvals")
+        add("approver", "New clients waiting for final approval", len(final), "approvals")
     if has_permission(user, "invoice.manage"):
         add("invoice_requests", "Invoice instructions to raise", db.query(Invoice).filter(Invoice.status.in_(("Requested", "Draft")), or_(Invoice.requested_by_id.is_(None), Invoice.requested_at.isnot(None))).count(), "invoices")
         add("invoice_unpaid", "Raised invoices not yet paid", db.query(Invoice).filter(Invoice.status.in_(("Raised", "Overdue"))).count(), "invoices")

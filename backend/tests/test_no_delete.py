@@ -68,7 +68,7 @@ def test_party_removed_before_submission_is_kept_on_record(db, people):
     maker = people["maker"]
     acc = complete_client(db, maker)
     extra = account_party_service.create_party(db, acc.id, AccountPartyCreate(
-        party_role="Director", full_name="Wrong Person", nationality="India", country_of_residence="India"), maker)
+        party_role="Director", full_name="Wrong Person", nationality="India", residential_address={"line1": "1 Main Street", "city": "Dubai"}, country_of_incorp_or_birth="India", mobile_country_code="+971", mobile_number="501234567", email="p@example.com", country_of_residence="India"), maker)
     account_party_service.remove_party(db, extra.id, "Added to the wrong client", maker)
     row = db.get(AccountParty, extra.id)
     assert row is not None and row.removed_reason == "Added to the wrong client" and row.removed_by_id == maker.id
@@ -86,7 +86,7 @@ def test_party_removed_by_amendment_is_kept_on_record(db, people):
     amend.start(db, acc, maker)
     account_party_service.remove_party(db, jane.id, "Shares transferred to Omar", maker)
     account_party_service.create_party(db, acc.id, AccountPartyCreate(
-        party_role="Shareholder", full_name="Omar New", nationality="United Arab Emirates", country_of_residence="United Arab Emirates",
+        party_role="Shareholder", full_name="Omar New", nationality="United Arab Emirates", residential_address={"line1": "1 Main Street", "city": "Dubai"}, country_of_incorp_or_birth="India", country_of_residence="United Arab Emirates",
         mobile_country_code="+971", mobile_number="509999999", email="omar@example.com",
         effective_ownership_percent=Decimal("100")), maker)
     assert db.get(AccountParty, jane.id).removed_at is None  # staged only

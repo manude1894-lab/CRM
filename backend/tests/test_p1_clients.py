@@ -154,7 +154,7 @@ def test_status_timestamp_moves_only_on_status_change(db, make_user):
 # ─── §6 shareholders ────────────────────────────────────────────────────────
 
 def _sh(**kw):
-    base = dict(party_role="Shareholder", country_of_residence="United Arab Emirates", nationality="United Arab Emirates", full_name="Jane Doe", mobile_country_code="+971",
+    base = dict(party_role="Shareholder", country_of_incorp_or_birth="India", country_of_residence="United Arab Emirates", nationality="United Arab Emirates", full_name="Jane Doe", mobile_country_code="+971",
                 mobile_number="501234567", email="jane@example.com", effective_ownership_percent=Decimal("60"))
     base.update(kw)
     return AccountPartyCreate(**base)
@@ -169,7 +169,7 @@ def test_shareholder_contact_mandatory(db, make_user):
     with pytest.raises(HTTPException):
         account_party_service.create_party(db, acc.id, _sh(email="bad"), admin)
     # Directors don't need contact details (optional in BRD §7).
-    account_party_service.create_party(db, acc.id, AccountPartyCreate(party_role="Director", full_name="D", country_of_residence="United Arab Emirates", nationality="India"), admin)
+    account_party_service.create_party(db, acc.id, AccountPartyCreate(party_role="Director", full_name="D", country_of_incorp_or_birth="India", mobile_country_code="+971", mobile_number="501234567", email="p@example.com", country_of_residence="United Arab Emirates", nationality="India"), admin)
 
 
 def test_shareholding_cannot_exceed_100(db, make_user):
@@ -262,11 +262,18 @@ def test_regulated_needs_regulatory_licence_expiry(db, make_user):
 
 
 @pytest.mark.parametrize("role,fields,message", [
-    ("Director", {}, "Country of Residence"),
+    ("Director", {"mobile_country_code": "+91", "mobile_number": "9812345678", "email": "d@example.com"}, "Country of Residence"),
     ("Authorised Signatory", {"country_of_residence": "India", "nationality": "India", "mobile_country_code": "+91",
                               "mobile_number": "9812345678", "email": "sig@example.com"}, "Country of Birth"),
-    ("Director", {"country_of_residence": "India"}, "Nationality"),
+    ("Director", {"country_of_residence": "India", "mobile_country_code": "+91", "mobile_number": "9812345678",
+                  "email": "d@example.com"}, "Nationality"),
     ("Authorised Signatory", {"country_of_residence": "India", "nationality": "India"}, "Contact Mobile"),
+    # Triam UAT 10-11-2026: a Director needs a contact, and UBOs and Directors a Country of Birth, like the Signatory.
+    ("Director", {"country_of_residence": "India", "nationality": "India"}, "Contact Mobile"),
+    ("Director", {"country_of_residence": "India", "nationality": "India", "mobile_country_code": "+91",
+                  "mobile_number": "9812345678", "email": "d@example.com"}, "Country of Birth"),
+    ("Shareholder", {"country_of_residence": "India", "nationality": "India", "mobile_country_code": "+91",
+                     "mobile_number": "9812345678", "email": "s@example.com", "effective_ownership_percent": "10"}, "Country of Birth"),
 ])
 def test_party_country_rules(db, make_user, role, fields, message):
     admin = make_user(role=UserRole.ADMIN)

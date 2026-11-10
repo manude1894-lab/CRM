@@ -18,7 +18,7 @@ def days_ago(n):
 
 
 def director(expiry, constitution="Individual"):
-    return AccountPartyCreate(party_role="Director", full_name="D Person", constitution=constitution, country_of_residence=UAE,
+    return AccountPartyCreate(party_role="Director", full_name="D Person", constitution=constitution, residential_address={"line1": "1 Main Street", "city": "Dubai"}, country_of_incorp_or_birth="India", mobile_country_code="+971", mobile_number="501234567", email="p@example.com", country_of_residence=UAE,
                               nationality=UAE, id_or_license_expiry=expiry)
 
 
@@ -62,15 +62,15 @@ def test_passport_that_aged_while_in_draft_blocks_submit(db, real_user):
     db.add(AccountParty(account_id=acc.id, party_role="Director", full_name="Old Passport", constitution="Individual", id_or_license_expiry=days_ago(200)))
     db.commit()
     db.refresh(acc)
-    assert account_service.missing_mandatory(acc) == [{"section": "Shareholder / UBO Information", "field": "parties",
-                                                       "label": "The passport of Old Passport expired more than 30 days ago"}]
+    assert {"section": "Shareholder / UBO Information", "field": "parties",
+            "label": "The passport of Old Passport expired more than 30 days ago"} in account_service.missing_mandatory(acc)
 
 
 def test_old_date_on_record_does_not_block_other_edits(db, real_user):
     rm = real_user("Rel. Manager")
     acc = flow.complete_client(db, rm)
-    p = AccountParty(account_id=acc.id, party_role="Director", full_name="Old Passport", constitution="Individual",
-                     country_of_residence=UAE, nationality=UAE, id_or_license_expiry=days_ago(200))
+    p = AccountParty(account_id=acc.id, party_role="Director", country_of_incorp_or_birth="India", mobile_country_code="+971", mobile_number="501234567", email="p@example.com", full_name="Old Passport", constitution="Individual",
+                     residential_address={"line1": "1 Main Street", "city": "Dubai"}, country_of_residence=UAE, nationality=UAE, id_or_license_expiry=days_ago(200))
     db.add(p)
     db.commit()
     assert parties.update_party(db, p.id, AccountPartyUpdate(nationality="India"), rm).nationality == "India"
@@ -79,8 +79,8 @@ def test_old_date_on_record_does_not_block_other_edits(db, real_user):
 def test_approved_client_with_an_old_passport_stays_amendable(db, real_user):
     rm, mlro, approver = real_user("Rel. Manager"), real_user("MLRO"), real_user("Approver")
     acc = flow.approved_client(db, {"maker": rm, "checker": mlro, "approver": approver})
-    db.add(AccountParty(account_id=acc.id, party_role="Director", full_name="Old Passport", constitution="Individual",
-                        country_of_residence=UAE, nationality=UAE, id_or_license_expiry=days_ago(200)))
+    db.add(AccountParty(account_id=acc.id, party_role="Director", country_of_incorp_or_birth="India", mobile_country_code="+971", mobile_number="501234567", email="p@example.com", full_name="Old Passport", constitution="Individual",
+                        residential_address={"line1": "1 Main Street", "city": "Dubai"}, country_of_residence=UAE, nationality=UAE, id_or_license_expiry=days_ago(200)))
     db.commit()
     db.refresh(acc)
     amend.start(db, acc, rm)

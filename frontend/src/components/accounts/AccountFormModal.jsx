@@ -685,7 +685,7 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
               </Select>
             </Field>
             {form.risk_rating === "High" && (
-              <Field label="Reason for EDD" required><Input value={form.edd_reason} onChange={set("edd_reason")} maxLength={25} /></Field>
+              <Field label="Reason for EDD (up to 250 characters)" required><Textarea rows={3} value={form.edd_reason} onChange={set("edd_reason")} maxLength={250} /></Field>
             )}
           </fieldset>
           {form.next_aml_review_date && (
