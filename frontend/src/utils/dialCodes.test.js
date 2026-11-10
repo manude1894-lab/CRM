@@ -22,6 +22,12 @@ describe("dial codes", () => {
     expect(options[0]).toEqual({ code: "+971", label: "+971 (United Arab Emirates)" });
     expect(options.filter((o) => o.code === "+1")).toEqual([{ code: "+1", label: "+1 (United States of America, Canada)" }]);
   });
+  it("uses the ISD code Admin keeps on the Country master (Triam UAT 11-11-2026)", () => {
+    const edited = COUNTRIES.map((c) => (c.code === "IN" ? { ...c, dial_code: "+9199" } : c));
+    expect(dialCodeForCountry("India", edited)).toBe("+9199");
+    expect(dialCodeOptions(edited).some((o) => o.code === "+9199")).toBe(true);
+    expect(dialCodeForCountry("Nowhere", [{ name: "Nowhere", code: null, dial_code: "+888" }])).toBe("+888");
+  });
   it("falls back when the master isn't loaded", () => {
     const fallback = [{ code: "+971", label: "+971 (UAE)" }];
     expect(dialCodeOptions([], fallback)).toBe(fallback);

@@ -20,6 +20,15 @@ const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
  * (with optional Assignor's comments) or an RM takes an unassigned prospect; the RM then creates the
  * client from the prospect, whose Prospect ID is the client's temporary ID until Compliance approves.
  */
+// Status buttons on a prospect card, in the colour of the status they move to.
+const MOVE_STYLE = {
+  New: "border-gray-200 text-gray-600 hover:bg-gray-50",
+  "Proposal Sent": "border-blue-200 text-blue-700 hover:bg-blue-50",
+  Negotiating: "border-indigo-200 text-indigo-700 hover:bg-indigo-50",
+  Won: "border-emerald-200 text-emerald-700 hover:bg-emerald-50",
+  Lost: "border-rose-200 text-rose-600 hover:bg-rose-50",
+};
+
 export default function ProspectsPage({ onNavigate } = {}) {
   const [items, setItems] = useState([]);
   const [users, setUsers] = useState([]);
@@ -148,19 +157,26 @@ export default function ProspectsPage({ onNavigate } = {}) {
                     {!readOnly && <div className="flex items-center gap-1 mt-2 flex-wrap" onClick={(e) => e.stopPropagation()}>
                       {!p.converted_account_id && coordinator && (
                         <button onClick={() => setAssign({ prospect: p, rm_id: p.owner_id || "", comments: p.assignor_comments || "" })}
-                          className="text-xs px-2 py-0.5 rounded border border-brand-200 text-brand-700 hover:bg-brand-50">{p.owner_id ? "Reassign" : "Assign"}</button>
+                          className="text-xs px-2.5 py-1 rounded-md border border-sky-200 bg-sky-50 text-sky-800 font-medium hover:bg-sky-100">{p.owner_id ? "Reassign" : "Assign"}</button>
                       )}
                       {!p.converted_account_id && !coordinator && !p.owner_id && (
                         <button onClick={() => setAssign({ prospect: p, rm_id: me?.id, comments: "", self: true })}
-                          className="text-xs px-2 py-0.5 rounded border border-brand-200 text-brand-700 hover:bg-brand-50">Assign to me</button>
+                          className="text-xs px-2.5 py-1 rounded-md border border-sky-200 bg-sky-50 text-sky-800 font-medium hover:bg-sky-100">Assign to me</button>
                       )}
                       {!p.converted_account_id && p.owner_id && p.status !== "Lost" && (coordinator || p.owner_id === me?.id || me?.role === "admin") && (
-                        <button onClick={() => createClient(p)} className="text-xs px-2 py-0.5 rounded border border-emerald-300 text-emerald-700 hover:bg-emerald-50">Create client</button>
+                        <button onClick={() => createClient(p)} className="text-xs px-2.5 py-1 rounded-md bg-emerald-600 text-white font-medium shadow-sm hover:bg-emerald-700">Create client</button>
                       )}
-                      {!p.converted_account_id && PROSPECT_STATUS_OPTIONS.filter((s) => s !== p.status).map((s) => (
-                        <button key={s} onClick={() => move(p, s)} className="text-xs px-2 py-0.5 rounded border border-gray-200 text-gray-500 hover:bg-gray-50">{s}</button>
-                      ))}
                     </div>}
+                    {/* Status moves on their own line, each in its status colour (Triam UAT 11-11-2026). */}
+                    {!readOnly && !p.converted_account_id && (
+                      <div className="flex items-center gap-1 mt-1.5 flex-wrap" onClick={(e) => e.stopPropagation()}>
+                        <span className="text-[10px] uppercase tracking-wide text-gray-400 mr-0.5">Move to</span>
+                        {PROSPECT_STATUS_OPTIONS.filter((s) => s !== p.status).map((s) => (
+                          <button key={s} onClick={() => move(p, s)}
+                            className={`text-[11px] px-2 py-0.5 rounded-full border ${MOVE_STYLE[s] || "border-gray-200 text-gray-600 hover:bg-gray-50"}`}>{s}</button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

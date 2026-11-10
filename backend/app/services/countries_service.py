@@ -14,6 +14,12 @@ from app.schemas.country import CountryCreate, CountryUpdate
 SCORE = {"Low": 1, "Medium": 3, "High": 5}
 
 _DATA_FILE = Path(__file__).resolve().parent.parent / "data" / "country_risk.json"
+# ISD codes by ISO code: the starting value for each country; Admin can change it (Triam UAT 11-11-2026).
+DIAL_CODES = json.loads((_DATA_FILE.parent / "dial_codes.json").read_text(encoding="utf-8"))
+
+
+def _default_dial_code(code):
+    return DIAL_CODES.get((code or "").upper())
 
 
 def seed_countries(db: Session) -> int:
@@ -25,6 +31,7 @@ def seed_countries(db: Session) -> int:
         CountryRisk(
             name=c["name"],
             code=c.get("code"),
+            dial_code=_default_dial_code(c.get("code")),
             kyc_score=Decimal(str(c["kyc_score"])) if c.get("kyc_score") is not None else None,
             risk_level=c["risk_level"],
             score=int(c["score"]),
@@ -45,11 +52,12 @@ def create_country(db: Session, data: CountryCreate) -> CountryRisk:
     name = data.name.strip()
     if db.query(CountryRisk).filter(CountryRisk.name == name).first():
         raise HTTPException(status_code=400, detail="Country already exists")
-    c = CountryRisk(name=name, code=(data.code or "").upper() or None, risk_level=data.risk_level,
+    code = (data.code or "").upper() or None
+    c = CountryRisk(name=name, code=code, dial_code=data.dial_code or _default_dial_code(code), risk_level=data.risk_level,
                     score=SCORE[data.risk_level], changed_at=datetime.now(timezone.utc))
     db.add(c)
     db.flush()
-    log_event(db, "country_add", f"Country {name} added ({c.code or 'no code'}, {c.risk_level} risk)",
+    log_event(db, "country_add", f"Country {name} added ({c.code or 'no code'}, {c.dial_code or 'no ISD code'}, {c.risk_level} risk)",
               subject_type="Country", subject_id=c.id)
     db.commit()
     db.refresh(c)
@@ -57,7 +65,7 @@ def create_country(db: Session, data: CountryCreate) -> CountryRisk:
 
 
 def update_country(db: Session, country_id: int, data: CountryUpdate) -> CountryRisk:
-    """Admin changes a country's name, code or risk; the change is stamped and kept in the audit log."""
+    """Admin changes a country's name, code, ISD code or risk; the change is stamped and kept in the audit log."""
     c = db.get(CountryRisk, country_id)
     if c is None:
         raise HTTPException(status_code=404, detail="Country not found")
@@ -69,6 +77,8 @@ def update_country(db: Session, country_id: int, data: CountryUpdate) -> Country
             raise HTTPException(status_code=400, detail="Country already exists")
     if "code" in new:
         new["code"] = (new["code"] or "").upper() or None
+    if "dial_code" in new:
+        new["dial_code"] = (new["dial_code"] or "").strip() or None
     changes = {k: {"old": getattr(c, k), "new": v} for k, v in new.items() if v is not None and getattr(c, k) != v}
     if not changes:
         return c

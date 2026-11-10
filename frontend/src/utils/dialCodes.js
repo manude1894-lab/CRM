@@ -1,5 +1,6 @@
 // International dialling (ISD) codes by ISO country code, used to fill the Contact Mobile code when a
-// country is chosen (Triam UAT 05-11-2026). The Country master holds each country's ISO code.
+// country is chosen (Triam UAT 05-11-2026). Since 11-11-2026 the Country master holds each country's ISD
+// code, which Admin can change; this list is only the fallback for a country without one.
 export const DIAL_CODES = {
   AD: "+376", AE: "+971", AF: "+93", AG: "+1268", AI: "+1264", AL: "+355", AM: "+374", AO: "+244", AQ: "+672", AR: "+54", AS: "+1684",
   AT: "+43", AU: "+61", AW: "+297", AX: "+358", AZ: "+994", BA: "+387", BB: "+1246", BD: "+880", BE: "+32", BF: "+226", BG: "+359",
@@ -26,10 +27,12 @@ export const DIAL_CODES = {
   WF: "+681", WS: "+685", XK: "+383", YE: "+967", YT: "+262", ZA: "+27", ZM: "+260", ZW: "+263",
 };
 
+// A country's ISD code: the one Admin keeps on the Country master, else the standard one for its ISO code.
+const dialOf = (c) => c?.dial_code || (c?.code && DIAL_CODES[c.code]) || null;
+
 // The ISD code for a country name from the Country master, or null when it isn't known.
 export function dialCodeForCountry(name, countries) {
-  const country = (countries || []).find((c) => c.name === name);
-  return (country?.code && DIAL_CODES[country.code]) || null;
+  return dialOf((countries || []).find((c) => c.name === name));
 }
 
 const shortName = (name) => name.replace(/\s*\(the\)\s*$/i, "");
@@ -39,7 +42,7 @@ const shortName = (name) => name.replace(/\s*\(the\)\s*$/i, "");
 export function dialCodeOptions(countries, fallback = []) {
   const byCode = new Map();
   for (const c of countries || []) {
-    const code = c.code && DIAL_CODES[c.code];
+    const code = dialOf(c);
     if (code) byCode.set(code, [...(byCode.get(code) || []), shortName(c.name)]);
   }
   if (byCode.size === 0) return fallback;

@@ -36,3 +36,17 @@ def test_a_persons_city_is_needed_to_submit(db, real_user):
     db.refresh(acc)
     assert [m["label"] for m in account_service.missing_mandatory(acc)] == [
         "Residential Address of Jane Owner (Shareholder): line 1 and city"]
+
+
+def test_countries_carry_an_isd_code_admin_can_change(db):
+    """Triam UAT 09/11-11-2026: the Country master shows each country's ISD code, and Admin can edit it."""
+    from app.schemas.country import CountryCreate, CountryUpdate
+    from app.services import countries_service
+    c = countries_service.create_country(db, CountryCreate(name="Testland", code="in", risk_level="Low"))
+    assert c.dial_code == "+91"  # filled from the ISO code
+    c = countries_service.update_country(db, c.id, CountryUpdate(dial_code="+9199"))
+    assert c.dial_code == "+9199" and c.changed_at is not None
+    other = countries_service.create_country(db, CountryCreate(name="Otherland", dial_code="+888"))
+    assert other.dial_code == "+888"
+    with pytest.raises(ValidationError):
+        CountryUpdate(dial_code="971-abc")

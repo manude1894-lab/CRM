@@ -23,6 +23,6 @@ def create_country(data: CountryCreate, db: Session = Depends(get_db), user: Use
     return countries_service.create_country(db, data)
 
 
-@router.patch("/{country_id}", response_model=CountryRead, summary="Admin: change a country's name, code or risk")
+@router.patch("/{country_id}", response_model=CountryRead, summary="Admin: change a country's name, code, ISD code or risk")
 def update_country(country_id: int, data: CountryUpdate, db: Session = Depends(get_db), user: User = Depends(require_admin)):
     return countries_service.update_country(db, country_id, data)

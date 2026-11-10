@@ -17,6 +17,8 @@ class CountryRisk(Base):
     # is what the assessment stores as the factor input, so the two must match.
     name = Column(String(120), unique=True, nullable=False, index=True)
     code = Column(String(2), nullable=True)  # ISO 3166-1 alpha-2, e.g. AE
+    # ISD (dialling) code, e.g. +971: fills the Contact Mobile code when the country is chosen; Admin edits it.
+    dial_code = Column(String(8), nullable=True)
 
     kyc_score = Column(Numeric(5, 2), nullable=True)  # KnowYourCountry score, e.g. 54.58
     # risk_level already reflects the FATF override (a KYC-Medium country on the grey
