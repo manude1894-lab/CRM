@@ -170,7 +170,6 @@ export default function ProspectsPage({ onNavigate } = {}) {
                     {/* Status moves on their own line, each in its status colour (Triam UAT 11-11-2026). */}
                     {!readOnly && !p.converted_account_id && (
                       <div className="flex items-center gap-1 mt-1.5 flex-wrap" onClick={(e) => e.stopPropagation()}>
-                        <span className="text-[10px] uppercase tracking-wide text-gray-400 mr-0.5">Move to</span>
                         {PROSPECT_STATUS_OPTIONS.filter((s) => s !== p.status).map((s) => (
                           <button key={s} onClick={() => move(p, s)}
                             className={`text-[11px] px-2 py-0.5 rounded-full border ${MOVE_STYLE[s] || "border-gray-200 text-gray-600 hover:bg-gray-50"}`}>{s}</button>
