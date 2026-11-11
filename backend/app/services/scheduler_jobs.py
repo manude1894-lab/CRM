@@ -8,6 +8,7 @@
   - Raised invoices past their due date become Overdue → the requester and Accounts
   - Prospects sent to an RM with no client created after PROSPECT_FOLLOW_UP_DAYS → the RM and the assignor
   - Submissions waiting with Compliance / the Approver more than APPROVAL_WAITING_DAYS → the checkers
+  - Under Formation clients 30 days after creation, with the details still missing → the Anchor RM and Compliance (once)
 
 Each job opens its own DB session since it runs outside the FastAPI request lifecycle. Reminders
 are deduped per (client, reminder) so the sweep doesn't repeat one that is still unread.
@@ -19,6 +20,7 @@ from app.auth.permissions import has_permission
 from app.database import SessionLocal
 from app.models import Account, AccountParty, ApprovalRequest, ApprovalStatus, Invoice, Notification, Prospect, User
 from app.services import access_control, notification_service
+from app.services.account_service import person_key
 from app.utils.dates import dmy
 
 logger = logging.getLogger("ezeetech.scheduler")
@@ -51,10 +53,13 @@ def _remind(db, acc: Account, key: str, message: str, compliance: bool) -> None:
     if notification_service.has_unresolved_notification(db, acc.id, key):
         return
     link = f"/accounts/{acc.id}"
-    if acc.spoc_id:
-        notification_service.notify_user(db, acc.spoc_id, message, key, link=link, account_id=acc.id)
+    # Each person once, even when the Anchor RM is also in Compliance (Triam UAT row 4).
+    recipients = {acc.spoc_id} - {None}
     if compliance:
-        notification_service.notify_permission(db, "client.approve", message, key, link=link, account_id=acc.id)
+        recipients |= {u.id for u in db.query(User).filter(User.is_active == True).all()  # noqa: E712
+                       if has_permission(u, "client.approve")}
+    for uid in sorted(recipients):
+        notification_service.notify_user(db, uid, message, key, link=link, account_id=acc.id)
 
 
 def _label(acc: Account) -> str:
@@ -108,13 +113,23 @@ def check_documents_expiring():
                 w = _window(due, today) if due else None
                 if w is not None:
                     _remind(db, acc, f"{field[:30]}_{w}d", f"{_expiry_text(what, due, w)} for {_label(acc)}.", compliance=False)
-            for p in db.query(AccountParty).filter(AccountParty.account_id == acc.id, AccountParty.removed_at.is_(None)).all():
-                for due, what in ((p.id_or_license_expiry, "Licence" if p.constitution == "Entity" else "Passport"),
-                                  (p.uae_visa_expiry, "UAE visa")):
-                    w = _window(due, today) if due else None
-                    if w is not None:
-                        _remind(db, acc, f"party{p.id}_{'visa' if what == 'UAE visa' else 'id'}_{w}d",
-                                f"{_expiry_text(f'{what} of {p.full_name} ({p.party_role})', due, w)} — {_label(acc)}.",
+            # One person in several roles (UBO and Director, say) gets one reminder naming every role,
+            # not one per record (Triam UAT row 4).
+            people: dict = {}
+            for p in db.query(AccountParty).filter(AccountParty.account_id == acc.id, AccountParty.removed_at.is_(None))                     .order_by(AccountParty.id).all():
+                people.setdefault(person_key(p), []).append(p)
+            for records in people.values():
+                first = records[0]
+                roles = ", ".join(dict.fromkeys(r.party_role for r in records))
+                for kind, what in (("id", "Licence" if first.constitution == "Entity" else "Passport"), ("visa", "UAE visa")):
+                    dues = sorted({r.id_or_license_expiry if kind == "id" else r.uae_visa_expiry for r in records} - {None})
+                    for due in dues:
+                        w = _window(due, today)
+                        if w is None:
+                            continue
+                        owner = next(r for r in records if (r.id_or_license_expiry if kind == "id" else r.uae_visa_expiry) == due)
+                        _remind(db, acc, f"party{owner.id}_{kind}_{w}d",
+                                f"{_expiry_text(f'{what} of {first.full_name} ({roles})', due, w)} — {_label(acc)}.",
                                 compliance=False)
     finally:
         db.close()
@@ -185,10 +200,31 @@ def check_approvals_waiting():
         db.close()
 
 
+def check_under_formation():
+    """Triam UAT 10-11-2026 (row 24): 30 days after an Under Formation client was created, tell its Anchor RM
+    and Compliance once which incorporation details are still missing."""
+    from app.services.standard_reports_service import UNDER_FORMATION_DAYS, formation_details_missing
+    db = SessionLocal()
+    try:
+        cutoff = datetime.now(timezone.utc) - timedelta(days=UNDER_FORMATION_DAYS)
+        for acc in db.query(Account).filter(Account.client_category == "Under Formation", Account.created_at <= cutoff,
+                                            Account.profile_status != "Exited").all():
+            # Once per client, read or not: this is a single follow-up, not a daily repeat.
+            if db.query(Notification).filter(Notification.account_id == acc.id,
+                                             Notification.notification_type == "under_formation_30d").first():
+                continue
+            missing = formation_details_missing(acc)
+            detail = f" Still missing: {', '.join(missing)}." if missing else " Please update its category to Existing."
+            _remind(db, acc, "under_formation_30d",
+                    f"{_label(acc)} was onboarded as Under Formation {UNDER_FORMATION_DAYS} or more days ago.{detail}", compliance=True)
+    finally:
+        db.close()
+
+
 def run_daily_sweep():
     """Entry point registered with APScheduler — runs all checks in sequence."""
     for job in (check_aml_reviews_due, check_licences_expiring, check_documents_expiring, check_invoices_overdue,
-                check_prospects_waiting, check_approvals_waiting):
+                check_prospects_waiting, check_approvals_waiting, check_under_formation):
         try:
             job()
         except Exception:

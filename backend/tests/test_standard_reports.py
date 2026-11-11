@@ -41,3 +41,23 @@ def test_rejected_cases_pending_with_rm(db, people):
     assert row[0] == "Complete Co" and row[3] == "Mia MLRO" and "Passport copy" in row[5] and row[6] == 0
     flow.submit(db, acc, maker)  # resubmitted — no longer pending with the RM
     assert rpt.rejected_with_rm(db, maker)["rows"] == []
+
+
+def test_under_formation_report_lists_clients_and_what_is_missing(db, make_user, make_account):
+    """Triam UAT 10-11-2026 (row 24): Under Formation clients, oldest first, with the details still to come."""
+    from datetime import datetime, timezone
+    rm = make_user("Rita RM")
+    old = make_account(name="Old Forming Ltd", spoc=rm, client_category="Under Formation", registration_number="CI-1",
+                       incorporation_date=rpt._today(), registered_address={"line1": "Unit 1", "city": "Dubai"})
+    old.created_at = datetime.now(timezone.utc) - timedelta(days=40)
+    make_account(name="New Forming Ltd", spoc=rm, client_category="Under Formation")
+    make_account(name="Existing Ltd", spoc=rm, client_category="Existing")
+    make_account(name="Other RM Forming", spoc=make_user("Otto RM"), client_category="Under Formation")
+    db.commit()
+    report = rpt.run(db, rm, "under-formation")
+    assert [r[0] for r in report["rows"]] == ["Old Forming Ltd", "New Forming Ltd"]
+    first = report["rows"][0]
+    assert first[5] == 40 and first[6] == "Yes" and report["rows"][1][6] == "No"
+    assert "Incorporation Certificate No." not in first[7] and "Registered Address" not in first[7]
+    assert "Licence No." in first[7] and "Operating Address" in first[7]
+    assert "under-formation" in rpt.REPORTS

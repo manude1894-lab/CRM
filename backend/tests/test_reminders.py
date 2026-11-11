@@ -78,3 +78,48 @@ def test_waiting_approval_reminds_checkers_and_clears_when_decided(db, sweep_db,
     unread = db.query(Notification).filter(Notification.account_id == acc.id, Notification.read_at.is_(None),
                                            Notification.notification_type.in_(["client_submitted", "approval_waiting"])).all()
     assert {n.user_id for n in unread} == {people["approver"].id}  # only the new "needs final approval" alert
+
+
+def test_one_person_in_several_roles_gets_one_reminder(db, sweep_db, make_user, make_account):
+    """Triam UAT row 4: a UBO who is also Director and Signatory is reminded once, naming every role."""
+    rm = make_user("Rita RM")
+    acc = make_account(name="Multi Role Co", spoc=rm, profile_status="Active")
+    dob, due = date(1980, 5, 1), date.today() + timedelta(days=30)
+    for role in ("Shareholder", "Director", "Authorised Signatory"):
+        db.add(AccountParty(account_id=acc.id, party_role=role, full_name="Omar Haddad ", constitution="Individual",
+                            dob_or_incorp_date=dob, id_or_license_expiry=due, uae_visa_expiry=due))
+    db.add(AccountParty(account_id=acc.id, party_role="Director", full_name="Sara Other", constitution="Individual",
+                        dob_or_incorp_date=date(1990, 1, 1), id_or_license_expiry=due))
+    db.commit()
+    scheduler_jobs.check_documents_expiring()
+    scheduler_jobs.check_documents_expiring()
+    messages = [n.message for n in db.query(Notification).filter(Notification.user_id == rm.id)]
+    omar = [m for m in messages if "Omar Haddad" in m]
+    assert len(omar) == 2  # one passport, one visa
+    assert all("(Shareholder, Director, Authorised Signatory)" in m for m in omar)
+    assert sum("Sara Other" in m for m in messages) == 1
+
+
+def test_rm_who_is_also_compliance_is_reminded_once(db, sweep_db, make_user, make_account, make_role):
+    co_rm = make_user("Both Hats", business_role=make_role("RM with approval", ["client.approve"]))
+    acc = make_account(name="Review Co", spoc=co_rm, profile_status="Active",
+                       next_aml_review_date=date.today() + timedelta(days=7))
+    assert acc.next_aml_review_date
+    scheduler_jobs.check_aml_reviews_due()
+    assert db.query(Notification).filter(Notification.user_id == co_rm.id).count() == 1
+
+
+def test_under_formation_client_is_followed_up_once_after_30_days(db, sweep_db, make_user, make_account):
+    rm = make_user("Rita RM")
+    old = make_account(name="Forming Co", spoc=rm, client_category="Under Formation")
+    old.created_at = datetime.now(timezone.utc) - timedelta(days=31)
+    make_account(name="Fresh Forming Co", spoc=rm, client_category="Under Formation")
+    db.commit()
+    scheduler_jobs.check_under_formation()
+    sent = db.query(Notification).filter(Notification.notification_type == "under_formation_30d").all()
+    assert [n.user_id for n in sent] == [rm.id]
+    assert "Forming Co" in sent[0].message and "Still missing: Incorporation Certificate No." in sent[0].message
+    sent[0].read_at = datetime.now(timezone.utc)
+    db.commit()
+    scheduler_jobs.check_under_formation()  # read, but still only once
+    assert db.query(Notification).filter(Notification.notification_type == "under_formation_30d").count() == 1
