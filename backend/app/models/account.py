@@ -28,7 +28,7 @@ class Account(Base):
     single_point_of_contact = Column(String(255), nullable=True)  # client-side contact, free text (BRD §22 item 9)
 
     # Triam entities (BRD §4)
-    anchor_entity = Column(String(10), nullable=True)  # triam_entity master list
+    anchor_entity = Column(String(60), nullable=True)  # triam_entity master list
     non_anchor_entities = Column(JSON, nullable=True)  # list[str], excludes the anchor entity
 
     # Corporate profile (BRD §5)
@@ -42,7 +42,7 @@ class Account(Base):
     regulatory_license_expiry_date = Column(Date, nullable=True)  # mandatory when regulated
     # Mandatory Yes/No: None = not answered yet (required before submission).
     is_regulated = Column(Boolean, nullable=True)
-    regulator_name = Column(String(50), nullable=True)  # DFSA / FSRA / CMA / UAECB / Other
+    regulator_name = Column(String(60), nullable=True)  # DFSA / FSRA / CMA / UAECB / Other
     regulator_other = Column(String(100), nullable=True)
     license_category = Column(String(100), nullable=True)
     license_activities = Column(Text, nullable=True)

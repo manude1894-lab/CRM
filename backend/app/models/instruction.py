@@ -30,8 +30,8 @@ class Instruction(Base):
     instruction_type = Column(String(150), nullable=False)
     other_description = Column(String(50), nullable=True)  # when the type is "Other"
     # The Triam entity handling the request; decides the request types and statuses offered.
-    triam_entity = Column(String(20), nullable=True)
-    status = Column(String(40), default="Received", nullable=False)
+    triam_entity = Column(String(60), nullable=True)
+    status = Column(String(60), default="Received", nullable=False)
 
     date_received = Column(Date, nullable=True)
     date_completed = Column(Date, nullable=True)
