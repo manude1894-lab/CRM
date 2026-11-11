@@ -18,6 +18,8 @@ const ACCOUNT_DUE_FIELDS = [
   ["passport_expiry_date", "Passport expiry"],
 ];
 const SERVICED = ["Approved", "Active", "Inactive", "Marked for Exit"];
+// Statuses listed under Client Data Maintenance (existing clients); the rest are in New Client Onboarding.
+const EXISTING_STATUSES = [...SERVICED, "Exited"];
 
 const daysUntil = (iso) => Math.round((new Date(iso) - new Date(new Date().toDateString())) / 86400000);
 
@@ -109,7 +111,7 @@ function Lifecycle({ statuses, onOpen }) {
         {statuses.map((s, i) => {
           const busy = s.count > 0;
           return (
-            <button key={s.status} onClick={onOpen} title={`${s.status}: ${s.count}`}
+            <button key={s.status} onClick={() => onOpen(s.status)} title={`${s.status}: ${s.count} (open the list)`}
               className="flex-1 min-w-0 relative group px-1 pt-3 pb-3 flex flex-col items-center justify-start text-center">
               <span className={`absolute top-[26px] h-0.5 bg-gray-200 ${i === 0 ? "left-1/2 right-0" : i === statuses.length - 1 ? "left-0 right-1/2" : "left-0 right-0"}`} />
               <span className={`relative mx-auto flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold tabular-nums transition-colors
@@ -239,7 +241,10 @@ export default function Dashboard({ onNavigate = () => {} } = {}) {
       <Panel title="Client lifecycle"
         right={<span className="text-xs text-gray-400">With Compliance {data.approvals_pending.compliance} · With the Approver {data.approvals_pending.approver}</span>}>
         <div className="px-3 py-2">
-          <Lifecycle statuses={data.client_status_breakdown || []} onOpen={() => onNavigate({ page: "accounts" })} />
+          {/* Each stage opens its own list, filtered to that status: onboarding stages in New Client
+              Onboarding, existing-client stages in Client Data Maintenance. */}
+          <Lifecycle statuses={data.client_status_breakdown || []}
+            onOpen={(status) => onNavigate({ page: EXISTING_STATUSES.includes(status) ? "maintenance" : "accounts", status, nonce: Date.now() })} />
         </div>
       </Panel>
 

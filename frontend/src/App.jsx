@@ -255,6 +255,7 @@ export default function App() {
             initialAccountId={jumpTo?.page === activeItem.key ? jumpTo.accountId : undefined}
             initialOpenForm={jumpTo?.page === activeItem.key ? !!jumpTo.openForm : undefined}
             initialProspectId={jumpTo?.page === "accounts" ? jumpTo.prospectId : undefined}
+            initialStatus={jumpTo?.page === activeItem.key ? jumpTo.status : undefined}
           />
           </PageErrorBoundary>
         </main>

@@ -30,7 +30,7 @@ const VIEW_KEY = "triam.clients.view";
 
 const readView = () => { try { return localStorage.getItem(VIEW_KEY) || "table"; } catch { return "table"; } };
 
-export default function AccountsPage({ scope = "onboarding", initialAccountId, initialOpenForm, initialProspectId, onNavigate } = {}) {
+export default function AccountsPage({ scope = "onboarding", initialAccountId, initialOpenForm, initialProspectId, initialStatus, onNavigate } = {}) {
   const cfg = SCOPES[scope];
   const appliedInitialRef = useRef(false);
   const [accounts, setAccounts] = useState([]);
@@ -39,7 +39,8 @@ export default function AccountsPage({ scope = "onboarding", initialAccountId, i
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
+  // Opened from a dashboard lifecycle stage: start filtered to that status.
+  const [statusFilter, setStatusFilter] = useState(() => (initialStatus && SCOPES[scope].statuses.includes(initialStatus) ? initialStatus : ""));
   const [riskFilter, setRiskFilter] = useState("");
   const [view, setView] = useState(readView);
   const [open, setOpen] = useState(null); // { id, tab } — the client page being shown
