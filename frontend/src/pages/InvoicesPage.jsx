@@ -185,8 +185,8 @@ function RequestModal({ draft, onClose, onDone }) {
       </Field>}
       <Field label="Description" required><Input value={form.description} onChange={set("description")} maxLength={500} placeholder="e.g. Company formation, ADGM SPV" /></Field>
       <div className="grid grid-cols-2 gap-3">
+        <Field label="Currency" required><Select value={form.currency} onChange={set("currency")}>{CURRENCIES.map((c) => <option key={c}>{c}</option>)}</Select></Field>
         <Field label="Amount" required><Input type="number" min="0" step="0.01" value={form.amount} onChange={set("amount")} /></Field>
-        <Field label="Currency"><Select value={form.currency} onChange={set("currency")}>{CURRENCIES.map((c) => <option key={c}>{c}</option>)}</Select></Field>
       </div>
       <Field label="Notes for Accounts"><Textarea rows={2} value={form.notes} onChange={set("notes")} maxLength={2000} /></Field>
       <Field label="Pricing approval(s)">
@@ -225,8 +225,8 @@ function RaiseModal({ invoice, onClose, onDone }) {
       <div className="grid grid-cols-2 gap-3">
         <Field label="Invoice No." required><Input value={form.invoice_number} onChange={set("invoice_number")} maxLength={50} /></Field>
         <Field label="Invoice Date" required><DateInput value={form.invoice_date} onChange={set("invoice_date")} /></Field>
+        <Field label="Currency" required><Select value={form.currency} onChange={set("currency")}>{CURRENCIES.map((c) => <option key={c}>{c}</option>)}</Select></Field>
         <Field label="Amount" required><Input type="number" min="0" step="0.01" value={form.amount} onChange={set("amount")} /></Field>
-        <Field label="Currency"><Select value={form.currency} onChange={set("currency")}>{CURRENCIES.map((c) => <option key={c}>{c}</option>)}</Select></Field>
         <Field label="Due Date"><DateInput value={form.due_date} onChange={set("due_date")} /></Field>
       </div>
       <Field label="Invoice file" required>

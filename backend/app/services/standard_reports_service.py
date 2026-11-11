@@ -150,6 +150,53 @@ def rejected_with_rm(db: Session, user: User) -> dict:
             "columns": ["Client", "Temporary / Client ID", "RM", "Rejected by", "Rejected on", "Reason", "Days pending"], "rows": rows}
 
 
+# Details an Under Formation client may leave blank at onboarding (BRD §5, Triam UAT 05-11-2026).
+FORMATION_DETAILS = (
+    ("registration_number", "Incorporation Certificate No."),
+    ("incorporation_date", "Incorporation Date"),
+    ("license_number", "Licence No."),
+    ("license_start_date", "Licence Start Date"),
+    ("license_expiry_date", "Licence Expiry Date"),
+    ("registered_address", "Registered Address"),
+    ("operating_address", "Operating Address"),
+    ("financial_year_end", "Financial Year End"),
+)
+UNDER_FORMATION_DAYS = 30
+CLOSED_STATUSES = ("Exited",)
+
+
+def formation_details_missing(a: Account) -> list[str]:
+    out = []
+    for field, label in FORMATION_DETAILS:
+        v = getattr(a, field, None)
+        if field.endswith("_address"):
+            v = (v or {}).get("line1")
+        if not (v.strip() if isinstance(v, str) else v):
+            out.append(label)
+    return out
+
+
+def under_formation(db: Session, user: User) -> dict:
+    """Triam UAT 10-11-2026 (row 24): clients onboarded as Under Formation, so the RM follows up the
+    incorporation details. Those 30 days or more after creation are listed first."""
+    now = datetime.now(timezone.utc)
+    rows = []
+    for a in _accounts(db, user):
+        if a.client_category != "Under Formation" or a.profile_status in CLOSED_STATUSES:
+            continue
+        created = a.created_at if a.created_at.tzinfo else a.created_at.replace(tzinfo=timezone.utc)
+        days = (now - created).days
+        rm = db.get(User, a.spoc_id) if a.spoc_id else None
+        missing = formation_details_missing(a)
+        rows.append([a.company_name, _client_ref(a), a.profile_status, rm.name if rm else "—", _iso(_local_date(created)), days,
+                     "Yes" if days >= UNDER_FORMATION_DAYS else "No", ", ".join(missing) or "None"])
+    rows.sort(key=lambda r: r[5], reverse=True)
+    return {"title": "Clients Under Formation (30 days after creation)",
+            "columns": ["Client", "Temporary / Client ID", "Status", "RM", "Created on", "Days since creation",
+                        f"{UNDER_FORMATION_DAYS} days or more", "Details still missing"],
+            "rows": rows}
+
+
 REPORTS = {
     "documents-expiring": "Documents expiring in the next 30 days",
     "documents-expired": "Documents with expired status",
@@ -157,6 +204,7 @@ REPORTS = {
     "prospects-assigned": "Prospects assigned for a period",
     "prospects-unassigned": "Unassigned prospects (ageing)",
     "rejected-with-rm": "Clients pending with RM in Rejected status (ageing)",
+    "under-formation": "Clients Under Formation (30 days after creation)",
 }
 
 
@@ -173,4 +221,6 @@ def run(db: Session, user: User, key: str, days: int = 30, date_from: Optional[d
         return prospects_unassigned(db, user)
     if key == "rejected-with-rm":
         return rejected_with_rm(db, user)
+    if key == "under-formation":
+        return under_formation(db, user)
     raise HTTPException(status_code=404, detail="Unknown report")
