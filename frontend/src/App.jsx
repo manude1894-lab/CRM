@@ -117,24 +117,28 @@ export default function App() {
         onTouchEnd={isPhone ? (e) => { if (touchX !== null && e.changedTouches[0].clientX - touchX < -60) setSidebarOpen(false); setTouchX(null); } : undefined}
         className={`relative flex-shrink-0 flex flex-col border-r border-gray-100 bg-white transition-all duration-200 ${
         isPhone ? `fixed inset-y-0 left-0 z-40 w-64 shadow-xl ${sidebarOpen ? "" : "hidden"}` : sidebarOpen ? "w-60" : "w-16"}`}>
-        {/* Brand: cropped wordmark when open, gold trident mark when collapsed. */}
-        <div className={`flex items-center h-20 border-b border-gray-100 ${sidebarOpen ? "px-5" : "justify-center px-2"}`}>
+        {/* Brand row. Open: wordmark with the panel toggle at its right. Folded: the trident mark,
+            which turns into the expand toggle on hover. Ctrl+B also toggles; on a phone the menu
+            closes by swipe or backdrop. */}
+        <div className={`group relative flex items-center h-20 border-b border-gray-100 ${sidebarOpen ? "px-5 justify-between" : "justify-center px-2"}`}>
           {sidebarOpen ? (
             <img src="/triam-wordmark.png" alt="TRIAM" className="h-11 w-auto" />
           ) : (
-            <img src="/triam-trident.png" alt="TRIAM" className="h-10 w-auto" />
+            <img src="/triam-trident.png" alt="TRIAM" className={`h-10 w-auto ${isPhone ? "" : "transition-opacity group-hover:opacity-0"}`} />
+          )}
+          {!isPhone && (
+            <button onClick={() => setSidebarOpen((o) => !o)} title={`${sidebarOpen ? "Collapse" : "Expand"} menu (Ctrl+B)`}
+              aria-label={sidebarOpen ? "Collapse menu" : "Expand menu"}
+              className={`w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-all ${
+                sidebarOpen ? "-mr-2" : "absolute inset-0 m-auto opacity-0 group-hover:opacity-100 focus-visible:opacity-100"}`}>
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="4" width="18" height="16" rx="3" />
+                <path d="M9 4v16" />
+                <path d={sidebarOpen ? "M15.5 10l-2 2 2 2" : "M13.5 10l2 2-2 2"} />
+              </svg>
+            </button>
           )}
         </div>
-        {/* Collapse handle on the sidebar's edge (Ctrl+B also toggles); on a phone the menu closes by swipe or backdrop. */}
-        {!isPhone && (
-          <button onClick={() => setSidebarOpen((o) => !o)} title={`${sidebarOpen ? "Collapse" : "Expand"} menu (Ctrl+B)`}
-            aria-label={sidebarOpen ? "Collapse menu" : "Expand menu"}
-            className="absolute -right-3 top-[68px] z-30 w-6 h-6 rounded-full bg-white border border-gray-200 shadow-sm flex items-center justify-center text-gray-400 hover:text-white hover:bg-[#1a3a5c] hover:border-[#1a3a5c] transition-colors">
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round">
-              <path d={sidebarOpen ? "M15 18l-6-6 6-6" : "M9 18l6-6-6-6"} />
-            </svg>
-          </button>
-        )}
 
         <nav className="flex-1 py-2 space-y-0.5 overflow-y-auto px-2">
           {navItems.map((item, i) => (
