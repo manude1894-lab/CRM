@@ -28,7 +28,7 @@ class Document(Base):
     invoice_id = Column(Integer, ForeignKey("invoices.id", ondelete="CASCADE"), nullable=True, index=True)  # pricing approval / invoice file
     party_id = Column(Integer, ForeignKey("account_parties.id", ondelete="SET NULL"), nullable=True, index=True)  # the UBO / director / signatory
 
-    category = Column(String(40), default=DocumentCategory.OTHER.value, nullable=False)
+    category = Column(String(60), default=DocumentCategory.OTHER.value, nullable=False)
     filename = Column(String(255), nullable=False)
     content_type = Column(String(120), nullable=True)
     size_bytes = Column(Integer, nullable=False)

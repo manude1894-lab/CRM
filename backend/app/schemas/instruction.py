@@ -7,9 +7,9 @@ from decimal import Decimal
 class InstructionBase(BaseModel):
     instruction_type: str = Field(..., min_length=1, max_length=150)
     other_description: Optional[str] = Field(None, max_length=50)
-    triam_entity: Optional[str] = Field(None, max_length=20)
+    triam_entity: Optional[str] = Field(None, max_length=60)
     # Checked against the entity's statuses (master list); empty = the entity's first status.
-    status: Optional[str] = Field(None, max_length=40)
+    status: Optional[str] = Field(None, max_length=60)
     date_received: Optional[date] = None
     date_completed: Optional[date] = None
     charge_amount: Optional[Decimal] = Field(None, ge=0)
@@ -24,8 +24,8 @@ class InstructionCreate(InstructionBase):
 class InstructionUpdate(BaseModel):
     instruction_type: Optional[str] = Field(None, min_length=1, max_length=150)
     other_description: Optional[str] = Field(None, max_length=50)
-    triam_entity: Optional[str] = Field(None, max_length=20)
-    status: Optional[str] = Field(None, max_length=40)
+    triam_entity: Optional[str] = Field(None, max_length=60)
+    status: Optional[str] = Field(None, max_length=60)
     date_received: Optional[date] = None
     date_completed: Optional[date] = None
     charge_amount: Optional[Decimal] = Field(None, ge=0)
