@@ -18,9 +18,10 @@ import {
 } from "../../utils/constants";
 import {
   RISK_OPTIONS, BLANK_ADDRESS, SECTION_FIELDS,
-  buildAccountPayload, buildSectionPatch, validateCoreFields, accountToForm, mandatoryFields, isOffshore, sameAddress, isFoundation, withServicesSought,
+  buildAccountPayload, buildSectionPatch, validateCoreFields, accountToForm, mandatoryFields, isOffshore, sameAddress, isFoundation, withServicesSought, clientMobileProblem,
 } from "./accountForm";
 import { dialCodeForCountry, dialCodeOptions } from "../../utils/dialCodes";
+import MobileNumberInput from "../MobileNumberInput";
 import { useMasters } from "../../hooks/useMasters";
 import { selectableCodes, servicesForEntities } from "../../hooks/masterUtils";
 
@@ -219,7 +220,8 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
   // Saves the whole form; true when saved. A new client becomes an edited one (the form stays open).
   const persist = async () => {
     // The core rules (name, Anchor Triam Entity, duplicates) are checked when creating a client.
-    const invalid = mode === "new" ? (validateCoreFields(form) || duplicateBlock()) : (!form.company_name?.trim() && "Company name is required");
+    const invalid = clientMobileProblem(form)
+      || (mode === "new" ? (validateCoreFields(form) || duplicateBlock()) : (!form.company_name?.trim() && "Company name is required"));
     if (invalid) { toast.error(invalid); return false; }
     try {
       setSaving(true);
@@ -264,6 +266,8 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
     setSectionError((s) => ({ ...s, [key]: null }));
     const snapshot = form;
     try {
+      const mobileError = clientMobileProblem(form);
+      if (mobileError) throw new Error(mobileError);
       const patch = buildSectionPatch(form, SECTION_FIELDS[key]);
       if (form._id) {
         const updated = await accountsApi.update(form._id, patch);
@@ -351,13 +355,8 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
             )}
             <div className="grid grid-cols-2 gap-3">
               <Field label="Contact Mobile" required={req("contact_mobile_number")}>
-                <div className="flex gap-2">
-                  <Select value={form.contact_mobile_country_code || ""} onChange={set("contact_mobile_country_code")} className="!w-44 flex-shrink-0">
-                    <option value="">Code</option>
-                    {dialOptions.map((c) => <option key={c.code} value={c.code}>{c.label}</option>)}
-                  </Select>
-                  <Input value={form.contact_mobile_number || ""} onChange={set("contact_mobile_number")} maxLength={12} placeholder="e.g. 43334444" />
-                </div>
+                <MobileNumberInput code={form.contact_mobile_country_code} number={form.contact_mobile_number} options={dialOptions}
+                  onCode={setValue("contact_mobile_country_code")} onNumber={setValue("contact_mobile_number")} placeholder="e.g. 43334444" />
               </Field>
               <Field label="Contact Email" required={req("contact_email")}><Input type="email" value={form.contact_email || ""} onChange={set("contact_email")} placeholder="e.g. info@company.com" /></Field>
             </div>
@@ -545,13 +544,8 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
               <Field label="Country of Residence" required={req("country_of_residence")}><CountrySelect value={form.country_of_residence} onChange={(e) => setForm({ ...form, country_of_residence: e.target.value, ...isdFor(e.target.value, "individual_mobile_country_code") })} countries={countries} /></Field>
             </div>
             <Field label="Contact Mobile" required={req("individual_mobile_number")}>
-              <div className="flex gap-2">
-                <Select value={form.individual_mobile_country_code || ""} onChange={set("individual_mobile_country_code")} className="!w-44 flex-shrink-0">
-                  <option value="">Code</option>
-                  {dialOptions.map((c) => <option key={c.code} value={c.code}>{c.label}</option>)}
-                </Select>
-                <Input value={form.individual_mobile_number || ""} onChange={set("individual_mobile_number")} maxLength={12} placeholder="e.g. 501234567" />
-              </div>
+              <MobileNumberInput code={form.individual_mobile_country_code} number={form.individual_mobile_number} options={dialOptions}
+                onCode={setValue("individual_mobile_country_code")} onNumber={setValue("individual_mobile_number")} />
             </Field>
             <Field label="Nature of Services Sought" required={req("nature_of_services_sought")}>
               <MultiSelect options={alphabetical(selectableCodes(services.items, form.nature_of_services_sought))} value={form.nature_of_services_sought} onChange={setServicesSought} />

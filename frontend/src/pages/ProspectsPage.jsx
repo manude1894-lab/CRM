@@ -192,7 +192,8 @@ export default function ProspectsPage({ onNavigate } = {}) {
           <div className="grid grid-cols-2 gap-x-4">
             <Field label="Contact Name"><Input value={form.contact_name || ""} onChange={(e) => setForm((p) => ({ ...p, contact_name: e.target.value }))} /></Field>
             <Field label="Contact Email"><Input type="email" placeholder="name@domain.com" value={form.contact_email || ""} onChange={(e) => setForm((p) => ({ ...p, contact_email: e.target.value }))} /></Field>
-            <Field label="Contact Phone"><Input value={form.contact_phone || ""} onChange={(e) => setForm((p) => ({ ...p, contact_phone: e.target.value }))} /></Field>
+            <Field label="Contact Phone"><Input value={form.contact_phone || ""} inputMode="tel" maxLength={16} placeholder="e.g. +971501234567"
+              onChange={(e) => setForm((p) => ({ ...p, contact_phone: e.target.value.replace(/[^\d+]/g, "").replace(/(?!^)\+/g, "") }))} /></Field>
             <Field label="Source">
               <SelectWithOther value={form.source} options={PROSPECT_SOURCE_OPTIONS} maxLength={50} otherPlaceholder="Where did the prospect come from?"
                 onChange={(e) => setForm((p) => ({ ...p, source: e.target.value }))} />
