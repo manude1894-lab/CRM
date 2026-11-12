@@ -1,3 +1,4 @@
+import { mobileProblem } from "../../utils/mobile";
 // Client (account) form state helpers: blank form, account → form mapping, and form → API payload.
 // Pure functions so they can be unit-tested without rendering the form.
 
@@ -176,6 +177,13 @@ export function buildSectionPatch(form, fieldKeys) {
   const clean = cleanPayload(picked);
   if ("spoc_id" in clean) clean.spoc_id = toSpocId(clean.spoc_id);
   return clean;
+}
+
+// Triam UAT 12-11-2026: a mobile number is digits only and never saved without its country code.
+export function clientMobileProblem(form) {
+  return form.account_type === "Individual"
+    ? mobileProblem(form.individual_mobile_country_code, form.individual_mobile_number)
+    : mobileProblem(form.contact_mobile_country_code, form.contact_mobile_number);
 }
 
 // Returns an error message, or null when the core fields are valid for creating a client.

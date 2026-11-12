@@ -5,6 +5,7 @@ from datetime import date, datetime
 from decimal import Decimal
 
 from app.schemas.account import AddressBlock
+from app.schemas.phone import MobilePairRules, number_validator
 
 
 class AccountPartyBase(BaseModel):
@@ -35,11 +36,17 @@ class AccountPartyBase(BaseModel):
     notes: Optional[str] = None
 
 
-class AccountPartyCreate(AccountPartyBase):
-    pass
+class AccountPartyCreate(AccountPartyBase, MobilePairRules):
+    # Triam UAT 12-11-2026: mobile numbers are digits only and carry their country code.
+    MOBILE_PAIRS = (("mobile_country_code", "mobile_number"),)
+    _mobile_digits = number_validator("mobile_number")
 
 
-class AccountPartyUpdate(BaseModel):
+class AccountPartyUpdate(MobilePairRules):
+    # Triam UAT 12-11-2026: mobile numbers are digits only and carry their country code.
+    MOBILE_PAIRS = (("mobile_country_code", "mobile_number"),)
+    _mobile_digits = number_validator("mobile_number")
+    PARTIAL = True
     party_role: Optional[str] = None
     constitution: Optional[str] = None
     full_name: Optional[str] = None

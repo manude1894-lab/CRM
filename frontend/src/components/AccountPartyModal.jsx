@@ -6,6 +6,8 @@ import { toast } from "../store/toast";
 import { useAuthStore } from "../store/auth";
 import { confirmDialog, reasonDialog } from "../store/confirm";
 import { dialCodeForCountry, dialCodeOptions } from "../utils/dialCodes";
+import MobileNumberInput from "./MobileNumberInput";
+import { mobileProblem } from "../utils/mobile";
 import ClientDocumentsFolder from "./accounts/ClientDocumentsFolder";
 import { FOUNDATION_ROLES, isFoundation } from "./accounts/accountForm";
 
@@ -96,10 +98,13 @@ export default function AccountPartyModal({ account, onClose, onChange, role }) 
 
   const save = async () => {
     if (!form.full_name?.trim()) return toast.error("Full Name is required");
-    // Triam UAT 09-11-2026: the address needs Line 1 and City, as on the client (the country is Country of Residence).
+    // Triam UAT 09/12-11-2026: every person or entity needs Address Line 1 and City (the server asks for
+    // them at Submit), so they are checked on every save, not only once a Country of Residence is chosen.
     const addr = form.residential_address || {};
-    if (form.country_of_residence && !(addr.line1?.trim() && addr.city?.trim()))
-      return toast.error("Residential Address: Address Line 1 and City are required");
+    if (!(addr.line1?.trim() && addr.city?.trim()))
+      return toast.error(`${form.constitution === "Entity" ? "Registered" : "Residential"} Address: Address Line 1 and City are required`);
+    const mobileError = mobileProblem(form.mobile_country_code, form.mobile_number);
+    if (mobileError) return toast.error(mobileError);
     try {
       const payload = cleanPayload(form);
       if (editing === "new") await accountPartiesApi.create(account.id, payload);
@@ -317,13 +322,8 @@ function PartyForm({ form, setForm, countries, onCancel, onSave, copyFrom = [] }
       )}
 
       <Field label="Contact Mobile" required={contactRequired}>
-        <div className="flex gap-2">
-          <Select value={form.mobile_country_code || ""} onChange={set(setForm, "mobile_country_code")} className="!w-44 flex-shrink-0">
-            <option value="">Code</option>
-            {dialCodeOptions(countries, COUNTRY_CALLING_CODES).map((c) => <option key={c.code} value={c.code}>{c.label}</option>)}
-          </Select>
-          <Input value={form.mobile_number || ""} onChange={set(setForm, "mobile_number")} maxLength={12} placeholder="e.g. 501234567" />
-        </div>
+        <MobileNumberInput code={form.mobile_country_code} number={form.mobile_number} options={dialCodeOptions(countries, COUNTRY_CALLING_CODES)}
+          onCode={(v) => setForm((p) => ({ ...p, mobile_country_code: v }))} onNumber={(v) => setForm((p) => ({ ...p, mobile_number: v }))} />
       </Field>
       <Field label="Contact Email" required={contactRequired}><Input type="email" value={form.email || ""} onChange={set(setForm, "email")} /></Field>
 
@@ -338,9 +338,10 @@ function PartyForm({ form, setForm, countries, onCancel, onSave, copyFrom = [] }
         }} />
       </Field>
 
-      {form.country_of_residence && (
+      {/* Always shown: Line 1 and City are needed for every person or entity (Triam UAT 12-11-2026). */}
+      {(
         <>
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mt-3 mb-1">Residential Address</p>
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mt-3 mb-1">{isEntity ? "Registered Address" : "Residential Address"}</p>
           <div className="grid grid-cols-2 gap-3">
             <Field label="Address Line 1" required><Input value={form.residential_address?.line1 || ""} onChange={setAddr(setForm, "line1")} /></Field>
             <Field label="Address Line 2"><Input value={form.residential_address?.line2 || ""} onChange={setAddr(setForm, "line2")} /></Field>

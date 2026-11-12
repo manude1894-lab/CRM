@@ -7,6 +7,7 @@ from datetime import date, datetime
 from decimal import Decimal
 
 from app.models.prospect import ProspectStatus
+from app.schemas.phone import phone
 
 
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
@@ -42,12 +43,16 @@ class ProspectBase(_ProspectRules):
 
 
 class ProspectCreate(ProspectBase):
+    # Triam UAT 12-11-2026: digits with an optional leading +, no letters.
+    _phone_digits = field_validator("contact_phone", mode="before", check_fields=False)(classmethod(lambda cls, v: phone(v)))
     # BRD §3: an exact duplicate is blocked; Compliance may create it with a recorded reason.
     allow_duplicate: bool = False
     duplicate_reason: Optional[str] = None
 
 
 class ProspectUpdate(_ProspectRules):
+    # Triam UAT 12-11-2026: digits with an optional leading +, no letters.
+    _phone_digits = field_validator("contact_phone", mode="before", check_fields=False)(classmethod(lambda cls, v: phone(v)))
     allow_duplicate: bool = False
     duplicate_reason: Optional[str] = None
     company_name: Optional[str] = Field(None, min_length=1, max_length=255)

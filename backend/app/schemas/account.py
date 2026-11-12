@@ -4,6 +4,7 @@ import re
 from pydantic import BaseModel, Field, ConfigDict, field_validator
 from typing import Literal, Optional
 from datetime import date, datetime
+from app.schemas.phone import MobilePairRules, number_validator
 
 
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
@@ -283,14 +284,23 @@ class AccountBase(_ClientFieldRules):
     br_rationale: Optional[str] = Field(None, max_length=4000)
 
 
-class AccountCreate(AccountBase):
+class AccountCreate(AccountBase, MobilePairRules):
+    # Triam UAT 12-11-2026: mobile numbers are digits only and carry their country code.
+    MOBILE_PAIRS = (("contact_mobile_country_code", "contact_mobile_number"),
+                    ("individual_mobile_country_code", "individual_mobile_number"))
+    _mobile_digits = number_validator("contact_mobile_number", "individual_mobile_number")
     prospect_id: Optional[int] = None  # BRD §4A — the prospect this client is created from
     # BRD §3 duplicate exception — only honoured for users with client.approve.
     allow_duplicate: bool = False
     duplicate_reason: Optional[str] = Field(None, max_length=255)
 
 
-class AccountUpdate(_ClientFieldRules):
+class AccountUpdate(_ClientFieldRules, MobilePairRules):
+    # Triam UAT 12-11-2026: mobile numbers are digits only and carry their country code.
+    MOBILE_PAIRS = (("contact_mobile_country_code", "contact_mobile_number"),
+                    ("individual_mobile_country_code", "individual_mobile_number"))
+    _mobile_digits = number_validator("contact_mobile_number", "individual_mobile_number")
+    PARTIAL = True
     account_type: Optional[str] = None
     search_name: Optional[str] = Field(None, max_length=120)
     licensing_authority_other: Optional[str] = Field(None, max_length=100)
