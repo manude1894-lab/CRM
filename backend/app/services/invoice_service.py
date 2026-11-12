@@ -256,6 +256,8 @@ def cancel_invoice(db: Session, invoice_id: int, reason: str, user: User) -> Non
         raise HTTPException(status_code=403, detail="Only Accounts can cancel this invoice")
     if inv.status in (PAID, InvoiceLedgerStatus.CANCELLED.value):
         raise HTTPException(status_code=400, detail=f"A {inv.status.lower()} invoice can't be cancelled")
-    db.query(Instruction).filter(Instruction.invoice_id == inv.id).update({Instruction.invoice_id: None})
+    # The service request goes back to its RM, who may correct the charge and submit it again.
+    db.query(Instruction).filter(Instruction.invoice_id == inv.id).update(
+        {Instruction.invoice_id: None, Instruction.submitted_at: None, Instruction.submitted_by_id: None})
     inv.status, inv.cancel_reason = InvoiceLedgerStatus.CANCELLED.value, reason.strip()
     db.commit()

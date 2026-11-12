@@ -55,6 +55,12 @@ def update_instruction(
     return instruction_service.update_instruction(db, instruction_id, data, user)
 
 
+@router.post("/{instruction_id}/submit", response_model=InstructionRead,
+             summary="RM: send the request to the Accountant's queue for invoicing")
+def submit_instruction(instruction_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    return instruction_service.submit_instruction(db, instruction_id, user)
+
+
 @router.post("/{instruction_id}/cancel", status_code=status.HTTP_204_NO_CONTENT,
              summary="Cancel with a reason (records are never deleted)")
 def cancel_instruction(instruction_id: int, data: CancelRequest, db: Session = Depends(get_db), user: User = Depends(get_current_user)):

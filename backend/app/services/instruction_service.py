@@ -1,11 +1,19 @@
-"""Service layer: Service Requests (BRD §15) on approved clients.
+"""Service layer: Service Requests (BRD §15).
 
 Each request is handled by one of the client's Triam entities; that entity decides the request types
 and statuses offered (Triam's "Service Requests - Triam Entities" list, kept as master data).
+
+Requests open once Compliance has approved the client (Triam, 12-11-2026): the Final approval is not
+awaited. Invoicing follows Triam's Invoice Box template (11-11-2026): the RM records the charge
+(excluding VAT) with its currency, any payment received and any service provider, and Submit sends the
+request to the Accountant's queue as an invoice instruction. The Accountant records the invoice and
+sends it to the RM (invoice_service.raise_invoice).
 """
+from datetime import date, datetime, timezone
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, select
 from fastapi import HTTPException
+from decimal import Decimal
 from typing import Optional
 
 from app.models import Account, Instruction, InstructionStatus, User, UserRole
@@ -82,6 +90,7 @@ def _client_for(db: Session, account_id: Optional[int], user: User) -> Account:
 
 
 SERVICEABLE = {"Approved", "Active", "Inactive", "Marked for Exit"}
+AWAITING = "Awaiting Approval"
 
 # ─── Request types and statuses by Triam entity (Triam's "Service Requests - Triam Entities" list) ──
 OTHER = "Other"
@@ -140,10 +149,91 @@ def _check_type_and_status(db: Session, inst: Instruction, status_given: bool) -
         raise HTTPException(status_code=400, detail=f"'{inst.status}' is not a status for {inst.triam_entity or 'this entity'}")
 
 
+def takes_requests(acc: Account) -> bool:
+    """BRD §8; Triam 12-11-2026: a client takes service requests once Compliance has approved it, which is
+    when its Client ID is issued, without waiting for the Final approval. A client rejected at the Final
+    stage takes none until approved again; its existing requests and invoices stay as they are."""
+    return acc.profile_status in SERVICEABLE or (acc.profile_status == AWAITING and bool(acc.client_id))
+
+
 def _assert_client_serviceable(acc: Account) -> None:
-    """BRD §8: a client is available for service requests once it is approved."""
-    if acc.profile_status not in SERVICEABLE:
-        raise HTTPException(status_code=400, detail=f"{acc.company_name} is {acc.profile_status}. Service requests open once the client is approved.")
+    if not takes_requests(acc):
+        raise HTTPException(status_code=400, detail=f"{acc.company_name} is {acc.profile_status}. "
+                                                    "Service requests open once Compliance has approved the client.")
+
+
+def _currency(value: Optional[str], label: str) -> Optional[str]:
+    from app.services.invoice_service import CURRENCIES
+    if value is None:
+        return None
+    value = value.upper()
+    if value not in CURRENCIES:
+        raise HTTPException(status_code=400, detail=f"{label}: currency must be one of {', '.join(CURRENCIES)}")
+    return value
+
+
+def _tidy_invoicing(inst: Instruction) -> None:
+    """Each amount carries a currency (the charge's when none is given); no service provider, no details."""
+    inst.charge_currency = _currency(inst.charge_currency, "Charge to the client") or "AED"
+    inst.amount_paid_currency = (_currency(inst.amount_paid_currency, "Amount paid by the client")
+                                 or (inst.charge_currency if inst.amount_paid is not None else None))
+    if not inst.service_provider_involved:
+        inst.service_provider_name = inst.service_provider_amount = inst.service_provider_currency = None
+    else:
+        inst.service_provider_name = (inst.service_provider_name or "").strip() or None
+        inst.service_provider_currency = (_currency(inst.service_provider_currency, "Amount payable to the service provider")
+                                          or (inst.charge_currency if inst.service_provider_amount is not None else None))
+
+
+def _invoice_open(db: Session, inst: Instruction) -> bool:
+    """The request is with the Accountant: it has an invoice that hasn't been cancelled."""
+    from app.models import Invoice
+    inv = db.get(Invoice, inst.invoice_id) if inst.invoice_id else None
+    return inv is not None and inv.status != "Cancelled"
+
+
+def _invoice_notes(inst: Instruction) -> str:
+    from app.utils.dates import dmy
+    lines = [f"Service request #{inst.id}. Charge excludes VAT."]
+    if inst.amount_paid is not None:
+        when = f" on {dmy(inst.payment_received_date)}" if inst.payment_received_date else ""
+        lines.append(f"Client has paid {inst.amount_paid_currency} {inst.amount_paid}{when}.")
+    if inst.service_provider_involved:
+        amount = (f", {inst.service_provider_currency} {inst.service_provider_amount} payable"
+                  if inst.service_provider_amount is not None else "")
+        lines.append(f"Service provider: {inst.service_provider_name or '—'}{amount}.")
+    return " ".join(lines)
+
+
+def _send_for_invoicing(db: Session, inst: Instruction, acc: Account, user: User) -> None:
+    """Submit: an invoice instruction for the charge goes to the Accountant's queue (they are notified)."""
+    from app.models import Invoice
+    from app.services import invoice_service
+    inv = Invoice(account_id=inst.account_id, description=inst.other_description or inst.instruction_type,
+                  amount=inst.charge_amount, currency=inst.charge_currency or "AED", status=invoice_service.DRAFT,
+                  requested_by_id=user.id, notes=_invoice_notes(inst))
+    db.add(inv)
+    db.flush()
+    inst.invoice_id, inst.submitted_at, inst.submitted_by_id = inv.id, datetime.now(timezone.utc), user.id
+    invoice_service._send_to_accounts(db, inv, acc, user)  # commits and notifies the Accountants
+
+
+def submit_instruction(db: Session, instruction_id: int, user: User) -> Instruction:
+    """The RM sends the request to the Accountant's queue, whatever the request's own status."""
+    inst = get_instruction(db, instruction_id, user)
+    if inst.status == InstructionStatus.CANCELLED.value:
+        raise HTTPException(status_code=400, detail="A dropped request can't be submitted")
+    if _invoice_open(db, inst):
+        raise HTTPException(status_code=400, detail="This request is already with the Accountant")
+    acc = db.get(Account, inst.account_id)
+    _assert_client_serviceable(acc)
+    if not inst.charge_amount:
+        raise HTTPException(status_code=400, detail="Enter the charge to the client before submitting")
+    if inst.service_provider_involved and not inst.service_provider_name:
+        raise HTTPException(status_code=400, detail="Enter the name of the service provider")
+    _send_for_invoicing(db, inst, acc, user)
+    db.refresh(inst)
+    return inst
 
 
 def create_instruction(db: Session, data: InstructionCreate, user: User) -> Instruction:
@@ -153,6 +243,7 @@ def create_instruction(db: Session, data: InstructionCreate, user: User) -> Inst
     inst = Instruction(**data.model_dump(exclude={"account_id", "triam_entity"}), account_id=acc.id,
                        triam_entity=_resolve_entity(db, data.triam_entity, acc))
     _check_type_and_status(db, inst, status_given=bool(data.status))
+    _tidy_invoicing(inst)
     db.add(inst)
     db.commit()
     db.refresh(inst)
@@ -160,8 +251,6 @@ def create_instruction(db: Session, data: InstructionCreate, user: User) -> Inst
 
 
 def update_instruction(db: Session, instruction_id: int, data: InstructionUpdate, user: User) -> Instruction:
-    from app.models import Invoice
-
     inst = get_instruction(db, instruction_id, user)
     payload = data.model_dump(exclude_unset=True)
     if payload.get("status") == InstructionStatus.CANCELLED.value or inst.status == InstructionStatus.CANCELLED.value:
@@ -170,8 +259,16 @@ def update_instruction(db: Session, instruction_id: int, data: InstructionUpdate
         master_service.assert_valid(db, "service_request_type", payload["instruction_type"], "Request type")
     if "triam_entity" in payload:
         payload["triam_entity"] = _resolve_entity(db, payload["triam_entity"], db.get(Account, inst.account_id))
+    # Once with the Accountant, the charge stands; cancelling the invoice reopens it.
+    if _invoice_open(db, inst) and _changes_charge(inst, payload):
+        raise HTTPException(status_code=400, detail="The charge is already with the Accountant. Ask them to cancel the invoice to change it.")
     for field, value in payload.items():
         setattr(inst, field, value)
+    try:
+        _tidy_invoicing(inst)
+    except HTTPException:
+        db.rollback()
+        raise
     if {"instruction_type", "triam_entity", "status", "other_description"} & set(payload):
         try:
             _check_type_and_status(db, inst, status_given="status" in payload)
@@ -181,29 +278,25 @@ def update_instruction(db: Session, instruction_id: int, data: InstructionUpdate
 
     # A request marked Completed without a completion date is completed today.
     if payload.get("status") == "Completed" and not inst.date_completed:
-        from datetime import date
         inst.date_completed = date.today()
 
-    # BRD §16: a completed, charged service request is an instruction to Accounts to invoice it.
-    new_invoice = None
-    if payload.get("status") == "Completed" and inst.charge_amount and not inst.invoice_id:
-        from datetime import datetime, timezone
-        new_invoice = Invoice(account_id=inst.account_id, description=inst.other_description or inst.instruction_type,
-                              amount=inst.charge_amount, status="Requested", requested_by_id=user.id,
-                              requested_at=datetime.now(timezone.utc))
-        db.add(new_invoice)
-        db.flush()
-        inst.invoice_id = new_invoice.id
-
-    db.commit()
+    # BRD §16: a completed, charged request not yet submitted goes to the Accountant as if submitted.
+    acc = db.get(Account, inst.account_id)
+    if payload.get("status") == "Completed" and inst.charge_amount and not _invoice_open(db, inst) and takes_requests(acc):
+        _send_for_invoicing(db, inst, acc, user)
+    else:
+        db.commit()
     db.refresh(inst)
-    if new_invoice is not None:
-        from app.services import invoice_service, notification_service
-        for u in invoice_service._accounts_team(db):
-            if u.id != user.id:
-                notification_service.notify_user(db, u.id, f"Invoice instruction: service request '{inst.instruction_type}' completed: "
-                                                 f"{new_invoice.currency} {new_invoice.amount} to invoice.", "invoice_requested")
     return inst
+
+
+def _changes_charge(inst: Instruction, payload: dict) -> bool:
+    if "charge_amount" in payload and payload["charge_amount"] is not None and inst.charge_amount is not None:
+        if Decimal(str(payload["charge_amount"])) != Decimal(str(inst.charge_amount)):
+            return True
+    elif "charge_amount" in payload and (payload["charge_amount"] is None) != (inst.charge_amount is None):
+        return True
+    return bool(payload.get("charge_currency")) and payload["charge_currency"].upper() != (inst.charge_currency or "AED")
 
 
 def cancel_instruction(db: Session, instruction_id: int, reason: str, user: User) -> None:

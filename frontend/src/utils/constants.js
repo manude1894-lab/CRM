@@ -3,6 +3,10 @@ export const PROSPECT_SOURCE_OPTIONS = ["Senior Mgmt", "Social Media", "Referral
 
 // Amounts without their own currency are in AED (Triam bills in the UAE; invoices carry their own currency).
 export const fmtFull = (n) => `AED ${Number(n || 0).toLocaleString()}`;
+// Currencies offered for invoices and service request amounts (same list as the server's CURRENCIES).
+export const CURRENCIES = ["AED", "USD", "EUR", "GBP", "INR", "SGD"];
+// "USD 1,000.00": an amount with its own currency.
+export const fmtMoney = (currency, n) => `${currency || "AED"} ${Number(n || 0).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 // CSV/export filenames: "<base>_YYYY-MM-DD_HH-mm-ss.csv" so every export is
 // timestamped and never silently overwrites the last one in the Downloads folder.

@@ -95,6 +95,8 @@ export const instructionsApi = {
   create: (data) => api.post("/instructions", data).then((r) => r.data),
   update: (id, data) => api.patch(`/instructions/${id}`, data).then((r) => r.data),
   cancel: (id, reason) => api.post(`/instructions/${id}/cancel`, { reason }),
+  // Triam's Invoice Box template: send the request to the Accountant's queue.
+  submit: (id) => api.post(`/instructions/${id}/submit`).then((r) => r.data),
 };
 
 // ─── Invoices (BRD §16) ────────────────────────────────────────────────
