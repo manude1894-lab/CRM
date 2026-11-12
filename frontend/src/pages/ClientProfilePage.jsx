@@ -8,7 +8,7 @@ import ClientServicingModal from "../components/accounts/ClientServicingModal";
 import AccountHistoryModal from "../components/accounts/AccountHistoryModal";
 import WorkflowBar from "../components/accounts/WorkflowBar";
 import CompletenessChecklist from "../components/accounts/CompletenessChecklist";
-import { accountToForm, isFoundation } from "../components/accounts/accountForm";
+import { accountToForm, isFoundation, isOffshore } from "../components/accounts/accountForm";
 import { useAuthStore } from "../store/auth";
 import { fmtDate, WITH_RM_STATUSES } from "../utils/constants";
 import { fmtFYE } from "../utils/fye";
@@ -133,10 +133,13 @@ export default function ClientProfilePage({ accountId, initialTab = "overview", 
               ]} />
             </Panel>}
             {!individual && (
-              <Panel title="Tax & engagement">
+              <Panel title={isOffshore(a) ? "Financial year & engagement" : "Tax & engagement"}>
                 <FactList items={[
-                  ["TRN / VAT", a.trn_vat_number], ["Financial year end", a.financial_year_end ? fmtFYE(a.financial_year_end) : null],
-                  ["Corporate tax registered", yesNo(a.corp_tax_registered)], ["Corp tax no.", a.corp_tax_registration_number],
+                  // Triam 12-11-2026: no VAT or Corporate Tax for offshore (BVI) companies, unless already recorded.
+                  ...(!isOffshore(a) || a.trn_vat_number ? [["TRN / VAT", a.trn_vat_number]] : []),
+                  ["Financial year end", a.financial_year_end ? fmtFYE(a.financial_year_end) : null],
+                  ...(!isOffshore(a) || a.corp_tax_registered || a.corp_tax_registration_number
+                    ? [["Corporate tax registered", yesNo(a.corp_tax_registered)], ["Corp tax no.", a.corp_tax_registration_number]] : []),
                   ["Engagement letter", a.engagement_letter_signed ? `Signed, valid until ${fmtDate(a.engagement_letter_valid_until) || "—"}` : "Not signed"],
                 ]} />
               </Panel>
