@@ -118,6 +118,9 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
   // The asterisks follow one rule, tested against the server's rule (backend/tests/contracts/mandatory_fields.json).
   const mandatory = mandatoryFields(form);
   const req = (field) => mandatory.has(field);
+  const offshore = form.account_type !== "Individual" && isOffshore(form);
+  const showVat = !offshore || !!form.trn_vat_number;
+  const showCorpTax = !offshore || form.corp_tax_registered === true || !!form.corp_tax_registration_number;
   const locked = readOnlyUser || ["Awaiting Approval", "Exited"].includes(form.profile_status) || amendLocked;
   // BRD §7/§11: only Compliance completes the CDD section — before submission, while the
   // client is with Compliance, or in an amendment of an approved client.
@@ -495,13 +498,15 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
               </fieldset>
             </Section>
 
-            <Section title="Tax" hasData={!!(form.trn_vat_number || form.financial_year_end || form.corp_tax_registered)}
+            {/* Triam 12-11-2026: no VAT or Corporate Tax in the BVI, so offshore companies don't see those fields
+                (unless a value was already saved); the Financial Year End stays, optional. */}
+            <Section title={offshore ? "Financial Year" : "Tax"} hasData={!!(form.trn_vat_number || form.financial_year_end || form.corp_tax_registered)}
               {...sectionProps("tax")}>
-              {!req("financial_year_end") && isOffshore(form) && form.client_category !== "Under Formation" && (
-                <p className="text-[11px] text-gray-500 mb-2">Tax details are optional for offshore companies.</p>
+              {offshore && (
+                <p className="text-[11px] text-gray-500 mb-2">No VAT or Corporate Tax for offshore (BVI) companies. The Financial Year End is optional.</p>
               )}
               <div className="grid grid-cols-2 gap-3">
-                <Field label="TRN / VAT Registration No."><Input value={form.trn_vat_number} onChange={(e) => setForm({ ...form, trn_vat_number: e.target.value.replace(/\D/g, "") })} maxLength={15} inputMode="numeric" /></Field>
+                {showVat && <Field label="TRN / VAT Registration No."><Input value={form.trn_vat_number} onChange={(e) => setForm({ ...form, trn_vat_number: e.target.value.replace(/\D/g, "") })} maxLength={15} inputMode="numeric" /></Field>}
                 <Field label={`Financial Year End${form.financial_year_end ? ` (${fmtFYE(form.financial_year_end)})` : ""}`} required={req("financial_year_end")}>
                   <div className="flex gap-2">
                     <Select value={parseFYE(form.financial_year_end).day} onChange={(e) => setForm({ ...form, financial_year_end: toFYE(parseFYE(form.financial_year_end).month || "12", e.target.value) })}>
@@ -515,10 +520,10 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
                   </div>
                 </Field>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              {showCorpTax && <div className="grid grid-cols-2 gap-3">
                 <YesNo label="Corporate Tax Registered" required={req("corp_tax_registered")} value={form.corp_tax_registered} onChange={setValue("corp_tax_registered")} />
-              </div>
-              {form.corp_tax_registered && (
+              </div>}
+              {showCorpTax && form.corp_tax_registered && (
                 <Field label="Corp Tax Registration No. / TAN"><Input value={form.corp_tax_registration_number} onChange={(e) => setForm({ ...form, corp_tax_registration_number: e.target.value.replace(/\D/g, "") })} maxLength={15} inputMode="numeric" /></Field>
               )}
             </Section>

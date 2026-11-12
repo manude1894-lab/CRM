@@ -50,3 +50,32 @@ def test_countries_carry_an_isd_code_admin_can_change(db):
     assert other.dial_code == "+888"
     with pytest.raises(ValidationError):
         CountryUpdate(dial_code="971-abc")
+
+
+def test_bvi_company_under_formation_needs_no_addresses_licence_dates_or_tax(db, real_user):
+    """Triam mail 12-11-2026: a BVI company still being formed has no registered or operating address, no
+    licence dates and no VAT / Corporate Tax; none of these may block Submit."""
+    rm = real_user("Rel. Manager")
+    acc = flow.complete_client(db, rm)
+    account_service.update_account(db, acc.id, AccountUpdate(
+        client_category="Under Formation", country="Virgin Islands (British)",
+        registered_address={}, operating_address={}, license_start_date=None, license_expiry_date=None,
+        registration_number=None, incorporation_date=None, license_number=None, license_activities=None,
+        financial_year_end=None, corp_tax_registered=None, trn_vat_number=None), rm)
+    db.refresh(acc)
+    fields = {m["field"] for m in account_service.missing_mandatory(acc)}
+    assert not fields & {"registered_address", "operating_address", "license_start_date", "license_expiry_date",
+                         "financial_year_end", "corp_tax_registered"}, fields
+    assert account_service.is_offshore(acc)
+
+
+def test_bvi_company_already_formed_still_needs_licence_and_addresses_but_no_tax(db, real_user):
+    rm = real_user("Rel. Manager")
+    acc = flow.complete_client(db, rm)
+    account_service.update_account(db, acc.id, AccountUpdate(
+        client_category="Existing", country="Virgin Islands (British)", registered_address={}, license_expiry_date=None,
+        financial_year_end=None, corp_tax_registered=None), rm)
+    db.refresh(acc)
+    fields = {m["field"] for m in account_service.missing_mandatory(acc)}
+    assert {"registered_address", "license_expiry_date"} <= fields
+    assert not fields & {"financial_year_end", "corp_tax_registered"}
