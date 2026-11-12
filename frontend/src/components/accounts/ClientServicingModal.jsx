@@ -5,11 +5,11 @@ import { toast } from "../../store/toast";
 import { useAuthStore } from "../../store/auth";
 import { useMasters } from "../../hooks/useMasters";
 import { fmtDate } from "../../utils/constants";
-import { useRequestOptions, requestLabel, clientEntities } from "../../hooks/useRequestOptions";
+import { useRequestOptions, requestLabel, clientEntities, takesRequests, NOT_YET_SERVICEABLE } from "../../hooks/useRequestOptions";
 import ActivityForm, { activityPayload, activityProblem, blankActivity } from "../activities/ActivityForm";
 import ActivityCard from "../activities/ActivityCard";
+import MoneyInput from "../MoneyInput";
 
-const SERVICEABLE = ["Approved", "Active", "Inactive", "Marked for Exit"];
 const STATUS_STYLE = { Completed: "bg-emerald-50 text-emerald-700", "On Hold": "bg-gray-100 text-gray-600", Dropped: "bg-gray-100 text-gray-400" };
 
 /**
@@ -25,7 +25,7 @@ export default function ClientServicingModal({ account, onClose, startWith = nul
   // service request form, when open (BRD §11: opened straight from the client, with its details)
   const entities = clientEntities(account);
   const blankRequest = () => ({ triam_entity: entities[0] || "", instruction_type: "", other_description: "",
-    date_received: new Date().toISOString().split("T")[0], charge_amount: "", comments: "" });
+    date_received: new Date().toISOString().split("T")[0], charge_amount: "", charge_currency: "AED", comments: "" });
   const [sr, setSr] = useState(startWith === "request" ? blankRequest() : null);
   const [busy, setBusy] = useState(false);
   const requestTypes = useMasters("service_request_type", []);
@@ -60,7 +60,7 @@ export default function ClientServicingModal({ account, onClose, startWith = nul
         account_id: account.id, instruction_type: sr.instruction_type,
         triam_entity: sr.triam_entity || null, other_description: sr.other_description || null,
         date_received: sr.date_received || null, comments: sr.comments || null,
-        charge_amount: sr.charge_amount === "" ? null : sr.charge_amount,
+        charge_amount: sr.charge_amount === "" ? null : sr.charge_amount, charge_currency: sr.charge_currency || "AED",
       });
       toast.success("Service request created");
       setSr(null); load();
@@ -127,7 +127,10 @@ export default function ClientServicingModal({ account, onClose, startWith = nul
               </Field>
             )}
             <Field label="Date Received"><DateInput value={sr.date_received} onChange={(e) => setSr((p) => ({ ...p, date_received: e.target.value }))} /></Field>
-            <Field label="Charge (to client)"><Input type="number" min="0" step="0.01" value={sr.charge_amount} onChange={(e) => setSr((p) => ({ ...p, charge_amount: e.target.value }))} /></Field>
+            <Field label="Charge to the client (excluding VAT)">
+              <MoneyInput label="Charge to the client" currency={sr.charge_currency} amount={sr.charge_amount}
+                onCurrency={(v) => setSr((p) => ({ ...p, charge_currency: v }))} onAmount={(v) => setSr((p) => ({ ...p, charge_amount: v }))} />
+            </Field>
           </div>
           <Field label="Details"><Textarea rows={3} value={sr.comments} onChange={(e) => setSr((p) => ({ ...p, comments: e.target.value }))} /></Field>
           <div className="flex justify-end gap-2">
@@ -137,10 +140,10 @@ export default function ClientServicingModal({ account, onClose, startWith = nul
         </div>
       ) : (
         <div className="space-y-2">
-          {readOnly ? null : SERVICEABLE.includes(account.profile_status) ? (
+          {readOnly ? null : takesRequests(account) ? (
             <button onClick={() => setSr(blankRequest())}
               className="px-2.5 py-1 text-xs text-white rounded-lg" style={{ background: "#1a3a5c" }}>+ New Service Request</button>
-          ) : <p className="text-xs text-gray-500">Service requests open once the client is approved.</p>}
+          ) : <p className="text-xs text-gray-500">{NOT_YET_SERVICEABLE}</p>}
           {requests === null ? <Spinner /> : requests.length === 0
             ? <p className="text-sm text-gray-400 text-center py-6">No service requests for this client yet.</p>
             : (

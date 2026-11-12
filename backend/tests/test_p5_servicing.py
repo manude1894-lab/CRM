@@ -119,4 +119,4 @@ def test_service_requests_open_once_the_client_is_approved(db, make_user, make_a
     acc = make_account(name="Still Onboarding Ltd", spoc=rm, profile_status="WIP")
     with pytest.raises(HTTPException) as e:
         instruction_service.create_instruction(db, InstructionCreate(account_id=acc.id, instruction_type="Change of Address"), rm)
-    assert "once the client is approved" in e.value.detail
+    assert "once Compliance has approved the client" in e.value.detail

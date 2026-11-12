@@ -37,3 +37,5 @@ export const pickableStatuses = (opts, current) => {
 export const firstOpenStatus = (opts) => opts.statuses.find((s) => !s.closed)?.code || "";
 export const requestLabel = (r) => (r.instruction_type === "Other" && r.other_description ? `Other – ${r.other_description}` : r.instruction_type);
 export const clientEntities = (account) => (account ? [account.anchor_entity, ...(account.non_anchor_entities || [])].filter(Boolean) : []);
+
+export { takesRequests, NOT_YET_SERVICEABLE } from "../utils/serviceRequests";
