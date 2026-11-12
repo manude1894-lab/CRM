@@ -185,3 +185,16 @@ export function validateCoreFields(form) {
   if (!form.anchor_entity) return "Anchor Triam Entity is required (it determines the Client ID)";
   return null;
 }
+
+// Nature of Services sought (BRD §6.4) and Services obtained (BRD §4) come from the same Services master
+// and are usually the same at onboarding. Services obtained follows what the client sought while it is
+// empty or still the same list; once the RM changes it, it is left alone. `obtainable` limits the copy to
+// the services the client's Triam entities offer.
+export function withServicesSought(form, sought, obtainable) {
+  const before = form.nature_of_services_sought || [];
+  const obtained = form.services_obtained || [];
+  const following = obtained.length === 0 || (obtained.length === before.length && obtained.every((c) => before.includes(c)));
+  if (!following) return { ...form, nature_of_services_sought: sought };
+  return { ...form, nature_of_services_sought: sought,
+    services_obtained: obtainable ? sought.filter((c) => obtainable.includes(c)) : sought };
+}

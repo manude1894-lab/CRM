@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   BLANK_ACCOUNT_FORM, SECTION_FIELDS, accountToForm, cleanPayload,
-  buildAccountPayload, buildSectionPatch, validateCoreFields, mandatoryFields,
+  buildAccountPayload, buildSectionPatch, validateCoreFields, mandatoryFields, withServicesSought,
 } from "./accountForm";
 import { passportNote } from "../ui";
 import contract from "../../../../backend/tests/contracts/mandatory_fields.json";
@@ -118,5 +118,25 @@ describe("passportNote", () => {
     expect(passportNote("2026-10-08", today)).toMatchObject({ blocked: false });
     expect(passportNote("2026-10-07", today)).toMatchObject({ blocked: true });
     expect(passportNote("2016-01-01", today).text).toContain("renewed passport");
+  });
+});
+
+describe("withServicesSought", () => {
+  it("fills Services obtained from what the client sought", () => {
+    const f = withServicesSought({ nature_of_services_sought: [], services_obtained: [] }, ["Audit", "VAT"], ["Audit", "VAT"]);
+    expect(f.services_obtained).toEqual(["Audit", "VAT"]);
+  });
+  it("keeps following while the two lists are the same", () => {
+    const f = withServicesSought({ nature_of_services_sought: ["Audit"], services_obtained: ["Audit"] }, ["Audit", "VAT"], null);
+    expect(f.services_obtained).toEqual(["Audit", "VAT"]);
+  });
+  it("leaves Services obtained alone once the RM changed it", () => {
+    const f = withServicesSought({ nature_of_services_sought: ["Audit"], services_obtained: ["Payroll"] }, ["Audit", "VAT"], null);
+    expect(f.services_obtained).toEqual(["Payroll"]);
+    expect(f.nature_of_services_sought).toEqual(["Audit", "VAT"]);
+  });
+  it("copies only services the client's Triam entities offer", () => {
+    const f = withServicesSought({ nature_of_services_sought: [], services_obtained: [] }, ["Audit", "Set up Foundations"], ["Audit"]);
+    expect(f.services_obtained).toEqual(["Audit"]);
   });
 });

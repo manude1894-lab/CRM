@@ -18,7 +18,7 @@ import {
 } from "../../utils/constants";
 import {
   RISK_OPTIONS, BLANK_ADDRESS, SECTION_FIELDS,
-  buildAccountPayload, buildSectionPatch, validateCoreFields, accountToForm, mandatoryFields, isOffshore, sameAddress, isFoundation,
+  buildAccountPayload, buildSectionPatch, validateCoreFields, accountToForm, mandatoryFields, isOffshore, sameAddress, isFoundation, withServicesSought,
 } from "./accountForm";
 import { dialCodeForCountry, dialCodeOptions } from "../../utils/dialCodes";
 import { useMasters } from "../../hooks/useMasters";
@@ -194,6 +194,9 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
   // BRD §18 — admin-managed lists; the old constants are the fallback until the API answers.
   const entities = useMasters("triam_entity", TRIAM_ENTITY_OPTIONS);
   const services = useMasters("service", SERVICES_OBTAINED_OPTIONS);
+  // Services the client's Triam entities offer: what Services obtained may hold.
+  const obtainableServices = selectableCodes(servicesForEntities(services.items, [form.anchor_entity, ...(form.non_anchor_entities || [])]), form.services_obtained);
+  const setServicesSought = (v) => setForm(withServicesSought(form, v, obtainableServices));
   const tags = useMasters("tag", TAG_OPTIONS);
   const regulators = useMasters("regulator", REGULATOR_OPTIONS);
   const authorities = useMasters("licensing_authority", []);
@@ -360,7 +363,7 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
             </div>
             <Field label="Nature of Services sought" required={req("nature_of_services_sought")}>
               <MultiSelect options={alphabetical(selectableCodes(servicesForEntities(services.items, [form.anchor_entity, ...(form.non_anchor_entities || [])]), form.nature_of_services_sought))}
-                value={form.nature_of_services_sought} onChange={setValue("nature_of_services_sought")} />
+                value={form.nature_of_services_sought} onChange={setServicesSought} />
             </Field>
             <div className="grid grid-cols-2 gap-3">
               <YesNo label="Is this a one-time service?" value={form.is_one_time_service} onChange={setValue("is_one_time_service")} />
@@ -551,7 +554,7 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
               </div>
             </Field>
             <Field label="Nature of Services Sought" required={req("nature_of_services_sought")}>
-              <MultiSelect options={alphabetical(selectableCodes(services.items, form.nature_of_services_sought))} value={form.nature_of_services_sought} onChange={setValue("nature_of_services_sought")} />
+              <MultiSelect options={alphabetical(selectableCodes(services.items, form.nature_of_services_sought))} value={form.nature_of_services_sought} onChange={setServicesSought} />
             </Field>
             <Field label="Detailed Nature of Profession / Business">
               <Textarea rows={2} value={form.nature_of_business} onChange={set("nature_of_business")} maxLength={1000} />
@@ -644,7 +647,8 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
         </Section>
 
         <Section title="Services Obtained *" hasData={(form.services_obtained || []).length > 0} {...sectionProps("services")}>
-          <MultiSelect options={alphabetical(selectableCodes(servicesForEntities(services.items, [form.anchor_entity, ...(form.non_anchor_entities || [])]), form.services_obtained))} value={form.services_obtained} onChange={setValue("services_obtained")} />
+          <p className="text-[11px] text-gray-500 mb-2">Filled in from Nature of Services sought. Change it if Triam provides different services.</p>
+          <MultiSelect options={alphabetical(obtainableServices)} value={form.services_obtained} onChange={setValue("services_obtained")} />
         </Section>
 
         <Section title="Engagement" hasData={form.engagement_letter_signed != null || !!form.engagement_letter_valid_until}
