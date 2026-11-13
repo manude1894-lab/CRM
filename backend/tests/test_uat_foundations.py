@@ -51,6 +51,39 @@ def test_each_role_has_a_ubos_details(db, foundation, role):
     with pytest.raises(HTTPException) as e:
         parties.create_party(db, acc.id, person(role, email=None), rm)
     assert "Contact Email" in e.value.detail
+    # Like a UBO, an individual needs a Country of Birth; an entity doesn't.
+    with pytest.raises(HTTPException) as e:
+        parties.create_party(db, acc.id, person(role, full_name="No Birth", country_of_incorp_or_birth=None), rm)
+    assert "Country of Birth" in e.value.detail
+    assert parties.create_party(db, acc.id, person(role, full_name="Holding Co", constitution="Entity",
+                                                   country_of_incorp_or_birth=None, nationality=None), rm).id
+
+
+def test_foundation_people_have_no_shareholding_percentage(db, foundation):
+    """Triam UAT: "Shareholding % should not come" for a foundation's people."""
+    acc, rm = foundation
+    for role in ("Founder", "Council Member", "Council Member", "Beneficiary", "Guardian"):
+        parties.create_party(db, acc.id, person(role, full_name=f"{role} {len(acc.parties)}"), rm)
+        db.refresh(acc)
+    assert not any("100" in g or "%" in g for g in gaps(acc))
+
+
+def test_shareholders_from_before_must_go_before_submit(db, real_user):
+    """A company that becomes a foundation keeps its old Shareholder / Director records on screen; Submit
+    asks for them to be removed, so the foundation's people replace them."""
+    rm = real_user("Rel. Manager")
+    acc = flow.complete_client(db, rm)
+    account_service.update_account(db, acc.id, AccountUpdate(services_obtained=["Set up Foundations"]), rm)
+    parties.create_party(db, acc.id, person("Founder"), rm)
+    for n in ("One", "Two"):
+        parties.create_party(db, acc.id, person("Council Member", full_name=f"Council {n}"), rm)
+    db.refresh(acc)
+    leftover = [g for g in gaps(acc) if g.startswith("Remove the")]
+    assert leftover and "Shareholder" in leftover[0]
+    for p in [p for p in acc.parties if p.party_role in ("Shareholder", "Director")]:
+        parties.remove_party(db, p.id, "Now a foundation", rm)
+    db.refresh(acc)
+    assert gaps(acc) == []
 
 
 def test_foundation_roles_only_on_a_foundation(db, real_user):

@@ -139,6 +139,10 @@ export default function AccountPartyModal({ account, onClose, onChange, role }) 
   const switchTab = (t) => { setTab(t); cancelForm(); };
 
   const rowsForTab = parties.filter((p) => p.party_role === tab);
+  // Records of a role this client no longer uses, e.g. Shareholders on a client that became a foundation:
+  // kept so nothing is lost, but marked, not added to, and to be removed before Submit (Triam UAT row 32).
+  const leftoverRoles = role ? [] : [...new Set(parties.map((p) => p.party_role).filter((r) => !ROLES.includes(r)))];
+  const leftoverTab = leftoverRoles.includes(tab);
   const removedShown = role ? removed.filter((r) => r.party_role === role) : removed;
   // Triam UAT 06-11-2026: only individuals count towards 100%; an entity's share is looked through.
   const ownershipTotal = parties
@@ -149,13 +153,18 @@ export default function AccountPartyModal({ account, onClose, onChange, role }) 
     <Modal title={`Parties: ${account.company_name}`} onClose={onClose}>
       {!role && (
         <div className="flex border-b border-gray-100 mb-4 -mt-2">
-          {/* People already recorded stay visible, e.g. shareholders on a client that later became a foundation. */}
-          {[...ROLES, ...new Set(parties.map((p) => p.party_role).filter((r) => !ROLES.includes(r)))].map((r) => (
-            <button key={r} onClick={() => switchTab(r)}
-              className={`px-3 py-2 text-sm font-medium border-b-2 -mb-px ${tab === r ? "border-brand-500 text-brand-600" : "border-transparent text-gray-400 hover:text-gray-600"}`}>
+          {[...ROLES, ...leftoverRoles].map((r) => (
+            <button key={r} onClick={() => switchTab(r)} title={leftoverRoles.includes(r) ? "Not used for this client: remove these records" : undefined}
+              className={`px-3 py-2 text-sm font-medium border-b-2 -mb-px ${tab === r ? "border-brand-500 text-brand-600" : "border-transparent text-gray-400 hover:text-gray-600"} ${leftoverRoles.includes(r) ? "line-through decoration-amber-500" : ""}`}>
               {partyLabel(r)} ({parties.filter((p) => p.party_role === r).length})
             </button>
           ))}
+        </div>
+      )}
+      {leftoverRoles.length > 0 && (
+        <div className="mb-3 px-3 py-2 text-xs rounded-lg bg-amber-50 border border-amber-200 text-amber-800">
+          {isFoundation(account) ? "This client is a foundation: its people are Founders, Council Members, Beneficiaries and Guardians. " : ""}
+          Remove the {leftoverRoles.map(partyLabel).join(" and ")} records added earlier before submitting, and record those people in the right role.
         </div>
       )}
 
@@ -210,7 +219,7 @@ export default function AccountPartyModal({ account, onClose, onChange, role }) 
                   ))}
               </div>
               {/* Triam UAT 26-10-2026: once shareholding is 100%, no further shareholder can be added. */}
-              {readOnly ? null : tab === "Shareholder" && ownershipTotal >= 100 ? (
+              {readOnly || leftoverTab ? null : tab === "Shareholder" && ownershipTotal >= 100 ? (
                 <div className="px-3 py-2 text-xs rounded-lg bg-gray-50 border border-gray-200 text-gray-600 text-center">
                   Individual shareholding is 100%. No further individual can be added; reduce an existing share first.
                   <button onClick={() => startNew("Entity")} className="block mx-auto mt-1 text-brand-600 hover:underline">Add an entity shareholder</button>
@@ -263,7 +272,8 @@ function PartyForm({ form, setForm, countries, onCancel, onSave, copyFrom = [] }
   // Keep in step with CONTACT_REQUIRED / needs_country_of_birth in account_party_service.py (Triam UAT 10-11-2026).
   const contactRequired = ["Shareholder", "Director", "Authorised Signatory", "Joint Holder", ...FOUNDATION_ROLES].includes(form.party_role);
   const isEntity = form.constitution === "Entity";
-  const birthRequired = form.party_role === "Authorised Signatory" || (["Shareholder", "Director"].includes(form.party_role) && !isEntity);
+  // A foundation's people follow the UBO rule (Triam UAT: their details are "similar to UBOs").
+  const birthRequired = form.party_role === "Authorised Signatory" || (["Shareholder", "Director", ...FOUNDATION_ROLES].includes(form.party_role) && !isEntity);
   const isUAEResident = isUAE(form.country_of_residence);
 
   // Triam UAT 04-11-2026: a director who is also a UBO needs their details entered only once.
