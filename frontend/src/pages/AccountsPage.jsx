@@ -27,6 +27,21 @@ const SCOPES = {
   },
 };
 const VIEW_KEY = "triam.clients.view";
+// Triam 13-11-2026: approved clients are listed with the latest approval on top, and can be filtered by
+// when they were approved.
+const APPROVED_WITHIN = { "": "Approved: any time", 7: "Approved in the last 7 days", 30: "Approved in the last 30 days",
+  90: "Approved in the last 90 days", year: "Approved this year" };
+const SORTS = { approved: "Latest approval first", name: "Client name A–Z", aml: "Next AML review first" };
+const approvedSince = (key) => {
+  if (!key) return null;
+  const now = new Date();
+  return key === "year" ? new Date(now.getFullYear(), 0, 1) : new Date(now.getTime() - Number(key) * 86400000);
+};
+const byKey = {
+  approved: (x, y) => String(y.approved_at || "").localeCompare(String(x.approved_at || "")),
+  name: (x, y) => (x.company_name || "").localeCompare(y.company_name || ""),
+  aml: (x, y) => String(x.next_aml_review_date || "9999").localeCompare(String(y.next_aml_review_date || "9999")),
+};
 
 const readView = () => { try { return localStorage.getItem(VIEW_KEY) || "table"; } catch { return "table"; } };
 
@@ -42,6 +57,8 @@ export default function AccountsPage({ scope = "onboarding", initialAccountId, i
   // Opened from a dashboard lifecycle stage: start filtered to that status.
   const [statusFilter, setStatusFilter] = useState(() => (initialStatus && SCOPES[scope].statuses.includes(initialStatus) ? initialStatus : ""));
   const [riskFilter, setRiskFilter] = useState("");
+  const [approvedWithin, setApprovedWithin] = useState("");
+  const [sortBy, setSortBy] = useState("approved");
   const [view, setView] = useState(readView);
   const [open, setOpen] = useState(null); // { id, tab } — the client page being shown
   // BRD §4A — a client is created only from an assigned prospect: "Create client" on the prospect
@@ -167,15 +184,18 @@ export default function AccountsPage({ scope = "onboarding", initialAccountId, i
   const scoped = accounts.filter((a) => cfg.statuses.includes(a.profile_status || "New"));
   // Matches legal name, Unique Search Name (BRD §3) or Client ID (BRD §18).
   const q = search.toLowerCase();
+  const since = scope === "maintenance" ? approvedSince(approvedWithin) : null;
   const filtered = scoped.filter((a) => (!q || [a.company_name, a.search_name, a.client_id, a.temp_id, a.account_uid].some((v) => (v || "").toLowerCase().includes(q)))
     && (!statusFilter || (a.profile_status || "New") === statusFilter)
-    && (!riskFilter || a.risk_rating === riskFilter));
+    && (!riskFilter || a.risk_rating === riskFilter)
+    && (!since || (a.approved_at && new Date(a.approved_at) >= since)));
+  if (scope === "maintenance") filtered.sort(byKey[sortBy]);
   const ids = filtered.map((a) => a.id);
   const openClient = (a) => setOpen({ id: a.id, tab: "overview" });
   // Prospects sent to an RM and still waiting for their client: the RM sees their own, the Prospecting
   // Coordinator and administrators see all. Newest first (Triam input 19-10-2026).
   const waiting = prospects
-    .filter((p) => p.owner_id && !p.converted_account_id && p.status !== "Lost" && (isAdmin || p.owner_id === me?.id || canAssign))
+    .filter((p) => p.owner_id && !p.converted_account_id && p.status !== "Dropped" && (isAdmin || p.owner_id === me?.id || canAssign))
     .sort((x, y) => String(y.assigned_at || y.created_at).localeCompare(String(x.assigned_at || x.created_at)));
   const createFrom = (p) => { setShownProspect(null); setNewClient({ key: Date.now(), prospect: p }); };
 
@@ -239,6 +259,12 @@ export default function AccountsPage({ scope = "onboarding", initialAccountId, i
           <option value="">All risk levels</option>
           {["High", "Medium", "Low"].map((r) => <option key={r} value={r}>{r} risk</option>)}
         </Select></div>}
+        {scope === "maintenance" && <div className="w-60"><Select aria-label="Approved within" value={approvedWithin} onChange={(e) => setApprovedWithin(e.target.value)}>
+          {Object.entries(APPROVED_WITHIN).map(([k, label]) => <option key={k} value={k}>{label}</option>)}
+        </Select></div>}
+        {scope === "maintenance" && <div className="w-48"><Select aria-label="Sort" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+          {Object.entries(SORTS).map(([k, label]) => <option key={k} value={k}>{label}</option>)}
+        </Select></div>}
         <div className="ml-auto flex border border-gray-200 rounded-lg overflow-hidden bg-white">
           {[["table", "table", "Table"], ["cards", "kanban", "Cards"]].map(([v, icon, label]) => (
             <button key={v} onClick={() => changeView(v)}
@@ -266,7 +292,7 @@ export default function AccountsPage({ scope = "onboarding", initialAccountId, i
                 {!readOnly && <th className="py-2.5 px-3 w-8">
                   <input type="checkbox" checked={ids.every((id) => selectedIds.has(id))} onChange={() => toggleSelectAll(ids)} />
                 </th>}
-                {(scope === "maintenance" ? ["Client ID", "Client", "Status", "Risk", "Anchor RM", "PEP", "Next AML review"]
+                {(scope === "maintenance" ? ["Client ID", "Client", "Status", "Approved on", "Risk", "Anchor RM", "PEP", "Next AML review"]
                   : ["Client ID", "Client", "Status", "Anchor RM", "PEP"]).map((h) => (
                   <th key={h} className="py-2.5 px-3 font-semibold text-left">{h}</th>
                 ))}
@@ -287,6 +313,7 @@ export default function AccountsPage({ scope = "onboarding", initialAccountId, i
                     <Badge text={a.profile_status || "New"} />
                     {a.approval_stage && <div className="text-[11px] text-amber-700 mt-0.5">{a.approval_stage === "Approver" ? "Pending with the Approver" : "Pending with Compliance"}</div>}
                   </td>
+                  {scope === "maintenance" && <td className="py-2.5 px-3 text-xs text-gray-600 whitespace-nowrap">{fmtDate(a.approved_at) || "—"}</td>}
                   {scope === "maintenance" && <td className="py-2.5 px-3 text-xs text-gray-600">{a.risk_rating || "—"}</td>}
                   <td className="py-2.5 px-3 text-xs text-gray-600">{userName(a.spoc_id)}</td>
                   <td className="py-2.5 px-3 text-xs text-gray-600">{a.is_pep ? "PEP" : "—"}</td>

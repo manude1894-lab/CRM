@@ -167,7 +167,7 @@ def check_prospects_waiting():
     try:
         cutoff = datetime.now(timezone.utc) - timedelta(days=PROSPECT_FOLLOW_UP_DAYS)
         for p in db.query(Prospect).filter(Prospect.owner_id.isnot(None), Prospect.converted_account_id.is_(None),
-                                           Prospect.status != "Lost", Prospect.assigned_at.isnot(None),
+                                           Prospect.status != "Dropped", Prospect.assigned_at.isnot(None),
                                            Prospect.assigned_at < cutoff).all():
             key = f"prospect_waiting_{p.id}"
             message = (f"Prospect {p.prospect_uid} ({p.company_name}) was sent {PROSPECT_FOLLOW_UP_DAYS}+ days ago "

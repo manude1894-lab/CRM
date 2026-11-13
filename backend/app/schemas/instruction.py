@@ -13,6 +13,8 @@ class _Invoicing(BaseModel):
     amount_paid: Optional[Decimal] = Field(None, ge=0)
     amount_paid_currency: Optional[str] = Field(None, min_length=3, max_length=3)
     payment_received_date: Optional[date] = None
+    govt_authority_amount: Optional[Decimal] = Field(None, ge=0)
+    govt_authority_currency: Optional[str] = Field(None, min_length=3, max_length=3)
     service_provider_involved: Optional[bool] = None
     service_provider_name: Optional[str] = Field(None, max_length=150)
     service_provider_amount: Optional[Decimal] = Field(None, ge=0)

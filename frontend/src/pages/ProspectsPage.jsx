@@ -23,10 +23,8 @@ const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 // Status buttons on a prospect card, in the colour of the status they move to.
 const MOVE_STYLE = {
   New: "border-gray-200 text-gray-600 hover:bg-gray-50",
-  "Proposal Sent": "border-blue-200 text-blue-700 hover:bg-blue-50",
-  Negotiating: "border-indigo-200 text-indigo-700 hover:bg-indigo-50",
   Won: "border-emerald-200 text-emerald-700 hover:bg-emerald-50",
-  Lost: "border-rose-200 text-rose-600 hover:bg-rose-50",
+  Dropped: "border-rose-200 text-rose-600 hover:bg-rose-50",
 };
 
 export default function ProspectsPage({ onNavigate } = {}) {
@@ -126,7 +124,7 @@ export default function ProspectsPage({ onNavigate } = {}) {
         </>} />
 
       {/* Each column is at least 220px wide; on a narrow screen the board scrolls sideways instead of overlapping. */}
-      <div className="grid grid-cols-1 md:grid-cols-[repeat(5,minmax(220px,1fr))] gap-4 overflow-x-auto pb-2">
+      <div className="grid grid-cols-1 md:grid-cols-[repeat(3,minmax(260px,1fr))] gap-4 overflow-x-auto pb-2">
         {PROSPECT_STATUS_OPTIONS.map((col) => {
           const colItems = items.filter((p) => p.status === col);
           return (
@@ -163,7 +161,7 @@ export default function ProspectsPage({ onNavigate } = {}) {
                         <button onClick={() => setAssign({ prospect: p, rm_id: me?.id, comments: "", self: true })}
                           className="text-xs px-2.5 py-1 rounded-md border border-sky-200 bg-sky-50 text-sky-800 font-medium hover:bg-sky-100">Assign to me</button>
                       )}
-                      {!p.converted_account_id && p.owner_id && p.status !== "Lost" && (coordinator || p.owner_id === me?.id || me?.role === "admin") && (
+                      {!p.converted_account_id && p.owner_id && p.status !== "Dropped" && (coordinator || p.owner_id === me?.id || me?.role === "admin") && (
                         <button onClick={() => createClient(p)} className="text-xs px-2.5 py-1 rounded-md bg-emerald-600 text-white font-medium shadow-sm hover:bg-emerald-700">Create client</button>
                       )}
                     </div>}
@@ -214,8 +212,8 @@ export default function ProspectsPage({ onNavigate } = {}) {
               </Select>
             </Field>
           </div>
-          {form.status === "Lost" && (
-            <Field label="Lost Reason"><Textarea value={form.lost_reason || ""} onChange={(e) => setForm((p) => ({ ...p, lost_reason: e.target.value }))} /></Field>
+          {form.status === "Dropped" && (
+            <Field label="Reason for dropping"><Textarea value={form.lost_reason || ""} onChange={(e) => setForm((p) => ({ ...p, lost_reason: e.target.value }))} /></Field>
           )}
           <Field label="Services the prospect is looking for" required><Textarea placeholder="Give details" value={form.notes || ""} onChange={(e) => setForm((p) => ({ ...p, notes: e.target.value }))} /></Field>
           {coordinator && !form.converted_account_id && (

@@ -66,13 +66,13 @@ def find_similar(db: Session, name: str, exclude_id: Optional[int] = None) -> li
 
 def _same_name(db: Session, name: str, exclude_id: Optional[int] = None) -> Optional[str]:
     """BRD §3, §10 step 3 — the existing client or open prospect with exactly this name, described for
-    the user. A Lost prospect doesn't count, and a converted one is already found through its client."""
+    the user. A Dropped prospect doesn't count, and a converted one is already found through its client."""
     from app.services import account_service  # local: account_service imports this module's models
     client = account_service._same_name_query(db, name).first()
     if client:
         return f"A client named '{client.company_name}' already exists ({client.client_id or client.account_uid})"
     q = db.query(Prospect).filter(func.lower(func.trim(Prospect.company_name)) == account_service._norm(name),
-                                  Prospect.status != ProspectStatus.LOST.value, Prospect.converted_account_id.is_(None))
+                                  Prospect.status != ProspectStatus.DROPPED.value, Prospect.converted_account_id.is_(None))
     if exclude_id:
         q = q.filter(Prospect.id != exclude_id)
     prospect = q.first()
@@ -156,8 +156,8 @@ def assert_ready_for_client(db: Session, prospect_id: int, user: User) -> Prospe
         raise HTTPException(status_code=400, detail=f"A client has already been created from prospect {p.prospect_uid}")
     if not p.owner_id:
         raise HTTPException(status_code=400, detail=f"Assign prospect {p.prospect_uid} to an RM before creating the client")
-    if p.status == ProspectStatus.LOST.value:
-        raise HTTPException(status_code=400, detail=f"Prospect {p.prospect_uid} is marked Lost")
+    if p.status == ProspectStatus.DROPPED.value:
+        raise HTTPException(status_code=400, detail=f"Prospect {p.prospect_uid} is marked Dropped")
     return p
 
 

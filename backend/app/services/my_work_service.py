@@ -40,7 +40,7 @@ def my_work(db: Session, user: User) -> list[dict]:
         add("invoice_requests", "Invoice instructions to raise", db.query(Invoice).filter(Invoice.status.in_(("Requested", "Draft")), or_(Invoice.requested_by_id.is_(None), Invoice.requested_at.isnot(None))).count(), "invoices")
         add("invoice_unpaid", "Raised invoices not yet paid", db.query(Invoice).filter(Invoice.status.in_(("Raised", "Overdue"))).count(), "invoices")
     if access_control.is_prospect_coordinator(user):
-        add("prospects_unassigned", "Prospects waiting to be assigned", db.query(Prospect).filter(Prospect.owner_id.is_(None), Prospect.status != "Lost").count(), "prospects")
+        add("prospects_unassigned", "Prospects waiting to be assigned", db.query(Prospect).filter(Prospect.owner_id.is_(None), Prospect.status != "Dropped").count(), "prospects")
 
     # Everyone who prepares clients (RM / RO / FO / Sales)
     mine = _visible_accounts(db, user).filter((Account.spoc_id == user.id) | (Account.owner_id == user.id))
@@ -48,7 +48,7 @@ def my_work(db: Session, user: User) -> list[dict]:
     add("my_in_progress", "My clients being prepared", mine.filter(Account.profile_status.in_((wf.NEW, wf.WIP))).count(), "accounts")
     add("my_with_review", "My clients with Compliance / Approver", mine.filter(Account.profile_status == wf.AWAITING).count(), "accounts")
     add("my_prospects", "My prospects without a client yet", db.query(Prospect).filter(
-        Prospect.owner_id == user.id, Prospect.converted_account_id.is_(None), Prospect.status != "Lost").count(), "prospects")
+        Prospect.owner_id == user.id, Prospect.converted_account_id.is_(None), Prospect.status != "Dropped").count(), "prospects")
     add("my_invoices_ready", "My invoices ready to send to the client", db.query(Invoice).filter(
         Invoice.requested_by_id == user.id, Invoice.status == "Raised").count(), "invoices")
     add("my_invoice_drafts", "My invoice requests not yet submitted", db.query(Invoice).filter(

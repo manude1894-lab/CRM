@@ -266,7 +266,8 @@ def _compliance_review_open(db: Session, doc: Document, account, user: User) -> 
 def client_document_removal(db: Session, doc: Document, account, user: User) -> tuple[bool, str, Optional[str]]:
     """(may this user remove it, document stage, why not). BRD §14:
     - Draft: the uploader (or an Admin) may remove a document;
-    - Submitted: only an Approver-level user (document.delete_submitted) may remove it;
+    - Submitted: only an Approver-level user (document.delete_submitted) may remove it, except on a case
+      rejected back to the RM, where the uploader may (Triam UAT 12-11-2026);
     - Locked (client approved): documents can no longer be removed from the client folder."""
     from app.auth.permissions import has_permission
     from app.services import client_workflow_service as wf
@@ -277,6 +278,10 @@ def client_document_removal(db: Session, doc: Document, account, user: User) -> 
         return False, stage, "The client is approved, so its documents can no longer be removed. Upload a newer version instead."
     if account.profile_status == wf.AWAITING:
         return False, stage, "The client is with Compliance for review; documents can't be changed until it is decided."
+    # Triam UAT 12-11-2026: a case sent back to the RM (Rejected) is corrected like a draft, so a wrong
+    # document can be taken out by whoever uploaded it. The removal stays in the folder's history.
+    if account.profile_status == wf.REJECTED and (user.role == UserRole.ADMIN or doc.uploaded_by_id == user.id):
+        return True, stage, None
     if stage == SUBMITTED:
         if has_permission(user, "document.delete_submitted"):
             return True, stage, None

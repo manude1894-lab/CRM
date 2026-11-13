@@ -22,6 +22,7 @@ import {
 } from "./accountForm";
 import { dialCodeForCountry, dialCodeOptions } from "../../utils/dialCodes";
 import MobileNumberInput from "../MobileNumberInput";
+import VatCertificateField from "./VatCertificateField";
 import { useMasters } from "../../hooks/useMasters";
 import { selectableCodes, servicesForEntities } from "../../hooks/masterUtils";
 
@@ -508,7 +509,11 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
                 <p className="text-[11px] text-gray-500 mb-2">No VAT or Corporate Tax for offshore (BVI) companies. The Financial Year End is optional.</p>
               )}
               <div className="grid grid-cols-2 gap-3">
-                {showVat && <Field label="TRN / VAT Registration No."><Input value={form.trn_vat_number} onChange={(e) => setForm({ ...form, trn_vat_number: e.target.value.replace(/\D/g, "") })} maxLength={15} inputMode="numeric" /></Field>}
+                {showVat && <Field label="TRN / VAT Registration No.">
+                  <Input value={form.trn_vat_number} onChange={(e) => setForm({ ...form, trn_vat_number: e.target.value.replace(/\D/g, "") })} maxLength={15} inputMode="numeric" />
+                  {/* Triam 13-11-2026: the VAT Certificate is uploaded here, beside the number. */}
+                  <VatCertificateField accountId={form._id} disabled={locked} onChange={() => setRefreshKey((k) => k + 1)} />
+                </Field>}
                 <Field label={`Financial Year End${form.financial_year_end ? ` (${fmtFYE(form.financial_year_end)})` : ""}`} required={req("financial_year_end")}>
                   <div className="flex gap-2">
                     <Select value={parseFYE(form.financial_year_end).day} onChange={(e) => setForm({ ...form, financial_year_end: toFYE(parseFYE(form.financial_year_end).month || "12", e.target.value) })}>

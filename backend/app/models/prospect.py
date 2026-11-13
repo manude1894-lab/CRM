@@ -14,11 +14,10 @@ from app.database import Base
 
 
 class ProspectStatus(str, enum.Enum):
+    """Triam UAT 13-11-2026: New and Proposal Sent merged into New, Negotiating removed, Lost renamed Dropped."""
     NEW = "New"
-    PROPOSAL_SENT = "Proposal Sent"
-    NEGOTIATING = "Negotiating"
     WON = "Won"
-    LOST = "Lost"
+    DROPPED = "Dropped"
 
 
 class Prospect(Base):

@@ -28,7 +28,7 @@ def build_dashboard(db: Session, user: User) -> dict:
             by_status[a.profile_status] += 1
 
     prospects = prospect_service.list_prospects(db, user)
-    open_prospects = [p for p in prospects if p.converted_account_id is None and p.status != "Lost"]
+    open_prospects = [p for p in prospects if p.converted_account_id is None and p.status != "Dropped"]
 
     open_srs = instruction_service._apply_rbac_filter(db, db.query(Instruction), user).filter(
         Instruction.status.notin_((InstructionStatus.COMPLETED.value, InstructionStatus.CANCELLED.value))).count()

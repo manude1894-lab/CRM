@@ -646,6 +646,13 @@ def missing_mandatory(account: Account) -> list[dict]:
             if council < MIN_COUNCIL_MEMBERS:
                 missing.append({"section": "Council Members", "field": "parties",
                                 "label": f"At least {MIN_COUNCIL_MEMBERS} Council Members (currently {council})"})
+            # Triam UAT row 32: the foundation's roles replace Shareholders and Directors. Records made before
+            # the client became a foundation are kept, but must go before it is submitted.
+            leftover = sorted({p.party_role for p in account.parties if p.party_role in ("Shareholder", "Director")}, reverse=True)
+            if leftover:
+                missing.append({"section": "Founders", "field": "parties",
+                                "label": f"Remove the {' and '.join(leftover)} records: a foundation has Founders, "
+                                         "Council Members, Beneficiaries and Guardians instead"})
         elif not shareholders:
             missing.append({"section": PARTIES_SECTION, "field": "parties", "label": "At least one Shareholder / UBO"})
         else:

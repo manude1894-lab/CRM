@@ -30,10 +30,10 @@ def test_open_prospect_name_is_blocked_for_another_rm(db, real_user):
     assert e.value.status_code == 409
 
 
-def test_lost_prospect_name_can_be_used_again(db, real_user):
+def test_dropped_prospect_name_can_be_used_again(db, real_user):
     rm = real_user("Rel. Manager")
     p = _create(db, rm, "Second Try Ltd")
-    prospect_service.update_prospect(db, p.id, ProspectUpdate(status=ProspectStatus.LOST, lost_reason="No budget"), rm)
+    prospect_service.update_prospect(db, p.id, ProspectUpdate(status=ProspectStatus.DROPPED, lost_reason="No budget"), rm)
     assert _create(db, rm, "Second Try Ltd").id != p.id
 
 

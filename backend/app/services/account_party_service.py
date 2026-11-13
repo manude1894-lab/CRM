@@ -28,8 +28,11 @@ CONTACT_REQUIRED = ("Shareholder", "Director", "Authorised Signatory", "Joint Ho
 
 
 def needs_country_of_birth(p) -> bool:
-    """The Signatory always; an individual Shareholder / UBO or Director too (an entity has no birth country)."""
-    return p.party_role == "Authorised Signatory" or (p.party_role in ("Shareholder", "Director") and p.constitution != "Entity")
+    """The Signatory always; an individual Shareholder / UBO or Director too (an entity has no birth country).
+    A foundation's individual Founders, Council Members, Beneficiaries and Guardians follow the UBO rule
+    (Triam UAT: their details are "similar to UBOs")."""
+    return p.party_role == "Authorised Signatory" or (
+        p.party_role in ("Shareholder", "Director", *account_service.FOUNDATION_ROLES) and p.constitution != "Entity")
 
 
 def _validate_party(account: Account, p: AccountParty) -> None:

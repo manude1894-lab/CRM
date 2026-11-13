@@ -391,6 +391,7 @@ class AccountRead(AccountBase):
     temp_id: Optional[str] = None
     prospect_id: Optional[int] = None
     status_updated_at: Optional[datetime] = None
+    approved_at: Optional[datetime] = None
     status_updated_by_id: Optional[int] = None
     duplicate_override_reason: Optional[str] = None
     next_aml_review_date: Optional[date] = None

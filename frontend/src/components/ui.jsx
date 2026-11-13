@@ -59,10 +59,7 @@ export const Badge = ({ text }) => {
     "Marked for Exit": "bg-orange-100 text-orange-700",
     Exited: "bg-gray-200 text-gray-700",
     // Prospects (BRD §4A)
-    "Proposal Sent": "bg-blue-100 text-blue-700",
-    Negotiating: "bg-indigo-100 text-indigo-700",
     Won: "bg-emerald-100 text-emerald-700",
-    Lost: "bg-gray-200 text-gray-700",
     // Approvals
     Pending: "bg-amber-100 text-amber-700",
     Rejected: "bg-red-100 text-red-700",
