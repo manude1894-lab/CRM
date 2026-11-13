@@ -122,7 +122,7 @@ def prospects_unassigned(db: Session, user: User) -> dict:
     now = datetime.now(timezone.utc)
     rows = []
     for p in _prospects(db, user):
-        if p.owner_id or p.status == "Lost":
+        if p.owner_id or p.status == "Dropped":
             continue
         created = p.created_at if p.created_at.tzinfo else p.created_at.replace(tzinfo=timezone.utc)
         rows.append([p.prospect_uid, p.company_name, p.source or "—", _iso(_local_date(created)), (now - created).days])

@@ -58,7 +58,8 @@ export const USER_TYPE_LABEL = {
   admin: "Administrator",
 };
 
-export const PROSPECT_STATUS_OPTIONS = ["New", "Proposal Sent", "Negotiating", "Won", "Lost"];
+// Triam UAT 13-11-2026: New and Proposal Sent merged into New, Negotiating removed, Lost renamed Dropped.
+export const PROSPECT_STATUS_OPTIONS = ["New", "Won", "Dropped"];
 
 // ─── Client profile (BRD §4–§9) ──────────────────────────────────────────
 export const REGULATOR_OPTIONS = ["DFSA", "FSRA", "CMA", "UAECB", "Other"];
