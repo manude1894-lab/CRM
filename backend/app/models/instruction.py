@@ -45,6 +45,9 @@ class Instruction(Base):
     amount_paid = Column(Numeric(12, 2), nullable=True)
     amount_paid_currency = Column(String(3), nullable=True)
     payment_received_date = Column(Date, nullable=True)
+    # What Triam pays a registry or government authority for the work (revised template, 13-11-2026).
+    govt_authority_amount = Column(Numeric(12, 2), nullable=True)
+    govt_authority_currency = Column(String(3), nullable=True)
     # A third-party service provider involved in the work, and what Triam pays them.
     service_provider_involved = Column(Boolean, nullable=True)
     service_provider_name = Column(String(150), nullable=True)

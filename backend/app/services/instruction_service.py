@@ -177,6 +177,8 @@ def _tidy_invoicing(inst: Instruction) -> None:
     inst.charge_currency = _currency(inst.charge_currency, "Charge to the client") or "AED"
     inst.amount_paid_currency = (_currency(inst.amount_paid_currency, "Amount paid by the client")
                                  or (inst.charge_currency if inst.amount_paid is not None else None))
+    inst.govt_authority_currency = (_currency(inst.govt_authority_currency, "Amount payable to Reg./Govt Auth")
+                                    or (inst.charge_currency if inst.govt_authority_amount is not None else None))
     if not inst.service_provider_involved:
         inst.service_provider_name = inst.service_provider_amount = inst.service_provider_currency = None
     else:
@@ -198,6 +200,8 @@ def _invoice_notes(inst: Instruction) -> str:
     if inst.amount_paid is not None:
         when = f" on {dmy(inst.payment_received_date)}" if inst.payment_received_date else ""
         lines.append(f"Client has paid {inst.amount_paid_currency} {inst.amount_paid}{when}.")
+    if inst.govt_authority_amount is not None:
+        lines.append(f"Payable to Reg./Govt Auth: {inst.govt_authority_currency} {inst.govt_authority_amount}.")
     if inst.service_provider_involved:
         amount = (f", {inst.service_provider_currency} {inst.service_provider_amount} payable"
                   if inst.service_provider_amount is not None else "")

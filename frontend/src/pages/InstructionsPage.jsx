@@ -40,6 +40,8 @@ const emptyForm = (accountId) => ({
   amount_paid: "",
   amount_paid_currency: "AED",
   payment_received_date: "",
+  govt_authority_amount: "",
+  govt_authority_currency: "AED",
   service_provider_involved: null,
   service_provider_name: "",
   service_provider_amount: "",
@@ -106,7 +108,8 @@ export default function InstructionsPage() {
   const set = (k) => (v) => setForm((p) => ({ ...p, [k]: v }));
   // The other amounts follow the charge's currency until they are filled in.
   const setChargeCurrency = (v) => setForm((p) => ({ ...p, charge_currency: v,
-    ...(p.amount_paid === "" ? { amount_paid_currency: v } : {}), ...(p.service_provider_amount === "" ? { service_provider_currency: v } : {}) }));
+    ...(p.amount_paid === "" ? { amount_paid_currency: v } : {}), ...(p.service_provider_amount === "" ? { service_provider_currency: v } : {}),
+    ...(p.govt_authority_amount === "" ? { govt_authority_currency: v } : {}) }));
 
   const filtered = instructions.filter((i) => {
     const acc = accountById[i.account_id];
@@ -347,6 +350,11 @@ export default function InstructionsPage() {
               </Field>
               <Field label="Date amount received by Triam">
                 <DateInput value={form.payment_received_date || ""} onChange={(e) => set("payment_received_date")(e.target.value)} />
+              </Field>
+              {/* Invoice Box template, revised 13-11-2026. */}
+              <Field label="Amount payable to Reg./Govt Auth">
+                <MoneyInput label="Amount payable to Reg./Govt Auth" currency={form.govt_authority_currency} amount={form.govt_authority_amount}
+                  onCurrency={set("govt_authority_currency")} onAmount={set("govt_authority_amount")} />
               </Field>
               {form.instruction_type === "Other" && (
                 <Field label="Client's VAT No.">
