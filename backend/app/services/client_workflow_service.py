@@ -284,6 +284,7 @@ def approve(db: Session, acc: Account, user: User, comment: Optional[str] = None
     req.reason_text = comment
     _issue_client_id(db, acc)
     _set_status(acc, APPROVED, user)
+    acc.approved_at = req.decided_at
     log_event(db, "approve", f"Client {_label(acc)} approved", subject_type="Account", subject_id=acc.id,
               account_id=acc.id, changes={"request_id": req.id, "comment": comment})
     db.commit()

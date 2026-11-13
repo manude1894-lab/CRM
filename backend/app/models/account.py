@@ -65,6 +65,8 @@ class Account(Base):
     profile_status = Column(String(30), default="New", nullable=False)
     # "Status last updated on" — set by the service whenever profile_status changes.
     status_updated_at = Column(DateTime(timezone=True), nullable=True)
+    # When the Final approval was given (Triam 13-11-2026: approved clients listed newest first).
+    approved_at = Column(DateTime(timezone=True), nullable=True, index=True)
     status_updated_by_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
     # Engagement Letter (BRD §9): mandatory Yes / No — None = not answered
