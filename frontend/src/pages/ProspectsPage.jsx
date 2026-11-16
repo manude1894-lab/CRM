@@ -1,8 +1,11 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { prospectsApi, usersApi } from "../api/endpoints";
+import { prospectsApi, usersApi, countriesApi } from "../api/endpoints";
+import MobileNumberInput from "../components/MobileNumberInput";
+import { dialCodeOptions } from "../utils/dialCodes";
+import { mobileProblem, splitPhone, joinPhone, UAE_CODE } from "../utils/mobile";
 import { Icon, Modal, Field, Input, Select, Textarea, Spinner, ErrorBanner, PageHeader, SelectWithOther } from "../components/ui";
 import DuplicateWarning from "../components/DuplicateWarning";
-import { PROSPECT_STATUS_OPTIONS, PROSPECT_SOURCE_OPTIONS, isRelationshipManager, personLabel, fmtDate } from "../utils/constants";
+import { PROSPECT_STATUS_OPTIONS, PROSPECT_SOURCE_OPTIONS, COUNTRY_CALLING_CODES, isRelationshipManager, personLabel, fmtDate } from "../utils/constants";
 import { toast } from "../store/toast";
 import { reasonDialog } from "../store/confirm";
 import { useAuthStore } from "../store/auth";
@@ -54,9 +57,15 @@ export default function ProspectsPage({ onNavigate } = {}) {
 
   const userById = useMemo(() => Object.fromEntries(users.map((u) => [u.id, u])), [users]);
 
-  const openNew = () => { setForm({ ...empty }); setModal(true); };
+  // Contact phone as country code + number, like the client forms (Triam UAT 13-11-2026 row 83); saved as one value.
+  const [countries, setCountries] = useState([]);
+  useEffect(() => { countriesApi.list().then(setCountries).catch(() => {}); }, []);
+  const dialOptions = useMemo(() => dialCodeOptions(countries, COUNTRY_CALLING_CODES), [countries]);
+  const openNew = () => { setForm({ ...empty, _phone_code: UAE_CODE, _phone_number: "" }); setModal(true); };
   const openEdit = (p) => {
-    setForm({ ...p, owner_id: p.owner_id ?? "", proposal_sent_date: p.proposal_sent_date || "", assignor_comments: p.assignor_comments || "" });
+    const { code, number } = splitPhone(p.contact_phone, dialOptions.map((o) => o.code));
+    setForm({ ...p, owner_id: p.owner_id ?? "", proposal_sent_date: p.proposal_sent_date || "", assignor_comments: p.assignor_comments || "",
+      _phone_code: code || (p.contact_phone ? "" : UAE_CODE), _phone_number: number });
     setModal(true);
   };
 
@@ -66,13 +75,16 @@ export default function ProspectsPage({ onNavigate } = {}) {
     if (!form.company_name?.trim()) return toast.error("Enter the prospect's name");
     if (!form.notes?.trim()) return toast.error("Enter the services the prospect is looking for");
     if (form.contact_email && !EMAIL_RE.test(form.contact_email.trim())) return toast.error("Enter the contact email as name@domain.com");
+    const phoneError = mobileProblem(form._phone_code, form._phone_number, "Contact Phone");
+    if (phoneError) return toast.error(phoneError);
     const rmId = coordinator ? (form.owner_id ? Number(form.owner_id) : null) : me?.id;
     if (submit && !rmId) return toast.error("Choose the RM to submit the prospect to");
     if (submit && wordCount(form.assignor_comments) > 250) return toast.error("Assignor's comments can be at most 250 words");
     const { id, prospect_uid, converted_account_id, assigned_by_id, assigned_by_name, assigned_at, assignor_comments,
-      owner_name, created_at, updated_at, owner_id, proposal_sent_date, ...fields } = form;
+      owner_name, created_at, updated_at, owner_id, proposal_sent_date, _phone_code, _phone_number, ...fields } = form;
     const payload = {
       ...fields,
+      contact_phone: joinPhone(_phone_code, _phone_number) || null,
       contact_email: form.contact_email?.trim() || null,
       lost_reason: form.lost_reason || null,
     };
@@ -190,8 +202,12 @@ export default function ProspectsPage({ onNavigate } = {}) {
           <div className="grid grid-cols-2 gap-x-4">
             <Field label="Contact Name"><Input value={form.contact_name || ""} onChange={(e) => setForm((p) => ({ ...p, contact_name: e.target.value }))} /></Field>
             <Field label="Contact Email"><Input type="email" placeholder="name@domain.com" value={form.contact_email || ""} onChange={(e) => setForm((p) => ({ ...p, contact_email: e.target.value }))} /></Field>
-            <Field label="Contact Phone"><Input value={form.contact_phone || ""} inputMode="tel" maxLength={16} placeholder="e.g. +971501234567"
-              onChange={(e) => setForm((p) => ({ ...p, contact_phone: e.target.value.replace(/[^\d+]/g, "").replace(/(?!^)\+/g, "") }))} /></Field>
+            <div className="col-span-2">
+              <Field label="Contact Phone">
+                <MobileNumberInput code={form._phone_code} number={form._phone_number} options={dialOptions}
+                  onCode={(v) => setForm((p) => ({ ...p, _phone_code: v }))} onNumber={(v) => setForm((p) => ({ ...p, _phone_number: v }))} />
+              </Field>
+            </div>
             <Field label="Source">
               <SelectWithOther value={form.source} options={PROSPECT_SOURCE_OPTIONS} maxLength={50} otherPlaceholder="Where did the prospect come from?"
                 onChange={(e) => setForm((p) => ({ ...p, source: e.target.value }))} />

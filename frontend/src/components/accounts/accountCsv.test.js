@@ -26,8 +26,8 @@ describe("parseCSV", () => {
   });
 
   it("splits semicolon lists", () => {
-    const [row] = parseCSV('Company Name,Services Obtained,Non-anchor Entities\nAcme,"Formation; Accounting ;",A;B');
-    expect(row.services_obtained).toEqual(["Formation", "Accounting"]);
+    const [row] = parseCSV('Company Name,Nature of Services Sought,Non-anchor Entities\nAcme,"Formation; Accounting ;",A;B');
+    expect(row.nature_of_services_sought).toEqual(["Formation", "Accounting"]);
     expect(row.non_anchor_entities).toEqual(["A", "B"]);
   });
 
@@ -40,6 +40,10 @@ describe("parseCSV", () => {
     const [row] = parseCSV("Company Name,Registered Address Line 1,Registered Address City,Operating Address P.O. Box\nAcme,1 Main St,Dubai,123");
     expect(row.registered_address).toEqual({ line1: "1 Main St", city: "Dubai" });
     expect(row.operating_address).toEqual({ po_box: "123" });
+  });
+
+  it("reads an older file's Services Obtained column as Nature of Services Sought", () => {
+    expect(parseCSV("Company Name,Services Obtained\nAcme,Audit")[0].nature_of_services_sought).toEqual(["Audit"]);
   });
 
   it("returns [] for empty input", () => {
@@ -66,7 +70,7 @@ describe("parseImportRows", () => {
 describe("buildAccountsCsv", () => {
   const account = {
     account_uid: "C-1", account_type: "Corporate", company_name: 'Acme "Holdings", Ltd', country: "UAE",
-    spoc_id: 1, non_anchor_rm_ids: [2], services_obtained: ["Formation", "Accounting"],
+    spoc_id: 1, non_anchor_rm_ids: [2], nature_of_services_sought: ["Formation", "Accounting"],
     registered_address: { line1: "1 Main St", city: "Dubai" }, is_regulated: true,
   };
 
@@ -85,7 +89,7 @@ describe("buildAccountsCsv", () => {
       country: "UAE",
       spoc_id: 1,
       non_anchor_rm_ids: [2],
-      services_obtained: ["Formation", "Accounting"],
+      nature_of_services_sought: ["Formation", "Accounting"],
       registered_address: { line1: "1 Main St", city: "Dubai" },
       is_regulated: true,
     });

@@ -111,7 +111,7 @@ export default function ClientProfilePage({ accountId, initialTab = "overview", 
               <FactList items={[
                 ["Anchor entity", a.anchor_entity], ["Non-anchor entities", list(a.non_anchor_entities)],
                 ["Anchor RM", userName(a.spoc_id)], ["Non-anchor RMs", list((a.non_anchor_rm_ids || []).map(userName).filter(Boolean))],
-                ["Services", list(a.services_obtained)], ["Nature of services sought", list(a.nature_of_services_sought)],
+                ["Nature of services sought", list(a.nature_of_services_sought)],
                 ["One-time service", yesNo(a.is_one_time_service)],
               ]} />
             </Panel>

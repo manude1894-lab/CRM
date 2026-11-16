@@ -48,7 +48,7 @@ export const IMPORT_HEADER_MAP = {
   "financial year end": "financial_year_end",
   "has introducer": "has_introducer",
   "introducer name": "introducer_name",
-  "services obtained": "__services_obtained",
+  "services obtained": "__nature_of_services_sought", // older files: the column was removed (Triam 14-11-2026)
   "nature of services sought": "__nature_of_services_sought",
   "profile status": "profile_status",
   "engagement letter signed": "engagement_letter_signed",
@@ -121,8 +121,6 @@ export function parseCSV(text) {
       if (key.includes(".")) {
         const [parent, child] = key.split(".");
         obj[parent] = { ...(obj[parent] || {}), [child]: value };
-      } else if (key === "__services_obtained") {
-        obj.services_obtained = splitList(value);
       } else if (key === "__nature_of_services_sought") {
         obj.nature_of_services_sought = splitList(value);
       } else if (key === "__non_anchor_entities") {
@@ -171,7 +169,7 @@ export const EXPORT_HEADERS = [
   ...ADDRESS_COLS.map((c) => `Registered Address ${c}`),
   ...ADDRESS_COLS.map((c) => `Operating Address ${c}`),
   "TRN/VAT Number", "Corp Tax Registered", "Corp Tax Registration No.", "Financial Year End",
-  "Has Introducer", "Introducer Name", "Services Obtained",
+  "Has Introducer", "Introducer Name",
   "Profile Status", "Engagement Letter Signed", "Engagement Letter Valid Until",
   "AML Classification", "EDD Reason", "KYC Verified By", "CDD Completion Date", "Next AML Review Date", "Is PEP",
   "Date of Birth", "Country of Birth", "Nationality", "Passport Expiry", "Country of Residence",
@@ -196,7 +194,7 @@ export function buildAccountsCsv(accounts, users) {
     ...addrRow(a.registered_address),
     ...addrRow(a.operating_address),
     a.trn_vat_number, a.corp_tax_registered, a.corp_tax_registration_number, a.financial_year_end,
-    a.has_introducer, a.introducer_name, (a.services_obtained || []).join("; "),
+    a.has_introducer, a.introducer_name,
     a.profile_status, a.engagement_letter_signed, a.engagement_letter_valid_until,
     a.aml_classification, a.edd_reason, a.kyc_verified_by, a.cdd_completion_date, a.next_aml_review_date, a.is_pep,
     a.date_of_birth, a.country_of_birth, a.nationality, a.passport_expiry_date, a.country_of_residence,

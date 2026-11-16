@@ -18,13 +18,14 @@ import {
 } from "../../utils/constants";
 import {
   RISK_OPTIONS, BLANK_ADDRESS, SECTION_FIELDS,
-  buildAccountPayload, buildSectionPatch, validateCoreFields, accountToForm, mandatoryFields, isOffshore, sameAddress, isFoundation, withServicesSought, clientMobileProblem,
+  buildAccountPayload, buildSectionPatch, validateCoreFields, accountToForm, mandatoryFields, isOffshore, sameAddress, isFoundation, isOneTimeClient, clientMobileProblem,
 } from "./accountForm";
 import { dialCodeForCountry, dialCodeOptions } from "../../utils/dialCodes";
 import MobileNumberInput from "../MobileNumberInput";
 import VatCertificateField from "./VatCertificateField";
+import { addDays, later, latestAdultBirth, earliestBirth, taxNumber, taxNumberHint } from "../../utils/dateRules";
 import { useMasters } from "../../hooks/useMasters";
-import { selectableCodes, servicesForEntities } from "../../hooks/masterUtils";
+import { selectableCodes, servicesForEntities, oneTimeServices, oneTimeEntityCodes } from "../../hooks/masterUtils";
 
 // Service lists are shown in alphabetical order (Triam UAT 26-10-2026).
 const alphabetical = (codes) => [...codes].sort((x, y) => x.localeCompare(y));
@@ -196,9 +197,24 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
   // BRD §18 — admin-managed lists; the old constants are the fallback until the API answers.
   const entities = useMasters("triam_entity", TRIAM_ENTITY_OPTIONS);
   const services = useMasters("service", SERVICES_OBTAINED_OPTIONS);
-  // Services the client's Triam entities offer: what Services obtained may hold.
-  const obtainableServices = selectableCodes(servicesForEntities(services.items, [form.anchor_entity, ...(form.non_anchor_entities || [])]), form.services_obtained);
-  const setServicesSought = (v) => setForm(withServicesSought(form, v, obtainableServices));
+  // Triam 14-11-2026: a one-time client is offered only the one-time services of its Triam entities, and only
+  // the entities that have one-time services (Admin -> Masters -> Services). Values already held stay listed.
+  const oneTime = isOneTimeClient(form);
+  const clientEntities = [form.anchor_entity, ...(form.non_anchor_entities || [])];
+  const serviceOptions = (forEntities) => alphabetical(selectableCodes(
+    oneTime ? oneTimeServices(services.items, clientEntities) : forEntities ? servicesForEntities(services.items, clientEntities) : services.items,
+    form.nature_of_services_sought));
+  const oneTimeEntities = oneTimeEntityCodes(services.items);
+  const entityOptions = (held) => selectableCodes(entities.items, held)
+    .filter((c) => !oneTime || oneTimeEntities.includes(c) || (Array.isArray(held) ? held : [held]).includes(c));
+  const setCategory = (e) => setForm({ ...form, client_category: e.target.value,
+    ...(e.target.value === "Existing" ? {} : { is_one_time_service: null }) });
+  const oneTimeQuestion = (
+    <YesNo label="Is this a one-time service?" required={req("is_one_time_service")} value={form.is_one_time_service} onChange={setValue("is_one_time_service")} />
+  );
+  const oneTimeNote = oneTime && (
+    <p className="text-[11px] text-gray-500 -mt-2 mb-3">One-time service: only the one-time services of the client's Triam entities are offered{oneTimeEntities.length ? ` (Triam entities: ${oneTimeEntities.join(", ")})` : ""}.</p>
+  );
   const tags = useMasters("tag", TAG_OPTIONS);
   const regulators = useMasters("regulator", REGULATOR_OPTIONS);
   const authorities = useMasters("licensing_authority", []);
@@ -341,7 +357,7 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
           <>
             <div className="grid grid-cols-2 gap-3">
               <Field label="New Client Category" required={req("client_category")}>
-                <Select value={form.client_category || ""} onChange={set("client_category")}>
+                <Select value={form.client_category || ""} onChange={setCategory}>
                   <option value="">— select —</option>
                   <option value="Under Formation">Under Formation</option>
                   <option value="Existing">Existing</option>
@@ -354,6 +370,7 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
             {form.client_category === "Under Formation" && (
               <p className="text-[11px] text-gray-500 -mt-2 mb-3">Licence, incorporation, address and tax details may be left blank until the company is formed.</p>
             )}
+            {form.client_category === "Existing" && <div className="grid grid-cols-2 gap-3">{oneTimeQuestion}</div>}
             <div className="grid grid-cols-2 gap-3">
               <Field label="Contact Mobile" required={req("contact_mobile_number")}>
                 <MobileNumberInput code={form.contact_mobile_country_code} number={form.contact_mobile_number} options={dialOptions}
@@ -362,12 +379,9 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
               <Field label="Contact Email" required={req("contact_email")}><Input type="email" value={form.contact_email || ""} onChange={set("contact_email")} placeholder="e.g. info@company.com" /></Field>
             </div>
             <Field label="Nature of Services sought" required={req("nature_of_services_sought")}>
-              <MultiSelect options={alphabetical(selectableCodes(servicesForEntities(services.items, [form.anchor_entity, ...(form.non_anchor_entities || [])]), form.nature_of_services_sought))}
-                value={form.nature_of_services_sought} onChange={setServicesSought} />
+              <MultiSelect options={serviceOptions(true)} value={form.nature_of_services_sought} onChange={setValue("nature_of_services_sought")} />
             </Field>
-            <div className="grid grid-cols-2 gap-3">
-              <YesNo label="Is this a one-time service?" value={form.is_one_time_service} onChange={setValue("is_one_time_service")} />
-            </div>
+            {oneTimeNote}
           </>
         )}
         <Field label="Single Point of Contact (Client Contact Name)">
@@ -392,11 +406,11 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
           <Field label="Anchor Triam Entity" required={req("anchor_entity")}>
             <Select value={form.anchor_entity || ""} onChange={(e) => setForm({ ...form, anchor_entity: e.target.value, non_anchor_entities: (form.non_anchor_entities || []).filter((x) => x !== e.target.value) })}>
               <option value="">— select —</option>
-              {selectableCodes(entities.items, form.anchor_entity).map((t) => <option key={t} value={t}>{entities.labelOf(t)}</option>)}
+              {entityOptions(form.anchor_entity).map((t) => <option key={t} value={t}>{entities.labelOf(t)}</option>)}
             </Select>
           </Field>
           <Field label="Non-anchor Entities">
-            <MultiSelect options={selectableCodes(entities.items, form.non_anchor_entities).filter((t) => t !== form.anchor_entity)} value={form.non_anchor_entities} onChange={setValue("non_anchor_entities")} />
+            <MultiSelect options={entityOptions(form.non_anchor_entities).filter((t) => t !== form.anchor_entity)} value={form.non_anchor_entities} onChange={setValue("non_anchor_entities")} />
           </Field>
         </div>
         {!isIndividual && (
@@ -450,15 +464,15 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
                     <Input value={form.licensing_authority_other || ""} onChange={set("licensing_authority_other")} maxLength={100} />
                   </Field>
                 )}
-                <Field label="License Start Date" required={req("license_start_date")}><DateInput value={form.license_start_date || ""} onChange={set("license_start_date")} /></Field>
-                <Field label="License Expiry Date" required={req("license_expiry_date")}><DateInput min={today} value={form.license_expiry_date || ""} onChange={set("license_expiry_date")} /></Field>
+                <Field label="License Start Date" required={req("license_start_date")}><DateInput min={form.incorporation_date || undefined} max={today} value={form.license_start_date || ""} onChange={set("license_start_date")} /></Field>
+                <Field label="License Expiry Date" required={req("license_expiry_date")}><DateInput min={later(today, form.license_start_date && addDays(form.license_start_date, 1))} value={form.license_expiry_date || ""} onChange={set("license_expiry_date")} /></Field>
               </div>
               <Field label="Detailed Nature of Business carried out currently">
                 <Textarea rows={2} value={form.nature_of_business} onChange={set("nature_of_business")} maxLength={1000} />
               </Field>
               <div className="grid grid-cols-2 gap-3">
                 <Field label="LEI, if registered"><Input value={form.lei_number} onChange={(e) => setForm({ ...form, lei_number: e.target.value.toUpperCase() })} maxLength={20} placeholder="20 letters / digits" /></Field>
-                <Field label="LEI Expiry Date"><DateInput value={form.lei_expiry_date || ""} onChange={set("lei_expiry_date")} /></Field>
+                <Field label="LEI Expiry Date"><DateInput min={today} value={form.lei_expiry_date || ""} onChange={set("lei_expiry_date")} /></Field>
               </div>
               <div className="mb-3">
                 <Field label="Licensed Activities" required={req("license_activities")}>
@@ -481,7 +495,7 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
                     <Field label="Other Regulator" required={req("regulator_other")}><Input value={form.regulator_other} onChange={set("regulator_other")} /></Field>
                   )}
                   <Field label="License Category" required={req("license_category")}><Input value={form.license_category} onChange={set("license_category")} maxLength={25} /></Field>
-                  <Field label="Current regulatory license expiry" required={req("regulatory_license_expiry_date")}><DateInput value={form.regulatory_license_expiry_date || ""} onChange={set("regulatory_license_expiry_date")} /></Field>
+                  <Field label="Current regulatory license expiry" required={req("regulatory_license_expiry_date")}><DateInput min={today} value={form.regulatory_license_expiry_date || ""} onChange={set("regulatory_license_expiry_date")} /></Field>
                 </div>
               )}
             </Section>
@@ -510,7 +524,7 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
               )}
               <div className="grid grid-cols-2 gap-3">
                 {showVat && <Field label="TRN / VAT Registration No.">
-                  <Input value={form.trn_vat_number} onChange={(e) => setForm({ ...form, trn_vat_number: e.target.value.replace(/\D/g, "") })} maxLength={15} inputMode="numeric" />
+                  <Input value={form.trn_vat_number} onChange={(e) => setForm({ ...form, trn_vat_number: taxNumber(e.target.value, form.country) })} maxLength={20} placeholder={taxNumberHint(form.country)} />
                   {/* Triam 13-11-2026: the VAT Certificate is uploaded here, beside the number. */}
                   <VatCertificateField accountId={form._id} disabled={locked} onChange={() => setRefreshKey((k) => k + 1)} />
                 </Field>}
@@ -531,7 +545,7 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
                 <YesNo label="Corporate Tax Registered" required={req("corp_tax_registered")} value={form.corp_tax_registered} onChange={setValue("corp_tax_registered")} />
               </div>}
               {showCorpTax && form.corp_tax_registered && (
-                <Field label="Corp Tax Registration No. / TAN"><Input value={form.corp_tax_registration_number} onChange={(e) => setForm({ ...form, corp_tax_registration_number: e.target.value.replace(/\D/g, "") })} maxLength={15} inputMode="numeric" /></Field>
+                <Field label="Corp Tax Registration No. / TAN"><Input value={form.corp_tax_registration_number} onChange={(e) => setForm({ ...form, corp_tax_registration_number: taxNumber(e.target.value, form.country) })} maxLength={20} placeholder={taxNumberHint(form.country)} /></Field>
               )}
             </Section>
           </>
@@ -541,10 +555,10 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
           <Section title="Individual Details" hasData={!!(form.date_of_birth || form.country_of_birth || form.nationality || form.individual_mobile_number || form.individual_email || form.country_of_residence || form.is_pep || (form.nature_of_services_sought || []).length > 0)}
             {...sectionProps("individual")}>
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Date of Birth" required={req("date_of_birth")}><DateInput value={form.date_of_birth || ""} onChange={set("date_of_birth")} /></Field>
+              <Field label="Date of Birth" required={req("date_of_birth")}><DateInput min={earliestBirth()} max={latestAdultBirth()} value={form.date_of_birth || ""} onChange={set("date_of_birth")} /><p className="text-[11px] text-gray-500 mt-1">The client must be 18 or over.</p></Field>
               <Field label="Country of Birth" required={req("country_of_birth")}><CountrySelect value={form.country_of_birth} onChange={set("country_of_birth")} countries={countries} /></Field>
               <Field label="Nationality" required={req("nationality")}><CountrySelect value={form.nationality} onChange={set("nationality")} countries={countries} /></Field>
-              <Field label="Passport Expiry Date" required={req("passport_expiry_date")}><DateInput value={form.passport_expiry_date || ""} onChange={set("passport_expiry_date")} /><PassportNote value={form.passport_expiry_date} /></Field>
+              <Field label="Passport Expiry Date" required={req("passport_expiry_date")}><DateInput min={form.date_of_birth ? addDays(form.date_of_birth, 1) : undefined} value={form.passport_expiry_date || ""} onChange={set("passport_expiry_date")} /><PassportNote value={form.passport_expiry_date} /></Field>
               <Field label="Contact Email" required={req("individual_email")}><Input type="email" value={form.individual_email} onChange={set("individual_email")} /></Field>
               <Field label="Country of Residence" required={req("country_of_residence")}><CountrySelect value={form.country_of_residence} onChange={(e) => setForm({ ...form, country_of_residence: e.target.value, ...isdFor(e.target.value, "individual_mobile_country_code") })} countries={countries} /></Field>
             </div>
@@ -552,15 +566,14 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
               <MobileNumberInput code={form.individual_mobile_country_code} number={form.individual_mobile_number} options={dialOptions}
                 onCode={setValue("individual_mobile_country_code")} onNumber={setValue("individual_mobile_number")} />
             </Field>
+            <div className="grid grid-cols-2 gap-3">{oneTimeQuestion}</div>
             <Field label="Nature of Services Sought" required={req("nature_of_services_sought")}>
-              <MultiSelect options={alphabetical(selectableCodes(services.items, form.nature_of_services_sought))} value={form.nature_of_services_sought} onChange={setServicesSought} />
+              <MultiSelect options={serviceOptions(false)} value={form.nature_of_services_sought} onChange={setValue("nature_of_services_sought")} />
             </Field>
+            {oneTimeNote}
             <Field label="Detailed Nature of Profession / Business">
               <Textarea rows={2} value={form.nature_of_business} onChange={set("nature_of_business")} maxLength={1000} />
             </Field>
-            <div className="grid grid-cols-2 gap-3">
-              <YesNo label="Is this a one-time service?" value={form.is_one_time_service} onChange={setValue("is_one_time_service")} />
-            </div>
 
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mt-3 mb-1.5">Residential Address</p>
             <AddressFields required={req("residential_address")} value={form.residential_address} onChange={setValue("residential_address")} countries={countries} />
@@ -568,7 +581,7 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
             {isUAE(form.country_of_residence) && (
               <div className="grid grid-cols-2 gap-3 mt-3">
                 <Field label="UAE Visa No."><Input value={form.uae_visa_number} onChange={set("uae_visa_number")} /></Field>
-                <Field label="UAE Visa Expiry"><DateInput value={form.uae_visa_expiry || ""} onChange={set("uae_visa_expiry")} /></Field>
+                <Field label="UAE Visa Expiry"><DateInput min={addDays(today, -30)} value={form.uae_visa_expiry || ""} onChange={set("uae_visa_expiry")} /></Field>
               </div>
             )}
 
@@ -645,17 +658,12 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
           </Field>
         </Section>
 
-        <Section title="Services Obtained *" hasData={(form.services_obtained || []).length > 0} {...sectionProps("services")}>
-          <p className="text-[11px] text-gray-500 mb-2">Filled in from Nature of Services sought. Change it if Triam provides different services.</p>
-          <MultiSelect options={alphabetical(obtainableServices)} value={form.services_obtained} onChange={setValue("services_obtained")} />
-        </Section>
-
         <Section title="Engagement" hasData={form.engagement_letter_signed != null || !!form.engagement_letter_valid_until}
           {...sectionProps("profileStatus")}>
           <div className="grid grid-cols-2 gap-3">
             <YesNo label="Engagement Letter Signed" required={req("engagement_letter_signed")} value={form.engagement_letter_signed} onChange={setValue("engagement_letter_signed")} />
             {form.engagement_letter_signed && (
-              <Field label="Engagement Letter Valid Until" required={req("engagement_letter_valid_until")}><DateInput value={form.engagement_letter_valid_until || ""} onChange={set("engagement_letter_valid_until")} /></Field>
+              <Field label="Engagement Letter Valid Until" required={req("engagement_letter_valid_until")}><DateInput min={today} value={form.engagement_letter_valid_until || ""} onChange={set("engagement_letter_valid_until")} /></Field>
             )}
           </div>
         </Section>

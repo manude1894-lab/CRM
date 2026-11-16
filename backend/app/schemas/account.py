@@ -20,12 +20,14 @@ class _ClientFieldRules(BaseModel):
 
     @field_validator("trn_vat_number", "corp_tax_registration_number", mode="before", check_fields=False)
     @classmethod
-    def _numeric_15(cls, v):
+    def _tax_number(cls, v):
+        """Triam 16-11-2026: letters and digits (a foreign VAT number may start with letters, e.g. GB), no spaces
+        or symbols, kept in capitals. A UAE number must be 15 digits: checked in account_service with the country."""
         if v in (None, ""):
             return v
-        v = str(v).strip()
-        if not v.isdigit():
-            raise ValueError("must contain digits only")
+        v = str(v).strip().upper()
+        if not v.isalnum() or not v.isascii():
+            raise ValueError("must contain letters and digits only (no spaces or symbols)")
         return v
 
     @field_validator("client_category", mode="before", check_fields=False)
@@ -119,16 +121,14 @@ class AccountImportRow(BaseModel):
     registered_address: Optional[AddressBlock] = None
     operating_address: Optional[AddressBlock] = None
 
-    trn_vat_number: Optional[str] = Field(None, max_length=15)
+    trn_vat_number: Optional[str] = Field(None, max_length=20)
     corp_tax_registered: Optional[bool] = None
-    corp_tax_registration_number: Optional[str] = Field(None, max_length=15)
+    corp_tax_registration_number: Optional[str] = Field(None, max_length=20)
 
     financial_year_end: Optional[str] = None
 
     has_introducer: Optional[bool] = None
     introducer_name: Optional[str] = None
-
-    services_obtained: Optional[list[str]] = None
 
     profile_status: Optional[str] = None
 
@@ -232,16 +232,14 @@ class AccountBase(_ClientFieldRules):
     registered_address: Optional[AddressBlock] = None
     operating_address: Optional[AddressBlock] = None
 
-    trn_vat_number: Optional[str] = Field(None, max_length=15)
+    trn_vat_number: Optional[str] = Field(None, max_length=20)
     corp_tax_registered: Optional[bool] = None
-    corp_tax_registration_number: Optional[str] = Field(None, max_length=15)
+    corp_tax_registration_number: Optional[str] = Field(None, max_length=20)
 
     financial_year_end: Optional[str] = None
 
     has_introducer: Optional[bool] = None
     introducer_name: Optional[str] = None
-
-    services_obtained: Optional[list[str]] = None
 
     profile_status: str = "New"
 
@@ -332,16 +330,14 @@ class AccountUpdate(_ClientFieldRules, MobilePairRules):
     registered_address: Optional[AddressBlock] = None
     operating_address: Optional[AddressBlock] = None
 
-    trn_vat_number: Optional[str] = Field(None, max_length=15)
+    trn_vat_number: Optional[str] = Field(None, max_length=20)
     corp_tax_registered: Optional[bool] = None
-    corp_tax_registration_number: Optional[str] = Field(None, max_length=15)
+    corp_tax_registration_number: Optional[str] = Field(None, max_length=20)
 
     financial_year_end: Optional[str] = None
 
     has_introducer: Optional[bool] = None
     introducer_name: Optional[str] = None
-
-    services_obtained: Optional[list[str]] = None
 
     profile_status: Optional[str] = None
 

@@ -56,6 +56,9 @@ class AccountParty(Base):
 
     effective_ownership_percent = Column(Numeric(5, 2), nullable=True)  # Shareholder only
     nominee_director_name = Column(String(255), nullable=True)  # Director only
+    # Triam 16-11-2026: a minor Shareholder / UBO or Beneficiary is onboarded through a parent or guardian.
+    guardian_name = Column(String(255), nullable=True)
+    guardian_relationship = Column(String(60), nullable=True)
 
     notes = Column(Text, nullable=True)
 

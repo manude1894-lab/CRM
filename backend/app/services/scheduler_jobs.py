@@ -20,7 +20,7 @@ from app.auth.permissions import has_permission
 from app.database import SessionLocal
 from app.models import Account, AccountParty, ApprovalRequest, ApprovalStatus, Invoice, Notification, Prospect, User
 from app.services import access_control, notification_service
-from app.services.account_service import person_key
+from app.services.account_service import group_people
 from app.utils.dates import dmy
 
 logger = logging.getLogger("ezeetech.scheduler")
@@ -115,10 +115,9 @@ def check_documents_expiring():
                     _remind(db, acc, f"{field[:30]}_{w}d", f"{_expiry_text(what, due, w)} for {_label(acc)}.", compliance=False)
             # One person in several roles (UBO and Director, say) gets one reminder naming every role,
             # not one per record (Triam UAT row 4).
-            people: dict = {}
-            for p in db.query(AccountParty).filter(AccountParty.account_id == acc.id, AccountParty.removed_at.is_(None))                     .order_by(AccountParty.id).all():
-                people.setdefault(person_key(p), []).append(p)
-            for records in people.values():
+            parties = (db.query(AccountParty).filter(AccountParty.account_id == acc.id, AccountParty.removed_at.is_(None))
+                       .order_by(AccountParty.id).all())
+            for records in group_people(parties):
                 first = records[0]
                 roles = ", ".join(dict.fromkeys(r.party_role for r in records))
                 for kind, what in (("id", "Licence" if first.constitution == "Entity" else "Passport"), ("visa", "UAE visa")):

@@ -59,7 +59,6 @@ class Account(Base):
     has_introducer = Column(Boolean, nullable=True)
     introducer_name = Column(String(255), nullable=True)
 
-    services_obtained = Column(JSON, nullable=True)  # list[str], service master list (BRD §4)
 
     # Status (BRD §9)
     profile_status = Column(String(30), default="New", nullable=False)

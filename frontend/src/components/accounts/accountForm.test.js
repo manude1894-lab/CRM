@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   BLANK_ACCOUNT_FORM, SECTION_FIELDS, accountToForm, cleanPayload,
-  buildAccountPayload, buildSectionPatch, validateCoreFields, mandatoryFields, withServicesSought,
+  buildAccountPayload, buildSectionPatch, validateCoreFields, mandatoryFields, asksOneTime, isOneTimeClient,
 } from "./accountForm";
 import { passportNote } from "../ui";
 import contract from "../../../../backend/tests/contracts/mandatory_fields.json";
@@ -19,7 +19,7 @@ describe("accountToForm", () => {
     const form = accountToForm({ id: 7, company_name: "Acme" });
     expect(form).toMatchObject({
       _id: 7, company_name: "Acme", account_type: "Corporate", country: "",
-      profile_status: "New", is_regulated: null, services_obtained: [], tags: [], next_aml_review_date: null,
+      profile_status: "New", is_regulated: null, tags: [], next_aml_review_date: null,
     });
     expect(form.registered_address).toEqual(BLANK_ACCOUNT_FORM.registered_address);
   });
@@ -121,22 +121,15 @@ describe("passportNote", () => {
   });
 });
 
-describe("withServicesSought", () => {
-  it("fills Services obtained from what the client sought", () => {
-    const f = withServicesSought({ nature_of_services_sought: [], services_obtained: [] }, ["Audit", "VAT"], ["Audit", "VAT"]);
-    expect(f.services_obtained).toEqual(["Audit", "VAT"]);
+describe("one-time service (Triam 14-11-2026)", () => {
+  it("is asked of an Existing company and of individuals, not Under Formation", () => {
+    expect(asksOneTime({ account_type: "Corporate", client_category: "Existing" })).toBe(true);
+    expect(asksOneTime({ account_type: "Corporate", client_category: "Under Formation" })).toBe(false);
+    expect(asksOneTime({ account_type: "Corporate", client_category: "" })).toBe(false);
+    expect(asksOneTime({ account_type: "Individual" })).toBe(true);
   });
-  it("keeps following while the two lists are the same", () => {
-    const f = withServicesSought({ nature_of_services_sought: ["Audit"], services_obtained: ["Audit"] }, ["Audit", "VAT"], null);
-    expect(f.services_obtained).toEqual(["Audit", "VAT"]);
-  });
-  it("leaves Services obtained alone once the RM changed it", () => {
-    const f = withServicesSought({ nature_of_services_sought: ["Audit"], services_obtained: ["Payroll"] }, ["Audit", "VAT"], null);
-    expect(f.services_obtained).toEqual(["Payroll"]);
-    expect(f.nature_of_services_sought).toEqual(["Audit", "VAT"]);
-  });
-  it("copies only services the client's Triam entities offer", () => {
-    const f = withServicesSought({ nature_of_services_sought: [], services_obtained: [] }, ["Audit", "Set up Foundations"], ["Audit"]);
-    expect(f.services_obtained).toEqual(["Audit"]);
+  it("a Yes left over from Existing doesn't count once the company is Under Formation", () => {
+    expect(isOneTimeClient({ account_type: "Corporate", client_category: "Existing", is_one_time_service: true })).toBe(true);
+    expect(isOneTimeClient({ account_type: "Corporate", client_category: "Under Formation", is_one_time_service: true })).toBe(false);
   });
 });

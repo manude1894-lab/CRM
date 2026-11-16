@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { itemsFromStrings, sortItems, labelOf, selectableCodes, opensFreeText, servicesForEntities } from "./masterUtils";
+import { itemsFromStrings, sortItems, labelOf, selectableCodes, opensFreeText, servicesForEntities, oneTimeServices, oneTimeEntityCodes } from "./masterUtils";
 
 const items = [
   { code: "COI", label: "Certificate of Incorporation", sort_order: 20, is_active: true },
@@ -52,5 +52,21 @@ describe("servicesForEntities", () => {
   });
   it("shows everything until an entity is chosen", () => {
     expect(servicesForEntities(items, [""]).length).toBe(3);
+  });
+});
+
+describe("one-time services (Triam 14-11-2026)", () => {
+  const items = [
+    { code: "Corporate Tax Registration", is_active: true, meta: { entities: ["IFZA"], one_time_entities: ["TABL"] } },
+    { code: "Other Corporate Services", is_active: true, meta: { entities: ["IFZA"], one_time_entities: ["TMCL", "IFZA", "TCPL"] } },
+    { code: "Audit Services", is_active: true, meta: { entities: ["TMCL", "TABL"] } },
+  ];
+  it("offers only the one-time services of the client's Triam entities", () => {
+    expect(oneTimeServices(items, ["TABL"]).map((i) => i.code)).toEqual(["Corporate Tax Registration"]);
+    expect(oneTimeServices(items, ["TCPL", ""]).map((i) => i.code)).toEqual(["Other Corporate Services"]);
+    expect(oneTimeServices(items, []).length).toBe(2);
+  });
+  it("lists the Triam entities that have one-time services", () => {
+    expect(oneTimeEntityCodes(items).sort()).toEqual(["IFZA", "TABL", "TCPL", "TMCL"]);
   });
 });

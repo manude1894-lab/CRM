@@ -11,7 +11,7 @@ const ENTITY_LISTS = ["service", "service_request_type", "service_request_status
 // Kept in alphabetical order by the system (no manual ordering); matches master_service.ALPHABETICAL_LISTS.
 const ALPHABETICAL_LISTS = ["service", "document_category", "service_request_type", "licensing_authority", "tag", "regulator"];
 const ENTITY_HINT = {
-  service: " Tick the Triam entities that offer each service.",
+  service: " Tick the Triam entities that offer each service. One-time: the Triam entities for which it is a one-time service (Triam 14-11-2026); a client answering Yes to 'Is this a one-time service?' is offered only these.",
   service_request_type: " Tick the Triam entities each request type is for; none ticked = every entity.",
   service_request_status: " Tick the Triam entities each status is used by; none ticked = every entity. The order here is the order in the drop-down.",
 };
@@ -82,6 +82,15 @@ export default function MasterDataPanel() {
       load();
     }
   };
+  // Triam 14-11-2026: the one-time services table, kept on each service.
+  const oneTimeOf = (item) => item.meta?.one_time_entities || [];
+  const toggleOneTime = async (item, code) => {
+    const next = entityCodes.filter((c) => (c === code) !== oneTimeOf(item).includes(c));
+    const meta = { ...(item.meta || {}), one_time_entities: next };
+    setItems((list) => list.map((it) => (it.id === item.id ? { ...it, meta } : it)));
+    try { await mastersApi.update(item.id, { meta }); invalidateMasters(listType); }
+    catch (e) { toast.error(e.response?.data?.detail || "Failed to update the one-time services"); load(); }
+  };
   const toggleEntity = (item, code) =>
     setEntitiesOf([[item, entitiesOf(item).includes(code) ? entitiesOf(item).filter((c) => c !== code) : [...entitiesOf(item), code]]]);
   const allOn = (item) => entityCodes.every((c) => entitiesOf(item).includes(c));
@@ -139,7 +148,7 @@ export default function MasterDataPanel() {
             {items.length === 0 && <p className="text-xs text-gray-400">No items yet.</p>}
             {items.map((item, i) => (
               <div key={item.id} className={`${!item.is_active && !showInactive ? "hidden" : ""} flex items-center justify-between gap-2 px-2 py-1.5 rounded-lg ${item.is_active ? "bg-gray-50" : "bg-gray-50 opacity-60"}`}>
-                <div className="flex items-center gap-2 min-w-0 flex-1">
+                <div className={`flex items-center gap-2 min-w-0 flex-1 ${listType === "service" ? "flex-wrap" : ""}`}>
                   {editingId === item.id ? (
                     <input autoFocus value={editingLabel} onChange={(e) => setEditingLabel(e.target.value)}
                       onKeyDown={(e) => e.key === "Enter" && saveLabel(item)} onBlur={() => saveLabel(item)}
@@ -155,6 +164,17 @@ export default function MasterDataPanel() {
                       <EntityChip on={allOn(item)} title="Every Triam entity" onClick={() => toggleAll(item)}>All</EntityChip>
                       {entities.map((e) => (
                         <EntityChip key={e.code} on={entitiesOf(item).includes(e.code)} title={e.label} onClick={() => toggleEntity(item, e.code)}>{e.code}</EntityChip>
+                      ))}
+                    </span>
+                  )}
+                  {listType === "service" && (
+                    <span className="basis-full flex flex-wrap items-center gap-1" title="One-time service for these Triam entities">
+                      <span className="text-[10px] text-amber-700 mr-1">One-time service for</span>
+                      {entities.map((e) => (
+                        <button key={e.code} type="button" title={`One-time service for ${e.label}`} onClick={() => toggleOneTime(item, e.code)}
+                          className={`text-[10px] px-1.5 py-0.5 rounded border ${oneTimeOf(item).includes(e.code) ? "border-amber-500 bg-amber-500 text-white" : "border-gray-200 text-gray-400 hover:border-gray-300"}`}>
+                          {e.code}
+                        </button>
                       ))}
                     </span>
                   )}

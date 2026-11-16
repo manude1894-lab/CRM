@@ -56,7 +56,7 @@ _LABELS = {
     "corp_tax_registration_number": "Corp Tax Registration No.", "financial_year_end": "Financial Year End",
     "risk_rating": "CDD/AML Risk Level", "aml_classification": "AML Classification", "edd_reason": "Reason for EDD",
     "kyc_verified_by": "KYC Verification performed by", "cdd_completion_date": "CDD Completion Date",
-    "engagement_letter_valid_until": "Engagement Letter Valid Until", "services_obtained": "Services Obtained",
+    "engagement_letter_valid_until": "Engagement Letter Valid Until", "is_one_time_service": "One-time service",
     "effective_ownership_percent": "Effective Ownership %", "party_role": "Role", "full_name": "Full Name",
     "mobile_number": "Contact Mobile", "mobile_country_code": "Mobile Country Code", "email": "Email",
     "regulator_name": "Name of Regulator", "is_regulated": "Is entity regulated",

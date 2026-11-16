@@ -22,7 +22,7 @@ def foundation(db, real_user):
     acc = flow.complete_client(db, rm)
     for p in list(acc.parties):
         parties.remove_party(db, p.id, "Now a foundation", rm)
-    account_service.update_account(db, acc.id, AccountUpdate(services_obtained=["Set up Foundations"]), rm)
+    account_service.update_account(db, acc.id, AccountUpdate(nature_of_services_sought=["Set up Foundations"]), rm)
     db.refresh(acc)
     return acc, rm
 
@@ -73,7 +73,7 @@ def test_shareholders_from_before_must_go_before_submit(db, real_user):
     asks for them to be removed, so the foundation's people replace them."""
     rm = real_user("Rel. Manager")
     acc = flow.complete_client(db, rm)
-    account_service.update_account(db, acc.id, AccountUpdate(services_obtained=["Set up Foundations"]), rm)
+    account_service.update_account(db, acc.id, AccountUpdate(nature_of_services_sought=["Set up Foundations"]), rm)
     parties.create_party(db, acc.id, person("Founder"), rm)
     for n in ("One", "Two"):
         parties.create_party(db, acc.id, person("Council Member", full_name=f"Council {n}"), rm)
