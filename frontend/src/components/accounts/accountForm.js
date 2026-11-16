@@ -15,7 +15,7 @@ export const BLANK_ACCOUNT_FORM = {
   registered_address: { ...BLANK_ADDRESS }, operating_address: { ...BLANK_ADDRESS },
   trn_vat_number: "", corp_tax_registered: null, corp_tax_registration_number: "",
   financial_year_end: "", has_introducer: null, introducer_name: "",
-  services_obtained: [], tags: [],
+  tags: [],
   profile_status: "New",
   engagement_letter_signed: null, engagement_letter_valid_until: "",
   aml_classification: "", edd_reason: "", cdd_completion_date: "", kyc_verified_by: "",
@@ -55,7 +55,6 @@ export const SECTION_FIELDS = {
   ],
   introducer: ["has_introducer", "introducer_name"],
   bizRationale: ["br_person_met", "br_meeting_date", "br_meeting_time", "br_meeting_place", "br_meeting_mode", "br_rationale"],
-  services: ["services_obtained"],
   screening: ["screening_date"],
   // Status itself only changes through the workflow — this section saves engagement only.
   profileStatus: ["engagement_letter_valid_until", "engagement_letter_signed"],
@@ -65,9 +64,14 @@ export const SECTION_FIELDS = {
 
 // Triam UAT 05-11-2026: a foundation has these people instead of Shareholders and Directors.
 export const FOUNDATION_ROLES = ["Founder", "Council Member", "Beneficiary", "Guardian"];
-export const isFoundation = (a) => [...(a?.services_obtained || []), ...(a?.nature_of_services_sought || [])].includes("Set up Foundations");
+export const isFoundation = (a) => (a?.nature_of_services_sought || []).includes("Set up Foundations");
 
-const ALWAYS_MANDATORY = ["anchor_entity", "services_obtained", "spoc_id", "search_name", "company_name",
+// Triam 14-11-2026: "Is this a one-time service?" is asked of an Existing company (not one Under Formation)
+// and of every individual client. Same rule as the server's asks_one_time.
+export const asksOneTime = (form) => form.account_type === "Individual" || form.client_category === "Existing";
+export const isOneTimeClient = (form) => asksOneTime(form) && form.is_one_time_service === true;
+
+const ALWAYS_MANDATORY = ["anchor_entity", "spoc_id", "search_name", "company_name",
   "br_person_met", "br_meeting_date", "br_meeting_time", "br_meeting_place", "br_meeting_mode", "br_rationale", "engagement_letter_signed"];
 
 // Triam UAT 06-11-2026: tax fields don't apply to offshore companies, BVI or not. The same rule as the
@@ -77,7 +81,7 @@ export function isOffshore(form) {
   if (country.includes("virgin islands") && country.includes("brit")) return true;
   if ((form.anchor_entity || "").toUpperCase() === "TBVI") return true;
   const tags = Array.isArray(form.tags) ? form.tags : (form.tags || "").split(",");
-  const values = [...(form.services_obtained || []), ...(form.nature_of_services_sought || []), ...tags,
+  const values = [...(form.nature_of_services_sought || []), ...tags,
     form.licensing_authority, form.licensing_authority_other];
   return values.some((v) => /offshore|bvi/i.test(v || ""));
 }
@@ -89,11 +93,12 @@ export function mandatoryFields(form) {
   if (form.account_type === "Individual") {
     return new Set([...ALWAYS_MANDATORY, "date_of_birth", "passport_expiry_date", "country_of_birth", "nationality", "country_of_residence",
       "individual_mobile_number", "individual_mobile_country_code", "individual_email", "nature_of_services_sought", "residential_address",
-      ...on(form.engagement_letter_signed, "engagement_letter_valid_until")]);
+      "is_one_time_service", ...on(form.engagement_letter_signed, "engagement_letter_valid_until")]);
   }
   const forming = form.client_category === "Under Formation";
   return new Set([...ALWAYS_MANDATORY, "client_category", "country", "contact_mobile_number", "contact_mobile_country_code", "contact_email",
     "nature_of_services_sought", "licensing_authority", "is_regulated", "has_introducer",
+    ...on(form.client_category === "Existing", "is_one_time_service"),
     ...on(!forming, "registration_number", "incorporation_date", "license_number", "license_start_date", "license_expiry_date",
       "license_activities", "registered_address", "operating_address"),
     ...on(!forming && !isOffshore(form), "financial_year_end", "corp_tax_registered"),
@@ -125,7 +130,7 @@ export function accountToForm(a) {
     registered_address: { ...BLANK_ADDRESS, ...(a.registered_address || {}) }, operating_address: { ...BLANK_ADDRESS, ...(a.operating_address || {}) },
     trn_vat_number: a.trn_vat_number || "", corp_tax_registered: a.corp_tax_registered ?? null, corp_tax_registration_number: a.corp_tax_registration_number || "",
     financial_year_end: a.financial_year_end || "", has_introducer: a.has_introducer ?? null, introducer_name: a.introducer_name || "",
-    services_obtained: a.services_obtained || [], tags: a.tags ? a.tags.split(",").map((t) => t.trim()).filter(Boolean) : [],
+    tags: a.tags ? a.tags.split(",").map((t) => t.trim()).filter(Boolean) : [],
     profile_status: a.profile_status || "New",
     engagement_letter_signed: a.engagement_letter_signed ?? null, engagement_letter_valid_until: a.engagement_letter_valid_until || "",
     aml_classification: a.aml_classification || "", edd_reason: a.edd_reason || "", cdd_completion_date: a.cdd_completion_date || "",
@@ -192,17 +197,4 @@ export function validateCoreFields(form) {
   // BRD §18 — the Client ID is built from the Anchor Triam Entity.
   if (!form.anchor_entity) return "Anchor Triam Entity is required (it determines the Client ID)";
   return null;
-}
-
-// Nature of Services sought (BRD §6.4) and Services obtained (BRD §4) come from the same Services master
-// and are usually the same at onboarding. Services obtained follows what the client sought while it is
-// empty or still the same list; once the RM changes it, it is left alone. `obtainable` limits the copy to
-// the services the client's Triam entities offer.
-export function withServicesSought(form, sought, obtainable) {
-  const before = form.nature_of_services_sought || [];
-  const obtained = form.services_obtained || [];
-  const following = obtained.length === 0 || (obtained.length === before.length && obtained.every((c) => before.includes(c)));
-  if (!following) return { ...form, nature_of_services_sought: sought };
-  return { ...form, nature_of_services_sought: sought,
-    services_obtained: obtainable ? sought.filter((c) => obtainable.includes(c)) : sought };
 }

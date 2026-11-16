@@ -84,9 +84,15 @@ def test_ubo_without_documents_is_listed(db, real_user):
 def test_one_person_in_two_roles_needs_one_document(db, real_user):
     rm = real_user("Rel. Manager")
     acc = flow.complete_client(db, rm)  # Jane Owner, Shareholder, with her passport
-    _person(db, acc, rm, " jane owner ")  # the same person as Director
+    acc.parties[0].dob_or_incorp_date = date(1985, 3, 1)
+    db.commit()
+    _person(db, acc, rm, " jane owner ", dob_or_incorp_date=date(1985, 3, 1))  # the same person as Director
     db.refresh(acc)
     assert labels(acc) == []
+    # Without the date of birth the two records can't be matched (Triam UAT 13-11-2026 row 79).
+    _person(db, acc, rm, "Jane Owner", "Authorised Signatory")
+    db.refresh(acc)
+    assert labels(acc) == ["A document for Jane Owner (Authorised Signatory)"]
 
 
 def test_an_entity_shareholder_needs_one_too(db, real_user):

@@ -30,3 +30,16 @@ export function servicesForEntities(items = [], entities = []) {
   if (!chosen.length) return items;
   return items.filter((i) => !i.meta?.entities?.length || i.meta.entities.some((e) => chosen.includes(e)));
 }
+
+// Triam 14-11-2026: the Admin's one-time services table (Services master, "One-time for" entities).
+export const oneTimeEntitiesOf = (item) => item?.meta?.one_time_entities || [];
+
+// The one-time services of the chosen Triam entities (every one-time service while none is chosen).
+export function oneTimeServices(items = [], entities = []) {
+  const chosen = entities.filter(Boolean);
+  return items.filter((i) => oneTimeEntitiesOf(i).length && (!chosen.length || oneTimeEntitiesOf(i).some((e) => chosen.includes(e))));
+}
+
+// The Triam entities that offer at least one one-time service: the only ones a one-time client may have.
+export const oneTimeEntityCodes = (items = []) =>
+  [...new Set(items.filter((i) => i.is_active !== false).flatMap(oneTimeEntitiesOf))];

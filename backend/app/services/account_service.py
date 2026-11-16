@@ -23,7 +23,6 @@ _AML_REVIEW_CADENCE_YEARS = {"High": 1, "Medium": 2, "Low": 3}
 _MASTER_FIELDS = {
     "anchor_entity": ("triam_entity", "Anchor Triam Entity", "one"),
     "non_anchor_entities": ("triam_entity", "Non-anchor Triam Entities", "many"),
-    "services_obtained": ("service", "Services obtained", "many"),
     "nature_of_services_sought": ("service", "Nature of Services Sought", "many"),
     "tags": ("tag", "Tags", "csv"),
     "regulator_name": ("regulator", "Name of Regulator", "one"),
@@ -222,20 +221,129 @@ def assert_passport_acceptable(expiry: Optional[date], whose: str = "The passpor
         raise HTTPException(status_code=400, detail=f"{whose} expired more than {PASSPORT_GRACE_DAYS} days ago. Ask for the renewed passport.")
 
 
-def _assert_date_sanity(data) -> None:
-    """BRD §5 — Incorporation Date can't be in the
-    future; License Expiry Date can't be in the past. Interactive create/update only —
-    CSV import of historical data is exempt, since expired licenses are legitimate there."""
+ADULT_AGE = 18
+MAX_AGE = 120
+VISA_GRACE_DAYS = 30
+
+
+def age_on(dob: date, today: Optional[date] = None) -> int:
+    today = today or date.today()
+    return today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
+
+
+def is_minor(dob: Optional[date]) -> bool:
+    return bool(dob) and age_on(dob) < ADULT_AGE
+
+
+def assert_birth_date(dob: Optional[date], whose: str, adult: bool = True) -> None:
+    """Triam 16-11-2026: a date of birth isn't in the future nor more than 120 years ago, and an adult is 18 or over."""
+    if not dob:
+        return
+    if dob > date.today():
+        raise HTTPException(status_code=400, detail=f"{whose}: Date of Birth cannot be in the future")
+    if age_on(dob) > MAX_AGE:
+        raise HTTPException(status_code=400, detail=f"{whose}: Date of Birth is more than {MAX_AGE} years ago. Check the date")
+    if adult and age_on(dob) < ADULT_AGE:
+        raise HTTPException(status_code=400, detail=f"{whose} must be at least {ADULT_AGE} years old (a minor can't be onboarded in this role)")
+
+
+def _is_uae(country: Optional[str]) -> bool:
+    c = (country or "").lower()
+    return "united arab emirates" in c or c.strip() in ("uae", "ae")
+
+
+def _assert_date_sanity(data, acc: Optional[Account] = None) -> None:
+    """Date and number rules for an interactive create/update (CSV import of historical data is exempt, since
+    expired licences are legitimate there). `acc` is the record being updated: a rule comparing two fields uses
+    its stored value for the one not being sent. A "not before today" rule applies only to a date being entered
+    or changed, so an old date on record doesn't block saving something else.
+
+    BRD §5: Incorporation Date isn't in the future; License Expiry isn't in the past. Triam 16-11-2026: the
+    licence starts on or before today and not before incorporation, and expires after it starts; regulatory
+    licence, LEI and engagement letter aren't already expired; the UAE visa within 30 days; an individual
+    client is an adult; a passport expires after its holder was born; a UAE TRN / Corporate Tax number is 15 digits."""
     today = date.today()
-    incorporation_date = getattr(data, "incorporation_date", None)
-    if incorporation_date and incorporation_date > today:
-        raise HTTPException(status_code=400, detail="Incorporation Date cannot be in the future")
-    screening_date = getattr(data, "screening_date", None)
-    if screening_date and screening_date > today:
-        raise HTTPException(status_code=400, detail="Screening Date cannot be in the future")
-    license_expiry_date = getattr(data, "license_expiry_date", None)
-    if license_expiry_date and license_expiry_date < today:
-        raise HTTPException(status_code=400, detail="License Expiry Date cannot be before today")
+    sent = data.model_dump(exclude_unset=True)
+
+    def val(f):
+        return sent[f] if f in sent else getattr(acc, f, None)
+
+    def changed(f):
+        return sent.get(f) is not None and (acc is None or sent[f] != getattr(acc, f, None))
+
+    def fail(msg):
+        raise HTTPException(status_code=400, detail=msg)
+
+    if changed("incorporation_date") and sent["incorporation_date"] > today:
+        fail("Incorporation Date cannot be in the future")
+    if changed("screening_date") and sent["screening_date"] > today:
+        fail("Screening Date cannot be in the future")
+    start, expiry, incorporated = val("license_start_date"), val("license_expiry_date"), val("incorporation_date")
+    if changed("license_start_date") and start > today:
+        fail("License Start Date cannot be in the future")
+    if (changed("license_start_date") or changed("incorporation_date")) and start and incorporated and start < incorporated:
+        fail("License Start Date cannot be before the Incorporation Date")
+    if changed("license_expiry_date") and expiry < today:
+        fail("License Expiry Date cannot be before today")
+    if (changed("license_start_date") or changed("license_expiry_date")) and start and expiry and expiry <= start:
+        fail("License Expiry Date must be after the License Start Date")
+    for field, label in (("regulatory_license_expiry_date", "Current regulatory license expiry"),
+                         ("lei_expiry_date", "LEI Expiry Date"),
+                         ("engagement_letter_valid_until", "Engagement Letter Valid Until")):
+        if changed(field) and sent[field] < today:
+            fail(f"{label} cannot be before today")
+    if changed("uae_visa_expiry") and sent["uae_visa_expiry"] < today - timedelta(days=VISA_GRACE_DAYS):
+        fail(f"The UAE visa expired more than {VISA_GRACE_DAYS} days ago. Ask for the renewed visa")
+    dob, passport = val("date_of_birth"), val("passport_expiry_date")
+    if changed("date_of_birth"):
+        assert_birth_date(dob, "The individual client")
+    if (changed("date_of_birth") or changed("passport_expiry_date")) and dob and passport and passport <= dob:
+        fail("Passport Expiry Date must be after the Date of Birth")
+    if _is_uae(val("country")):
+        for field, label in (("trn_vat_number", "TRN / VAT Registration No."), ("corp_tax_registration_number", "Corp Tax Registration No.")):
+            v = val(field)
+            if (changed(field) or changed("country")) and v and not (len(v) == 15 and v.isdigit()):
+                fail(f"{label}: a UAE number is 15 digits")
+
+
+def asks_one_time(account) -> bool:
+    """Triam 14-11-2026: "Is this a one-time service?" is asked of an Existing company (not one Under
+    Formation, nor before the category is chosen) and of every individual client."""
+    return account.account_type == "Individual" or account.client_category == "Existing"
+
+
+def _normalize_one_time(acc: Account) -> None:
+    """The answer doesn't apply when the question isn't asked (e.g. the company is Under Formation)."""
+    if not asks_one_time(acc):
+        acc.is_one_time_service = None
+
+
+def one_time_services(db: Session) -> dict[str, list[str]]:
+    """Admin's one-time services table: service -> the Triam entities for which it is a one-time service."""
+    return {i.code: list((i.meta or {}).get("one_time_entities") or [])
+            for i in master_service.list_items(db, "service") if (i.meta or {}).get("one_time_entities")}
+
+
+def one_time_problems(db: Session, account) -> list[dict]:
+    """Triam 14-11-2026: a one-time client takes only the one-time services of its Triam entities, and
+    only Triam entities that offer one-time services. Checked at Submit, like the other mandatory rules."""
+    if not account.is_one_time_service or not asks_one_time(account):
+        return []
+    table = one_time_services(db)
+    offering = {e for ents in table.values() for e in ents}
+    entities = [e for e in [account.anchor_entity, *(account.non_anchor_entities or [])] if e]
+    problems = []
+    for e in entities:
+        if e not in offering:
+            problems.append({"section": "Triam assignment", "field": "anchor_entity" if e == account.anchor_entity else "non_anchor_entities",
+                             "label": f"{e} does not offer one-time services. A one-time client can only be handled by "
+                                      f"{', '.join(sorted(offering)) or 'an entity with one-time services'}"})
+    for s in account.nature_of_services_sought or []:
+        if not set(table.get(s, [])) & set(entities):
+            problems.append({"section": "Client info", "field": "nature_of_services_sought",
+                             "label": f"'{s}' is not a one-time service of the client's Triam entities. Remove it, or answer "
+                                      f"'Is this a one-time service?' with No"})
+    return problems
 
 
 def _normalize_non_anchor_rms(acc: Account) -> None:
@@ -300,6 +408,7 @@ def create_account(db: Session, data: AccountCreate, user: User) -> Account:
     _set_status(acc, user)
     _compute_next_aml_review_date(acc)
     _normalize_non_anchor_rms(acc)
+    _normalize_one_time(acc)
     if prospect is not None:
         acc.prospect_id = prospect.id
     db.add(acc)
@@ -369,7 +478,7 @@ def _compliance_cdd_save(db: Session, acc: Account, data: AccountUpdate, user: U
 def apply_update(db: Session, acc: Account, data: AccountUpdate, user: User) -> dict:
     """Validate and apply a profile update to `acc` without committing. Shared by direct saves and
     by amendments (staged on save, then applied for real when Compliance approves)."""
-    _assert_date_sanity(data)
+    _assert_date_sanity(data, acc)
     if data.passport_expiry_date != acc.passport_expiry_date:
         assert_passport_acceptable(data.passport_expiry_date)
     update_data = data.model_dump(exclude_unset=True)
@@ -408,6 +517,7 @@ def apply_update(db: Session, acc: Account, data: AccountUpdate, user: User) -> 
     if "risk_rating" in update_data or "cdd_completion_date" in update_data:
         _compute_next_aml_review_date(acc)
     _normalize_non_anchor_rms(acc)
+    _normalize_one_time(acc)
     return update_data
 
 
@@ -516,7 +626,7 @@ def is_offshore(account) -> bool:
         return True
     if (account.anchor_entity or "").upper() == "TBVI":
         return True
-    values = [*(account.services_obtained or []), *(account.nature_of_services_sought or []), *_as_list(account.tags, "csv"),
+    values = [*(account.nature_of_services_sought or []), *_as_list(account.tags, "csv"),
               account.licensing_authority, account.licensing_authority_other]
     return any(word in (v or "").lower() for v in values for word in ("offshore", "bvi"))
 
@@ -531,19 +641,33 @@ def has_supporting_document(account) -> bool:
     return any(d.party_id is None for d in _onboarding_documents(account))
 
 
-def person_key(party):
-    """One person in several roles (UBO and Director, say) is matched by name and date of birth, as on the form."""
-    return ((party.full_name or "").strip().lower(), party.dob_or_incorp_date)
+def same_person(a, b) -> bool:
+    """One person in several roles (UBO and Director, say): the same name and the same date of birth /
+    incorporation. Triam UAT 13-11-2026 row 79 (two Shareholders both named "Daniel", no date of birth): a blank
+    date is not a match, and two records in the same role are always two people. Same rule as samePerson on the form."""
+    return (a.party_role != b.party_role and a.dob_or_incorp_date is not None
+            and a.dob_or_incorp_date == b.dob_or_incorp_date
+            and (a.full_name or "").strip().lower() == (b.full_name or "").strip().lower())
+
+
+def group_people(parties) -> list[list]:
+    """The client's parties grouped by person (see same_person), in the order given."""
+    groups: list[list] = []
+    for p in parties:
+        for g in groups:
+            if all(same_person(r, p) for r in g):
+                g.append(p)
+                break
+        else:
+            groups.append([p])
+    return groups
 
 
 def people_without_documents(account) -> list[list]:
     """Triam UAT 09/10-11-2026: each individual / non-individual needs a document of their own. Returns the
     people with none, each as the list of their records. A document on any of a person's records covers all of them."""
     with_docs = {d.party_id for d in _onboarding_documents(account) if d.party_id is not None}
-    people: dict = {}
-    for p in account.parties:
-        people.setdefault(person_key(p), []).append(p)
-    return [records for records in people.values() if not any(r.id in with_docs for r in records)]
+    return [records for records in group_people(account.parties) if not any(r.id in with_docs for r in records)]
 
 
 FOUNDATION_SERVICE = "Set up Foundations"
@@ -554,7 +678,7 @@ MIN_COUNCIL_MEMBERS = 2
 def is_foundation(account) -> bool:
     """Triam UAT 05-11-2026: a foundation has Founders, Council Members, Beneficiaries and Guardians
     instead of Shareholders and Directors."""
-    return FOUNDATION_SERVICE in [*(account.services_obtained or []), *(account.nature_of_services_sought or [])]
+    return FOUNDATION_SERVICE in (account.nature_of_services_sought or [])
 
 
 def counts_towards_ownership(party) -> bool:
@@ -572,7 +696,6 @@ def missing_mandatory(account: Account) -> list[dict]:
 
     # §4 Triam assignment — common to both types.
     need("Triam assignment", "anchor_entity", "Anchor Triam Entity")
-    need("Triam assignment", "services_obtained", "Services obtained")
     need("Triam assignment", "spoc_id", "Anchor RM")
     need("Client info", "search_name", "Unique Search Name")
 
@@ -591,6 +714,7 @@ def missing_mandatory(account: Account) -> list[dict]:
         need("Individual details", "individual_mobile_country_code", "Contact Mobile country code")
         need("Individual details", "individual_email", "Contact Email")
         need("Individual details", "nature_of_services_sought", "Nature of Services sought")
+        need("Individual details", "is_one_time_service", "Is this a one-time service? (Yes / No)")
         addr = account.residential_address or {}
         if not all((addr.get(f) or "").strip() for f in ("line1", "city", "country")):
             missing.append({"section": "Individual details", "field": "residential_address", "label": "Residential Address (line 1, city and country)"})
@@ -607,6 +731,7 @@ def missing_mandatory(account: Account) -> list[dict]:
         need("Client info", "contact_mobile_country_code", "Contact Mobile country code (company)")
         need("Client info", "contact_email", "Contact Email (company)")
         need("Client info", "nature_of_services_sought", "Nature of Services sought")
+        need("Client info", "is_one_time_service", "Is this a one-time service? (Yes / No)", when=asks_one_time(account))
         need("Client info", "registration_number", "Incorporation Certificate No.", when=not forming)
         need("Client info", "incorporation_date", "Incorporation Date", when=not forming)
         need("Client info", "license_number", "Trade / Commercial License Number", when=not forming)
@@ -675,6 +800,10 @@ def missing_mandatory(account: Account) -> list[dict]:
         if not all((addr.get(f) or "").strip() for f in ("line1", "city")):
             missing.append({"section": PARTIES_SECTION, "field": "parties",
                             "label": f"Residential Address of {p.full_name} ({p.party_role}): line 1 and city"})
+        from app.services.account_party_service import minor_needs_guardian  # local: that module imports this one
+        if minor_needs_guardian(p) and not ((p.guardian_name or "").strip() and (p.guardian_relationship or "").strip()):
+            missing.append({"section": PARTIES_SECTION, "field": "parties",
+                            "label": f"{p.full_name} ({p.party_role}) is a minor: Parent / Guardian name and relationship"})
         if p.constitution != "Entity" and passport_too_old(p.id_or_license_expiry):
             missing.append({"section": PARTIES_SECTION, "field": "parties",
                             "label": f"The passport of {p.full_name} expired more than {PASSPORT_GRACE_DAYS} days ago"})
@@ -693,6 +822,10 @@ def missing_mandatory(account: Account) -> list[dict]:
     need("Profile Status & Engagement", "engagement_letter_signed", "Engagement Letter Signed (Yes / No)")
     need("Profile Status & Engagement", "engagement_letter_valid_until", "Engagement Letter valid upto",
          when=account.engagement_letter_signed)
+    from sqlalchemy.orm import object_session
+    db = object_session(account)
+    if db is not None:
+        missing.extend(one_time_problems(db, account))
     return missing
 
 

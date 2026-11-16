@@ -32,6 +32,8 @@ class AccountPartyBase(BaseModel):
 
     effective_ownership_percent: Optional[Decimal] = None
     nominee_director_name: Optional[str] = None
+    guardian_name: Optional[str] = Field(None, max_length=255)
+    guardian_relationship: Optional[str] = Field(None, max_length=60)
 
     notes: Optional[str] = None
 
@@ -64,6 +66,8 @@ class AccountPartyUpdate(MobilePairRules):
     is_pep: Optional[bool] = None
     effective_ownership_percent: Optional[Decimal] = None
     nominee_director_name: Optional[str] = None
+    guardian_name: Optional[str] = Field(None, max_length=255)
+    guardian_relationship: Optional[str] = Field(None, max_length=60)
     notes: Optional[str] = None
 
 

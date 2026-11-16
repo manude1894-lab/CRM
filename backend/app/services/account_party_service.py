@@ -27,6 +27,32 @@ _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 CONTACT_REQUIRED = ("Shareholder", "Director", "Authorised Signatory", "Joint Holder", *account_service.FOUNDATION_ROLES)
 
 
+# Triam 16-11-2026: a child can hold shares or be a foundation's beneficiary (through a parent or guardian);
+# every other role acts for the client, so its holder is an adult.
+MINOR_ALLOWED = ("Shareholder", "Beneficiary")
+
+
+def minor_needs_guardian(p) -> bool:
+    return p.constitution != "Entity" and p.party_role in MINOR_ALLOWED and account_service.is_minor(p.dob_or_incorp_date)
+
+
+def _assert_party_dates(p) -> None:
+    """Checked when the date of birth / incorporation, the passport expiry or the role is entered or changed."""
+    from datetime import date
+    state = inspect(p).attrs
+    touched = any(getattr(state, f).history.added for f in ("dob_or_incorp_date", "id_or_license_expiry", "party_role", "constitution"))
+    if not touched:
+        return
+    born = p.dob_or_incorp_date
+    if p.constitution == "Entity":
+        if born and born > date.today():
+            raise HTTPException(status_code=400, detail=f"{p.full_name}: Date of Incorporation cannot be in the future")
+        return
+    account_service.assert_birth_date(born, f"{p.full_name} ({p.party_role})", adult=p.party_role not in MINOR_ALLOWED)
+    if born and p.id_or_license_expiry and p.id_or_license_expiry <= born:
+        raise HTTPException(status_code=400, detail=f"{p.full_name}: Passport Expiry must be after the Date of Birth")
+
+
 def needs_country_of_birth(p) -> bool:
     """The Signatory always; an individual Shareholder / UBO or Director too (an entity has no birth country).
     A foundation's individual Founders, Council Members, Beneficiaries and Guardians follow the UBO rule
@@ -49,6 +75,14 @@ def _validate_party(account: Account, p: AccountParty) -> None:
     # Only a date being entered or changed: an old date already on record doesn't block other edits.
     if p.constitution != "Entity" and inspect(p).attrs.id_or_license_expiry.history.added:
         account_service.assert_passport_acceptable(p.id_or_license_expiry, f"The passport of {p.full_name}")
+    _assert_party_dates(p)
+    if minor_needs_guardian(p):
+        missing = [label for label, value in (("Parent / Guardian Name", p.guardian_name),
+                                              ("Relationship to the minor", p.guardian_relationship)) if not (value or "").strip()]
+        if missing:
+            raise HTTPException(status_code=400, detail=f"{p.full_name} is a minor: {' and '.join(missing)} {'is' if len(missing) == 1 else 'are'} required")
+    elif p.constitution == "Entity" or not account_service.is_minor(p.dob_or_incorp_date):
+        p.guardian_name = p.guardian_relationship = None
     if p.email and not _EMAIL_RE.match(p.email.strip()):
         raise HTTPException(status_code=400, detail="Contact Email is not a valid email address")
     individual_client = account.account_type == "Individual"

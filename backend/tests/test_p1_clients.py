@@ -108,8 +108,8 @@ def test_lookup_from_third_letter_on_word_starts(db, make_user):
 # ─── §5 field formats ───────────────────────────────────────────────────────
 
 @pytest.mark.parametrize("field,value", [
-    ("trn_vat_number", "12AB"),
-    ("corp_tax_registration_number", "1234567890123456"),  # 16 digits
+    ("trn_vat_number", "12-AB"),  # letters and digits only (Triam 16-11-2026)
+    ("corp_tax_registration_number", "1" * 21),  # over 20 characters
     ("license_category", "x" * 26),
     ("license_activities", "x" * 251),
     ("license_number", "x" * 31),

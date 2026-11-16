@@ -10,6 +10,11 @@ import MobileNumberInput from "./MobileNumberInput";
 import { mobileProblem } from "../utils/mobile";
 import ClientDocumentsFolder from "./accounts/ClientDocumentsFolder";
 import { FOUNDATION_ROLES, isFoundation } from "./accounts/accountForm";
+import { addDays, isoToday, isMinor, earliestBirth, latestAdultBirth } from "../utils/dateRules";
+
+// Triam 16-11-2026: a child may hold shares or be a foundation's beneficiary, through a parent or guardian;
+// every other role acts for the client, so its holder is 18 or over. Same rule as the server (MINOR_ALLOWED).
+const MINOR_ALLOWED = ["Shareholder", "Beneficiary"];
 
 const CORPORATE_ROLES = ["Shareholder", "Director", "Authorised Signatory"];
 const INDIVIDUAL_ROLES = ["Joint Holder"];  // BRD: individual clients have joint holders
@@ -34,6 +39,8 @@ const emptyParty = (role) => ({
   is_pep: false,
   effective_ownership_percent: "",
   nominee_director_name: "",
+  guardian_name: "",
+  guardian_relationship: "",
   notes: "",
 });
 
@@ -51,8 +58,11 @@ const PERSON_FIELDS = ["constitution", "full_name", "dob_or_incorp_date", "id_or
 const pick = (row, fields) => Object.fromEntries(fields.map((f) => [f, row[f]]));
 
 // Triam UAT 04-11-2026: one person can hold several roles. Recognised by name and date of birth.
-export const samePerson = (a, b) => a.id !== b.id && (a.full_name || "").trim().toLowerCase() === (b.full_name || "").trim().toLowerCase()
-  && (a.dob_or_incorp_date || null) === (b.dob_or_incorp_date || null);
+// Triam UAT 13-11-2026 row 79: a blank date of birth is not a match, and two records in the same role are always
+// two people (two Shareholders named "Daniel"). Same rule as same_person in account_service.py.
+export const samePerson = (a, b) => a.id !== b.id && a.party_role !== b.party_role && !!a.dob_or_incorp_date
+  && a.dob_or_incorp_date === b.dob_or_incorp_date
+  && (a.full_name || "").trim().toLowerCase() === (b.full_name || "").trim().toLowerCase();
 
 // onChange runs after a party is added, changed or removed (e.g. to refresh the missing-fields list).
 // role shows that one kind of party only, without tabs (the onboarding form has a section per kind, BRD §5.1–5.3).
@@ -272,6 +282,8 @@ function PartyForm({ form, setForm, countries, onCancel, onSave, copyFrom = [] }
   // Keep in step with CONTACT_REQUIRED / needs_country_of_birth in account_party_service.py (Triam UAT 10-11-2026).
   const contactRequired = ["Shareholder", "Director", "Authorised Signatory", "Joint Holder", ...FOUNDATION_ROLES].includes(form.party_role);
   const isEntity = form.constitution === "Entity";
+  const minorAllowed = MINOR_ALLOWED.includes(form.party_role);
+  const minor = !isEntity && minorAllowed && isMinor(form.dob_or_incorp_date);
   // A foundation's people follow the UBO rule (Triam UAT: their details are "similar to UBOs").
   const birthRequired = form.party_role === "Authorised Signatory" || (["Shareholder", "Director", ...FOUNDATION_ROLES].includes(form.party_role) && !isEntity);
   const isUAEResident = isUAE(form.country_of_residence);
@@ -306,10 +318,14 @@ function PartyForm({ form, setForm, countries, onCancel, onSave, copyFrom = [] }
       </Field>
       <div className="grid grid-cols-2 gap-3">
         <Field label={isEntity ? "Incorporation Date" : "Date of Birth"}>
-          <DateInput value={form.dob_or_incorp_date || ""} onChange={set(setForm, "dob_or_incorp_date")} />
+          <DateInput min={isEntity ? undefined : earliestBirth()} max={isEntity || minorAllowed ? isoToday() : latestAdultBirth()}
+            value={form.dob_or_incorp_date || ""} onChange={set(setForm, "dob_or_incorp_date")} />
+          {!isEntity && !minorAllowed && <p className="text-[11px] text-gray-500 mt-1">A {form.party_role} must be 18 or over.</p>}
+          {minor && <span className="inline-block mt-1 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">Minor</span>}
         </Field>
         <Field label={isEntity ? "License / CI Expiry" : "Passport Expiry"}>
-          <DateInput value={form.id_or_license_expiry || ""} onChange={set(setForm, "id_or_license_expiry")} />
+          <DateInput min={!isEntity && form.dob_or_incorp_date ? addDays(form.dob_or_incorp_date, 1) : undefined}
+            value={form.id_or_license_expiry || ""} onChange={set(setForm, "id_or_license_expiry")} />
           {!isEntity && <PassportNote value={form.id_or_license_expiry} />}
         </Field>
       </div>
@@ -317,6 +333,20 @@ function PartyForm({ form, setForm, countries, onCancel, onSave, copyFrom = [] }
         <CountrySelect value={form.country_of_incorp_or_birth} onChange={set(setForm, "country_of_incorp_or_birth")} countries={countries} />
       </Field>
 
+      {minor && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 mb-3">
+          <p className="text-xs text-amber-800 mb-2">{form.full_name || "This person"} is under 18. A minor is onboarded through a parent or legal guardian: give their details, and file a birth certificate or guardianship document in this person's documents.</p>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Parent / Guardian Name" required><Input value={form.guardian_name || ""} onChange={set(setForm, "guardian_name")} /></Field>
+            <Field label="Relationship to the minor" required>
+              <Select value={form.guardian_relationship || ""} onChange={set(setForm, "guardian_relationship")}>
+                <option value="">— select —</option>
+                {["Father", "Mother", "Legal Guardian"].map((r) => <option key={r}>{r}</option>)}
+              </Select>
+            </Field>
+          </div>
+        </div>
+      )}
       {isDirector && (
         <Field label="Nominee Director's Name (if applicable)">
           <Input value={form.nominee_director_name || ""} onChange={set(setForm, "nominee_director_name")} />
