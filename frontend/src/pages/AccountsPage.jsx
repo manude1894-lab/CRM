@@ -304,7 +304,7 @@ export default function AccountsPage({ scope = "onboarding", initialAccountId, i
                   {!readOnly && <td className="py-2.5 px-3" onClick={(e) => e.stopPropagation()}>
                     <input type="checkbox" checked={selectedIds.has(a.id)} onChange={() => toggleSelected(a.id)} />
                   </td>}
-                  <td className="py-2.5 px-3 font-mono text-xs text-gray-600">{a.client_id || <span className="text-gray-400" title="Temporary ID until Compliance approves">{a.temp_id || a.account_uid}</span>}</td>
+                  <td className="py-2.5 px-3 font-mono text-xs text-gray-600">{a.client_id || <span className="text-gray-400" title="Temporary ID until the Final approval">{a.temp_id || a.account_uid}</span>}</td>
                   <td className="py-2.5 px-3">
                     <div className="font-medium text-gray-800">{a.company_name}</div>
                     <div className="text-xs text-gray-400">{a.account_type === "Individual" ? "Individual" : [a.client_category, a.country].filter(Boolean).join(" · ") || "Corporate"}{a.is_pep ? " · PEP" : ""}</div>

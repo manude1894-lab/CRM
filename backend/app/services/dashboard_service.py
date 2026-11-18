@@ -41,11 +41,12 @@ def build_dashboard(db: Session, user: User) -> dict:
 
     names = {a.id: a.company_name for a in accounts}
     # Triam UAT 05/06-11-2026: pending approvals by level. An amendment goes to Compliance only (BRD §11).
-    pending_rows = sorted(({
+    # Latest first (UAT 18-11-2026 row 61); the later request wins a tie on the timestamp.
+    pending_rows = [{
         "account_id": r.account_id, "company_name": names[r.account_id], "request_type": r.request_type,
         "level": wf.stage_of(r) if r.request_type == "client_profile" else wf.STAGE_COMPLIANCE,
         "submitted_by": r.maker.name if r.maker else None, "submitted_at": r.submitted_at,
-    } for r in pending), key=lambda row: str(row["submitted_at"]))
+    } for r in sorted(pending, key=lambda r: (str(r.submitted_at), r.id), reverse=True)]
 
     horizon = today + timedelta(days=AML_REVIEW_WINDOW_DAYS)
     aml_due = sorted(

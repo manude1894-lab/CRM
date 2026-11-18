@@ -1,7 +1,8 @@
 """Triam's Invoice Box template (11-11-2026) and the decision of 12-11-2026.
 
-- A service request can be raised once Compliance has approved the client (its Client ID is issued),
-  without waiting for the Final approval; a client rejected at the Final stage takes none.
+- A service request can be raised once Compliance has approved the client, without waiting for the Final
+  approval (the Client ID itself comes at the Final approval, UAT 18-11-2026 row 90); a client rejected at
+  the Final stage takes none.
 - The RM records the charge (excluding VAT) with its currency, what the client has paid and when, and any
   service provider. Submit sends the request to the Accountant's queue as an invoice instruction.
 - The Accountant records the invoice and its file and sends it to the RM (raise).
@@ -41,7 +42,8 @@ def test_requests_open_after_compliance_approval_not_before(db, setup):
     assert "once Compliance has approved" in e.value.detail
     flow.compliance_approve(db, s["acc"], s["checker"])
     db.refresh(s["acc"])
-    assert s["acc"].profile_status == "Awaiting Approval" and s["acc"].client_id  # waiting for the Final Approver
+    # Waiting for the Final Approver, and no Client ID yet (UAT 18-11-2026 row 90).
+    assert s["acc"].profile_status == "Awaiting Approval" and s["acc"].client_id is None
     assert _request(db, s).id
 
 

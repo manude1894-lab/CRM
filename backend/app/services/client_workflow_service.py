@@ -4,8 +4,8 @@ All status changes go through here; `profile_status` can no longer be edited dir
 
 New clients are approved in two steps (BRD §7–§10). While Awaiting Approval the
 pending request's `stage` says where it is:
-  Compliance — the MLRO completes the CDD section and approves with comments (Client ID issued)
-  Approver   — the Approver gives the final approval with comments → Approved
+  Compliance — the MLRO completes the CDD section and approves with comments
+  Approver   — the Approver gives the final approval with comments → Approved (Client ID issued)
 A rejection at either step returns the client to the RM as Rejected, with the reason (BRD §8, §19, §20).
 It stays Rejected while the RM corrects it, until it is submitted again.
 
@@ -21,6 +21,7 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import HTTPException
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.audit import log_event
@@ -255,8 +256,9 @@ def submit(db: Session, acc: Account, user: User, comment: Optional[str] = None,
 
 
 def approve(db: Session, acc: Account, user: User, comment: Optional[str] = None, expected_stage: Optional[str] = None) -> ApprovalRequest:
-    """Compliance step: the MLRO approves with comments; the Client ID is issued and the client goes to
-    the Approver. Approver step: final approval with comments → Approved (BRD §10)."""
+    """Compliance step: the MLRO approves with comments and the client goes to the Approver. Approver
+    step: final approval with comments → Approved, and the Client ID is issued (BRD §10; Triam UAT
+    18-11-2026 row 90: the Client ID only after the Final approval)."""
     _lock(db, acc)
     _assert_expected_stage(db, acc, expected_stage)
     _require(db, acc, user, "approve")
@@ -265,7 +267,6 @@ def approve(db: Session, acc: Account, user: User, comment: Optional[str] = None
         comment = _comment(comment, "Compliance comments")
         req.compliance_checker_id, req.compliance_comment, req.compliance_decided_at = user.id, comment, _now()
         req.stage = STAGE_APPROVER
-        _issue_client_id(db, acc)
         req.snapshot = _snapshot(acc)  # now includes the CDD section Compliance completed
         log_event(db, "compliance_approve", f"Client {_label(acc)} approved by Compliance and passed to the Approver",
                   subject_type="Account", subject_id=acc.id, account_id=acc.id, changes={"request_id": req.id, "comment": comment})
@@ -295,7 +296,7 @@ def approve(db: Session, acc: Account, user: User, comment: Optional[str] = None
 
 
 def _issue_client_id(db: Session, acc: Account) -> None:
-    """BRD §18: the Unique Client ID is issued once Compliance approves the new client."""
+    """BRD §18; Triam UAT 18-11-2026 row 90: the Unique Client ID is issued at the Final approval."""
     if not acc.client_id and acc.anchor_entity:
         from app.services.account_service import next_client_id
         acc.client_id = next_client_id(db, acc.anchor_entity)
@@ -397,7 +398,8 @@ def inbox(db: Session, user: User, status: str = ApprovalStatus.PENDING.value,
     q = db.query(ApprovalRequest).filter(ApprovalRequest.status == status)
     if request_type:
         q = q.filter(ApprovalRequest.request_type == request_type)
-    reqs = q.order_by(ApprovalRequest.submitted_at).all()
+    # Triam UAT 18-11-2026 row 61: latest first. A decided request sorts by its decision date.
+    reqs = q.order_by(func.coalesce(ApprovalRequest.decided_at, ApprovalRequest.submitted_at).desc(), ApprovalRequest.id.desc()).all()
     return [r for r in reqs if r.account is not None and access_control.user_can_access_account(db, r.account, user)
             and _in_my_queue(r, user, status)]
 

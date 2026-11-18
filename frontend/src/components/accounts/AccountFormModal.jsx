@@ -330,7 +330,7 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
         {mode === "new" && form._prospect_uid && (
           <div className="mb-3 text-xs rounded-lg bg-brand-50 text-brand-700 px-3 py-2">
             Creating the client from prospect <span className="font-mono font-semibold">{form._prospect_uid}</span>. This is the client's
-            temporary ID until Compliance approves it and the Client ID is issued.
+            temporary ID until the Final approval, when the Client ID is issued.
           </div>
         )}
         <fieldset disabled={locked} className="min-w-0">

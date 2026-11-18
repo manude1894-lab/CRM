@@ -28,14 +28,16 @@ def test_full_lifecycle(db, people):
     assert req.maker_id == maker.id and req.snapshot["account"]["company_name"] == "Complete Co"
     assert len(req.snapshot["parties"]) == 1
 
-    assert acc.client_id is None  # temporary ID until Compliance approves
+    assert acc.client_id is None  # temporary ID until the Final approval
     assert req.stage == "Compliance" and req.kyc_declared and req.maker_comment == "Ready for review"
     flow.fill_cdd(db, acc, checker)
     wf.approve(db, acc, checker, "All documents verified")
     assert acc.profile_status == "Awaiting Approval" and req.stage == "Approver"
-    assert acc.client_id == "TCPL/00001" and req.compliance_checker_id == checker.id
+    # UAT 18-11-2026 row 90: no Client ID at the Compliance step, only at the Final approval.
+    assert acc.client_id is None and req.compliance_checker_id == checker.id
     wf.approve(db, acc, people["approver"], "Approved for onboarding")
     assert acc.profile_status == "Approved" and req.status == "Approved" and req.checker_id == people["approver"].id
+    assert acc.client_id == "TCPL/00001"
 
     wf.change_status(db, acc, maker, "activate")
     assert acc.profile_status == "Active"
@@ -278,7 +280,7 @@ def test_approver_can_reject_back_to_the_rm(db, people):
     assert acc.profile_status == "Rejected"
     note = db.query(Notification).filter(Notification.user_id == maker.id, Notification.notification_type == "client_rejected").one()
     assert "engagement letter" in note.message
-    assert acc.client_id == "TCPL/00001"  # already issued at the Compliance step; kept
+    assert acc.client_id is None  # the Client ID only comes at the Final approval (UAT 18-11-2026 row 90)
 
 
 def test_compliance_cannot_give_final_approval_without_the_approver_role(db, people):

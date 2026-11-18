@@ -20,7 +20,7 @@ def create(db, user, **fields):
 
 def test_client_ids_count_per_entity(db, make_user):
     a = create(db, make_user(), company_name="A Ltd")
-    assert a.client_id is None  # issued when Compliance approves (BRD §18)
+    assert a.client_id is None  # issued at the Final approval (BRD §18; UAT 18-11-2026 row 90)
     ids = [account_service.next_client_id(db, e) for e in ("TCPL", "TCPL", "TMCL")]
     assert ids == ["TCPL/00001", "TCPL/00002", "TMCL/00001"]
 

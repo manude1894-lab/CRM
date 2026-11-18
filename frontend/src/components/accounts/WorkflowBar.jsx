@@ -120,8 +120,8 @@ export default function WorkflowBar({ accountId, refreshKey, onChanged, submitSi
           )}
           {dialog.action === "approve" && (
             <p className="text-xs text-gray-500 -mt-2 mb-3">
-              {state.stage === "Approver" ? "You give the final approval; the client becomes Approved and available for service requests."
-                : "You confirm the CDD section is complete and the information and documents are reviewed. The Client ID is issued and the client goes to the Approver."}
+              {state.stage === "Approver" ? "You give the final approval; the Client ID is issued and the client becomes Approved."
+                : "You confirm the CDD section is complete and the information and documents are reviewed. The client goes to the Approver and can take service requests."}
             </p>
           )}
           <div className="flex justify-end gap-3 mt-2">
