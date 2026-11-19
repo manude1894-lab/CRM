@@ -356,6 +356,11 @@ def _normalize_non_anchor_rms(acc: Account) -> None:
 MAX_CLIENT_NAME = 50  # BRD §5: "50 char long, alpha-num-Spl. Char."
 
 
+def _dropped_note(acc: Account) -> str:
+    """A dropped client still holds its name (Triam UAT 18-11-2026): say so, so the RM reopens it."""
+    return " and was dropped: reopen it instead" if acc.profile_status == client_workflow_service.DROPPED else ""
+
+
 def create_account(db: Session, data: AccountCreate, user: User) -> Account:
     if len(data.company_name.strip()) > MAX_CLIENT_NAME:
         raise HTTPException(status_code=400, detail=f"Client name can be at most {MAX_CLIENT_NAME} characters")
@@ -364,7 +369,7 @@ def create_account(db: Session, data: AccountCreate, user: User) -> Account:
     override_reason = None
     if existing:
         if not data.allow_duplicate:
-            raise HTTPException(status_code=409, detail=f"A client named '{existing.company_name}' already exists ({existing.client_id or existing.account_uid}). An approver can create it anyway with a reason.")
+            raise HTTPException(status_code=409, detail=f"A client named '{existing.company_name}' already exists ({existing.client_id or existing.account_uid}){_dropped_note(existing)}. An approver can create it anyway with a reason.")
         if not has_permission(user, "client.approve"):
             raise HTTPException(status_code=403, detail="Only an approver (CO / MLRO / Admin) can create a duplicate client")
         override_reason = (data.duplicate_reason or "").strip()
@@ -503,14 +508,13 @@ def apply_update(db: Session, acc: Account, data: AccountUpdate, user: User) -> 
     if update_data.get("company_name") and _norm(update_data["company_name"]) != _norm(acc.company_name):
         clash = _same_name_query(db, update_data["company_name"], exclude_id=acc.id).first()
         if clash:
-            raise HTTPException(status_code=409, detail=f"A client named '{clash.company_name}' already exists ({clash.client_id or clash.account_uid})")
+            raise HTTPException(status_code=409, detail=f"A client named '{clash.company_name}' already exists ({clash.client_id or clash.account_uid}){_dropped_note(clash)}")
     for field, value in update_data.items():
         setattr(acc, field, value)
     # The Client ID is issued at the Final approval (BRD §18; UAT 18-11 row 90); until then the
     # temporary ID is shown. Approved clients that pre-date Client IDs get one on their next save.
     # Once issued, a Client ID never changes (even if the Anchor Entity later does).
-    if not acc.client_id and acc.anchor_entity and acc.profile_status not in (
-            *client_workflow_service.WITH_RM, client_workflow_service.AWAITING):
+    if not acc.client_id and acc.anchor_entity and acc.profile_status not in client_workflow_service.ONBOARDING:
         acc.client_id = next_client_id(db, acc.anchor_entity)
     if not acc.search_name:
         acc.search_name = _default_search_name(db, acc.company_name, acc.anchor_entity)

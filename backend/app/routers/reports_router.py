@@ -19,6 +19,12 @@ def standard_reports(user: User = Depends(get_current_user)):
 
 
 @router.get("/standard/{key}", summary="Run a standard report")
-def run_standard_report(key: str, days: int = 30, date_from: Optional[date] = None, date_to: Optional[date] = None,
+def run_standard_report(key: str, days: Optional[int] = None, date_from: Optional[date] = None, date_to: Optional[date] = None,
+                        status: Optional[str] = None, department_id: Optional[int] = None,
                         db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    return standard_reports_service.run(db, user, key, days, date_from, date_to)
+    return standard_reports_service.run(db, user, key, days, date_from, date_to, status, department_id)
+
+
+@router.get("/onboarding-statuses", summary="Statuses the client onboarding report can be filtered by")
+def onboarding_statuses(user: User = Depends(get_current_user)):
+    return list(standard_reports_service.ONBOARDING_STATUSES)

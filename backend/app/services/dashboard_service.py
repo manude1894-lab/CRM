@@ -9,7 +9,9 @@ from app.services import access_control, client_workflow_service as wf
 from app.services import instruction_service, invoice_service, prospect_service
 
 # BRD §9 status lifecycle, in order, with the Rejected status of BRD §8, §19, §20 beside WIP.
-CLIENT_STATUSES = [wf.NEW, wf.WIP, wf.REJECTED, wf.AWAITING, wf.APPROVED, wf.ACTIVE, wf.INACTIVE, wf.MARKED_EXIT, wf.EXITED]
+# Triam UAT 18-11-2026: the onboarding statuses the RM sets sit beside WIP; Dropped closes the list.
+CLIENT_STATUSES = [wf.NEW, wf.WIP, wf.PENDING_CLIENT, wf.PENDING_AUTHORITY, wf.ON_HOLD, wf.REJECTED, wf.AWAITING,
+                   wf.APPROVED, wf.ACTIVE, wf.INACTIVE, wf.MARKED_EXIT, wf.EXITED, wf.DROPPED]
 AML_REVIEW_WINDOW_DAYS = 60
 
 
@@ -74,7 +76,7 @@ def build_dashboard(db: Session, user: User) -> dict:
             continue  # central desks (Compliance, Approver, Accounts, ...) and administrators hold no portfolio
         portfolio.append({
             "user_id": u.id, "name": u.name, "business_role_name": u.business_role_name, "total": len(mine),
-            "in_progress": sum(1 for a in mine if a.profile_status in (*wf.WITH_RM, wf.AWAITING)),
+            "in_progress": sum(1 for a in mine if a.profile_status in (*wf.WITH_RM, wf.AWAITING, wf.ON_HOLD)),
             "active": sum(1 for a in mine if a.profile_status in (wf.APPROVED, wf.ACTIVE)),
         })
 
@@ -82,7 +84,7 @@ def build_dashboard(db: Session, user: User) -> dict:
         "kpis": {
             "prospects_open": len(open_prospects),
             "prospects_unassigned": sum(1 for p in open_prospects if p.owner_id is None),
-            "clients_in_progress": by_status[wf.NEW] + by_status[wf.WIP] + by_status[wf.REJECTED],
+            "clients_in_progress": sum(by_status[s] for s in (*wf.WITH_RM, wf.ON_HOLD)),
             "clients_awaiting_approval": by_status[wf.AWAITING],
             "clients_active": by_status[wf.APPROVED] + by_status[wf.ACTIVE],
             "service_requests_open": open_srs,

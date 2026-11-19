@@ -70,7 +70,8 @@ def _same_name(db: Session, name: str, exclude_id: Optional[int] = None) -> Opti
     from app.services import account_service  # local: account_service imports this module's models
     client = account_service._same_name_query(db, name).first()
     if client:
-        return f"A client named '{client.company_name}' already exists ({client.client_id or client.account_uid})"
+        dropped = " and was dropped: reopen it instead" if client.profile_status == "Dropped" else ""
+        return f"A client named '{client.company_name}' already exists ({client.client_id or client.account_uid}){dropped}"
     q = db.query(Prospect).filter(func.lower(func.trim(Prospect.company_name)) == account_service._norm(name),
                                   Prospect.status != ProspectStatus.DROPPED.value, Prospect.converted_account_id.is_(None))
     if exclude_id:

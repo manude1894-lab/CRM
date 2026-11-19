@@ -45,7 +45,8 @@ def my_work(db: Session, user: User) -> list[dict]:
     # Everyone who prepares clients (RM / RO / FO / Sales)
     mine = _visible_accounts(db, user).filter((Account.spoc_id == user.id) | (Account.owner_id == user.id))
     add("my_returned", "My rejected clients", mine.filter(Account.profile_status == wf.REJECTED).count(), "accounts", "Fix the points raised and submit again")
-    add("my_in_progress", "My clients being prepared", mine.filter(Account.profile_status.in_((wf.NEW, wf.WIP))).count(), "accounts")
+    add("my_in_progress", "My clients being prepared", mine.filter(Account.profile_status.in_(
+        (wf.NEW, wf.WIP, wf.PENDING_CLIENT, wf.PENDING_AUTHORITY, wf.ON_HOLD))).count(), "accounts")
     add("my_with_review", "My clients with Compliance / Approver", mine.filter(Account.profile_status == wf.AWAITING).count(), "accounts")
     add("my_prospects", "My prospects without a client yet", db.query(Prospect).filter(
         Prospect.owner_id == user.id, Prospect.converted_account_id.is_(None), Prospect.status != "Dropped").count(), "prospects")

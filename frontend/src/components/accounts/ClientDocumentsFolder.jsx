@@ -52,7 +52,7 @@ export default function ClientDocumentsFolder({ accountId, onChange, onboarding 
   const groups = {};
   documents.forEach((d) => { (groups[d.category] = groups[d.category] || []).push(d); });
   const stage = STAGE[folder.stage] || STAGE.Draft;
-  const statusLocked = folder.profile_status === "Awaiting Approval" || folder.profile_status === "Exited";
+  const statusLocked = ["Awaiting Approval", "Exited", "Dropped"].includes(folder.profile_status);
   // Compliance files the CDD Form / AML Risk Assessment, also while the client is with Compliance.
   const complianceOnly = (code) => !!cats.items.find((i) => i.code === code)?.meta?.compliance_only;
   const locked = readOnly || (statusLocked && !folder.compliance_can_file);

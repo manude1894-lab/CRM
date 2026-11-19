@@ -82,8 +82,11 @@ export const SERVICES_OBTAINED_OPTIONS = [
   "Other",
 ];
 
-// Client statuses still with the RM: being prepared or corrected, editable and ready to be submitted.
-export const WITH_RM_STATUSES = ["New", "WIP", "Rejected"];
+// Client statuses still with the RM: being prepared or corrected, editable and ready to be submitted. The two
+// Pending ones are set by the RM to say what the client is waiting for (Triam UAT 18-11-2026).
+export const WITH_RM_STATUSES = ["New", "WIP", "Pending with Client", "Pending with Regn Authority", "Rejected"];
+// Parked by the RM: On Hold (resumed later) and Dropped (read-only until reopened). Not submitted meanwhile.
+export const PARKED_STATUSES = ["On Hold", "Dropped"];
 
 // Country calling codes for the split Contact Mobile field (BRD §5) — UAE first, then the GCC and
 // major markets.
@@ -144,3 +147,6 @@ export const csvDate = (v) => {
   if (!m) return v;
   return `${m[3]}/${m[2]}/${m[1]}${m[4] && s.length > 10 ? ` ${m[4]}:${m[5]}` : ""}`;
 };
+
+// Why the RM set the client's current onboarding status (Dropped, On Hold, Pending ...): "reason · note".
+export const statusReason = (a) => [a?.status_reason_code, a?.status_reason].filter(Boolean).join(" · ");

@@ -1,6 +1,6 @@
 import React from "react";
 import { Badge } from "../ui";
-import { fmtDate } from "../../utils/constants";
+import { fmtDate, statusReason } from "../../utils/constants";
 
 /** One client tile on the Clients page (card view). Clicking it opens the client's page. */
 export default function AccountCard({ account: a, anchorRm, isSelected, onOpen, onToggleSelected }) {
@@ -24,6 +24,7 @@ export default function AccountCard({ account: a, anchorRm, isSelected, onOpen, 
           </div>
           <p className="text-[11px] font-mono text-gray-400">{a.client_id || `Temp ${a.temp_id || a.account_uid}`}</p>
           {a.approval_stage && <p className="text-[11px] text-amber-700">{a.approval_stage === "Approver" ? "Pending with the Approver" : "Pending with Compliance"}</p>}
+          {statusReason(a) && <p className="text-[11px] text-gray-500 truncate" title={statusReason(a)}>{statusReason(a)}</p>}
           <p className="text-xs text-gray-500 truncate">
             {a.account_type === "Individual" ? `Individual · ${a.nationality || "—"}` : `${a.client_category || "Corporate"} · ${a.country || "—"}`}
           </p>

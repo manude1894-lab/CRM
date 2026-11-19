@@ -1,28 +1,42 @@
 import React, { useEffect, useState } from "react";
-import { reportsApi } from "../../api/endpoints";
-import { Button, DateInput, Field, Input, Spinner } from "../ui";
+import { departmentsApi, reportsApi } from "../../api/endpoints";
+import { Button, DateInput, Field, Input, Select, Spinner } from "../ui";
 import { csvDate, exportFilename, fmtDate } from "../../utils/constants";
 import { toast } from "../../store/toast";
 import { useAuthStore } from "../../store/auth";
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 const show = (v) => (typeof v === "string" && ISO_DATE.test(v) ? fmtDate(v) : v ?? "—");
+// Which inputs each report takes (Triam UAT 18-11-2026: the user picks the days, the dates and the status).
+const TAKES_DAYS = { "documents-expiring": "Within (days)", "aml-reviews-due": "Due within (days)",
+  "under-formation": "Pending at least (days, 0 = all)" };
+const TAKES_DATES = ["prospects-assigned", "onboarding-approved", "onboarding-in-progress"];
+const BY_DEPARTMENT = ["onboarding-approved", "onboarding-in-progress"];
 
 /** BRD §20a — the standard reports, shown on screen and exported to CSV. */
 export default function StandardReports() {
   const isAdmin = useAuthStore((s) => s.isAdmin());
   const [list, setList] = useState([]);
-  const [key, setKey] = useState("documents-expiring");
-  const [params, setParams] = useState({ days: 30, date_from: "", date_to: "" });
+  const [key, setKey] = useState("onboarding-in-progress");
+  const [params, setParams] = useState({ days: 30, date_from: "", date_to: "", status: "", department_id: "" });
+  const [statuses, setStatuses] = useState([]);
+  const [departments, setDepartments] = useState([]);
   const [report, setReport] = useState(null);
   const [busy, setBusy] = useState(false);
 
-  useEffect(() => { reportsApi.standardList().then(setList).catch(() => setList([])); }, []);
+  useEffect(() => {
+    reportsApi.standardList().then(setList).catch(() => setList([]));
+    reportsApi.onboardingStatuses().then(setStatuses).catch(() => setStatuses([]));
+    departmentsApi.list().then((d) => setDepartments(d.filter((x) => x.is_active !== false))).catch(() => setDepartments([]));
+  }, []);
   const run = async (k = key) => {
     setBusy(true);
     try {
-      const p = k === "documents-expiring" ? { days: params.days || 30 }
-        : k === "prospects-assigned" ? { date_from: params.date_from || undefined, date_to: params.date_to || undefined } : {};
+      const p = {};
+      if (TAKES_DAYS[k]) p.days = params.days === "" ? 30 : params.days;
+      if (TAKES_DATES.includes(k)) Object.assign(p, { date_from: params.date_from || undefined, date_to: params.date_to || undefined });
+      if (k === "onboarding-in-progress" && params.status) p.status = params.status;
+      if (BY_DEPARTMENT.includes(k) && params.department_id) p.department_id = params.department_id;
       setReport(await reportsApi.standard(k, p));
     } catch (e) { toast.error(e.response?.data?.detail || "Could not run the report"); } finally { setBusy(false); }
   };
@@ -54,17 +68,29 @@ export default function StandardReports() {
       </div>
       <div className="px-4 py-3">
         <div className="flex flex-wrap items-end gap-3 mb-3">
-          {key === "documents-expiring" && (
-            <div className="w-40"><Field label="Within (days)"><Input type="number" min="1" max="365" value={params.days}
+          {TAKES_DAYS[key] && (
+            <div className="w-52"><Field label={TAKES_DAYS[key]}><Input type="number" min="0" max="3650" value={params.days}
               onChange={(e) => setParams((p) => ({ ...p, days: e.target.value }))} /></Field></div>
           )}
-          {key === "prospects-assigned" && (
+          {TAKES_DATES.includes(key) && (
             <>
               <div className="w-44"><Field label="From"><DateInput value={params.date_from} onChange={(e) => setParams((p) => ({ ...p, date_from: e.target.value }))} /></Field></div>
               <div className="w-44"><Field label="To"><DateInput value={params.date_to} onChange={(e) => setParams((p) => ({ ...p, date_to: e.target.value }))} /></Field></div>
             </>
           )}
-          {["documents-expiring", "prospects-assigned"].includes(key) && <div className="mb-4"><Button onClick={() => run()}>Run</Button></div>}
+          {key === "onboarding-in-progress" && (
+            <div className="w-56"><Field label="Status"><Select value={params.status} onChange={(e) => setParams((p) => ({ ...p, status: e.target.value }))}>
+              <option value="">All not yet approved</option>
+              {statuses.map((s) => <option key={s}>{s}</option>)}
+            </Select></Field></div>
+          )}
+          {BY_DEPARTMENT.includes(key) && departments.length > 1 && (
+            <div className="w-48"><Field label="Department"><Select value={params.department_id} onChange={(e) => setParams((p) => ({ ...p, department_id: e.target.value }))}>
+              <option value="">All I can see</option>
+              {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+            </Select></Field></div>
+          )}
+          {(TAKES_DAYS[key] || TAKES_DATES.includes(key) || BY_DEPARTMENT.includes(key)) && <div className="mb-4"><Button onClick={() => run()}>Run</Button></div>}
           {isAdmin && <div className="mb-4 ml-auto"><Button onClick={exportCsv} disabled={!report?.rows?.length}>Export CSV</Button></div>}
         </div>
         {busy || !report ? <Spinner /> : (

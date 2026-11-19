@@ -24,7 +24,10 @@ def _state(db: Session, acc, user: User) -> WorkflowState:
         stage=wf.stage_of(wf.pending_request(db, acc.id)) if acc.profile_status == wf.AWAITING else None,
         status_updated_at=acc.status_updated_at,
         status_updated_by=updater.name if updater else None,
-        locked=acc.profile_status in (wf.AWAITING, wf.EXITED),
+        status_reason_code=acc.status_reason_code,
+        status_reason=acc.status_reason,
+        drop_reasons=list(wf.DROP_REASONS),
+        locked=acc.profile_status in (wf.AWAITING, wf.EXITED, wf.DROPPED),
         actions=[WorkflowAction(**{k: v for k, v in a.items() if not k.startswith("_")}) for a in wf.allowed_actions(db, acc, user)],
         history=[ApprovalRead.from_row(r) for r in wf.history(db, acc.id)],
     )
@@ -66,7 +69,7 @@ def withdraw(account_id: int, db: Session = Depends(get_db), user: User = Depend
 @router.post("/accounts/{account_id}/status", response_model=WorkflowState, summary="Activate / Deactivate / Reactivate / Mark for Exit / Cancel / Confirm Exit")
 def status_action(account_id: int, data: StatusActionRequest, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     acc = account_service.get_account(db, account_id, user)
-    wf.change_status(db, acc, user, data.action, data.reason)
+    wf.change_status(db, acc, user, data.action, data.reason, data.reason_code)
     return _state(db, acc, user)
 
 

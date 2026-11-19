@@ -196,7 +196,7 @@ def test_exited_client_is_read_only(db, people):
 def test_allowed_actions_explain_why(db, people):
     maker, checker = people["maker"], people["checker"]
     acc = complete_client(db, maker)
-    assert codes(db, acc, maker) == {"submit": True}
+    assert codes(db, acc, maker) == {"submit": True, "pending_client": True, "pending_authority": True, "hold": True, "drop": True}
     flow.submit(db, acc, maker)
     assert codes(db, acc, maker) == {"approve": False, "reject": False, "withdraw": True}
     reasons = {a["action"]: a["reason"] for a in wf.allowed_actions(db, acc, maker)}

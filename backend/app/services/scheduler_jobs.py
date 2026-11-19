@@ -207,7 +207,7 @@ def check_under_formation():
     try:
         cutoff = datetime.now(timezone.utc) - timedelta(days=UNDER_FORMATION_DAYS)
         for acc in db.query(Account).filter(Account.client_category == "Under Formation", Account.created_at <= cutoff,
-                                            Account.profile_status != "Exited").all():
+                                            Account.profile_status.notin_(("Exited", "Dropped"))).all():
             # Once per client, read or not: this is a single follow-up, not a daily repeat.
             if db.query(Notification).filter(Notification.account_id == acc.id,
                                              Notification.notification_type == "under_formation_30d").first():

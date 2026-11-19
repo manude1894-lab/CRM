@@ -86,7 +86,7 @@ def test_dashboard_api_returns_the_rejection(db, rejected, client):
 def test_rejected_report_lists_it(db, rejected):
     acc, rm, _ = rejected
     rows = standard_reports_service.rejected_with_rm(db, rm)["rows"]
-    assert [r[0] for r in rows] == [acc.company_name] and rows[0][3] == "Ritu"
+    assert [r[2] for r in rows] == [acc.company_name] and rows[0][4] == "Ritu"  # 3.7 columns (UAT 18-11-2026)
 
 
 def test_notifications_about_a_client_link_to_it(db, rejected):

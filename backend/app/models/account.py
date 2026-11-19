@@ -67,6 +67,10 @@ class Account(Base):
     # When the Final approval was given (Triam 13-11-2026: approved clients listed newest first).
     approved_at = Column(DateTime(timezone=True), nullable=True, index=True)
     status_updated_by_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    # Why the RM set the current onboarding status (Triam UAT 18-11-2026): the Drop reason from a fixed list,
+    # and a note for Dropped, On Hold or Pending with Client / Regn Authority. Cleared on the next status change.
+    status_reason_code = Column(String(40), nullable=True)
+    status_reason = Column(String(500), nullable=True)
 
     # Engagement Letter (BRD §9): mandatory Yes / No — None = not answered
     engagement_letter_signed = Column(Boolean, nullable=True)

@@ -389,6 +389,8 @@ class AccountRead(AccountBase):
     status_updated_at: Optional[datetime] = None
     approved_at: Optional[datetime] = None
     status_updated_by_id: Optional[int] = None
+    status_reason_code: Optional[str] = None
+    status_reason: Optional[str] = None
     duplicate_override_reason: Optional[str] = None
     next_aml_review_date: Optional[date] = None
     is_pep: bool = False
