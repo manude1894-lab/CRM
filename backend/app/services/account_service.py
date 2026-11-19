@@ -356,6 +356,11 @@ def _normalize_non_anchor_rms(acc: Account) -> None:
 MAX_CLIENT_NAME = 50  # BRD §5: "50 char long, alpha-num-Spl. Char."
 
 
+def _dropped_note(acc: Account) -> str:
+    """A dropped client still holds its name (Triam UAT 18-11-2026): say so, so the RM reopens it."""
+    return " and was dropped: reopen it instead" if acc.profile_status == client_workflow_service.DROPPED else ""
+
+
 def create_account(db: Session, data: AccountCreate, user: User) -> Account:
     if len(data.company_name.strip()) > MAX_CLIENT_NAME:
         raise HTTPException(status_code=400, detail=f"Client name can be at most {MAX_CLIENT_NAME} characters")
@@ -364,14 +369,14 @@ def create_account(db: Session, data: AccountCreate, user: User) -> Account:
     override_reason = None
     if existing:
         if not data.allow_duplicate:
-            raise HTTPException(status_code=409, detail=f"A client named '{existing.company_name}' already exists ({existing.client_id or existing.account_uid}). An approver can create it anyway with a reason.")
+            raise HTTPException(status_code=409, detail=f"A client named '{existing.company_name}' already exists ({existing.client_id or existing.account_uid}){_dropped_note(existing)}. An approver can create it anyway with a reason.")
         if not has_permission(user, "client.approve"):
             raise HTTPException(status_code=403, detail="Only an approver (CO / MLRO / Admin) can create a duplicate client")
         override_reason = (data.duplicate_reason or "").strip()
         if len(override_reason) < 10:
             raise HTTPException(status_code=400, detail="Give a meaningful reason (at least 10 characters) for creating a duplicate client")
 
-    # BRD §19 — the Client ID is built from the Anchor Triam Entity (issued at Compliance approval).
+    # BRD §19 — the Client ID is built from the Anchor Triam Entity (issued at the Final approval).
     if not (data.anchor_entity or "").strip():
         raise HTTPException(status_code=400, detail="Anchor Triam Entity is required, as it determines the Client ID")
 
@@ -503,14 +508,13 @@ def apply_update(db: Session, acc: Account, data: AccountUpdate, user: User) -> 
     if update_data.get("company_name") and _norm(update_data["company_name"]) != _norm(acc.company_name):
         clash = _same_name_query(db, update_data["company_name"], exclude_id=acc.id).first()
         if clash:
-            raise HTTPException(status_code=409, detail=f"A client named '{clash.company_name}' already exists ({clash.client_id or clash.account_uid})")
+            raise HTTPException(status_code=409, detail=f"A client named '{clash.company_name}' already exists ({clash.client_id or clash.account_uid}){_dropped_note(clash)}")
     for field, value in update_data.items():
         setattr(acc, field, value)
-    # The Client ID is issued when Compliance approves a new client (BRD §18); until then the
+    # The Client ID is issued at the Final approval (BRD §18; UAT 18-11 row 90); until then the
     # temporary ID is shown. Approved clients that pre-date Client IDs get one on their next save.
     # Once issued, a Client ID never changes (even if the Anchor Entity later does).
-    if not acc.client_id and acc.anchor_entity and acc.profile_status not in (
-            *client_workflow_service.WITH_RM, client_workflow_service.AWAITING):
+    if not acc.client_id and acc.anchor_entity and acc.profile_status not in client_workflow_service.ONBOARDING:
         acc.client_id = next_client_id(db, acc.anchor_entity)
     if not acc.search_name:
         acc.search_name = _default_search_name(db, acc.company_name, acc.anchor_entity)
@@ -545,6 +549,28 @@ def _match(value: str, allowed) -> Optional[str]:
     return next((a for a in allowed if a.lower() == v), None)
 
 
+def _import_mobiles(row: AccountImportRow) -> tuple[dict, Optional[str]]:
+    """Triam UAT 18-11-2026 row 88: an imported mobile number follows the same rules as one typed on the form
+    (digits only, the length for its country code). Returns the cleaned numbers, or why the row is refused."""
+    from app.schemas.phone import length_problem, mobile_number
+    cleaned = {}
+    for code_field, number_field, label in (("contact_mobile_country_code", "contact_mobile_number", "Contact Mobile"),
+                                            ("individual_mobile_country_code", "individual_mobile_number", "Individual Mobile")):
+        raw = getattr(row, number_field)
+        try:
+            number = mobile_number(raw)
+        except ValueError as e:
+            return {}, f"{label} '{raw}': {e}"
+        if number is None:
+            continue
+        number = number.lstrip("0") or number
+        problem = length_problem(getattr(row, code_field) or None, number)
+        if problem:
+            return {}, f"{label} '{raw}': {problem}"
+        cleaned[number_field] = number
+    return cleaned, None
+
+
 def import_accounts(
     db: Session, user: User, rows: list[AccountImportRow], dry_run: bool,
 ) -> list[AccountImportRowResult]:
@@ -568,6 +594,8 @@ def import_accounts(
         problem = (f"Status '{row.profile_status}' is not one of {', '.join(IMPORT_STATUSES)}" if status is None
                    else f"Risk rating '{row.risk_rating}' is not one of {', '.join(RISK_LEVELS)}" if row.risk_rating and risk is None
                    else None)
+        mobiles, mobile_problem = _import_mobiles(row)
+        problem = problem or mobile_problem
         if problem:
             results.append(AccountImportRowResult(row_index=idx, company_name=name, status="error", message=problem))
             continue
@@ -577,7 +605,7 @@ def import_accounts(
             results.append(AccountImportRowResult(row_index=idx, company_name=name, status="ok"))
             continue
 
-        payload = row.model_dump(exclude_none=True)
+        payload = {**row.model_dump(exclude_none=True), **mobiles}
         payload["company_name"] = name
         payload["profile_status"], payload["risk_rating"] = status, risk
         search_name = payload.pop("search_name", None)

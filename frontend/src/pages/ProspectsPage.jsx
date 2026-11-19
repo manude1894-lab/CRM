@@ -21,7 +21,7 @@ const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 /**
  * BRD §4A — every new client starts here. The Prospecting Team Coordinator assigns the RM
  * (with optional Assignor's comments) or an RM takes an unassigned prospect; the RM then creates the
- * client from the prospect, whose Prospect ID is the client's temporary ID until Compliance approves.
+ * client from the prospect, whose Prospect ID is the client's temporary ID until the Final approval.
  */
 // Status buttons on a prospect card, in the colour of the status they move to.
 const MOVE_STYLE = {

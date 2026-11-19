@@ -124,7 +124,7 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
   const offshore = form.account_type !== "Individual" && isOffshore(form);
   const showVat = !offshore || !!form.trn_vat_number;
   const showCorpTax = !offshore || form.corp_tax_registered === true || !!form.corp_tax_registration_number;
-  const locked = readOnlyUser || ["Awaiting Approval", "Exited"].includes(form.profile_status) || amendLocked;
+  const locked = readOnlyUser || ["Awaiting Approval", "Exited", "Dropped"].includes(form.profile_status) || amendLocked;
   // BRD §7/§11: only Compliance completes the CDD section — before submission, while the
   // client is with Compliance, or in an amendment of an approved client.
   const canCdd = useAuthStore((st) => st.can("client.cdd_edit"));
@@ -330,7 +330,7 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
         {mode === "new" && form._prospect_uid && (
           <div className="mb-3 text-xs rounded-lg bg-brand-50 text-brand-700 px-3 py-2">
             Creating the client from prospect <span className="font-mono font-semibold">{form._prospect_uid}</span>. This is the client's
-            temporary ID until Compliance approves it and the Client ID is issued.
+            temporary ID until the Final approval, when the Client ID is issued.
           </div>
         )}
         <fieldset disabled={locked} className="min-w-0">
@@ -603,9 +603,9 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
         {form._id && (
           // BRD §12 step 8 / §16 — documents are filed against the Client ID. Saved on upload. Triam UAT
           // 26-10-2026: each section has its own — the firm's here, each person's in their record below.
-          <Section title={isIndividual ? "Client Documents" : "Firm Documents"} hasData={WITH_RM_STATUSES.includes(form.profile_status)}>
+          <Section title={isIndividual ? "Client Documents" : "Firm Documents"} hasData={[...WITH_RM_STATUSES, "On Hold"].includes(form.profile_status)}>
             <ClientDocumentsFolder accountId={form._id} scope="client" individual={isIndividual}
-              onboarding={WITH_RM_STATUSES.includes(form.profile_status)} onChange={() => setRefreshKey((k) => k + 1)} />
+              onboarding={[...WITH_RM_STATUSES, "On Hold"].includes(form.profile_status)} onChange={() => setRefreshKey((k) => k + 1)} />
           </Section>
         )}
 

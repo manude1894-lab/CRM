@@ -9,14 +9,14 @@ import ClientProfilePage from "./ClientProfilePage";
 import { BLANK_ACCOUNT_FORM } from "../components/accounts/accountForm";
 import { buildAccountsCsv, parseImportRows } from "../components/accounts/accountCsv";
 import { toast } from "../store/toast";
-import { fmtDate, exportFilename, WITH_RM_STATUSES } from "../utils/constants";
+import { fmtDate, exportFilename, statusReason, WITH_RM_STATUSES, PARKED_STATUSES } from "../utils/constants";
 import { useAuthStore } from "../store/auth";
 
 const BLANK_BULK = { spoc_id: "", risk_rating: "" };
 // Triam input 19-10-2026: clients being onboarded and existing clients are separate menu items.
 const SCOPES = {
   onboarding: {
-    title: "New Client Onboarding", statuses: [...WITH_RM_STATUSES, "Awaiting Approval"],
+    title: "New Client Onboarding", statuses: [...WITH_RM_STATUSES, "Awaiting Approval", ...PARKED_STATUSES],
     subtitle: (n) => `${n} client${n === 1 ? "" : "s"} being onboarded`,
     empty: "Clients appear here once they are created from a prospect sent to the RM.",
   },
@@ -182,11 +182,13 @@ export default function AccountsPage({ scope = "onboarding", initialAccountId, i
 
   // Only this menu item's clients: being onboarded, or existing (Triam input 19-10-2026).
   const scoped = accounts.filter((a) => cfg.statuses.includes(a.profile_status || "New"));
+  // Triam UAT 18-11-2026: a dropped client leaves the working list. It shows when Dropped is picked, or when searched for.
+  const live = scoped.filter((a) => a.profile_status !== "Dropped");
   // Matches legal name, Unique Search Name (BRD §3) or Client ID (BRD §18).
   const q = search.toLowerCase();
   const since = scope === "maintenance" ? approvedSince(approvedWithin) : null;
   const filtered = scoped.filter((a) => (!q || [a.company_name, a.search_name, a.client_id, a.temp_id, a.account_uid].some((v) => (v || "").toLowerCase().includes(q)))
-    && (!statusFilter || (a.profile_status || "New") === statusFilter)
+    && (statusFilter ? (a.profile_status || "New") === statusFilter : (!!q || a.profile_status !== "Dropped"))
     && (!riskFilter || a.risk_rating === riskFilter)
     && (!since || (a.approved_at && new Date(a.approved_at) >= since)));
   if (scope === "maintenance") filtered.sort(byKey[sortBy]);
@@ -201,7 +203,7 @@ export default function AccountsPage({ scope = "onboarding", initialAccountId, i
 
   return (
     <div className="space-y-4">
-      <PageHeader title={cfg.title} subtitle={cfg.subtitle(scoped.length)}
+      <PageHeader title={cfg.title} subtitle={cfg.subtitle(live.length)}
         actions={<>
           {isAdmin && <Button onClick={exportCSV}>Export CSV</Button>}
           {isAdmin && scope === "maintenance" && (
@@ -250,8 +252,8 @@ export default function AccountsPage({ scope = "onboarding", initialAccountId, i
 
       <FilterBar>
         <SearchInput value={search} onChange={setSearch} placeholder="Search by client name or Client ID…" />
-        <div className="w-44"><Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-          <option value="">All statuses</option>
+        <div className="w-60"><Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+          <option value="">{scope === "onboarding" ? "All statuses except Dropped" : "All statuses"}</option>
           {cfg.statuses.map((s) => <option key={s}>{s}</option>)}
         </Select></div>
         {/* Risk level and AML review are set by Compliance at approval, so only existing clients have them. */}
@@ -304,7 +306,7 @@ export default function AccountsPage({ scope = "onboarding", initialAccountId, i
                   {!readOnly && <td className="py-2.5 px-3" onClick={(e) => e.stopPropagation()}>
                     <input type="checkbox" checked={selectedIds.has(a.id)} onChange={() => toggleSelected(a.id)} />
                   </td>}
-                  <td className="py-2.5 px-3 font-mono text-xs text-gray-600">{a.client_id || <span className="text-gray-400" title="Temporary ID until Compliance approves">{a.temp_id || a.account_uid}</span>}</td>
+                  <td className="py-2.5 px-3 font-mono text-xs text-gray-600">{a.client_id || <span className="text-gray-400" title="Temporary ID until the Final approval">{a.temp_id || a.account_uid}</span>}</td>
                   <td className="py-2.5 px-3">
                     <div className="font-medium text-gray-800">{a.company_name}</div>
                     <div className="text-xs text-gray-400">{a.account_type === "Individual" ? "Individual" : [a.client_category, a.country].filter(Boolean).join(" · ") || "Corporate"}{a.is_pep ? " · PEP" : ""}</div>
@@ -312,6 +314,7 @@ export default function AccountsPage({ scope = "onboarding", initialAccountId, i
                   <td className="py-2.5 px-3">
                     <Badge text={a.profile_status || "New"} />
                     {a.approval_stage && <div className="text-[11px] text-amber-700 mt-0.5">{a.approval_stage === "Approver" ? "Pending with the Approver" : "Pending with Compliance"}</div>}
+                    {statusReason(a) && <div className="text-[11px] text-gray-500 mt-0.5 max-w-[16rem] truncate" title={statusReason(a)}>{statusReason(a)}</div>}
                   </td>
                   {scope === "maintenance" && <td className="py-2.5 px-3 text-xs text-gray-600 whitespace-nowrap">{fmtDate(a.approved_at) || "—"}</td>}
                   {scope === "maintenance" && <td className="py-2.5 px-3 text-xs text-gray-600">{a.risk_rating || "—"}</td>}

@@ -4,8 +4,8 @@ All status changes go through here; `profile_status` can no longer be edited dir
 
 New clients are approved in two steps (BRD §7–§10). While Awaiting Approval the
 pending request's `stage` says where it is:
-  Compliance — the MLRO completes the CDD section and approves with comments (Client ID issued)
-  Approver   — the Approver gives the final approval with comments → Approved
+  Compliance — the MLRO completes the CDD section and approves with comments
+  Approver   — the Approver gives the final approval with comments → Approved (Client ID issued)
 A rejection at either step returns the client to the RM as Rejected, with the reason (BRD §8, §19, §20).
 It stays Rejected while the RM corrects it, until it is submitted again.
 
@@ -21,6 +21,7 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import HTTPException
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.audit import log_event
@@ -33,8 +34,19 @@ from app.services import access_control, master_service, notification_service
 NEW, WIP, AWAITING, APPROVED, ACTIVE = "New", "WIP", "Awaiting Approval", "Approved", "Active"
 INACTIVE, MARKED_EXIT, EXITED = "Inactive", "Marked for Exit", "Exited"
 REJECTED = "Rejected"
+# Triam UAT 18-11-2026: statuses the RM sets while onboarding. The two Pending ones say what the client is
+# waiting for and change nothing else; On Hold pauses it (no submission) and Dropped closes it (read-only,
+# with a reason), until the RM resumes or reopens it.
+PENDING_CLIENT, PENDING_AUTHORITY = "Pending with Client", "Pending with Regn Authority"
+ON_HOLD, DROPPED = "On Hold", "Dropped"
 # With the RM, being prepared or corrected: editable and ready to be submitted.
-WITH_RM = (NEW, WIP, REJECTED)
+WITH_RM = (NEW, WIP, REJECTED, PENDING_CLIENT, PENDING_AUTHORITY)
+# Parked by the RM: not submitted until resumed / reopened.
+PARKED = (ON_HOLD, DROPPED)
+# Not yet approved: no Client ID, no service requests.
+ONBOARDING = (*WITH_RM, AWAITING, *PARKED)
+
+DROP_REASONS = ("Client not responding", "Client withdrew", "Rejected and not pursued", "Created in error", "Other")
 
 MIN_REJECT_TEXT = 15
 MAX_COMMENT_WORDS = 250
@@ -65,6 +77,7 @@ def _set_status(acc: Account, status: str, user: User) -> None:
     acc.profile_status = status
     acc.status_updated_at = _now()
     acc.status_updated_by_id = user.id
+    acc.status_reason_code = acc.status_reason = None  # a reason belongs to the status it was given for
 
 
 def pending_request(db: Session, account_id: int) -> Optional[ApprovalRequest]:
@@ -81,6 +94,8 @@ def assert_editable(acc: Account) -> None:
         raise HTTPException(status_code=409, detail="This client is awaiting approval and is locked. Withdraw the submission to make changes.")
     if acc.profile_status == EXITED:
         raise HTTPException(status_code=409, detail="This client has exited and can no longer be changed.")
+    if acc.profile_status == DROPPED:
+        raise HTTPException(status_code=409, detail="This client was dropped. Reopen it to make changes.")
 
 
 def note_edit(acc: Account, user: User) -> None:
@@ -142,6 +157,20 @@ def allowed_actions(db: Session, acc: Account, user: User) -> list[dict]:
         missing = _missing(acc)
         add("submit", "Submit for approval", not missing,
             f"{len(missing)} mandatory field{'s' if len(missing) != 1 else ''} still missing", code=400)
+        # Triam UAT 18-11-2026: the RM says what the client is waiting for, pauses it or drops it.
+        if status != PENDING_CLIENT:
+            add("pending_client", "Pending with Client", True)
+        if status != PENDING_AUTHORITY:
+            add("pending_authority", "Pending with Regn Authority", True)
+        if status in (PENDING_CLIENT, PENDING_AUTHORITY):
+            add("resume", "Back to WIP", True)
+        add("hold", "Put On Hold", True)
+        add("drop", "Drop", True)
+    elif status == ON_HOLD:
+        add("resume", "Resume", True)
+        add("drop", "Drop", True)
+    elif status == DROPPED:
+        add("reopen", "Reopen", True)
     elif status == AWAITING:
         is_maker = req is not None and access_control.same_person(req.maker, user)
         own = "You submitted this profile, so someone else must review it"
@@ -255,8 +284,9 @@ def submit(db: Session, acc: Account, user: User, comment: Optional[str] = None,
 
 
 def approve(db: Session, acc: Account, user: User, comment: Optional[str] = None, expected_stage: Optional[str] = None) -> ApprovalRequest:
-    """Compliance step: the MLRO approves with comments; the Client ID is issued and the client goes to
-    the Approver. Approver step: final approval with comments → Approved (BRD §10)."""
+    """Compliance step: the MLRO approves with comments and the client goes to the Approver. Approver
+    step: final approval with comments → Approved, and the Client ID is issued (BRD §10; Triam UAT
+    18-11-2026 row 90: the Client ID only after the Final approval)."""
     _lock(db, acc)
     _assert_expected_stage(db, acc, expected_stage)
     _require(db, acc, user, "approve")
@@ -265,7 +295,6 @@ def approve(db: Session, acc: Account, user: User, comment: Optional[str] = None
         comment = _comment(comment, "Compliance comments")
         req.compliance_checker_id, req.compliance_comment, req.compliance_decided_at = user.id, comment, _now()
         req.stage = STAGE_APPROVER
-        _issue_client_id(db, acc)
         req.snapshot = _snapshot(acc)  # now includes the CDD section Compliance completed
         log_event(db, "compliance_approve", f"Client {_label(acc)} approved by Compliance and passed to the Approver",
                   subject_type="Account", subject_id=acc.id, account_id=acc.id, changes={"request_id": req.id, "comment": comment})
@@ -295,7 +324,7 @@ def approve(db: Session, acc: Account, user: User, comment: Optional[str] = None
 
 
 def _issue_client_id(db: Session, acc: Account) -> None:
-    """BRD §18: the Unique Client ID is issued once Compliance approves the new client."""
+    """BRD §18; Triam UAT 18-11-2026 row 90: the Unique Client ID is issued at the Final approval."""
     if not acc.client_id and acc.anchor_entity:
         from app.services.account_service import next_client_id
         acc.client_id = next_client_id(db, acc.anchor_entity)
@@ -346,20 +375,37 @@ def withdraw(db: Session, acc: Account, user: User) -> ApprovalRequest:
 _STATUS_ACTIONS = {
     "activate": ACTIVE, "deactivate": INACTIVE, "reactivate": ACTIVE,
     "mark_exit": MARKED_EXIT, "cancel_exit": ACTIVE, "confirm_exit": EXITED,
+    # Onboarding, set by the RM (Triam UAT 18-11-2026)
+    "pending_client": PENDING_CLIENT, "pending_authority": PENDING_AUTHORITY, "hold": ON_HOLD, "drop": DROPPED,
+    "resume": WIP, "reopen": WIP,
 }
+# The onboarding statuses keep their reason on the client, for the list and the reports.
+_KEEPS_REASON = ("pending_client", "pending_authority", "hold", "drop")
 
 
-def change_status(db: Session, acc: Account, user: User, action: str, reason: Optional[str] = None) -> Account:
+def change_status(db: Session, acc: Account, user: User, action: str, reason: Optional[str] = None,
+                  reason_code: Optional[str] = None) -> Account:
     if action not in _STATUS_ACTIONS:
         raise HTTPException(status_code=400, detail=f"Unknown action '{action}'")
     _require(db, acc, user, action)
     reason = (reason or "").strip() or None
     if action in ("mark_exit", "deactivate") and not reason:
         raise HTTPException(status_code=400, detail="Give a reason")
+    if action == "drop":
+        if reason_code not in DROP_REASONS:
+            raise HTTPException(status_code=400, detail=f"Choose why the client is dropped: {', '.join(DROP_REASONS)}")
+        if reason_code == "Other" and not reason:
+            raise HTTPException(status_code=400, detail="Explain why the client is dropped")
+    else:
+        reason_code = None
     old = acc.profile_status
     _set_status(acc, _STATUS_ACTIONS[action], user)
-    log_event(db, action, f"Client {_label(acc)}: {old} → {acc.profile_status}" + (f" ({reason})" if reason else ""),
-              subject_type="Account", subject_id=acc.id, account_id=acc.id, changes={"reason": reason} if reason else None)
+    if action in _KEEPS_REASON:
+        acc.status_reason_code, acc.status_reason = reason_code, reason
+    why = " · ".join(x for x in (reason_code, reason) if x)
+    log_event(db, action, f"Client {_label(acc)}: {old} → {acc.profile_status}" + (f" ({why})" if why else ""),
+              subject_type="Account", subject_id=acc.id, account_id=acc.id,
+              changes={k: v for k, v in (("reason_code", reason_code), ("reason", reason)) if v} or None)
     db.commit()
     db.refresh(acc)
     return acc
@@ -397,7 +443,8 @@ def inbox(db: Session, user: User, status: str = ApprovalStatus.PENDING.value,
     q = db.query(ApprovalRequest).filter(ApprovalRequest.status == status)
     if request_type:
         q = q.filter(ApprovalRequest.request_type == request_type)
-    reqs = q.order_by(ApprovalRequest.submitted_at).all()
+    # Triam UAT 18-11-2026 row 61: latest first. A decided request sorts by its decision date.
+    reqs = q.order_by(func.coalesce(ApprovalRequest.decided_at, ApprovalRequest.submitted_at).desc(), ApprovalRequest.id.desc()).all()
     return [r for r in reqs if r.account is not None and access_control.user_can_access_account(db, r.account, user)
             and _in_my_queue(r, user, status)]
 

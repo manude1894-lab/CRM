@@ -74,6 +74,12 @@ export const ACTION_LABELS = {
   mark_exit: "Marked for exit",
   cancel_exit: "Exit cancelled",
   confirm_exit: "Exited",
+  pending_client: "Pending with Client",
+  pending_authority: "Pending with Regn Authority",
+  hold: "Put on hold",
+  drop: "Dropped",
+  resume: "Back to work in progress",
+  reopen: "Reopened",
   // Documents and invoices
   document_upload: "Document added",
   document_delete: "Document removed",

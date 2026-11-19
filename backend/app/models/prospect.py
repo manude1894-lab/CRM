@@ -2,8 +2,8 @@
 
 A prospect is a company Triam has pitched but not yet onboarded. Every new
 client starts here. A Prospecting Coordinator assigns the RM (or an RM takes it themselves), and the
-client is created from the prospect; its Prospect ID is the client's temporary ID until Compliance
-approves and the Client ID is issued.
+client is created from the prospect; its Prospect ID is the client's temporary ID until the Final
+approval, when the Client ID is issued.
 """
 from sqlalchemy import Column, Integer, String, Text, Date, DateTime, Numeric, ForeignKey
 from sqlalchemy.orm import relationship

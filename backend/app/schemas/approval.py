@@ -29,8 +29,11 @@ class RejectOrComment(BaseModel):
 
 
 class StatusActionRequest(BaseModel):
-    action: str  # activate | deactivate | reactivate | mark_exit | cancel_exit | confirm_exit
+    # activate | deactivate | reactivate | mark_exit | cancel_exit | confirm_exit; while onboarding (Triam UAT
+    # 18-11-2026): pending_client | pending_authority | hold | drop (with reason_code) | resume | reopen
+    action: str
     reason: Optional[str] = Field(None, max_length=500)
+    reason_code: Optional[str] = Field(None, max_length=40)  # Drop: one of DROP_REASONS
 
 
 class ApprovalRead(BaseModel):
@@ -87,6 +90,10 @@ class WorkflowState(BaseModel):
     stage: Optional[str] = None  # while Awaiting Approval: "Compliance" or "Approver"
     status_updated_at: Optional[datetime] = None
     status_updated_by: Optional[str] = None
+    # Why the RM set the current onboarding status (Dropped, On Hold, Pending ...), and the Drop reasons to pick from.
+    status_reason_code: Optional[str] = None
+    status_reason: Optional[str] = None
+    drop_reasons: list[str] = []
     locked: bool
     actions: list[WorkflowAction]
     history: list[ApprovalRead]

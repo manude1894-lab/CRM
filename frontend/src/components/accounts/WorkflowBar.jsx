@@ -16,10 +16,23 @@ const STATUS_STYLE = {
   Inactive: "bg-gray-200 text-gray-600",
   "Marked for Exit": "bg-red-50 text-red-700",
   Exited: "bg-red-100 text-red-800",
+  "Pending with Client": "bg-violet-100 text-violet-700",
+  "Pending with Regn Authority": "bg-indigo-100 text-indigo-700",
+  "On Hold": "bg-gray-100 text-gray-700",
+  Dropped: "bg-gray-200 text-gray-700",
 };
 
 // Actions that need a short reason typed by the user.
 const NEEDS_REASON = { deactivate: "Why is the client being made inactive?", mark_exit: "Why is the client exiting?" };
+// Triam UAT 18-11-2026: onboarding statuses the RM sets, with an optional note (Drop also takes a reason from the list).
+const OPTIONAL_NOTE = {
+  pending_client: "What is the client to send or answer? (optional)",
+  pending_authority: "What is awaited from the registering authority? (optional)",
+  hold: "Why is the client on hold? (optional)",
+  drop: "Details",
+};
+const RUNS_AT_ONCE = ["activate", "reactivate", "cancel_exit", "withdraw", "resume", "reopen"];
+const REASON_SHOWN = ["Pending with Client", "Pending with Regn Authority", "On Hold", "Dropped"];
 const MAX_WORDS = 250;
 export const wordCount = (t) => (t || "").trim().split(/\s+/).filter(Boolean).length;
 
@@ -64,7 +77,7 @@ export default function WorkflowBar({ accountId, refreshKey, onChanged, submitSi
       else if (action === "approve") next = await workflowApi.approve(accountId, text, state.stage);
       else if (action === "reject") next = await workflowApi.reject(accountId, reasonCode, text, state.stage);
       else if (action === "withdraw") next = await workflowApi.withdraw(accountId);
-      else next = await workflowApi.status(accountId, action, text);
+      else next = await workflowApi.status(accountId, action, text, action === "drop" ? reasonCode : null);
       setState(next);
       setDialog(null); setText(""); setReasonCode(""); setKycDeclared(false);
       toast.success(next.stage ? `Client is now with ${next.stage === "Approver" ? "the Approver" : "Compliance"}` : `Client is now ${next.status}`);
@@ -78,7 +91,7 @@ export default function WorkflowBar({ accountId, refreshKey, onChanged, submitSi
 
   const open = (a) => {
     // Simple actions run straight away; others ask for a comment / reason first.
-    if (["activate", "reactivate", "cancel_exit", "withdraw"].includes(a.action)) return run(a.action);
+    if (RUNS_AT_ONCE.includes(a.action)) return run(a.action);
     setText(""); setReasonCode(""); setKycDeclared(false); setDialog(a);
   };
 
@@ -90,6 +103,7 @@ export default function WorkflowBar({ accountId, refreshKey, onChanged, submitSi
   const words = wordCount(text);
   const commentBad = !!commentLabel && (!text.trim() || words > MAX_WORDS);
   const kycMissing = dialog?.action === "submit" && !kycDeclared;
+  const dropIncomplete = dialog?.action === "drop" && (!reasonCode || (reasonCode === "Other" && !text.trim()));
 
   // Triam UAT 05-11-2026: a rejected client shows who rejected it, when and why.
   const rejection = state.status === "Rejected" ? state.history.find((h) => h.request_type === "client_profile" && h.status === "Rejected") : null;
@@ -104,8 +118,18 @@ export default function WorkflowBar({ accountId, refreshKey, onChanged, submitSi
               </Select>
             </Field>
           )}
-          <Field label={dialog.action === "reject" ? "What needs fixing? (at least 15 characters)" : commentLabel || NEEDS_REASON[dialog.action] || "Comment (optional)"}
-            required={dialog.action === "reject" || !!NEEDS_REASON[dialog.action] || !!commentLabel}>
+          {dialog.action === "drop" && (
+            <Field label="Why is the client dropped?" required>
+              <Select value={reasonCode} onChange={(e) => setReasonCode(e.target.value)}>
+                <option value="">— choose —</option>
+                {(state.drop_reasons || []).map((r) => <option key={r} value={r}>{r}</option>)}
+              </Select>
+            </Field>
+          )}
+          <Field label={dialog.action === "reject" ? "What needs fixing? (at least 15 characters)"
+            : dialog.action === "drop" ? (reasonCode === "Other" ? "Details" : "Details (optional)")
+            : commentLabel || NEEDS_REASON[dialog.action] || OPTIONAL_NOTE[dialog.action] || "Comment (optional)"}
+            required={dialog.action === "reject" || !!NEEDS_REASON[dialog.action] || !!commentLabel || (dialog.action === "drop" && reasonCode === "Other")}>
             <Textarea rows={commentLabel ? 5 : 3} value={text} onChange={(e) => setText(e.target.value)} maxLength={commentLabel ? 4000 : dialog.action === "reject" ? 2000 : 500} />
             {commentLabel && <div className={`text-[11px] text-right mt-0.5 ${words > MAX_WORDS ? "text-red-600" : "text-gray-400"}`}>{words} / {MAX_WORDS} words</div>}
           </Field>
@@ -118,15 +142,21 @@ export default function WorkflowBar({ accountId, refreshKey, onChanged, submitSi
               <p className="text-xs text-gray-500 mb-3">Goes to Compliance, then to the Approver.</p>
             </>
           )}
+          {dialog.action === "drop" && (
+            <p className="text-xs text-gray-500 -mt-2 mb-3">The client leaves the onboarding list and becomes read-only. You can reopen it later.</p>
+          )}
+          {dialog.action === "hold" && (
+            <p className="text-xs text-gray-500 -mt-2 mb-3">The client can't be submitted while on hold. Resume it when work restarts.</p>
+          )}
           {dialog.action === "approve" && (
             <p className="text-xs text-gray-500 -mt-2 mb-3">
-              {state.stage === "Approver" ? "You give the final approval; the client becomes Approved and available for service requests."
-                : "You confirm the CDD section is complete and the information and documents are reviewed. The Client ID is issued and the client goes to the Approver."}
+              {state.stage === "Approver" ? "You give the final approval; the Client ID is issued and the client becomes Approved."
+                : "You confirm the CDD section is complete and the information and documents are reviewed. The client goes to the Approver and can take service requests."}
             </p>
           )}
           <div className="flex justify-end gap-3 mt-2">
             <button onClick={() => setDialog(null)} className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
-            <button onClick={() => run(dialog.action)} disabled={busy || rejectTooShort || reasonMissing || commentBad || kycMissing}
+            <button onClick={() => run(dialog.action)} disabled={busy || rejectTooShort || reasonMissing || commentBad || kycMissing || dropIncomplete}
               className="px-4 py-2 text-sm text-white rounded-lg font-medium disabled:opacity-50" style={{ background: "#1a3a5c" }}>
               {busy ? "Working…" : dialog.label}
             </button>
@@ -151,7 +181,7 @@ export default function WorkflowBar({ accountId, refreshKey, onChanged, submitSi
           {state.actions.map((a) => (
             <button key={a.action} type="button" disabled={!a.allowed || busy} title={a.reason || ""} onClick={() => open(a)}
               className={`px-2.5 py-1 text-xs rounded-lg border disabled:opacity-40 disabled:cursor-not-allowed ${
-                a.action === "reject" || a.action === "confirm_exit" || a.action === "mark_exit" ? "border-red-200 text-red-600 hover:bg-red-50"
+                ["reject", "confirm_exit", "mark_exit", "drop"].includes(a.action) ? "border-red-200 text-red-600 hover:bg-red-50"
                   : a.action === "approve" || a.action === "submit" || a.action === "activate" ? "border-emerald-300 text-emerald-700 hover:bg-emerald-50"
                   : "border-gray-200 text-gray-600 hover:bg-gray-50"}`}>
               {a.label}
@@ -169,6 +199,13 @@ export default function WorkflowBar({ accountId, refreshKey, onChanged, submitSi
         <div className="px-3 py-2 text-xs bg-red-50 text-red-800 border-t border-red-100">
           <div className="font-semibold">Rejected by {rejection.checker_name || "—"}{rejection.compliance_comment ? " (Approver)" : " (Compliance)"} on {fmtDate(rejection.decided_at)}</div>
           <div className="mt-0.5">{rejection.reason_code ? `${reasons.labelOf(rejection.reason_code)}. ` : ""}{rejection.reason_text}</div>
+        </div>
+      )}
+      {REASON_SHOWN.includes(state.status) && (state.status_reason_code || state.status_reason || state.status === "Dropped") && (
+        <div className="px-3 py-1.5 text-[11px] bg-gray-50 text-gray-700 border-t border-gray-100">
+          {state.status}
+          {state.status_reason_code ? `: ${state.status_reason_code}` : ""}{state.status_reason ? `${state.status_reason_code ? ". " : ": "}${state.status_reason}` : ""}
+          {state.status === "Dropped" && " · Read-only until reopened."}
         </div>
       )}
       {state.locked && state.status === "Awaiting Approval" && (

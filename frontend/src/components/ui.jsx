@@ -53,6 +53,8 @@ export const Badge = ({ text }) => {
     WIP: "bg-sky-100 text-sky-700",
     Rejected: "bg-red-100 text-red-700",
     "Awaiting Approval": "bg-amber-100 text-amber-700",
+    "Pending with Client": "bg-violet-100 text-violet-700",
+    "Pending with Regn Authority": "bg-indigo-100 text-indigo-700",
     Approved: "bg-emerald-100 text-emerald-700",
     Active: "bg-emerald-100 text-emerald-700",
     Inactive: "bg-gray-200 text-gray-700",

@@ -11,7 +11,7 @@ class Account(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     account_uid = Column(String(20), unique=True, index=True, nullable=False)  # ACC-0001 — internal key
-    # BRD §18 Unique Client ID — {ENTITY}/{00000}, per-entity counter, issued at Compliance approval.
+    # BRD §18 Unique Client ID — {ENTITY}/{00000}, per-entity counter, issued at the Final approval (UAT 18-11 row 90).
     client_id = Column(String(20), unique=True, index=True, nullable=True)
     # BRD §3 Unique Search Name — short, unique (case-insensitive), prefilled from the legal name.
     search_name = Column(String(120), unique=True, index=True, nullable=True)
@@ -67,6 +67,10 @@ class Account(Base):
     # When the Final approval was given (Triam 13-11-2026: approved clients listed newest first).
     approved_at = Column(DateTime(timezone=True), nullable=True, index=True)
     status_updated_by_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    # Why the RM set the current onboarding status (Triam UAT 18-11-2026): the Drop reason from a fixed list,
+    # and a note for Dropped, On Hold or Pending with Client / Regn Authority. Cleared on the next status change.
+    status_reason_code = Column(String(40), nullable=True)
+    status_reason = Column(String(500), nullable=True)
 
     # Engagement Letter (BRD §9): mandatory Yes / No — None = not answered
     engagement_letter_signed = Column(Boolean, nullable=True)
@@ -129,13 +133,35 @@ class Account(Base):
 
     @property
     def temp_id(self):
-        """Shown until the Client ID is issued at Compliance approval: the Prospect ID the client came
+        """Shown until the Client ID is issued at the Final approval: the Prospect ID the client came
         from, or the internal record number for clients loaded by import."""
         return self.prospect.prospect_uid if self.prospect is not None else self.account_uid
 
     # Current parties only; removed ones stay in the table (removed_at set) and are listed by removed_parties.
-    # While Awaiting Approval: "Compliance" or "Approver". Filled in by the client list, not stored.
-    approval_stage = None
+    # While Awaiting Approval: "Compliance" or "Approver"; None otherwise. Not stored: the client list
+    # fills it in for a page at once, and on a single client it is read from the pending request.
+    _approval_stage = None
+
+    @property
+    def approval_stage(self):
+        if self.profile_status != "Awaiting Approval":
+            return None
+        if self._approval_stage is not None:  # filled in by the client list for a whole page
+            return self._approval_stage
+        # Read fresh each time (not cached), so it follows a Compliance approval in the same session.
+        from sqlalchemy.orm import object_session
+        from app.models.approval import ApprovalRequest, ApprovalStatus
+        db = object_session(self)
+        if db is None or self.id is None:
+            return None
+        req = (db.query(ApprovalRequest)
+               .filter(ApprovalRequest.account_id == self.id, ApprovalRequest.status == ApprovalStatus.PENDING.value)
+               .order_by(ApprovalRequest.id.desc()).first())
+        return (req.stage or "Compliance") if req is not None else None
+
+    @approval_stage.setter
+    def approval_stage(self, value):
+        self._approval_stage = value
 
     parties = relationship("AccountParty", primaryjoin="and_(Account.id == AccountParty.account_id, AccountParty.removed_at.is_(None))",
                            cascade="all, delete-orphan", order_by="AccountParty.id", overlaps="removed_parties")

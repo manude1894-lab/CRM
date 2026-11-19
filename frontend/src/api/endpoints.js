@@ -65,7 +65,7 @@ export const workflowApi = {
   approve: (accountId, comment, expected_stage) => api.post(`/accounts/${accountId}/approve`, { comment: comment || null, expected_stage: expected_stage || null }).then((r) => r.data),
   reject: (accountId, reason_code, reason_text, expected_stage) => api.post(`/accounts/${accountId}/reject`, { reason_code, reason_text, expected_stage: expected_stage || null }).then((r) => r.data),
   withdraw: (accountId) => api.post(`/accounts/${accountId}/withdraw`).then((r) => r.data),
-  status: (accountId, action, reason) => api.post(`/accounts/${accountId}/status`, { action, reason: reason || null }).then((r) => r.data),
+  status: (accountId, action, reason, reasonCode) => api.post(`/accounts/${accountId}/status`, { action, reason: reason || null, reason_code: reasonCode || null }).then((r) => r.data),
   inbox: (status = "Pending", request_type) => api.get("/approvals", { params: { status, request_type: request_type || undefined } }).then((r) => r.data),
 };
 
@@ -203,6 +203,7 @@ export const prospectsApi = {
 export const reportsApi = {
   standardList: () => api.get("/reports/standard").then((r) => r.data),
   standard: (key, params = {}) => api.get(`/reports/standard/${key}`, { params }).then((r) => r.data),
+  onboardingStatuses: () => api.get("/reports/onboarding-statuses").then((r) => r.data),
 };
 
 // ─── System (go-live checks) ───────────────────────────────────────────

@@ -150,10 +150,11 @@ def _check_type_and_status(db: Session, inst: Instruction, status_given: bool) -
 
 
 def takes_requests(acc: Account) -> bool:
-    """BRD §8; Triam 12-11-2026: a client takes service requests once Compliance has approved it, which is
-    when its Client ID is issued, without waiting for the Final approval. A client rejected at the Final
-    stage takes none until approved again; its existing requests and invoices stay as they are."""
-    return acc.profile_status in SERVICEABLE or (acc.profile_status == AWAITING and bool(acc.client_id))
+    """BRD §8; Triam 12-11-2026: a client takes service requests once Compliance has approved it, without
+    waiting for the Final approval (the Client ID itself comes at the Final approval, UAT 18-11-2026 row 90).
+    A client rejected at the Final stage takes none until approved again; its existing requests and
+    invoices stay as they are."""
+    return acc.profile_status in SERVICEABLE or (acc.profile_status == AWAITING and acc.approval_stage == "Approver")
 
 
 def _assert_client_serviceable(acc: Account) -> None:
