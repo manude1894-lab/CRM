@@ -27,6 +27,7 @@ import { addDays, later, latestAdultBirth, earliestBirth, taxNumber, taxNumberHi
 import { useMasters } from "../../hooks/useMasters";
 import { selectableCodes, servicesForEntities, oneTimeServices, oneTimeEntityCodes } from "../../hooks/masterUtils";
 import { cleanPassport, passportProblem } from "../../utils/passport";
+import OnboardingInvoicePanel from "./OnboardingInvoicePanel";
 
 // Service lists are shown in alphabetical order (Triam UAT 26-10-2026).
 const alphabetical = (codes) => [...codes].sort((x, y) => x.localeCompare(y));
@@ -501,6 +502,13 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
               )}
             </Section>
 
+            {/* Triam UAT 19-11-2026 (row 153): after "Is entity regulated". Its own Save / Submit, so it works while the profile is locked. */}
+            {form._id && (
+              <Section title="Invoice for Onboarding Services" hasData={form.onboarding_invoice_wanted != null}>
+                <OnboardingInvoicePanel accountId={form._id} />
+              </Section>
+            )}
+
             <Section title="Registered Address" hasData={Object.values(form.registered_address || {}).some(Boolean)}
               {...sectionProps("registeredAddress")}>
               <AddressFields required={req("registered_address")} value={form.registered_address} onChange={setRegisteredAddress} countries={countries} />
@@ -593,6 +601,11 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
             <label className="flex items-center gap-2 text-xs text-gray-700 mt-3">
               <input type="checkbox" checked={!!form.is_pep} onChange={setChecked("is_pep")} /> Politically Exposed Person (PEP)
             </label>
+          </Section>
+        )}
+        {isIndividual && form._id && (
+          <Section title="Invoice for Onboarding Services" hasData={form.onboarding_invoice_wanted != null}>
+            <OnboardingInvoicePanel accountId={form._id} />
           </Section>
         )}
 

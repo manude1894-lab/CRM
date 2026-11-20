@@ -71,6 +71,9 @@ class Account(Base):
     # and a note for Dropped, On Hold or Pending with Client / Regn Authority. Cleared on the next status change.
     status_reason_code = Column(String(40), nullable=True)
     status_reason = Column(String(500), nullable=True)
+    # Triam UAT 19-11-2026, Invoice for Onboarding Services: "Do you want an invoice raised for onboarding services?"
+    # The invoice itself (amounts, introducer, comments, Accounts' response) is an Invoice of kind "Onboarding".
+    onboarding_invoice_wanted = Column(Boolean, nullable=True)
 
     # Engagement Letter (BRD §9): mandatory Yes / No — None = not answered
     engagement_letter_signed = Column(Boolean, nullable=True)

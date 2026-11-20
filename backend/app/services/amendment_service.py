@@ -45,7 +45,8 @@ OPEN = (ApprovalStatus.DRAFT.value, ApprovalStatus.PENDING.value)
 
 # Read-only/system fields that never appear as an amendment line.
 _IGNORED = {"id", "account_uid", "client_id", "created_at", "updated_at", "profile_status", "status_updated_at",
-            "status_updated_by_id", "status_reason_code", "status_reason", "next_aml_review_date", "is_pep", "approval_stage",
+            "status_updated_by_id", "status_reason_code", "status_reason", "onboarding_invoice_wanted", "next_aml_review_date", "is_pep",
+            "approval_stage",
             "account_id"}
 
 _LABELS = {

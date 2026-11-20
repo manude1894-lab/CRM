@@ -216,7 +216,7 @@ def _send_for_invoicing(db: Session, inst: Instruction, acc: Account, user: User
     from app.services import invoice_service
     inv = Invoice(account_id=inst.account_id, description=inst.other_description or inst.instruction_type,
                   amount=inst.charge_amount, currency=inst.charge_currency or "AED", status=invoice_service.DRAFT,
-                  requested_by_id=user.id, notes=_invoice_notes(inst))
+                  requested_by_id=user.id, notes=_invoice_notes(inst), kind="Service Request")
     db.add(inv)
     db.flush()
     inst.invoice_id, inst.submitted_at, inst.submitted_by_id = inv.id, datetime.now(timezone.utc), user.id

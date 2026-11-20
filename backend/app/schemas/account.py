@@ -397,6 +397,7 @@ class AccountRead(AccountBase):
     status_updated_by_id: Optional[int] = None
     status_reason_code: Optional[str] = None
     status_reason: Optional[str] = None
+    onboarding_invoice_wanted: Optional[bool] = None  # Invoice for Onboarding Services: Yes / No (UAT 19-11-2026)
     duplicate_override_reason: Optional[str] = None
     next_aml_review_date: Optional[date] = None
     is_pep: bool = False

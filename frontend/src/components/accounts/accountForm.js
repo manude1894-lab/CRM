@@ -136,6 +136,7 @@ export function accountToForm(a) {
     aml_classification: a.aml_classification || "", edd_reason: a.edd_reason || "", cdd_completion_date: a.cdd_completion_date || "",
     kyc_verified_by: a.kyc_verified_by || "",
     screening_date: a.screening_date || "",
+    onboarding_invoice_wanted: a.onboarding_invoice_wanted ?? null,
     next_aml_review_date: a.next_aml_review_date || null,
     is_pep: !!a.is_pep,
     date_of_birth: a.date_of_birth || "", country_of_birth: a.country_of_birth || "", nationality: a.nationality || "",
@@ -169,7 +170,9 @@ const toSpocId = (v) => (v ? +v : null);
 export function buildAccountPayload(form) {
   // profile_status is never sent: it changes only through Submit / Approve / status actions (BRD §9).
   // search_name is kept by the system from the client name (Triam UAT 26-10-2026).
-  const { next_aml_review_date, tags, _id, _client_id, _status_updated_at, profile_status, _prospect_uid, search_name, ...rest } = form;
+  // onboarding_invoice_wanted is saved by the Invoice for Onboarding Services panel, not with the profile.
+  const { next_aml_review_date, tags, _id, _client_id, _status_updated_at, profile_status, _prospect_uid, search_name,
+    onboarding_invoice_wanted, ...rest } = form;
   const payload = cleanPayload({ ...rest, tags: (tags || []).join(", ") || null });
   return { ...payload, spoc_id: toSpocId(payload.spoc_id) };
 }

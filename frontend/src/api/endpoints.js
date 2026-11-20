@@ -111,6 +111,9 @@ export const invoicesApi = {
   raise: (id, data) => api.post(`/invoices/${id}/raise`, data).then((r) => r.data),
   paid: (id, data = {}) => api.post(`/invoices/${id}/paid`, data).then((r) => r.data),
   attachments: (id) => api.get(`/invoices/${id}/attachments`).then((r) => r.data),
+  // Triam UAT 19-11-2026: the client form's Invoice for Onboarding Services.
+  onboarding: (accountId) => api.get(`/invoices/onboarding/${accountId}`).then((r) => r.data),
+  saveOnboarding: (accountId, data) => api.put(`/invoices/onboarding/${accountId}`, data).then((r) => r.data),
   attach: (id, file, kind) => {
     const fd = new FormData();
     fd.append("file", file);

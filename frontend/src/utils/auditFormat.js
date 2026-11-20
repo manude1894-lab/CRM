@@ -87,6 +87,7 @@ export const ACTION_LABELS = {
   report_export: "Report downloaded",
   invoice_request_draft: "Invoice request drafted",
   invoice_request: "Invoice requested",
+  onboarding_invoice_save: "Onboarding invoice saved",
   invoice_raise: "Invoice raised",
   invoice_paid: "Invoice paid",
 };
