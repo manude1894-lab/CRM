@@ -346,6 +346,23 @@ def one_time_problems(db: Session, account) -> list[dict]:
     return problems
 
 
+def entity_service_problems(db: Session, account) -> list[dict]:
+    """Triam 20-11-2026: a corporate client's services are those its Triam entities offer (Admin -> Masters ->
+    Services, "Entities"). A service left over after the entity was changed is refused at Submit. A service with no
+    entity list is offered by every entity; individual clients and one-time clients have their own rules."""
+    if account.account_type == "Individual" or (account.is_one_time_service and asks_one_time(account)):
+        return []
+    entities = {e for e in [account.anchor_entity, *(account.non_anchor_entities or [])] if e}
+    if not entities:
+        return []
+    items = master_service.list_items(db, "service", include_inactive=True)
+    offered_by = {i.code: set((i.meta or {}).get("entities") or []) for i in items}
+    label = {i.code: i.label for i in items}
+    return [{"section": "Client info", "field": "nature_of_services_sought",
+             "label": f"'{label.get(s, s)}' is not offered by {' / '.join(sorted(entities))}. Remove it, or add the Triam entity that offers it"}
+            for s in account.nature_of_services_sought or [] if offered_by.get(s) and not offered_by[s] & entities]
+
+
 def _normalize_non_anchor_rms(acc: Account) -> None:
     """Client spec §I — the Anchor RM (spoc_id) can't also be a Non-anchor RM. Enforced
     server-side too, since bulk-update can change the anchor without touching the list."""
@@ -889,6 +906,7 @@ def missing_mandatory(account: Account) -> list[dict]:
     db = object_session(account)
     if db is not None:
         missing.extend(one_time_problems(db, account))
+        missing.extend(entity_service_problems(db, account))
     return missing
 
 

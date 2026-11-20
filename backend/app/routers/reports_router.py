@@ -24,25 +24,31 @@ FORMATS = {
 
 @router.get("/standard", summary="Standard reports available")
 def standard_reports(user: User = Depends(get_current_user)):
-    return [{"key": k, "title": t} for k, t in standard_reports_service.REPORTS.items()]
+    # Triam UAT 19-11-2026: the amendments, invoice and service request reports only for the roles named.
+    return [{"key": k, "title": t} for k, t in standard_reports_service.available(user).items()]
 
 
 @router.get("/standard/{key}", summary="Run a standard report")
 def run_standard_report(key: str, days: Optional[int] = None, date_from: Optional[date] = None, date_to: Optional[date] = None,
-                        status: Optional[str] = None, department_id: Optional[int] = None,
-                        db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    return standard_reports_service.run(db, user, key, days, date_from, date_to, status, department_id)
+                        status: Optional[str] = None, department_id: Optional[int] = None, entity: Optional[str] = None,
+                        tag: Optional[str] = None, rm_id: Optional[int] = None, request_type: Optional[str] = None,
+                        sr_type: Optional[str] = None, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    return standard_reports_service.run(db, user, key, days, date_from, date_to, status, department_id, entity, tag, rm_id,
+                                        request_type, sr_type)
 
 
 @router.get("/standard/{key}/export", summary="Download a standard report as Excel (xlsx) or PDF")
 def export_standard_report(key: str, format: str = "xlsx", days: Optional[int] = None, date_from: Optional[date] = None,
                            date_to: Optional[date] = None, status: Optional[str] = None, department_id: Optional[int] = None,
+                           entity: Optional[str] = None, tag: Optional[str] = None, rm_id: Optional[int] = None,
+                           request_type: Optional[str] = None, sr_type: Optional[str] = None,
                            db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     if not has_permission(user, REPORT_EXPORT):
         raise HTTPException(status_code=403, detail="Downloading reports isn't enabled for you. Ask the Administrator.")
     if format not in FORMATS:
         raise HTTPException(status_code=400, detail="Format must be xlsx or pdf")
-    report = standard_reports_service.run(db, user, key, days, date_from, date_to, status, department_id)
+    report = standard_reports_service.run(db, user, key, days, date_from, date_to, status, department_id, entity, tag, rm_id,
+                                          request_type, sr_type)
     media_type, build = FORMATS[format]
     content = build(report, user)
     log_event(db, "report_export", f"{report['title']} downloaded as {'Excel' if format == 'xlsx' else 'PDF'} "
