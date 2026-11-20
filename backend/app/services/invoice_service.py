@@ -111,7 +111,8 @@ def request_invoice(db: Session, data: InvoiceRequest, user: User) -> Invoice:
     if data.currency not in CURRENCIES:
         raise HTTPException(status_code=400, detail=f"Currency must be one of {', '.join(CURRENCIES)}")
     inv = Invoice(account_id=acc.id, description=data.description, amount=data.amount, currency=data.currency,
-                  notes=data.notes, status=DRAFT, requested_by_id=user.id)
+                  notes=data.notes, status=DRAFT, requested_by_id=user.id,
+                  kind="Service Request" if data.instruction_id else None)
     db.add(inv)
     db.flush()
     if data.instruction_id:

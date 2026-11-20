@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useAuthStore } from "./store/auth";
+import { authApi } from "./api/endpoints";
 import { Icon, ToastHost, ConfirmDialogHost } from "./components/ui";
 import NotificationBell from "./components/NotificationBell";
 import CommandPalette from "./components/CommandPalette";
@@ -48,6 +49,12 @@ export default function App() {
   const logout = useAuthStore((s) => s.logout);
   // Hooks must all run before the early "not logged in" return below (React rules of hooks).
   const can = useAuthStore((s) => s.can);
+  const setUser = useAuthStore((s) => s.setUser);
+  // Rights the Administrator changed since sign-in (e.g. "Can export reports", Triam UAT 19-11-2026) apply on the
+  // next page load, not only at the next sign-in.
+  useEffect(() => {
+    if (isAuthenticated) authApi.me().then(setUser).catch(() => {});
+  }, [isAuthenticated]);
   const [page, setPage] = useState("dashboard");
   // On a phone the menu starts closed and opens over the page; on a computer it is open beside the page.
   const isPhone = typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches;

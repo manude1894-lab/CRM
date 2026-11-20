@@ -92,7 +92,18 @@ export default function InvoicesPage() {
                     <div className="font-medium text-gray-800">{i.company_name || "—"}</div>
                     <div className="text-[11px] font-mono text-gray-400">{i.client_id}</div>
                   </td>
-                  <td className="py-2.5 px-3 text-xs text-gray-600 max-w-xs">{i.description}{i.notes && <div className="text-gray-400">{i.notes}</div>}</td>
+                  <td className="py-2.5 px-3 text-xs text-gray-600 max-w-xs">
+                    {i.kind && <span className="mr-1 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-gray-100 text-gray-600">{i.kind}</span>}
+                    {i.description}
+                    {/* Triam UAT 19-11-2026: what Triam pays out of an onboarding invoice. */}
+                    {i.kind === "Onboarding" && (i.govt_authority_amount != null || i.introducer_involved != null) && (
+                      <div className="text-gray-500">
+                        {i.govt_authority_amount != null && <>Payable to Regn / Govt Authority: {money(i.govt_authority_currency, i.govt_authority_amount)}. </>}
+                        {i.introducer_involved ? <>Introducer: {money(i.introducer_currency, i.introducer_amount)}.</> : i.introducer_involved === false ? "No introducer." : null}
+                      </div>
+                    )}
+                    {i.notes && <div className="text-gray-400">{i.notes}</div>}
+                  </td>
                   <td className="py-2.5 px-3 text-right whitespace-nowrap">{money(i.currency, i.amount)}</td>
                   <td className="py-2.5 px-3"><span className={`text-[11px] font-semibold px-2 py-0.5 rounded ${STATUS_STYLE[i.status] || "bg-gray-100"}`}>{unsent(i) ? "Draft · not sent" : i.status}</span></td>
                   <td className="py-2.5 px-3 text-xs text-gray-600 whitespace-nowrap">

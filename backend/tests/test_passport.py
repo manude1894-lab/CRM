@@ -10,6 +10,7 @@ from app.schemas.account import AccountCreate, AccountImportRow, AccountUpdate
 from app.schemas.account_party import AccountPartyCreate, AccountPartyUpdate
 from app.services import account_party_service, account_service, standard_reports_service as rpt
 from tests import flow
+from tests.helpers import rows_of
 
 
 def labels(acc):
@@ -100,5 +101,5 @@ def test_expiry_reports_show_the_passport_number(db, make_user, make_account):
     rm = make_user("Rita RM")
     make_account(name="Rahul Verma", spoc=rm, account_type="Individual", passport_number="Z9876543",
                  passport_expiry_date=rpt._today() + timedelta(days=10))
-    [row] = rpt.documents_expiring(db, rm)["rows"]
-    assert (row[5], row[6]) == ("Passport", "Z9876543")
+    [row] = rows_of(rpt.documents_expiring(db, rm))
+    assert (row["Doc Type"], row["Doc No."]) == ("Passport", "Z9876543")

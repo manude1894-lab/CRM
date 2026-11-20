@@ -8,9 +8,10 @@ from app.auth.dependencies import get_current_user
 from app.database import get_db
 from app.models import User
 from app.schemas import DocumentRead
-from app.schemas.invoice import InvoiceCreate, InvoicePaid, InvoiceRaise, InvoiceRead, InvoiceRequest, InvoiceUpdate, invoice_read
+from app.schemas.invoice import (InvoiceCreate, InvoicePaid, InvoiceRaise, InvoiceRead, InvoiceRequest, InvoiceUpdate, invoice_read,
+                                 OnboardingInvoiceSave, OnboardingInvoiceState)
 from app.schemas.common import CancelRequest
-from app.services import invoice_service
+from app.services import invoice_service, onboarding_invoice_service
 
 router = APIRouter(prefix="/invoices", tags=["Invoices"])
 
@@ -84,3 +85,18 @@ def update_invoice(invoice_id: int, data: InvoiceUpdate, db: Session = Depends(g
 def cancel_invoice(invoice_id: int, data: CancelRequest, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     invoice_service.cancel_invoice(db, invoice_id, data.reason, user)
     return None
+
+
+# ─── Invoice for Onboarding Services (Triam UAT 19-11-2026) ─────────────────
+
+@router.get("/onboarding/{account_id}", response_model=OnboardingInvoiceState,
+            summary="The client's Invoice for Onboarding Services: answer, draft or invoice, and what the user may do")
+def get_onboarding_invoice(account_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    return onboarding_invoice_service.state(db, account_id, user)
+
+
+@router.put("/onboarding/{account_id}", response_model=OnboardingInvoiceState,
+            summary="RM: save the Invoice for Onboarding Services, or submit it to Accounts (submit=true)")
+def save_onboarding_invoice(account_id: int, data: OnboardingInvoiceSave, db: Session = Depends(get_db),
+                            user: User = Depends(get_current_user)):
+    return onboarding_invoice_service.save(db, account_id, data, user)

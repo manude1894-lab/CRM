@@ -16,6 +16,7 @@ export const useAuthStore = create(
       setTokens: (accessToken, refreshToken, user, passwordChangeRecommended = false) =>
         set({ accessToken, refreshToken, user, passwordChangeRecommended }),
       clearPasswordWarning: () => set({ passwordChangeRecommended: false }),
+      setUser: (user) => set({ user }),
       logout: () => set({ accessToken: null, refreshToken: null, user: null, passwordChangeRecommended: false }),
       isAuthenticated: () => !!get().accessToken,
       role: () => get().user?.role || null,

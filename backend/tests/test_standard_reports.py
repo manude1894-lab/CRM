@@ -5,6 +5,7 @@ from app.schemas.prospect import ProspectCreate
 from app.services import prospect_service, standard_reports_service as rpt
 from app.services import client_workflow_service as wf
 from tests import flow
+from tests.helpers import rows_of
 from tests.flow import complete_client
 
 
@@ -15,10 +16,10 @@ def test_document_expiry_reports(db, make_user, make_account):
     make_account(name="Late Ltd", spoc=rm, license_expiry_date=today - timedelta(days=5))
     make_account(name="Hidden Ltd", spoc=make_user("Otto RM"), license_expiry_date=today + timedelta(days=3))
     expiring = rpt.documents_expiring(db, rm)
-    assert [(r[3], r[5], r[8]) for r in expiring["rows"]] == [("Soon Ltd", "Trade / Commercial Licence", 10)]  # Hidden Ltd isn't Rita's
-    assert expiring["rows"][0][2] == "Rita RM"
+    assert [(r["Client Name"], r["Doc Type"], r["Days left"]) for r in rows_of(expiring)] == [("Soon Ltd", "Trade / Commercial Licence", 10)]  # Hidden Ltd isn't Rita's
+    assert rows_of(expiring)[0]["Anchor RM"] == "Rita RM"
     expired = rpt.documents_expired(db, rm)
-    assert [(r[3], r[8]) for r in expired["rows"]] == [("Late Ltd", 5)]
+    assert [(r["Client Name"], r["Days overdue"]) for r in rows_of(expired)] == [("Late Ltd", 5)]
 
 
 def test_prospect_reports(db, make_user, make_role):
@@ -30,7 +31,7 @@ def test_prospect_reports(db, make_user, make_role):
     assigned = rpt.prospects_assigned(db, coord, rpt._today(), rpt._today())
     assert [r[1] for r in assigned["rows"]] == ["Assigned Ltd"] and assigned["rows"][0][2] == "Rita RM"
     assert rpt.prospects_assigned(db, coord, rpt._today() + timedelta(days=1), None)["rows"] == []
-    assert [r[2] for r in rpt.prospects_unassigned(db, coord)["rows"]] == ["Waiting Ltd"]
+    assert [r["Prospect Name"] for r in rows_of(rpt.prospects_unassigned(db, coord))] == ["Waiting Ltd"]
 
 
 def test_rejected_cases_pending_with_rm(db, people):
@@ -38,8 +39,9 @@ def test_rejected_cases_pending_with_rm(db, people):
     acc = complete_client(db, maker)
     flow.submit(db, acc, maker)
     wf.reject(db, acc, checker, "Documents missing or incomplete", "Passport copy for Jane has expired")
-    [row] = rpt.rejected_with_rm(db, maker)["rows"]
-    assert row[0] == "TCPL" and row[2] == "Complete Co" and row[4] == "Mia MLRO" and "Passport copy" in row[6] and row[7] == 0
+    [row] = rows_of(rpt.rejected_with_rm(db, maker))
+    assert (row["Anchor Triam Entity"], row["Client Name"], row["Rejected by"], row["Ageing (days)"]) == ("TCPL", "Complete Co", "Mia MLRO", 0)
+    assert "Passport copy" in row["Reason for Rejection"]
     flow.submit(db, acc, maker)  # resubmitted — no longer pending with the RM
     assert rpt.rejected_with_rm(db, maker)["rows"] == []
 
@@ -60,10 +62,11 @@ def test_under_formation_report_lists_clients_and_what_is_missing(db, make_user,
     make_account(name="Other RM Forming", spoc=make_user("Otto RM"), client_category="Under Formation",
                  profile_status="Approved", approved_at=now - timedelta(days=60))
     report = rpt.run(db, rm, "under-formation")  # 30 days by default
-    assert [r[2] for r in report["rows"]] == ["Old Forming Ltd"]
-    first = report["rows"][0]
-    assert first[0] == "TCPL" and first[3] == "Rita RM" and first[7] == 40
-    assert "Incorporation Certificate No." not in first[6] and "Registered Address" not in first[6]
-    assert "Licence No." in first[6] and "Operating Address" in first[6]
-    assert [r[2] for r in rpt.run(db, rm, "under-formation", days=0)["rows"]] == ["Old Forming Ltd", "New Forming Ltd"]
+    assert [r["Client Name"] for r in rows_of(report)] == ["Old Forming Ltd"]
+    first = rows_of(report)[0]
+    assert (first["Anchor Triam Entity"], first["Anchor RM"], first["Ageing from approval (days)"]) == ("TCPL", "Rita RM", 40)
+    missing = first["Missing Details"]
+    assert "Incorporation Certificate No." not in missing and "Registered Address" not in missing
+    assert "Licence No." in missing and "Operating Address" in missing
+    assert [r["Client Name"] for r in rows_of(rpt.run(db, rm, "under-formation", days=0))] == ["Old Forming Ltd", "New Forming Ltd"]
     assert "under-formation" in rpt.REPORTS

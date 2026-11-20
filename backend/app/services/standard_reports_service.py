@@ -63,17 +63,35 @@ def _pros_id(a: Account) -> str:
 
 
 class _Names:
-    """User names by id, read once per report."""
+    """Look-ups read once per report: user names, the Anchor RM's department, and Client Tag labels
+    (Triam UAT 19-11-2026 adds Client Tag and Department to the reports)."""
     def __init__(self, db: Session):
-        self.db, self._cache = db, {}
+        self.db, self._users, self._depts, self._tags = db, {}, None, None
+
+    def _user(self, user_id):
+        if user_id not in self._users:
+            self._users[user_id] = self.db.get(User, user_id)
+        return self._users[user_id]
 
     def __call__(self, user_id: Optional[int]) -> str:
-        if not user_id:
-            return "—"
-        if user_id not in self._cache:
-            u = self.db.get(User, user_id)
-            self._cache[user_id] = u.name if u else "—"
-        return self._cache[user_id]
+        u = self._user(user_id) if user_id else None
+        return u.name if u else "—"
+
+    def dept(self, user_id: Optional[int]) -> str:
+        """The department of the given user (the client's Anchor RM)."""
+        from app.models import Department
+        if self._depts is None:
+            self._depts = {d.id: d.name for d in self.db.query(Department).all()}
+        u = self._user(user_id) if user_id else None
+        return self._depts.get(u.department_id, "—") if u and u.department_id else "—"
+
+    def tags(self, a: Account) -> str:
+        """The client's tags, by their labels in the Tag master list."""
+        from app.services import master_service
+        if self._tags is None:
+            self._tags = {i.code: i.label for i in master_service.list_items(self.db, "tag", include_inactive=True)}
+        codes = [t.strip() for t in (a.tags or "").split(",") if t.strip()]
+        return ", ".join(self._tags.get(c, c) for c in codes) or "—"
 
 
 # ─── Documents (3.1, 3.2) ───────────────────────────────────────────────────
@@ -97,12 +115,13 @@ def _dated_documents(db: Session, user: User) -> list[dict]:
     return out
 
 
-DOCUMENT_COLUMNS = ["Anchor Triam Entity", "Client ID", "Anchor RM", "Client Name", "Held by", "Doc Type", "Doc No.", "Doc Expiry Date"]
+DOCUMENT_COLUMNS = ["Anchor Triam Entity", "Client ID", "Anchor RM", "Client Name", "Client Tag", "Held by", "Doc Type", "Doc No.",
+                    "Doc Expiry Date"]
 
 
 def _document_row(r: dict, names: _Names) -> list:
     a = r["acc"]
-    return [a.anchor_entity or "—", _client_ref(a), names(a.spoc_id), a.company_name, r["holder"], r["document"],
+    return [a.anchor_entity or "—", _client_ref(a), names(a.spoc_id), a.company_name, names.tags(a), r["holder"], r["document"],
             r["number"] or "—", _iso(r["expiry"])]
 
 
@@ -132,9 +151,9 @@ def clients_risk(db: Session, user: User) -> dict:
     today, names = _today(), _Names(db)
     accs = sorted(_serviced(db, user), key=lambda a: (a.next_aml_review_date or date.max, a.company_name))
     return {"title": "Clients with their risk levels and AML review dates",
-            "columns": ["Anchor Triam Entity", "Client ID", "Client Name", "Anchor RM", "Risk Level", "Last Review Date",
+            "columns": ["Anchor Triam Entity", "Client ID", "Client Name", "Client Tag", "Anchor RM", "Risk Level", "Last Review Date",
                         "Next Review Date", "Days overdue"],
-            "rows": [[a.anchor_entity or "—", _client_ref(a), a.company_name, names(a.spoc_id), a.risk_rating or "—",
+            "rows": [[a.anchor_entity or "—", _client_ref(a), a.company_name, names.tags(a), names(a.spoc_id), a.risk_rating or "—",
                       _iso(a.cdd_completion_date), _iso(a.next_aml_review_date),
                       max((today - a.next_aml_review_date).days, 0) if a.next_aml_review_date else "—"] for a in accs]}
 
@@ -145,8 +164,8 @@ def aml_reviews_due(db: Session, user: User, days: int = 30) -> dict:
                    if a.next_aml_review_date and 0 <= (a.next_aml_review_date - today).days <= days),
                   key=lambda a: a.next_aml_review_date)
     return {"title": f"AML reviews due in the next {days} days",
-            "columns": ["Anchor Triam Entity", "Client ID", "Anchor RM", "Client Name", "AML Expiry Date", "Days left"],
-            "rows": [[a.anchor_entity or "—", _client_ref(a), names(a.spoc_id), a.company_name, _iso(a.next_aml_review_date),
+            "columns": ["Anchor Triam Entity", "Client ID", "Anchor RM", "Client Name", "Client Tag", "AML Expiry Date", "Days left"],
+            "rows": [[a.anchor_entity or "—", _client_ref(a), names(a.spoc_id), a.company_name, names.tags(a), _iso(a.next_aml_review_date),
                       (a.next_aml_review_date - today).days] for a in accs]}
 
 
@@ -155,8 +174,8 @@ def aml_reviews_expired(db: Session, user: User) -> dict:
     accs = sorted((a for a in _serviced(db, user) if a.next_aml_review_date and a.next_aml_review_date < today),
                   key=lambda a: a.next_aml_review_date)
     return {"title": "AML review expired",
-            "columns": ["Anchor Triam Entity", "Client ID", "Anchor RM", "Client Name", "AML Expiry Date", "Days overdue"],
-            "rows": [[a.anchor_entity or "—", _client_ref(a), names(a.spoc_id), a.company_name, _iso(a.next_aml_review_date),
+            "columns": ["Anchor Triam Entity", "Client ID", "Anchor RM", "Client Name", "Client Tag", "AML Expiry Date", "Days overdue"],
+            "rows": [[a.anchor_entity or "—", _client_ref(a), names(a.spoc_id), a.company_name, names.tags(a), _iso(a.next_aml_review_date),
                       (today - a.next_aml_review_date).days] for a in accs]}
 
 
@@ -190,12 +209,13 @@ def prospects_unassigned(db: Session, user: User) -> dict:
         if p.owner_id or p.status == "Dropped":
             continue
         created = p.created_at if p.created_at.tzinfo else p.created_at.replace(tzinfo=timezone.utc)
-        rows.append([p.prospect_uid, _iso(_local_date(created)), p.company_name, p.contact_name or "—", p.contact_email or "—",
-                     p.contact_phone or "—", p.source or "—", (now - created).days])
-    rows.sort(key=lambda r: r[7], reverse=True)
+        # Department and Client Tag (Triam UAT 19-11-2026): a prospect holds neither yet, and has no RM to take them from.
+        rows.append([p.prospect_uid, _iso(_local_date(created)), p.company_name, p.contact_name or "—", "—", "—",
+                     p.contact_email or "—", p.contact_phone or "—", p.source or "—", (now - created).days])
+    rows.sort(key=lambda r: r[9], reverse=True)
     return {"title": "Unassigned prospects (ageing)",
-            "columns": ["Prospect ID", "Logged Date", "Prospect Name", "Contact Name", "Contact Email", "Contact Phone No.",
-                        "Source", "Days waiting"],
+            "columns": ["Prospect ID", "Logged Date", "Prospect Name", "Contact Name", "Department", "Client Tag", "Contact Email",
+                        "Contact Phone No.", "Source", "Days waiting"],
             "rows": rows}
 
 
@@ -216,12 +236,12 @@ def rejected_with_rm(db: Session, user: User) -> dict:
             continue
         decided = last.decided_at if last.decided_at.tzinfo else last.decided_at.replace(tzinfo=timezone.utc)
         reason = ". ".join(x for x in (labels.get(last.reason_code, last.reason_code), last.reason_text) if x)
-        rows.append([a.anchor_entity or "—", _pros_id(a), a.company_name, names(a.spoc_id), names(last.checker_id),
-                     _iso(_local_date(decided)), reason, (now - decided).days])
-    rows.sort(key=lambda r: r[7], reverse=True)
+        rows.append([a.anchor_entity or "—", _pros_id(a), a.company_name, names.dept(a.spoc_id), names.tags(a), names(a.spoc_id),
+                     names(last.checker_id), _iso(_local_date(decided)), reason, (now - decided).days])
+    rows.sort(key=lambda r: r[9], reverse=True)
     return {"title": "Clients in Rejected status (ageing)",
-            "columns": ["Anchor Triam Entity", "Pros ID", "Client Name", "Anchor RM", "Rejected by", "Rejected on",
-                        "Reason for Rejection", "Ageing (days)"],
+            "columns": ["Anchor Triam Entity", "Pros ID", "Client Name", "Department", "Client Tag", "Anchor RM", "Rejected by",
+                        "Rejected on", "Reason for Rejection", "Ageing (days)"],
             "rows": rows}
 
 
@@ -266,12 +286,12 @@ def under_formation(db: Session, user: User, days: int = UNDER_FORMATION_DAYS) -
         ageing = (today - approved).days
         if ageing < days:
             continue
-        rows.append([a.anchor_entity or "—", _client_ref(a), a.company_name, names(a.spoc_id), a.profile_status, _iso(approved),
-                     ", ".join(formation_details_missing(a)) or "None", ageing])
-    rows.sort(key=lambda r: r[7], reverse=True)
+        rows.append([a.anchor_entity or "—", _client_ref(a), a.company_name, names.dept(a.spoc_id), names.tags(a), names(a.spoc_id),
+                     a.profile_status, _iso(approved), ", ".join(formation_details_missing(a)) or "None", ageing])
+    rows.sort(key=lambda r: r[9], reverse=True)
     return {"title": f"Clients under formation, pending {days} days or more after approval" if days else "Clients under formation",
-            "columns": ["Anchor Triam Entity", "Client ID", "Client Name", "Anchor RM", "Status", "Approved on", "Missing Details",
-                        "Ageing from approval (days)"],
+            "columns": ["Anchor Triam Entity", "Client ID", "Client Name", "Department", "Client Tag", "Anchor RM", "Status",
+                        "Approved on", "Missing Details", "Ageing from approval (days)"],
             "rows": rows}
 
 

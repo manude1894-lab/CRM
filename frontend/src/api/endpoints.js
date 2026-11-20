@@ -111,6 +111,9 @@ export const invoicesApi = {
   raise: (id, data) => api.post(`/invoices/${id}/raise`, data).then((r) => r.data),
   paid: (id, data = {}) => api.post(`/invoices/${id}/paid`, data).then((r) => r.data),
   attachments: (id) => api.get(`/invoices/${id}/attachments`).then((r) => r.data),
+  // Triam UAT 19-11-2026: the client form's Invoice for Onboarding Services.
+  onboarding: (accountId) => api.get(`/invoices/onboarding/${accountId}`).then((r) => r.data),
+  saveOnboarding: (accountId, data) => api.put(`/invoices/onboarding/${accountId}`, data).then((r) => r.data),
   attach: (id, file, kind) => {
     const fd = new FormData();
     fd.append("file", file);
@@ -204,6 +207,8 @@ export const reportsApi = {
   standardList: () => api.get("/reports/standard").then((r) => r.data),
   standard: (key, params = {}) => api.get(`/reports/standard/${key}`, { params }).then((r) => r.data),
   onboardingStatuses: () => api.get("/reports/onboarding-statuses").then((r) => r.data),
+  // Triam UAT 19-11-2026: Excel / PDF, for the users the Administrator allows.
+  exportFile: (key, params, format) => api.get(`/reports/standard/${key}/export`, { params: { ...params, format }, responseType: "blob" }),
 };
 
 // ─── System (go-live checks) ───────────────────────────────────────────

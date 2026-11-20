@@ -27,6 +27,7 @@ class UserBase(BaseModel):
     supervisor_id: Optional[int] = None
     business_role_id: Optional[int] = None
     mobile: Optional[str] = None
+    can_export_reports: bool = False  # Excel / PDF downloads of reports (Triam UAT 19-11-2026)
 
     _check_mobile = field_validator("mobile", mode="before")(classmethod(lambda cls, v: _mobile(v)))
 
@@ -47,6 +48,7 @@ class UserUpdate(BaseModel):
     supervisor_id: Optional[int] = None
     business_role_id: Optional[int] = None
     mobile: Optional[str] = None
+    can_export_reports: Optional[bool] = None
 
     _check_mobile = field_validator("mobile", mode="before")(classmethod(lambda cls, v: _mobile(v)))
 

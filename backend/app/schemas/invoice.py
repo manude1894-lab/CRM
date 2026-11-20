@@ -71,6 +71,13 @@ class InvoiceRead(InvoiceBase):
     company_name: Optional[str] = None
     client_id: Optional[str] = None
     attachment_count: int = 0
+    # Triam UAT 19-11-2026: Onboarding / Service Request, and an onboarding invoice's payouts.
+    kind: Optional[str] = None
+    govt_authority_amount: Optional[Decimal] = None
+    govt_authority_currency: Optional[str] = None
+    introducer_involved: Optional[bool] = None
+    introducer_amount: Optional[Decimal] = None
+    introducer_currency: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 
@@ -88,3 +95,26 @@ def invoice_read(inv, db=None) -> "InvoiceRead":
         from app.models import Document
         out.attachment_count = db.query(Document).filter(Document.invoice_id == inv.id, Document.removed_at.is_(None)).count()
     return out
+
+
+class OnboardingInvoiceSave(BaseModel):
+    """The client form's Invoice for Onboarding Services (Triam UAT 19-11-2026). submit=True sends it to Accounts."""
+    wanted: Optional[bool] = None  # "Do you want an invoice raised for onboarding services?"
+    client_amount: Optional[Decimal] = Field(None, ge=0)  # amount payable by the client
+    client_currency: str = "AED"
+    govt_authority_amount: Optional[Decimal] = Field(None, ge=0)  # amount payable to the Regn / Govt Authority
+    govt_authority_currency: str = "AED"
+    introducer_involved: Optional[bool] = None  # is an introducer / referrer involved?
+    introducer_amount: Optional[Decimal] = Field(None, ge=0)
+    introducer_currency: str = "AED"
+    comments: Optional[str] = Field(None, max_length=2000)
+    submit: bool = False
+
+
+class OnboardingInvoiceState(BaseModel):
+    wanted: Optional[bool] = None
+    invoice: Optional[InvoiceRead] = None  # the current onboarding invoice (not cancelled), if any
+    editable: bool = False  # the RM may still change it (not yet with Accounts)
+    can_submit: bool = False
+    why_not: Optional[str] = None  # why it can't be submitted yet
+    currencies: list[str] = []

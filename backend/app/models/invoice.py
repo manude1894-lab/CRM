@@ -4,12 +4,15 @@ RM / Sales request the invoice (instruction to Accounts, pricing approvals attac
 the Invoice No, Date, Currency and Amount and attach the invoice file. One invoice can cover several
 service requests.
 """
-from sqlalchemy import Column, Integer, String, Text, Date, DateTime, Numeric, ForeignKey
+from sqlalchemy import Boolean, Column, Integer, String, Text, Date, DateTime, Numeric, ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 import enum
 
 from app.database import Base
+
+
+ONBOARDING, SERVICE_REQUEST = "Onboarding", "Service Request"  # Invoice.kind
 
 
 class InvoiceLedgerStatus(str, enum.Enum):
@@ -41,6 +44,15 @@ class Invoice(Base):
     paid_date = Column(Date, nullable=True)
 
     notes = Column(Text, nullable=True)
+
+    # Triam UAT 19-11-2026: what the invoice is for, "Onboarding" (the client form's Invoice for Onboarding Services)
+    # or "Service Request"; and, for an onboarding invoice, what Triam pays out of it.
+    kind = Column(String(20), nullable=True, index=True)
+    govt_authority_amount = Column(Numeric(12, 2), nullable=True)
+    govt_authority_currency = Column(String(3), nullable=True)
+    introducer_involved = Column(Boolean, nullable=True)
+    introducer_amount = Column(Numeric(12, 2), nullable=True)
+    introducer_currency = Column(String(3), nullable=True)
 
     cancel_reason = Column(String(500), nullable=True)  # set when cancelled — records are never deleted
     created_at = Column(DateTime(timezone=True), server_default=func.now())

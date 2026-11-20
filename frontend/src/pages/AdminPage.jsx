@@ -156,7 +156,7 @@ export default function AdminPage() {
     <div className="space-y-6">
       <PageHeader title="Administration"
         actions={<>
-{tab === "users" && <button onClick={() => { setForm({ name: "", email: "", password: "", role: "rm", is_active: true, department_id: "", title: "", mobile: "", supervisor_id: "", business_role_id: "" }); setAddon(BLANK_ADDON); setModal("new"); }}
+{tab === "users" && <button onClick={() => { setForm({ name: "", email: "", password: "", role: "rm", is_active: true, department_id: "", title: "", mobile: "", supervisor_id: "", business_role_id: "", can_export_reports: false }); setAddon(BLANK_ADDON); setModal("new"); }}
           className="px-3 py-2 text-sm text-white rounded-lg font-medium flex items-center gap-1.5 hover:opacity-90" style={{ background: "#1a3a5c" }}>
           <Icon name="plus" size={14} /> Add User
         </button>}
@@ -341,6 +341,13 @@ export default function AdminPage() {
               <option value="false">Inactive</option>
             </Select>
           </Field>
+          {/* Triam UAT 19-11-2026: the Administrator decides who may download reports as Excel / PDF. */}
+          <label className="flex items-start gap-2 text-sm text-gray-700 mb-3">
+            <input type="checkbox" className="mt-0.5" disabled={form.role === "admin"}
+              checked={form.role === "admin" || !!form.can_export_reports}
+              onChange={(e) => setForm((p) => ({ ...p, can_export_reports: e.target.checked }))} />
+            <span>Can export reports (Excel / PDF){form.role === "admin" && <span className="text-xs text-gray-500"> · always, as an Administrator</span>}</span>
+          </label>
           {/* Triam 29-10-2026: another role for the same person is an add-on login with its own email and
               password; signed in with one login, the person sees the others at the top and can switch. */}
           {modal === "edit" && !form.person_id ? (
