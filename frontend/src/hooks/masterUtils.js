@@ -43,3 +43,12 @@ export function oneTimeServices(items = [], entities = []) {
 // The Triam entities that offer at least one one-time service: the only ones a one-time client may have.
 export const oneTimeEntityCodes = (items = []) =>
   [...new Set(items.filter((i) => i.is_active !== false).flatMap(oneTimeEntitiesOf))];
+
+// Triam 20-11-2026: services chosen that the client's Triam entities don't offer (left over after the entity was
+// changed). Same rule as the server's entity_service_problems, which refuses them at Submit.
+export function servicesNotOffered(items = [], entities = [], sought = []) {
+  if (!entities.filter(Boolean).length) return [];
+  const offered = new Set(servicesForEntities(items, entities).map((i) => i.code));
+  const known = new Set(items.map((i) => i.code));
+  return (sought || []).filter((s) => known.has(s) && !offered.has(s));
+}

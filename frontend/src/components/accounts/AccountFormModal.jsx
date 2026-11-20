@@ -25,7 +25,7 @@ import MobileNumberInput from "../MobileNumberInput";
 import VatCertificateField from "./VatCertificateField";
 import { addDays, later, latestAdultBirth, earliestBirth, taxNumber, taxNumberHint } from "../../utils/dateRules";
 import { useMasters } from "../../hooks/useMasters";
-import { selectableCodes, servicesForEntities, oneTimeServices, oneTimeEntityCodes } from "../../hooks/masterUtils";
+import { selectableCodes, servicesForEntities, servicesNotOffered, oneTimeServices, oneTimeEntityCodes } from "../../hooks/masterUtils";
 import { cleanPassport, passportProblem } from "../../utils/passport";
 import OnboardingInvoicePanel from "./OnboardingInvoicePanel";
 
@@ -206,6 +206,8 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
   const serviceOptions = (forEntities) => alphabetical(selectableCodes(
     oneTime ? oneTimeServices(services.items, clientEntities) : forEntities ? servicesForEntities(services.items, clientEntities) : services.items,
     form.nature_of_services_sought));
+  // Triam 20-11-2026: services left over after the entity changed (corporate clients pick from their entities' services).
+  const notOffered = isIndividual ? [] : servicesNotOffered(services.items, clientEntities, form.nature_of_services_sought);
   const oneTimeEntities = oneTimeEntityCodes(services.items);
   const entityOptions = (held) => selectableCodes(entities.items, held)
     .filter((c) => !oneTime || oneTimeEntities.includes(c) || (Array.isArray(held) ? held : [held]).includes(c));
@@ -336,6 +338,38 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
           </div>
         )}
         <fieldset disabled={locked} className="min-w-0">
+        {/* Triam 20-11-2026 (S T Krishna): the onboarding form begins with the Triam entities, then the RMs. The
+            entities decide the services offered below, the Client ID prefix and the offshore rules. */}
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Anchor Triam Entity" required={req("anchor_entity")}>
+            <Select value={form.anchor_entity || ""} onChange={(e) => setForm({ ...form, anchor_entity: e.target.value, non_anchor_entities: (form.non_anchor_entities || []).filter((x) => x !== e.target.value) })}>
+              <option value="">— select —</option>
+              {entityOptions(form.anchor_entity).map((t) => <option key={t} value={t}>{entities.labelOf(t)}</option>)}
+            </Select>
+            {form._client_id && saved.anchor_entity && form.anchor_entity !== saved.anchor_entity && (
+              <p className="text-[11px] text-amber-700 mt-1">The Client ID {form._client_id} stays as it is: a Client ID never changes, even when the Anchor Entity does.</p>
+            )}
+          </Field>
+          <Field label="Non-anchor Entities">
+            <MultiSelect options={entityOptions(form.non_anchor_entities).filter((t) => t !== form.anchor_entity)} value={form.non_anchor_entities} onChange={setValue("non_anchor_entities")} />
+          </Field>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Anchor RM (SPOC)" required={req("spoc_id")}>
+            <Select value={form.spoc_id || ""} onChange={(e) => setForm({ ...form, spoc_id: e.target.value, non_anchor_rm_ids: (form.non_anchor_rm_ids || []).filter((id) => id !== +e.target.value) })}>
+              <option value="">— None —</option>
+              {rms.map((u) => <option key={u.id} value={u.id}>{personLabel(u, rms)}</option>)}
+            </Select>
+          </Field>
+          <Field label="Non-anchor RMs">
+            <MultiSelect
+              options={rms.filter((u) => u.id !== +form.spoc_id).map((u) => u.id)}
+              getLabel={(id) => personLabel(users.find((u) => u.id === id), rms)}
+              value={form.non_anchor_rm_ids}
+              onChange={setValue("non_anchor_rm_ids")}
+              searchPlaceholder="Search RMs…" />
+          </Field>
+        </div>
         <Field label="Client Type">
           <Select value={form.account_type} onChange={set("account_type")}>
             <option>Corporate</option>
@@ -382,6 +416,11 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
             </div>
             <Field label="Nature of Services sought" required={req("nature_of_services_sought")}>
               <MultiSelect options={serviceOptions(true)} value={form.nature_of_services_sought} onChange={setValue("nature_of_services_sought")} />
+              {!oneTime && notOffered.length > 0 && (
+                <p className="text-[11px] text-red-600 mt-1">
+                  Not offered by {clientEntities.filter(Boolean).join(" / ")}: {notOffered.map((s) => services.labelOf(s)).join(", ")}. Untick {notOffered.length === 1 ? "it" : "them"}, or add the Triam entity that offers {notOffered.length === 1 ? "it" : "them"}.
+                </p>
+              )}
             </Field>
             {oneTimeNote}
           </>
@@ -389,32 +428,6 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
         <Field label="Single Point of Contact (Client Contact Name)">
           <Input value={form.single_point_of_contact} onChange={set("single_point_of_contact")} placeholder="e.g. Jane Doe" />
         </Field>
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Anchor RM (SPOC)" required={req("spoc_id")}>
-            <Select value={form.spoc_id || ""} onChange={(e) => setForm({ ...form, spoc_id: e.target.value, non_anchor_rm_ids: (form.non_anchor_rm_ids || []).filter((id) => id !== +e.target.value) })}>
-              <option value="">— None —</option>
-              {rms.map((u) => <option key={u.id} value={u.id}>{personLabel(u, rms)}</option>)}
-            </Select>
-          </Field>
-          <Field label="Non-anchor RMs">
-            <MultiSelect
-              options={rms.filter((u) => u.id !== +form.spoc_id).map((u) => u.id)}
-              getLabel={(id) => personLabel(users.find((u) => u.id === id), rms)}
-              value={form.non_anchor_rm_ids}
-              onChange={setValue("non_anchor_rm_ids")} />
-          </Field>
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Anchor Triam Entity" required={req("anchor_entity")}>
-            <Select value={form.anchor_entity || ""} onChange={(e) => setForm({ ...form, anchor_entity: e.target.value, non_anchor_entities: (form.non_anchor_entities || []).filter((x) => x !== e.target.value) })}>
-              <option value="">— select —</option>
-              {entityOptions(form.anchor_entity).map((t) => <option key={t} value={t}>{entities.labelOf(t)}</option>)}
-            </Select>
-          </Field>
-          <Field label="Non-anchor Entities">
-            <MultiSelect options={entityOptions(form.non_anchor_entities).filter((t) => t !== form.anchor_entity)} value={form.non_anchor_entities} onChange={setValue("non_anchor_entities")} />
-          </Field>
-        </div>
         {!isIndividual && (
           <div className="grid grid-cols-2 gap-3">
             <Field label="Incorporation Certificate No." required={req("registration_number")}>

@@ -441,18 +441,41 @@ export const SelectWithOther = ({ value, onChange, options, otherValue, onOtherC
   );
 };
 
-export const MultiSelect = ({ options, value, onChange, getLabel = (opt) => opt }) => {
+// A list longer than this gets a search box (Triam 20-11-2026: the Non-anchor RMs list keeps growing).
+export const MULTISELECT_SEARCH_FROM = 8;
+
+// The options to show: ticked ones first (in their order), then the rest; filtered by the search text.
+export const multiSelectRows = (options, selected, getLabel, query) => {
+  const q = (query || "").trim().toLowerCase();
+  const matches = (opt) => !q || String(getLabel(opt) ?? "").toLowerCase().includes(q);
+  return [...options.filter((o) => selected.includes(o)), ...options.filter((o) => !selected.includes(o))].filter(matches);
+};
+
+export const MultiSelect = ({ options, value, onChange, getLabel = (opt) => opt, searchPlaceholder = "Search…" }) => {
+  const [query, setQuery] = React.useState("");
   const selected = value || [];
   const toggle = (opt) => {
     onChange(selected.includes(opt) ? selected.filter((o) => o !== opt) : [...selected, opt]);
   };
+  const searchable = options.length > MULTISELECT_SEARCH_FROM;
+  const rows = searchable ? multiSelectRows(options, selected, getLabel, query) : options;
   return (
-    <div className="w-full border border-gray-200 rounded-lg px-3 py-2 max-h-40 overflow-y-auto space-y-1">
-      {options.map((opt) => (
-        <label key={opt} className="flex items-center gap-2 text-xs text-gray-700">
-          <input type="checkbox" checked={selected.includes(opt)} onChange={() => toggle(opt)} /> {getLabel(opt)}
-        </label>
-      ))}
+    <div className="w-full border border-gray-200 rounded-lg">
+      {searchable && (
+        <div className="px-2 pt-2">
+          <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder={searchPlaceholder}
+            aria-label={searchPlaceholder} className="w-full border border-gray-200 rounded-md px-2 py-1 text-xs focus:outline-none focus:border-brand-400" />
+          {selected.length > 0 && <div className="text-[10px] text-gray-500 mt-1">{selected.length} selected</div>}
+        </div>
+      )}
+      <div className="px-3 py-2 max-h-40 overflow-y-auto space-y-1">
+        {rows.map((opt) => (
+          <label key={opt} className="flex items-center gap-2 text-xs text-gray-700">
+            <input type="checkbox" checked={selected.includes(opt)} onChange={() => toggle(opt)} /> {getLabel(opt)}
+          </label>
+        ))}
+        {searchable && rows.length === 0 && <div className="text-xs text-gray-400">No match</div>}
+      </div>
     </div>
   );
 };
