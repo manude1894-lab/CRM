@@ -363,6 +363,157 @@ def onboarding_in_progress(db: Session, user: User, date_from: Optional[date] = 
                       " · ".join(x for x in (a.status_reason_code, a.status_reason) if x) or "—"] for d, a in picked]}
 
 
+# ─── Triam UAT 19-11-2026: amendments, invoices and service requests (rows 155-176) ─────────────────────
+
+class Filters:
+    """The filters Triam asked for on the new reports: Triam Anchor Entity, Department, Client Tag, Anchor RM."""
+    def __init__(self, entity: Optional[str] = None, department_id: Optional[int] = None, tag: Optional[str] = None,
+                 rm_id: Optional[int] = None):
+        self.entity, self.department_id, self.tag, self.rm_id = entity or None, department_id or None, tag or None, rm_id or None
+
+    def passes(self, db: Session, a: Account) -> bool:
+        if self.entity and a.anchor_entity != self.entity:
+            return False
+        if self.rm_id and a.spoc_id != self.rm_id:
+            return False
+        if self.tag and self.tag not in [t.strip() for t in (a.tags or "").split(",")]:
+            return False
+        return _in_department(db, a, self.department_id)
+
+
+def _within(d: Optional[date], date_from: Optional[date], date_to: Optional[date]) -> bool:
+    return d is not None and not ((date_from and d < date_from) or (date_to and d > date_to))
+
+
+def _authority(a: Account) -> str:
+    return (a.licensing_authority_other if a.licensing_authority == "Other" else a.licensing_authority) or "—"
+
+
+def _blank(v) -> str:
+    return "—" if v in (None, "") else str(v)
+
+
+def amendments_report(db: Session, user: User, date_from=None, date_to=None, f: "Filters" = None) -> dict:
+    """Clients Static Data Amendments (row 156): every approved amendment, one line per field changed, with the
+    value before and after. Dated by the approval; latest first."""
+    from app.services import amendment_service
+    f, names = f or Filters(), _Names(db)
+    visible = {a.id: a for a in _accounts(db, user) if f.passes(db, a)}
+    reqs = (db.query(ApprovalRequest).filter(ApprovalRequest.request_type == amendment_service.TYPE,
+                                             ApprovalRequest.status == ApprovalStatus.APPROVED.value,
+                                             ApprovalRequest.account_id.in_(list(visible) or [-1]))
+            .order_by(ApprovalRequest.decided_at.desc(), ApprovalRequest.id.desc()).all())
+    rows = []
+    for r in reqs:
+        approved = _local_date(r.decided_at) if r.decided_at else None
+        if (date_from or date_to) and not _within(approved, date_from, date_to):
+            continue
+        a = visible[r.account_id]
+        head = [a.anchor_entity or "—", _client_ref(a), names.tags(a), a.company_name, names(a.spoc_id),
+                _iso(_local_date(r.submitted_at)) if r.submitted_at else None, names(r.maker_id), names(r.checker_id), _iso(approved)]
+        changes = r.changes or {}
+        lines = [("Client", c.get("label") or c.get("field"), c.get("old"), c.get("new")) for c in changes.get("account", [])]
+        for p in changes.get("parties", []):
+            who = f"{p.get('name') or '—'} ({p.get('role') or '—'})"
+            action = p.get("action")
+            if action == "removed":
+                lines.append((who, "Person removed", None, None))
+            elif action == "added" and not p.get("changes"):
+                lines.append((who, "Person added", None, None))
+            for c in p.get("changes", []):
+                lines.append((who + (", added" if action == "added" else ""), c.get("label") or c.get("field"), c.get("old"), c.get("new")))
+        for where, field, old, new in lines or [("—", "—", None, None)]:
+            rows.append([*head, where, field, _blank(old), _blank(new)])
+    return {"title": f"Clients static data amendments ({_period(date_from, date_to)})",
+            "columns": ["Anchor Triam Entity", "Client ID", "Client Tag", "Client Name", "Anchor RM", "Amendment done on", "Amended by",
+                        "Approved by", "Approved on", "Record", "Field", "Previous", "New"],
+            "rows": rows}
+
+
+def _invoices(db: Session, user: User, f: "Filters", kind: Optional[str] = None):
+    from app.models import Invoice
+    visible = {a.id: a for a in _accounts(db, user) if f.passes(db, a)}
+    q = db.query(Invoice).filter(Invoice.account_id.in_(list(visible) or [-1]), Invoice.requested_at.isnot(None),
+                                 Invoice.status != "Cancelled")
+    if kind:
+        q = q.filter(Invoice.kind == kind)
+    return [(inv, visible[inv.account_id]) for inv in q.order_by(Invoice.requested_at.desc(), Invoice.id.desc()).all()]
+
+
+INVOICE_COLUMNS = ["Date Request raised", "PROS ID", "Client ID", "Client Name", "Client Tag", "Regn Authority", "CUR", "AMOUNT",
+                   "Invoice Raised on", "Invoice No.", "Status"]
+
+
+def _invoice_row(inv, a: Account, names: _Names) -> list:
+    return [_iso(_local_date(inv.requested_at)), _pros_id(a), a.client_id or "—", a.company_name, names.tags(a), _authority(a),
+            inv.currency, float(inv.amount or 0), _iso(inv.raised_date), inv.invoice_number or "—", inv.status]
+
+
+def invoices_report(db: Session, user: User, kind: str, date_from=None, date_to=None, f: "Filters" = None) -> dict:
+    """Onboarding Services / Service Request Invoice reports (rows 162, 166): requests sent to Accounts in the
+    period, by the date the request was raised; latest first."""
+    f, names = f or Filters(), _Names(db)
+    rows = [_invoice_row(inv, a, names) for inv, a in _invoices(db, user, f, kind)
+            if not (date_from or date_to) or _within(_local_date(inv.requested_at), date_from, date_to)]
+    title = "Onboarding services invoices" if kind == "Onboarding" else "Service request invoices"
+    return {"title": f"{title} ({_period(date_from, date_to)})", "columns": INVOICE_COLUMNS, "rows": rows}
+
+
+REQUEST_TYPES = ("Onboarding", "Service Request")
+
+
+def invoices_pending(db: Session, user: User, date_from=None, date_to=None, request_type: Optional[str] = None,
+                     f: "Filters" = None) -> dict:
+    """Raising Invoices Pending (row 170): requests with Accounts not yet raised as an invoice; longest waiting first."""
+    if request_type and request_type not in REQUEST_TYPES:
+        raise HTTPException(status_code=400, detail=f"Request Type must be one of {', '.join(REQUEST_TYPES)}")
+    f, names, today = f or Filters(), _Names(db), _today()
+    rows = []
+    for inv, a in _invoices(db, user, f, request_type):
+        if inv.status != "Requested":
+            continue
+        raised_on = _local_date(inv.requested_at)
+        if (date_from or date_to) and not _within(raised_on, date_from, date_to):
+            continue
+        rows.append([_iso(raised_on), inv.kind or "—", _client_ref(a), a.company_name, names.tags(a), _authority(a), inv.currency,
+                     float(inv.amount or 0), None, (today - raised_on).days])
+    rows.sort(key=lambda r: r[9], reverse=True)
+    return {"title": f"Raising invoices pending ({request_type or 'all requests'})",
+            "columns": ["Date Request raised", "Request Type", "PROS ID / CLIENT ID", "Client Name", "Client Tag", "Regn Authority",
+                        "CUR", "AMOUNT", "Invoice Raised on", "Days pending"],
+            "rows": rows}
+
+
+def service_requests_ageing(db: Session, user: User, date_from=None, date_to=None, sr_type: Optional[str] = None,
+                            f: "Filters" = None) -> dict:
+    """Service Requests Status, Ageing (row 174): each request with its status and age; latest first. Ageing runs
+    from the date the request was raised to its completion, or to today while open."""
+    from app.models import Instruction
+    from app.services import master_service
+    f, names, today = f or Filters(), _Names(db), _today()
+    type_labels = {i.code: i.label for i in master_service.list_items(db, "service_request_type", include_inactive=True)}
+    visible = {a.id: a for a in _accounts(db, user) if f.passes(db, a)}
+    q = db.query(Instruction).filter(Instruction.account_id.in_(list(visible) or [-1]))
+    if sr_type:
+        q = q.filter(Instruction.instruction_type == sr_type)
+    rows = []
+    for inst in q.all():
+        raised = inst.date_received or (_local_date(inst.created_at) if inst.created_at else None)
+        if (date_from or date_to) and not _within(raised, date_from, date_to):
+            continue
+        a = visible[inst.account_id]
+        end = inst.date_completed or today
+        kind = (inst.other_description if inst.instruction_type == "Other" and inst.other_description
+                else type_labels.get(inst.instruction_type, inst.instruction_type))
+        rows.append([_iso(raised), kind, a.anchor_entity or "—", _client_ref(a), a.company_name, names.tags(a), names(a.spoc_id),
+                     inst.status, _iso(inst.date_completed), (end - raised).days if raised else "—"])
+    rows.sort(key=lambda r: (r[0] or ""), reverse=True)
+    return {"title": f"Service requests status and ageing ({_period(date_from, date_to)})",
+            "columns": ["Date Request raised", "Request Type", "Anchor Triam Entity", "CLIENT ID", "Client Name", "Client Tag", "Anchor RM",
+                        "Status", "Completed on", "Ageing (days)"],
+            "rows": rows}
+
+
 REPORTS = {
     "onboarding-approved": "Client onboarding: approved (date range)",
     "onboarding-in-progress": "Client onboarding: other than approved (date range, status)",
@@ -375,13 +526,65 @@ REPORTS = {
     "prospects-assigned": "Prospects assigned for a period",
     "prospects-unassigned": "Unassigned prospects (ageing)",
     "rejected-with-rm": "Clients in Rejected status (ageing)",
+    "amendments": "Clients static data amendments",
+    "invoices-onboarding": "Onboarding services invoices",
+    "invoices-service-requests": "Service request invoices",
+    "invoices-pending": "Raising invoices pending",
+    "service-requests-ageing": "Service requests status and ageing",
 }
 
 
+# Triam UAT 19-11-2026: who may run these reports (Administrators always may). The amendments report is for
+# Compliance (CO) and the Approver; the invoice and service request reports for the Accountant (invoice.manage) and
+# the Sales Manager (a role seeing its department's clients, view.department_clients).
+def _compliance_or_approver(user: User) -> bool:
+    from app.auth.permissions import has_permission
+    return has_permission(user, "client.approve") or has_permission(user, "client.final_approve")
+
+
+def _accounts_or_sales_manager(user: User) -> bool:
+    from app.auth.permissions import has_permission
+    return has_permission(user, "invoice.manage") or has_permission(user, "view.department_clients")
+
+
+RESTRICTED = {
+    "amendments": _compliance_or_approver,
+    "invoices-onboarding": _accounts_or_sales_manager,
+    "invoices-service-requests": _accounts_or_sales_manager,
+    "invoices-pending": _accounts_or_sales_manager,
+    "service-requests-ageing": _accounts_or_sales_manager,
+}
+
+
+def may_run(user: User, key: str) -> bool:
+    from app.models import UserRole
+    rule = RESTRICTED.get(key)
+    return rule is None or user.role == UserRole.ADMIN or rule(user)
+
+
+def available(user: User) -> dict:
+    return {k: t for k, t in REPORTS.items() if may_run(user, k)}
+
+
 def run(db: Session, user: User, key: str, days: Optional[int] = None, date_from: Optional[date] = None,
-        date_to: Optional[date] = None, status: Optional[str] = None, department_id: Optional[int] = None) -> dict:
+        date_to: Optional[date] = None, status: Optional[str] = None, department_id: Optional[int] = None,
+        entity: Optional[str] = None, tag: Optional[str] = None, rm_id: Optional[int] = None,
+        request_type: Optional[str] = None, sr_type: Optional[str] = None) -> dict:
     if days is not None and not 0 <= days <= 3650:
         raise HTTPException(status_code=400, detail="Days must be between 0 and 3650")
+    if key in REPORTS and not may_run(user, key):
+        raise HTTPException(status_code=403, detail="This report isn't available to your role")
+    f = Filters(entity, department_id, tag, rm_id)
+    if key == "amendments":
+        return amendments_report(db, user, date_from, date_to, f)
+    if key == "invoices-onboarding":
+        return invoices_report(db, user, "Onboarding", date_from, date_to, f)
+    if key == "invoices-service-requests":
+        return invoices_report(db, user, "Service Request", date_from, date_to, f)
+    if key == "invoices-pending":
+        return invoices_pending(db, user, date_from, date_to, request_type, f)
+    if key == "service-requests-ageing":
+        return service_requests_ageing(db, user, date_from, date_to, sr_type, f)
     if key == "onboarding-approved":
         return onboarding_approved(db, user, date_from, date_to, department_id)
     if key == "onboarding-in-progress":

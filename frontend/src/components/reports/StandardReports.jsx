@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { departmentsApi, reportsApi } from "../../api/endpoints";
+import { departmentsApi, reportsApi, usersApi } from "../../api/endpoints";
+import { useMasters } from "../../hooks/useMasters";
 import { Button, DateInput, Field, Input, Select, Spinner } from "../ui";
 import { fmtDate } from "../../utils/constants";
 import { toast } from "../../store/toast";
@@ -10,8 +11,12 @@ const show = (v) => (typeof v === "string" && ISO_DATE.test(v) ? fmtDate(v) : v 
 // Which inputs each report takes (Triam UAT 18-11-2026: the user picks the days, the dates and the status).
 const TAKES_DAYS = { "documents-expiring": "Within (days)", "aml-reviews-due": "Due within (days)",
   "under-formation": "Pending at least (days, 0 = all)" };
-const TAKES_DATES = ["prospects-assigned", "onboarding-approved", "onboarding-in-progress"];
-const BY_DEPARTMENT = ["onboarding-approved", "onboarding-in-progress"];
+// Triam UAT 19-11-2026: the amendments, invoice and service request reports filter by Triam Anchor Entity,
+// Department, Client Tag, Anchor RM and date range (plus request type / service request type).
+const CLIENT_FILTERS = ["amendments", "invoices-onboarding", "invoices-service-requests", "invoices-pending", "service-requests-ageing"];
+const TAKES_DATES = ["prospects-assigned", "onboarding-approved", "onboarding-in-progress", ...CLIENT_FILTERS];
+const BY_DEPARTMENT = ["onboarding-approved", "onboarding-in-progress", ...CLIENT_FILTERS];
+const REQUEST_TYPES = ["Onboarding", "Service Request"];
 
 /** BRD §20a — the standard reports, shown on screen and downloaded as Excel or PDF by the users the
  * Administrator allows (Triam UAT 19-11-2026). */
@@ -20,9 +25,15 @@ export default function StandardReports() {
   const [exporting, setExporting] = useState(null);
   const [list, setList] = useState([]);
   const [key, setKey] = useState("onboarding-in-progress");
-  const [params, setParams] = useState({ days: 30, date_from: "", date_to: "", status: "", department_id: "" });
+  const [params, setParams] = useState({ days: 30, date_from: "", date_to: "", status: "", department_id: "",
+    entity: "", tag: "", rm_id: "", request_type: "", sr_type: "" });
   const [statuses, setStatuses] = useState([]);
   const [departments, setDepartments] = useState([]);
+  const [rms, setRms] = useState([]);
+  const entities = useMasters("triam_entity", []);
+  const tags = useMasters("tag", []);
+  const srTypes = useMasters("service_request_type", []);
+  const setParam = (k) => (e) => setParams((p) => ({ ...p, [k]: e.target.value }));
   const [report, setReport] = useState(null);
   const [busy, setBusy] = useState(false);
 
@@ -30,6 +41,8 @@ export default function StandardReports() {
     reportsApi.standardList().then(setList).catch(() => setList([]));
     reportsApi.onboardingStatuses().then(setStatuses).catch(() => setStatuses([]));
     departmentsApi.list().then((d) => setDepartments(d.filter((x) => x.is_active !== false))).catch(() => setDepartments([]));
+    usersApi.list().then((u) => setRms(u.filter((x) => x.is_active && x.handles_clients && x.role !== "admin" && !x.person_id)
+      .sort((a, b) => a.name.localeCompare(b.name)))).catch(() => setRms([]));
   }, []);
   const paramsFor = (k) => {
     const p = {};
@@ -37,6 +50,11 @@ export default function StandardReports() {
     if (TAKES_DATES.includes(k)) Object.assign(p, { date_from: params.date_from || undefined, date_to: params.date_to || undefined });
     if (k === "onboarding-in-progress" && params.status) p.status = params.status;
     if (BY_DEPARTMENT.includes(k) && params.department_id) p.department_id = params.department_id;
+    if (CLIENT_FILTERS.includes(k)) {
+      for (const f of ["entity", "tag", "rm_id"]) if (params[f]) p[f] = params[f];
+      if (k === "invoices-pending" && params.request_type) p.request_type = params.request_type;
+      if (k === "service-requests-ageing" && params.sr_type) p.sr_type = params.sr_type;
+    }
     return p;
   };
   const run = async (k = key) => {
@@ -100,6 +118,34 @@ export default function StandardReports() {
             <div className="w-48"><Field label="Department"><Select value={params.department_id} onChange={(e) => setParams((p) => ({ ...p, department_id: e.target.value }))}>
               <option value="">All I can see</option>
               {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+            </Select></Field></div>
+          )}
+          {CLIENT_FILTERS.includes(key) && (
+            <>
+              <div className="w-44"><Field label="Triam Anchor Entity"><Select value={params.entity} onChange={setParam("entity")}>
+                <option value="">All</option>
+                {entities.items.map((i) => <option key={i.code} value={i.code}>{i.label}</option>)}
+              </Select></Field></div>
+              <div className="w-44"><Field label="Client Tag"><Select value={params.tag} onChange={setParam("tag")}>
+                <option value="">All</option>
+                {tags.items.map((i) => <option key={i.code} value={i.code}>{i.label}</option>)}
+              </Select></Field></div>
+              <div className="w-48"><Field label="Anchor RM"><Select value={params.rm_id} onChange={setParam("rm_id")}>
+                <option value="">All</option>
+                {rms.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+              </Select></Field></div>
+            </>
+          )}
+          {key === "invoices-pending" && (
+            <div className="w-44"><Field label="Request Type"><Select value={params.request_type} onChange={setParam("request_type")}>
+              <option value="">All</option>
+              {REQUEST_TYPES.map((t) => <option key={t}>{t}</option>)}
+            </Select></Field></div>
+          )}
+          {key === "service-requests-ageing" && (
+            <div className="w-56"><Field label="Service Request Type"><Select value={params.sr_type} onChange={setParam("sr_type")}>
+              <option value="">All</option>
+              {srTypes.items.map((i) => <option key={i.code} value={i.code}>{i.label}</option>)}
             </Select></Field></div>
           )}
           {(TAKES_DAYS[key] || TAKES_DATES.includes(key) || BY_DEPARTMENT.includes(key)) && <div className="mb-4"><Button onClick={() => run()}>Run</Button></div>}
