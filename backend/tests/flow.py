@@ -9,6 +9,10 @@ from app.schemas.account_party import AccountPartyCreate
 from app.services import account_service, account_party_service, client_workflow_service as wf
 
 
+# An individual person's passport, required at Submit (Triam 20-11-2026): AccountPartyCreate(..., **flow.PASSPORT).
+PASSPORT = {"passport_number": "N1234567", "id_or_license_expiry": date(2031, 6, 30)}
+
+
 def submit(db, acc, user, comment="Client documents collected and checked"):
     return wf.submit(db, acc, user, comment, True)
 
@@ -53,12 +57,13 @@ def complete_client(db, maker, with_document=True):
         party_role="Shareholder", country_of_residence="United Arab Emirates", nationality="United Arab Emirates", full_name="Jane Owner", mobile_country_code="+971", mobile_number="501234567", country_of_incorp_or_birth="India",
         residential_address={"line1": "Villa 12, Street 4", "city": "Dubai"},
         email="jane@example.com", effective_ownership_percent=Decimal("100"),
+        passport_number="N1234567", id_or_license_expiry=date(2031, 6, 30),  # Triam 20-11-2026
     ), maker)
     if with_document:
         add_document(db, acc, maker)
         db.refresh(acc)
         for party in acc.parties:
-            add_document(db, acc, maker, filename="passport.pdf", party_id=party.id)
+            add_document(db, acc, maker, filename="passport.pdf", party_id=party.id, category="PASSPORT")
     db.refresh(acc)
     assert with_document is False or account_service.missing_mandatory(acc) == []
     return acc
@@ -66,8 +71,8 @@ def complete_client(db, maker, with_document=True):
 
 def add_document(db, acc, user, **fields):
     """A supporting document filed on the client: at least one is needed to submit (UAT-02)."""
-    fields = {"filename": "licence.pdf", **fields}
-    doc = Document(account_id=acc.id, category="Other", content_type="application/pdf",
+    fields = {"filename": "licence.pdf", "category": "Other", **fields}
+    doc = Document(account_id=acc.id, content_type="application/pdf",
                    size_bytes=8, content=b"%PDF-1.4", uploaded_by_id=user.id, **fields)
     db.add(doc)
     db.commit()

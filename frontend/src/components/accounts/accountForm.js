@@ -21,7 +21,7 @@ export const BLANK_ACCOUNT_FORM = {
   aml_classification: "", edd_reason: "", cdd_completion_date: "", kyc_verified_by: "",
   screening_date: "",
   is_pep: false,
-  date_of_birth: "", country_of_birth: "", nationality: "", passport_expiry_date: "", country_of_residence: "",
+  date_of_birth: "", country_of_birth: "", nationality: "", passport_number: "", passport_expiry_date: "", country_of_residence: "",
   residential_address: { ...BLANK_ADDRESS },
   individual_mobile_country_code: "+971", individual_mobile_number: "",
   individual_email: "", uae_visa_number: "", uae_visa_expiry: "", nature_of_services_sought: [],
@@ -47,7 +47,7 @@ export const SECTION_FIELDS = {
   operatingAddress: ["operating_address"],
   tax: ["trn_vat_number", "financial_year_end", "corp_tax_registered", "corp_tax_registration_number"],
   individual: [
-    "date_of_birth", "country_of_birth", "nationality", "passport_expiry_date",
+    "date_of_birth", "country_of_birth", "nationality", "passport_number", "passport_expiry_date",
     "country_of_residence", "residential_address",
     "individual_mobile_country_code", "individual_mobile_number", "individual_email",
     "uae_visa_number", "uae_visa_expiry", "nature_of_services_sought", "is_pep",
@@ -91,7 +91,7 @@ export function isOffshore(form) {
 export function mandatoryFields(form) {
   const on = (condition, ...fields) => (condition ? fields : []);
   if (form.account_type === "Individual") {
-    return new Set([...ALWAYS_MANDATORY, "date_of_birth", "passport_expiry_date", "country_of_birth", "nationality", "country_of_residence",
+    return new Set([...ALWAYS_MANDATORY, "date_of_birth", "passport_number", "passport_expiry_date", "country_of_birth", "nationality", "country_of_residence",
       "individual_mobile_number", "individual_mobile_country_code", "individual_email", "nature_of_services_sought", "residential_address",
       "is_one_time_service", ...on(form.engagement_letter_signed, "engagement_letter_valid_until")]);
   }
@@ -139,7 +139,7 @@ export function accountToForm(a) {
     next_aml_review_date: a.next_aml_review_date || null,
     is_pep: !!a.is_pep,
     date_of_birth: a.date_of_birth || "", country_of_birth: a.country_of_birth || "", nationality: a.nationality || "",
-    passport_expiry_date: a.passport_expiry_date || "", country_of_residence: a.country_of_residence || "",
+    passport_number: a.passport_number || "", passport_expiry_date: a.passport_expiry_date || "", country_of_residence: a.country_of_residence || "",
     residential_address: { ...BLANK_ADDRESS, ...(a.residential_address || {}) },
     individual_mobile_country_code: a.individual_mobile_country_code || "",
     individual_mobile_number: a.individual_mobile_number || "", individual_email: a.individual_email || "",

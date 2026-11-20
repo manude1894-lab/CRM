@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field, ConfigDict, field_validator
 from typing import Literal, Optional
 from datetime import date, datetime
 from app.schemas.phone import MobilePairRules, number_validator
+from app.schemas.identity import passport_validator
 
 
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
@@ -142,6 +143,7 @@ class AccountImportRow(BaseModel):
     date_of_birth: Optional[date] = None
     country_of_birth: Optional[str] = None
     nationality: Optional[str] = None
+    passport_number: Optional[str] = None
     passport_expiry_date: Optional[date] = None
     screening_date: Optional[date] = None
     country_of_residence: Optional[str] = None
@@ -256,6 +258,7 @@ class AccountBase(_ClientFieldRules):
     date_of_birth: Optional[date] = None
     country_of_birth: Optional[str] = None
     nationality: Optional[str] = None
+    passport_number: Optional[str] = None
     passport_expiry_date: Optional[date] = None
     screening_date: Optional[date] = None
     country_of_residence: Optional[str] = None
@@ -287,6 +290,7 @@ class AccountCreate(AccountBase, MobilePairRules):
     MOBILE_PAIRS = (("contact_mobile_country_code", "contact_mobile_number"),
                     ("individual_mobile_country_code", "individual_mobile_number"))
     _mobile_digits = number_validator("contact_mobile_number", "individual_mobile_number")
+    _passport = passport_validator("passport_number")  # Triam 20-11-2026
     prospect_id: Optional[int] = None  # BRD §4A — the prospect this client is created from
     # BRD §3 duplicate exception — only honoured for users with client.approve.
     allow_duplicate: bool = False
@@ -298,6 +302,7 @@ class AccountUpdate(_ClientFieldRules, MobilePairRules):
     MOBILE_PAIRS = (("contact_mobile_country_code", "contact_mobile_number"),
                     ("individual_mobile_country_code", "individual_mobile_number"))
     _mobile_digits = number_validator("contact_mobile_number", "individual_mobile_number")
+    _passport = passport_validator("passport_number")  # Triam 20-11-2026
     PARTIAL = True
     account_type: Optional[str] = None
     search_name: Optional[str] = Field(None, max_length=120)
@@ -353,6 +358,7 @@ class AccountUpdate(_ClientFieldRules, MobilePairRules):
     date_of_birth: Optional[date] = None
     country_of_birth: Optional[str] = None
     nationality: Optional[str] = None
+    passport_number: Optional[str] = None
     passport_expiry_date: Optional[date] = None
     screening_date: Optional[date] = None
     country_of_residence: Optional[str] = None

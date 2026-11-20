@@ -39,6 +39,8 @@ class AccountParty(Base):
     # Dual-purpose fields: the label switches by constitution (Entity / Individual).
     dob_or_incorp_date = Column(Date, nullable=True)
     id_or_license_expiry = Column(Date, nullable=True)
+    # Triam 20-11-2026: an individual person's passport number, required at Submit (not for an entity).
+    passport_number = Column(String(20), nullable=True)
     country_of_incorp_or_birth = Column(String(120), nullable=True)
 
     mobile_country_code = Column(String(6), nullable=True)

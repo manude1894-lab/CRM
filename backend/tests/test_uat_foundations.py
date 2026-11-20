@@ -12,7 +12,7 @@ UAE = "United Arab Emirates"
 
 def person(role, name="P Person", **kw):
     base = dict(party_role=role, full_name=name, constitution="Individual", residential_address={"line1": "1 Main Street", "city": "Dubai"}, country_of_incorp_or_birth="India", country_of_residence=UAE, nationality=UAE,
-                mobile_country_code="+971", mobile_number="501234567", email="p@example.com")
+                mobile_country_code="+971", mobile_number="501234567", email="p@example.com", **flow.PASSPORT)
     return AccountPartyCreate(**{**base, **kw})
 
 

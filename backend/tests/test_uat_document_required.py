@@ -36,13 +36,17 @@ def test_corporate_client_needs_a_document(db, real_user):
     assert flow.submit(db, acc, rm).status == "Pending"
 
 
-def test_individual_client_needs_one_too(db, real_user):
+def test_individual_client_needs_its_passport_copy(db, real_user):
+    """Triam 20-11-2026: an individual client's own document is its passport copy."""
     rm = real_user("Rel. Manager")
     acc = account_service.create_account(db, AccountCreate(company_name="Rahul Verma", account_type="Individual", anchor_entity="TCPL", spoc_id=rm.id), rm)
-    assert "At least one supporting document" in labels(acc)
+    assert "Passport copy of the client" in labels(acc)
     flow.add_document(db, acc, rm)
     db.refresh(acc)
-    assert "At least one supporting document" not in labels(acc)
+    assert "Passport copy of the client" in labels(acc)  # another document isn't the passport
+    flow.add_document(db, acc, rm, category="PASSPORT", filename="passport.pdf")
+    db.refresh(acc)
+    assert "Passport copy of the client" not in labels(acc) and "At least one supporting document" not in labels(acc)
 
 
 def test_a_persons_document_does_not_stand_in_for_the_client(db, real_user):
@@ -54,7 +58,7 @@ def test_a_persons_document_does_not_stand_in_for_the_client(db, real_user):
 def _person(db, acc, rm, name, role="Director", **extra):
     return account_party_service.create_party(db, acc.id, AccountPartyCreate(
         party_role=role, full_name=name, residential_address={"line1": "1 Main Street", "city": "Dubai"}, country_of_incorp_or_birth="India", country_of_residence="India", nationality="India",
-        mobile_country_code="+91", mobile_number="501234567", email="p@example.com", **extra), rm)
+        mobile_country_code="+91", mobile_number="501234567", email="p@example.com", **{**flow.PASSPORT, **extra}), rm)
 
 
 def test_each_person_needs_their_own_document(db, real_user):
@@ -63,10 +67,13 @@ def test_each_person_needs_their_own_document(db, real_user):
     acc = flow.complete_client(db, rm)
     omar = _person(db, acc, rm, "Omar Saeed", "Authorised Signatory")
     db.refresh(acc)
-    assert labels(acc) == ["A document for Omar Saeed (Authorised Signatory)"]
+    assert labels(acc) == ["Passport copy for Omar Saeed (Authorised Signatory)"]
     with pytest.raises(HTTPException):
         flow.submit(db, acc, rm)
-    flow.add_document(db, acc, rm, party_id=omar.id)
+    flow.add_document(db, acc, rm, party_id=omar.id)  # any document is not enough for a person (Triam 20-11-2026)
+    db.refresh(acc)
+    assert labels(acc) == ["Passport copy for Omar Saeed (Authorised Signatory)"]
+    flow.add_document(db, acc, rm, party_id=omar.id, category="PASSPORT")
     db.refresh(acc)
     assert labels(acc) == []
 
@@ -78,7 +85,7 @@ def test_ubo_without_documents_is_listed(db, real_user):
     db.query(Document).filter(Document.party_id == jane.id).delete()
     db.commit()
     db.refresh(acc)
-    assert labels(acc) == ["A document for Jane Owner (Shareholder)"]
+    assert labels(acc) == ["Passport copy for Jane Owner (Shareholder)"]
 
 
 def test_one_person_in_two_roles_needs_one_document(db, real_user):
@@ -92,7 +99,7 @@ def test_one_person_in_two_roles_needs_one_document(db, real_user):
     # Without the date of birth the two records can't be matched (Triam UAT 13-11-2026 row 79).
     _person(db, acc, rm, "Jane Owner", "Authorised Signatory")
     db.refresh(acc)
-    assert labels(acc) == ["A document for Jane Owner (Authorised Signatory)"]
+    assert labels(acc) == ["Passport copy for Jane Owner (Authorised Signatory)"]
 
 
 def test_an_entity_shareholder_needs_one_too(db, real_user):

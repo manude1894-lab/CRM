@@ -11,6 +11,7 @@ import { mobileProblem } from "../utils/mobile";
 import ClientDocumentsFolder from "./accounts/ClientDocumentsFolder";
 import { FOUNDATION_ROLES, isFoundation } from "./accounts/accountForm";
 import { addDays, isoToday, isMinor, earliestBirth, latestAdultBirth } from "../utils/dateRules";
+import { cleanPassport, passportProblem } from "../utils/passport";
 
 // Triam 16-11-2026: a child may hold shares or be a foundation's beneficiary, through a parent or guardian;
 // every other role acts for the client, so its holder is 18 or over. Same rule as the server (MINOR_ALLOWED).
@@ -27,6 +28,7 @@ const emptyParty = (role) => ({
   full_name: "",
   dob_or_incorp_date: "",
   id_or_license_expiry: "",
+  passport_number: "",
   country_of_incorp_or_birth: "",
   mobile_country_code: "+971",
   mobile_number: "",
@@ -52,7 +54,7 @@ const cleanPayload = (obj) => Object.fromEntries(
 export const partyLabel = (role) => role;
 
 // The details that belong to the person, not to their role on this client.
-const PERSON_FIELDS = ["constitution", "full_name", "dob_or_incorp_date", "id_or_license_expiry", "country_of_incorp_or_birth",
+const PERSON_FIELDS = ["constitution", "full_name", "dob_or_incorp_date", "id_or_license_expiry", "passport_number", "country_of_incorp_or_birth",
   "mobile_country_code", "mobile_number", "email", "nationality", "country_of_residence", "residential_address",
   "uae_visa_number", "uae_visa_expiry", "is_pep"];
 const pick = (row, fields) => Object.fromEntries(fields.map((f) => [f, row[f]]));
@@ -323,12 +325,20 @@ function PartyForm({ form, setForm, countries, onCancel, onSave, copyFrom = [] }
           {!isEntity && !minorAllowed && <p className="text-[11px] text-gray-500 mt-1">A {form.party_role} must be 18 or over.</p>}
           {minor && <span className="inline-block mt-1 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">Minor</span>}
         </Field>
-        <Field label={isEntity ? "License / CI Expiry" : "Passport Expiry"}>
+        {/* Triam 20-11-2026: an individual's passport number and expiry are asked for at Submit, with a passport copy. */}
+        <Field label={isEntity ? "License / CI Expiry" : "Passport Expiry"} required={!isEntity}>
           <DateInput min={!isEntity && form.dob_or_incorp_date ? addDays(form.dob_or_incorp_date, 1) : undefined}
             value={form.id_or_license_expiry || ""} onChange={set(setForm, "id_or_license_expiry")} />
           {!isEntity && <PassportNote value={form.id_or_license_expiry} />}
         </Field>
       </div>
+      {!isEntity && (
+        <Field label="Passport Number" required>
+          <Input value={form.passport_number || ""} onChange={(e) => setForm((p) => ({ ...p, passport_number: cleanPassport(e.target.value) }))} />
+          {passportProblem(form.passport_number) && <p className="text-[11px] text-red-600 mt-1">{passportProblem(form.passport_number)}</p>}
+          <p className="text-[11px] text-gray-500 mt-1">File this person's passport copy in their documents (category Passport).</p>
+        </Field>
+      )}
       <Field label={isEntity ? "Country of Incorporation" : "Country of Birth"} required={birthRequired}>
         <CountrySelect value={form.country_of_incorp_or_birth} onChange={set(setForm, "country_of_incorp_or_birth")} countries={countries} />
       </Field>

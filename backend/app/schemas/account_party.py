@@ -6,6 +6,7 @@ from decimal import Decimal
 
 from app.schemas.account import AddressBlock
 from app.schemas.phone import MobilePairRules, number_validator
+from app.schemas.identity import passport_validator
 
 
 class AccountPartyBase(BaseModel):
@@ -15,6 +16,7 @@ class AccountPartyBase(BaseModel):
     full_name: str = Field(..., min_length=1, max_length=255)
     dob_or_incorp_date: Optional[date] = None
     id_or_license_expiry: Optional[date] = None
+    passport_number: Optional[str] = None
     country_of_incorp_or_birth: Optional[str] = None
 
     mobile_country_code: Optional[str] = None
@@ -42,18 +44,21 @@ class AccountPartyCreate(AccountPartyBase, MobilePairRules):
     # Triam UAT 12-11-2026: mobile numbers are digits only and carry their country code.
     MOBILE_PAIRS = (("mobile_country_code", "mobile_number"),)
     _mobile_digits = number_validator("mobile_number")
+    _passport = passport_validator("passport_number")  # Triam 20-11-2026
 
 
 class AccountPartyUpdate(MobilePairRules):
     # Triam UAT 12-11-2026: mobile numbers are digits only and carry their country code.
     MOBILE_PAIRS = (("mobile_country_code", "mobile_number"),)
     _mobile_digits = number_validator("mobile_number")
+    _passport = passport_validator("passport_number")  # Triam 20-11-2026
     PARTIAL = True
     party_role: Optional[str] = None
     constitution: Optional[str] = None
     full_name: Optional[str] = None
     dob_or_incorp_date: Optional[date] = None
     id_or_license_expiry: Optional[date] = None
+    passport_number: Optional[str] = None
     country_of_incorp_or_birth: Optional[str] = None
     mobile_country_code: Optional[str] = None
     mobile_number: Optional[str] = Field(None, max_length=12)

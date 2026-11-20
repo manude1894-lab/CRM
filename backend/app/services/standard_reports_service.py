@@ -20,12 +20,12 @@ CLIENT_DATES = [
     ("license_expiry_date", "Trade / Commercial Licence", "license_number"),
     ("regulatory_license_expiry_date", "Regulatory Licence", None),
     ("lei_expiry_date", "LEI", "lei_number"),
-    ("passport_expiry_date", "Passport", None),
+    ("passport_expiry_date", "Passport", "passport_number"),
     ("uae_visa_expiry", "UAE Visa", "uae_visa_number"),
     ("engagement_letter_valid_until", "Engagement Letter", None),
 ]
 PARTY_DATES = [
-    ("id_or_license_expiry", "Passport / Licence", None),
+    ("id_or_license_expiry", "Passport / Licence", "passport_number"),
     ("uae_visa_expiry", "UAE Visa", "uae_visa_number"),
 ]
 # Approved and serviced: they carry a risk level and AML review dates.

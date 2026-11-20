@@ -22,7 +22,7 @@ EXAMPLE_2 = [("Z", INDIVIDUAL, "20"), ("X Ltd", ENTITY, None), ("X1", INDIVIDUAL
 def shareholder(name, constitution=INDIVIDUAL, pct=None):
     return AccountPartyCreate(party_role="Shareholder", full_name=name, constitution=constitution, residential_address={"line1": "1 Main Street", "city": "Dubai"}, country_of_incorp_or_birth="India", country_of_residence=UAE, nationality=UAE,
                               mobile_country_code="+971", mobile_number="501234567", email="p@example.com",
-                              effective_ownership_percent=Decimal(pct) if pct else None)
+                              effective_ownership_percent=Decimal(pct) if pct else None, **flow.PASSPORT)
 
 
 @pytest.fixture()
@@ -94,7 +94,7 @@ def _approved_with_old_entity_share(db, real_user):
         parties.remove_party(db, p.id, "Replacing the shareholders", rm)
     db.refresh(acc)
     a = parties.create_party(db, acc.id, shareholder("A", INDIVIDUAL, "100"), rm)
-    flow.add_document(db, acc, rm, party_id=a.id)
+    flow.add_document(db, acc, rm, party_id=a.id, category="PASSPORT")
     db.refresh(acc)
     flow.submit(db, acc, rm)
     flow.approve_all(db, acc, mlro, approver)

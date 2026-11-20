@@ -596,6 +596,12 @@ def import_accounts(
                    else None)
         mobiles, mobile_problem = _import_mobiles(row)
         problem = problem or mobile_problem
+        if not problem and row.passport_number:  # Triam 20-11-2026: same format as on the form
+            from app.schemas.identity import passport_number
+            try:
+                mobiles["passport_number"] = passport_number(row.passport_number)
+            except ValueError as e:
+                problem = f"Passport Number '{row.passport_number}': {e}"
         if problem:
             results.append(AccountImportRowResult(row_index=idx, company_name=name, status="error", message=problem))
             continue
@@ -691,11 +697,23 @@ def group_people(parties) -> list[list]:
     return groups
 
 
+PASSPORT_CATEGORY = "PASSPORT"  # the "Passport" document category (document_category master)
+
+
+def has_passport_copy(account) -> bool:
+    """Triam 20-11-2026: an individual client files its passport copy for itself."""
+    return any(d.party_id is None and d.category == PASSPORT_CATEGORY for d in _onboarding_documents(account))
+
+
 def people_without_documents(account) -> list[list]:
-    """Triam UAT 09/10-11-2026: each individual / non-individual needs a document of their own. Returns the
-    people with none, each as the list of their records. A document on any of a person's records covers all of them."""
-    with_docs = {d.party_id for d in _onboarding_documents(account) if d.party_id is not None}
-    return [records for records in group_people(account.parties) if not any(r.id in with_docs for r in records)]
+    """Triam UAT 09/10-11-2026: each individual / non-individual needs a document of their own; for an individual
+    it is their passport copy (Triam 20-11-2026). Returns the people without it, each as the list of their
+    records. A document on any of a person's records covers all of them."""
+    docs = [d for d in _onboarding_documents(account) if d.party_id is not None]
+    any_doc = {d.party_id for d in docs}
+    passport = {d.party_id for d in docs if d.category == PASSPORT_CATEGORY}
+    return [records for records in group_people(account.parties)
+            if not any(r.id in (any_doc if records[0].constitution == "Entity" else passport) for r in records)]
 
 
 FOUNDATION_SERVICE = "Set up Foundations"
@@ -731,6 +749,7 @@ def missing_mandatory(account: Account) -> list[dict]:
         # §9
         need("Individual details", "company_name", "Full Name")
         need("Individual details", "date_of_birth", "Date of Birth")
+        need("Individual details", "passport_number", "Passport Number")
         need("Individual details", "passport_expiry_date", "Passport Expiry Date")
         if passport_too_old(account.passport_expiry_date):
             missing.append({"section": "Individual details", "field": "passport_expiry_date",
@@ -836,15 +855,31 @@ def missing_mandatory(account: Account) -> list[dict]:
             missing.append({"section": PARTIES_SECTION, "field": "parties",
                             "label": f"The passport of {p.full_name} expired more than {PASSPORT_GRACE_DAYS} days ago"})
 
-    # Triam UAT 04-11-2026, for individual and non-individual clients alike: a document for the client itself.
-    if not has_supporting_document(account):
+    # Triam 20-11-2026: every individual person (UBO, Director, Signatory, Joint Holder, Founder, ...) gives their
+    # passport number and expiry. One person in several roles gives them once.
+    for records in group_people(account.parties):
+        if records[0].constitution == "Entity":
+            continue
+        who = f"{records[0].full_name} ({', '.join(dict.fromkeys(r.party_role for r in records))})"
+        if not any((r.passport_number or "").strip() for r in records):
+            missing.append({"section": PARTIES_SECTION, "field": "parties", "label": f"Passport Number of {who}"})
+        if not any(r.id_or_license_expiry for r in records):
+            missing.append({"section": PARTIES_SECTION, "field": "parties", "label": f"Passport Expiry of {who}"})
+
+    # Triam UAT 04-11-2026, for individual and non-individual clients alike: a document for the client itself;
+    # for an individual client, its passport copy (Triam 20-11-2026).
+    if account.account_type == "Individual" and not has_passport_copy(account):
+        missing.append({"section": "Documents", "field": "documents", "label": "Passport copy of the client"})
+    elif not has_supporting_document(account):
         missing.append({"section": "Documents", "field": "documents", "label": "At least one supporting document"})
     # Triam UAT 09/10-11-2026: and one for each person or entity on the client (UBO, Director, Signatory,
-    # Joint Holder, Founder, ...). One person in several roles needs one document.
+    # Joint Holder, Founder, ...). One person in several roles needs one document; for an individual person it is
+    # their passport copy (Triam 20-11-2026).
     for records in people_without_documents(account):
         roles = ", ".join(dict.fromkeys(r.party_role for r in records))
+        individual = records[0].constitution != "Entity"
         missing.append({"section": "Documents", "field": "party_documents",
-                        "label": f"A document for {records[0].full_name} ({roles})"})
+                        "label": f"{'Passport copy' if individual else 'A document'} for {records[0].full_name} ({roles})"})
 
     # §9 engagement — a Yes / No answer, then the validity date when signed
     need("Profile Status & Engagement", "engagement_letter_signed", "Engagement Letter Signed (Yes / No)")
