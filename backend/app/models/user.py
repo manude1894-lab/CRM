@@ -28,6 +28,8 @@ class User(Base):
     department_id = Column(Integer, ForeignKey("departments.id", ondelete="SET NULL"), nullable=True)
     title = Column(String(100), nullable=True)
     mobile = Column(String(20), nullable=True)  # for SMS notifications, e.g. +971501234567
+    # Triam UAT 19-11-2026: the Administrator decides who may download reports as Excel / PDF (Admins always may).
+    can_export_reports = Column(Boolean, default=False, server_default="false", nullable=False)
     # login lockout and password tracking
     failed_login_count = Column(Integer, default=0, server_default="0", nullable=False)
     locked_until = Column(DateTime(timezone=True), nullable=True)

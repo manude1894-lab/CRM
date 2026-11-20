@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { departmentsApi, reportsApi } from "../../api/endpoints";
 import { Button, DateInput, Field, Input, Select, Spinner } from "../ui";
-import { csvDate, exportFilename, fmtDate } from "../../utils/constants";
+import { fmtDate } from "../../utils/constants";
 import { toast } from "../../store/toast";
 import { useAuthStore } from "../../store/auth";
 
@@ -13,9 +13,11 @@ const TAKES_DAYS = { "documents-expiring": "Within (days)", "aml-reviews-due": "
 const TAKES_DATES = ["prospects-assigned", "onboarding-approved", "onboarding-in-progress"];
 const BY_DEPARTMENT = ["onboarding-approved", "onboarding-in-progress"];
 
-/** BRD §20a — the standard reports, shown on screen and exported to CSV. */
+/** BRD §20a — the standard reports, shown on screen and downloaded as Excel or PDF by the users the
+ * Administrator allows (Triam UAT 19-11-2026). */
 export default function StandardReports() {
-  const isAdmin = useAuthStore((s) => s.isAdmin());
+  const canExport = useAuthStore((s) => s.can("report.export"));
+  const [exporting, setExporting] = useState(null);
   const [list, setList] = useState([]);
   const [key, setKey] = useState("onboarding-in-progress");
   const [params, setParams] = useState({ days: 30, date_from: "", date_to: "", status: "", department_id: "" });
@@ -29,29 +31,39 @@ export default function StandardReports() {
     reportsApi.onboardingStatuses().then(setStatuses).catch(() => setStatuses([]));
     departmentsApi.list().then((d) => setDepartments(d.filter((x) => x.is_active !== false))).catch(() => setDepartments([]));
   }, []);
+  const paramsFor = (k) => {
+    const p = {};
+    if (TAKES_DAYS[k]) p.days = params.days === "" ? 30 : params.days;
+    if (TAKES_DATES.includes(k)) Object.assign(p, { date_from: params.date_from || undefined, date_to: params.date_to || undefined });
+    if (k === "onboarding-in-progress" && params.status) p.status = params.status;
+    if (BY_DEPARTMENT.includes(k) && params.department_id) p.department_id = params.department_id;
+    return p;
+  };
   const run = async (k = key) => {
     setBusy(true);
     try {
-      const p = {};
-      if (TAKES_DAYS[k]) p.days = params.days === "" ? 30 : params.days;
-      if (TAKES_DATES.includes(k)) Object.assign(p, { date_from: params.date_from || undefined, date_to: params.date_to || undefined });
-      if (k === "onboarding-in-progress" && params.status) p.status = params.status;
-      if (BY_DEPARTMENT.includes(k) && params.department_id) p.department_id = params.department_id;
-      setReport(await reportsApi.standard(k, p));
+      setReport(await reportsApi.standard(k, paramsFor(k)));
     } catch (e) { toast.error(e.response?.data?.detail || "Could not run the report"); } finally { setBusy(false); }
   };
-  useEffect(() => { run(key); }, [key]);
 
-  const exportCsv = () => {
-    if (!report) return;
-    const lines = [report.columns, ...report.rows.map((r) => r.map(csvDate))]
-      .map((r) => r.map((v) => `"${(v ?? "").toString().replace(/"/g, '""')}"`).join(","));
-    const blob = new Blob([lines.join("\n")], { type: "text/csv" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = exportFilename(report.title.replace(/[^A-Za-z0-9]+/g, "-").toLowerCase(), "csv");
-    a.click();
+  // The server builds the file from the same report and records the download in the audit log.
+  const download = async (format) => {
+    setExporting(format);
+    try {
+      const r = await reportsApi.exportFile(key, paramsFor(key), format);
+      const name = /filename="([^"]+)"/.exec(r.headers?.["content-disposition"] || "")?.[1] || `report.${format}`;
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(r.data);
+      a.download = name;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+    } catch (e) {
+      let detail = "Could not download the report";
+      try { detail = JSON.parse(await e.response.data.text()).detail || detail; } catch { /* not a JSON error */ }
+      toast.error(detail);
+    } finally { setExporting(null); }
   };
+  useEffect(() => { run(key); }, [key]);
 
   return (
     <div className="bg-white border border-gray-100 rounded-xl shadow-sm">
@@ -91,7 +103,12 @@ export default function StandardReports() {
             </Select></Field></div>
           )}
           {(TAKES_DAYS[key] || TAKES_DATES.includes(key) || BY_DEPARTMENT.includes(key)) && <div className="mb-4"><Button onClick={() => run()}>Run</Button></div>}
-          {isAdmin && <div className="mb-4 ml-auto"><Button onClick={exportCsv} disabled={!report?.rows?.length}>Export CSV</Button></div>}
+          {canExport && (
+            <div className="mb-4 ml-auto flex gap-2">
+              <Button onClick={() => download("xlsx")} disabled={!report || !!exporting}>{exporting === "xlsx" ? "Preparing…" : "Excel"}</Button>
+              <Button onClick={() => download("pdf")} disabled={!report || !!exporting}>{exporting === "pdf" ? "Preparing…" : "PDF"}</Button>
+            </div>
+          )}
         </div>
         {busy || !report ? <Spinner /> : (
           <>

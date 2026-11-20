@@ -10,6 +10,7 @@ from app.models import ApprovalRequest
 from app.schemas.account import AccountUpdate
 from app.services import account_service, client_workflow_service as wf, dashboard_service, instruction_service as sr
 from tests import flow
+from tests.helpers import rows_of
 
 
 def _client(db, maker, name):
@@ -204,7 +205,7 @@ def test_onboarding_reports_split_approved_from_the_rest_with_dates_status_and_d
     make_account(name="Paused Co", spoc=otto, profile_status="On Hold")
 
     approved = rpt.run(db, admin, "onboarding-approved", date_from=rpt._today() - timedelta(days=30))
-    [row] = approved["rows"]
+    [row] = approved["rows"]  # the onboarding report keeps Triam's column order
     assert approved["columns"][:10] == ["Anchor Triam Entity", "Pros ID", "Anchor RM", "Source", "Assigned Date", "Client Name",
                                         "Regn Authority", "Regulator", "Services applied", "Status"]
     assert (row[0], row[2], row[5], row[6], row[7], row[8], row[9]) == (
@@ -228,11 +229,11 @@ def test_aml_review_reports_due_in_n_days_and_expired(db, make_user, make_accoun
     make_account(name="Expired", spoc=rm, profile_status="Approved", next_aml_review_date=today - timedelta(days=3))
     make_account(name="Still Onboarding", spoc=rm, profile_status="WIP", next_aml_review_date=today - timedelta(days=3))
     due = rpt.run(db, rm, "aml-reviews-due", days=30)
-    assert [(r[0], r[3], r[5]) for r in due["rows"]] == [("TCPL", "Due Soon", 10)]
-    assert [r[3] for r in rpt.run(db, rm, "aml-reviews-due", days=60)["rows"]] == ["Due Soon", "Due Later"]
-    assert [(r[3], r[5]) for r in rpt.run(db, rm, "aml-reviews-expired")["rows"]] == [("Expired", 3)]
+    assert [(r["Anchor Triam Entity"], r["Client Name"], r["Days left"]) for r in rows_of(due)] == [("TCPL", "Due Soon", 10)]
+    assert [r["Client Name"] for r in rows_of(rpt.run(db, rm, "aml-reviews-due", days=60))] == ["Due Soon", "Due Later"]
+    assert [(r["Client Name"], r["Days overdue"]) for r in rows_of(rpt.run(db, rm, "aml-reviews-expired"))] == [("Expired", 3)]
     risk = rpt.run(db, rm, "clients-risk")
-    assert risk["columns"][-1] == "Days overdue" and "Still Onboarding" not in {r[2] for r in risk["rows"]}
+    assert risk["columns"][-1] == "Days overdue" and "Still Onboarding" not in {r["Client Name"] for r in rows_of(risk)}
 
 
 def test_report_days_must_be_sensible(db, make_user):

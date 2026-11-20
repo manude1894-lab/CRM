@@ -5,6 +5,7 @@ from app.schemas.account import AccountUpdate
 from app.services import account_service, client_workflow_service as wf, dashboard_service, my_work_service, standard_reports_service
 from tests import flow
 from tests.helpers import auth
+from tests.helpers import rows_of
 
 REASON = "Documents missing or incomplete"
 
@@ -85,8 +86,8 @@ def test_dashboard_api_returns_the_rejection(db, rejected, client):
 
 def test_rejected_report_lists_it(db, rejected):
     acc, rm, _ = rejected
-    rows = standard_reports_service.rejected_with_rm(db, rm)["rows"]
-    assert [r[2] for r in rows] == [acc.company_name] and rows[0][4] == "Ritu"  # 3.7 columns (UAT 18-11-2026)
+    rows = rows_of(standard_reports_service.rejected_with_rm(db, rm))
+    assert [r["Client Name"] for r in rows] == [acc.company_name] and rows[0]["Rejected by"] == "Ritu"
 
 
 def test_notifications_about_a_client_link_to_it(db, rejected):

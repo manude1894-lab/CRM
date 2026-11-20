@@ -84,6 +84,7 @@ export const ACTION_LABELS = {
   document_upload: "Document added",
   document_delete: "Document removed",
   document_download: "Document downloaded",
+  report_export: "Report downloaded",
   invoice_request_draft: "Invoice request drafted",
   invoice_request: "Invoice requested",
   invoice_raise: "Invoice raised",

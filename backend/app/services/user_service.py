@@ -64,6 +64,7 @@ def create_user(db: Session, data: UserCreate) -> User:
         supervisor_id=data.supervisor_id,
         business_role_id=data.business_role_id,
         mobile=data.mobile,
+        can_export_reports=data.can_export_reports,
         person_id=main.id if main else None,
     )
     security_service.set_password(user, data.password)

@@ -14,3 +14,5 @@ python-dateutil==2.9.0
 fastapi-mail==1.4.1
 apscheduler==3.10.4
 tzdata>=2024.1  # UAE business dates in reports (zoneinfo on slim images)
+openpyxl==3.1.5  # reports as Excel (Triam UAT 19-11-2026)
+fpdf2==2.8.1  # reports as PDF (Triam UAT 19-11-2026)
