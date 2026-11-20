@@ -15,6 +15,7 @@ from app.schemas.invoice import InvoiceRequest
 from app.services import (account_party_service, activity_service, amendment_service as amend,
                           document_service, instruction_service, invoice_service)
 from tests.helpers import auth
+from tests import flow
 from tests.flow import approved_client, complete_client
 
 
@@ -87,7 +88,7 @@ def test_party_removed_by_amendment_is_kept_on_record(db, people):
     account_party_service.remove_party(db, jane.id, "Shares transferred to Omar", maker)
     account_party_service.create_party(db, acc.id, AccountPartyCreate(
         party_role="Shareholder", full_name="Omar New", nationality="United Arab Emirates", residential_address={"line1": "1 Main Street", "city": "Dubai"}, country_of_incorp_or_birth="India", country_of_residence="United Arab Emirates",
-        mobile_country_code="+971", mobile_number="509999999", email="omar@example.com",
+        mobile_country_code="+971", mobile_number="509999999", email="omar@example.com", **flow.PASSPORT,
         effective_ownership_percent=Decimal("100")), maker)
     assert db.get(AccountParty, jane.id).removed_at is None  # staged only
     amend.submit(db, acc, maker)

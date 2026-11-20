@@ -91,6 +91,7 @@ class Account(Base):
     date_of_birth = Column(Date, nullable=True)
     country_of_birth = Column(String(120), nullable=True)
     nationality = Column(String(120), nullable=True)
+    passport_number = Column(String(20), nullable=True)  # Triam 20-11-2026: required at Submit for an individual
     passport_expiry_date = Column(Date, nullable=True)
     screening_date = Column(Date, nullable=True)  # name screening, Individual and Entity (Triam UAT 05-11-2026)
     country_of_residence = Column(String(120), nullable=True)

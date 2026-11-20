@@ -26,6 +26,7 @@ import VatCertificateField from "./VatCertificateField";
 import { addDays, later, latestAdultBirth, earliestBirth, taxNumber, taxNumberHint } from "../../utils/dateRules";
 import { useMasters } from "../../hooks/useMasters";
 import { selectableCodes, servicesForEntities, oneTimeServices, oneTimeEntityCodes } from "../../hooks/masterUtils";
+import { cleanPassport, passportProblem } from "../../utils/passport";
 
 // Service lists are shown in alphabetical order (Triam UAT 26-10-2026).
 const alphabetical = (codes) => [...codes].sort((x, y) => x.localeCompare(y));
@@ -558,6 +559,10 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
               <Field label="Date of Birth" required={req("date_of_birth")}><DateInput min={earliestBirth()} max={latestAdultBirth()} value={form.date_of_birth || ""} onChange={set("date_of_birth")} /><p className="text-[11px] text-gray-500 mt-1">The client must be 18 or over.</p></Field>
               <Field label="Country of Birth" required={req("country_of_birth")}><CountrySelect value={form.country_of_birth} onChange={set("country_of_birth")} countries={countries} /></Field>
               <Field label="Nationality" required={req("nationality")}><CountrySelect value={form.nationality} onChange={set("nationality")} countries={countries} /></Field>
+              <Field label="Passport Number" required={req("passport_number")}>
+                <Input value={form.passport_number || ""} onChange={(e) => setForm({ ...form, passport_number: cleanPassport(e.target.value) })} />
+                {passportProblem(form.passport_number) && <p className="text-[11px] text-red-600 mt-1">{passportProblem(form.passport_number)}</p>}
+              </Field>
               <Field label="Passport Expiry Date" required={req("passport_expiry_date")}><DateInput min={form.date_of_birth ? addDays(form.date_of_birth, 1) : undefined} value={form.passport_expiry_date || ""} onChange={set("passport_expiry_date")} /><PassportNote value={form.passport_expiry_date} /></Field>
               <Field label="Contact Email" required={req("individual_email")}><Input type="email" value={form.individual_email} onChange={set("individual_email")} /></Field>
               <Field label="Country of Residence" required={req("country_of_residence")}><CountrySelect value={form.country_of_residence} onChange={(e) => setForm({ ...form, country_of_residence: e.target.value, ...isdFor(e.target.value, "individual_mobile_country_code") })} countries={countries} /></Field>

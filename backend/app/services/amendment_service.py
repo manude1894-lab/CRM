@@ -64,6 +64,7 @@ _LABELS = {
     "regulatory_license_expiry_date": "Current regulatory license expiry",
     "nature_of_business": "Detailed Nature of Business", "contact_email": "Contact Email",
     "screening_date": "Screening Date",
+    "passport_number": "Passport Number", "passport_expiry_date": "Passport Expiry Date", "id_or_license_expiry": "Passport / Licence Expiry",
 }
 
 
