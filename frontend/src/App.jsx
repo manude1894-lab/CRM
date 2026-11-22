@@ -122,21 +122,22 @@ export default function App() {
         // On a phone, swiping the menu to the left closes it.
         onTouchStart={isPhone ? (e) => setTouchX(e.touches[0].clientX) : undefined}
         onTouchEnd={isPhone ? (e) => { if (touchX !== null && e.changedTouches[0].clientX - touchX < -60) setSidebarOpen(false); setTouchX(null); } : undefined}
-        className={`relative flex-shrink-0 flex flex-col border-r border-gray-100 bg-white transition-all duration-200 ${
+        // Triam 22-11-2026: navy sidebar with gold accents (the brand's colours).
+        className={`relative flex-shrink-0 flex flex-col bg-gradient-to-b from-[#132f4c] to-[#0b1d31] text-white transition-all duration-200 ${
         isPhone ? `fixed inset-y-0 left-0 z-40 w-64 shadow-xl ${sidebarOpen ? "" : "hidden"}` : sidebarOpen ? "w-60" : "w-16"}`}>
         {/* Brand row. Open: wordmark with the panel toggle at its right. Folded: the trident mark,
             which turns into the expand toggle on hover. Ctrl+B also toggles; on a phone the menu
             closes by swipe or backdrop. */}
-        <div className={`group relative flex items-center h-20 border-b border-gray-100 ${sidebarOpen ? "px-5 justify-between" : "justify-center px-2"}`}>
+        <div className={`group relative flex items-center h-20 border-b border-white/10 ${sidebarOpen ? "px-5 justify-between" : "justify-center px-2"}`}>
           {sidebarOpen ? (
-            <img src="/triam-wordmark.png" alt="TRIAM" className="h-11 w-auto" />
+            <img src="/triam-wordmark-light.png" alt="TRIAM" className="h-11 w-auto" />
           ) : (
             <img src="/triam-trident.png" alt="TRIAM" className={`h-10 w-auto ${isPhone ? "" : "transition-opacity group-hover:opacity-0"}`} />
           )}
           {!isPhone && (
             <button onClick={() => setSidebarOpen((o) => !o)} title={`${sidebarOpen ? "Collapse" : "Expand"} menu (Ctrl+B)`}
               aria-label={sidebarOpen ? "Collapse menu" : "Expand menu"}
-              className={`w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-all ${
+              className={`w-8 h-8 rounded-lg flex items-center justify-center text-white/50 hover:text-white hover:bg-white/10 transition-all ${
                 sidebarOpen ? "-mr-2" : "absolute inset-0 m-auto opacity-0 group-hover:opacity-100 focus-visible:opacity-100"}`}>
               <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
                 <rect x="3" y="4" width="18" height="16" rx="3" />
@@ -151,19 +152,23 @@ export default function App() {
           {navItems.map((item, i) => (
             <React.Fragment key={item.key}>
             {item.group && item.group !== navItems[i - 1]?.group && (sidebarOpen
-              ? <div className="px-3 pt-4 pb-1 text-[10px] font-semibold uppercase tracking-wider text-gray-400">{item.group}</div>
-              : <div className="mx-3 my-2 border-t border-gray-100" />)}
+              ? <div className="px-3 pt-5 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/40">{item.group}</div>
+              : <div className="mx-3 my-2 border-t border-white/10" />)}
             <button onClick={() => go(item.key)}
               title={sidebarOpen ? undefined : item.label}
-              className={`w-full flex items-center gap-3 px-3 py-1.5 rounded-lg text-sm transition-colors text-left ${sidebarOpen ? "" : "justify-center"} ${page === item.key ? "text-white" : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"}`}
-              style={page === item.key ? { background: "#1a3a5c" } : {}}>
-              <Icon name={item.icon} size={18} className={`flex-shrink-0 ${page === item.key ? "text-gold" : ""}`} />
-              {sidebarOpen && <span className="flex-1 font-medium">{item.label}</span>}
+              aria-current={page === item.key ? "page" : undefined}
+              className={`relative w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] transition-colors text-left ${sidebarOpen ? "" : "justify-center"} ${
+                page === item.key ? "bg-white/10 text-white" : "text-white/70 hover:bg-white/5 hover:text-white"}`}>
+              {page === item.key && <span className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r bg-gold" />}
+              <Icon name={item.icon} size={18} className={`flex-shrink-0 ${page === item.key ? "text-gold" : "text-white/50"}`} />
+              {sidebarOpen && <span className={`flex-1 ${page === item.key ? "font-semibold" : "font-medium"}`}>{item.label}</span>}
             </button>
             </React.Fragment>
           ))}
         </nav>
-
+        {sidebarOpen && (
+          <div className="px-5 py-3 border-t border-white/10 text-[10px] text-white/35 tracking-wide">Triam Management Services · CRM</div>
+        )}
       </aside>
 
       {/* Main */}
@@ -179,7 +184,7 @@ export default function App() {
           <ChangePasswordModal onClose={() => setPasswordOpen(false)} onChanged={clearPasswordWarning}
             reason={passwordWarning ? "This account still uses a default password." : null} />
         )}
-        <header className="flex items-center justify-between gap-2 px-3 md:px-6 py-3 bg-white border-b border-gray-100">
+        <header className="flex items-center justify-between gap-2 px-3 md:px-6 h-16 bg-white/90 backdrop-blur border-b border-gray-200/70">
           {/* On a phone the menu is hidden until opened from here; on a computer the toggle is in the sidebar. */}
           {isPhone ? (
             <button onClick={() => setSidebarOpen(true)} title="Open menu" aria-label="Open menu"

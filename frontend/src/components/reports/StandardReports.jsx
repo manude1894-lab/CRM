@@ -17,6 +17,19 @@ const CLIENT_FILTERS = ["amendments", "invoices-onboarding", "invoices-service-r
 const TAKES_DATES = ["prospects-assigned", "onboarding-approved", "onboarding-in-progress", ...CLIENT_FILTERS];
 const BY_DEPARTMENT = ["onboarding-approved", "onboarding-in-progress", ...CLIENT_FILTERS];
 const REQUEST_TYPES = ["Onboarding", "Service Request"];
+// The side list's groups, in this order; a report not listed here goes under "Other".
+const GROUPS = [
+  ["Onboarding", ["onboarding-approved", "onboarding-in-progress", "under-formation", "rejected-with-rm"]],
+  ["Compliance & KYC", ["clients-risk", "aml-reviews-due", "aml-reviews-expired", "amendments"]],
+  ["Documents", ["documents-expiring", "documents-expired"]],
+  ["Prospects", ["prospects-assigned", "prospects-unassigned"]],
+  ["Finance & service requests", ["invoices-onboarding", "invoices-service-requests", "invoices-pending", "service-requests-ageing"]],
+];
+const groupReports = (list) => {
+  const placed = new Set(GROUPS.flatMap(([, keys]) => keys));
+  return [...GROUPS.map(([g, keys]) => [g, keys.map((k) => list.find((r) => r.key === k)).filter(Boolean)]),
+    ["Other", list.filter((r) => !placed.has(r.key))]].filter(([, reports]) => reports.length);
+};
 
 /** BRD §20a — the standard reports, shown on screen and downloaded as Excel or PDF by the users the
  * Administrator allows (Triam UAT 19-11-2026). */
@@ -84,17 +97,26 @@ export default function StandardReports() {
   useEffect(() => { run(key); }, [key]);
 
   return (
-    <div className="bg-white border border-gray-100 rounded-xl shadow-sm">
-      <div className="px-4 py-3 border-b border-gray-100 flex flex-wrap items-center gap-2">
-        <span className="text-sm font-semibold text-gray-800">Standard reports</span>
-        <div className="flex flex-wrap gap-1.5 ml-2">
-          {list.map((r) => (
-            <button key={r.key} onClick={() => setKey(r.key)}
-              className={`px-2.5 py-1 text-xs rounded-full border ${key === r.key ? "border-brand-600 bg-brand-600 text-white" : "border-gray-200 text-gray-600 hover:bg-gray-50"}`}>
-              {r.title}
-            </button>
-          ))}
-        </div>
+    <div className="grid grid-cols-1 lg:grid-cols-[250px_minmax(0,1fr)] gap-4 items-start">
+      {/* Triam 22-11-2026 design refresh: the reports grouped down the side instead of a wall of pills. */}
+      <nav aria-label="Reports" className="bg-white border border-gray-200/70 rounded-xl shadow-[0_1px_2px_rgba(16,24,40,0.04)] p-2 lg:sticky lg:top-0">
+        {groupReports(list).map(([group, reports]) => (
+          <div key={group} className="mb-1">
+            <div className="px-2.5 pt-2.5 pb-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-400">{group}</div>
+            {reports.map((r) => (
+              <button key={r.key} onClick={() => setKey(r.key)} aria-current={key === r.key ? "page" : undefined}
+                className={`relative w-full text-left px-2.5 py-1.5 rounded-lg text-[13px] leading-snug ${key === r.key
+                  ? "bg-brand-50 text-brand-700 font-semibold" : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"}`}>
+                {key === r.key && <span className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r bg-gold" />}
+                {r.title}
+              </button>
+            ))}
+          </div>
+        ))}
+      </nav>
+      <div className="bg-white border border-gray-200/70 rounded-xl shadow-[0_1px_2px_rgba(16,24,40,0.04)] min-w-0">
+      <div className="px-4 pt-4 pb-1 border-b border-gray-100">
+        <h2 className="text-base font-semibold text-gray-900">{list.find((r) => r.key === key)?.title || "Report"}</h2>
       </div>
       <div className="px-4 py-3">
         <div className="flex flex-wrap items-end gap-3 mb-3">
@@ -175,6 +197,7 @@ export default function StandardReports() {
             )}
           </>
         )}
+      </div>
       </div>
     </div>
   );
