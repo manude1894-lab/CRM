@@ -81,6 +81,13 @@ def same_person(other: User | None, user: User) -> bool:
     return other is not None and other.person_key == user.person_key
 
 
+def is_clients_rm(db: Session, account, user: User) -> bool:
+    """True when `user` (under any of their logins) is the client's Anchor RM or one of its Non-anchor RMs. Such a
+    person doesn't approve or reject the client, even when they also hold the CO / Approver right (Triam 22-11-2026)."""
+    rm_ids = [i for i in [account.spoc_id, *(account.non_anchor_rm_ids or [])] if i]
+    return any(same_person(db.get(User, i), user) for i in rm_ids)
+
+
 def account_visibility_clause(db: Session, user: User):
     """Filter for Account queries, or None when the user sees every client."""
     if not _is_restricted(user):

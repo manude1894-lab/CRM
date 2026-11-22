@@ -174,14 +174,19 @@ def allowed_actions(db: Session, acc: Account, user: User) -> list[dict]:
     elif status == AWAITING:
         is_maker = req is not None and access_control.same_person(req.maker, user)
         own = "You submitted this profile, so someone else must review it"
+        # Triam 22-11-2026: one person may be both RM and CO. They never approve or reject a client they are the RM
+        # of (Anchor or Non-anchor, under any of their logins), whoever submitted it.
+        own_rm = access_control.is_clients_rm(db, acc, user)
+        rm_why = "You are this client's RM, so another approver must review it"
         if stage_of(req) == STAGE_APPROVER:
             final = has_permission(user, "client.final_approve")
-            why = own if is_maker and final else                 "You gave the Compliance approval, so another person gives the Final approval"                 if final and _gave_compliance_approval(db, req, user) else "Needs the Approver"
-            add("approve", "Final Approval", _is_final_approver_for(user, req, db), why)
-            add("reject", "Reject", _is_final_approver_for(user, req, db), why)
+            why = own if is_maker and final else rm_why if final and own_rm else                 "You gave the Compliance approval, so another person gives the Final approval"                 if final and _gave_compliance_approval(db, req, user) else "Needs the Approver"
+            final_ok = _is_final_approver_for(user, req, db) and not own_rm
+            add("approve", "Final Approval", final_ok, why)
+            add("reject", "Reject", final_ok, why)
         else:
-            why = own if is_maker and approver else                 "Needs Compliance (MLRO). A Final Approver can't give the Compliance approval"                 if approver and not gives_compliance_approval(user) else "Needs Compliance (MLRO)"
-            checker = _is_checker_for(user, req)
+            why = own if is_maker and approver else rm_why if gives_compliance_approval(user) and own_rm else                 "Needs Compliance (MLRO). A Final Approver can't give the Compliance approval"                 if approver and not gives_compliance_approval(user) else "Needs Compliance (MLRO)"
+            checker = _is_checker_for(user, req) and not own_rm
             missing_cdd = _missing_cdd(acc) if checker else []
             if checker and missing_cdd:
                 add("approve", "Compliance Approval", False,
