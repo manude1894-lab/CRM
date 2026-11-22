@@ -336,7 +336,6 @@ function PartyForm({ form, setForm, countries, onCancel, onSave, copyFrom = [] }
         <Field label="Passport Number" required>
           <Input value={form.passport_number || ""} onChange={(e) => setForm((p) => ({ ...p, passport_number: cleanPassport(e.target.value) }))} />
           {passportProblem(form.passport_number) && <p className="text-[11px] text-red-600 mt-1">{passportProblem(form.passport_number)}</p>}
-          <p className="text-[11px] text-gray-500 mt-1">File this person's passport copy in their documents (category Passport).</p>
         </Field>
       )}
       <Field label={isEntity ? "Country of Incorporation" : "Country of Birth"} required={birthRequired}>

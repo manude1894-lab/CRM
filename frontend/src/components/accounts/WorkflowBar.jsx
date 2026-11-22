@@ -139,20 +139,7 @@ export default function WorkflowBar({ accountId, refreshKey, onChanged, submitSi
                 <input type="checkbox" className="mt-0.5" checked={kycDeclared} onChange={(e) => setKycDeclared(e.target.checked)} />
                 <span>I confirm that the client's KYC verification is done as per the extant verification procedures.</span>
               </label>
-              <p className="text-xs text-gray-500 mb-3">Goes to Compliance, then to the Approver.</p>
             </>
-          )}
-          {dialog.action === "drop" && (
-            <p className="text-xs text-gray-500 -mt-2 mb-3">The client leaves the onboarding list and becomes read-only. You can reopen it later.</p>
-          )}
-          {dialog.action === "hold" && (
-            <p className="text-xs text-gray-500 -mt-2 mb-3">The client can't be submitted while on hold. Resume it when work restarts.</p>
-          )}
-          {dialog.action === "approve" && (
-            <p className="text-xs text-gray-500 -mt-2 mb-3">
-              {state.stage === "Approver" ? "You give the final approval; the Client ID is issued and the client becomes Approved."
-                : "You confirm the CDD section is complete and the information and documents are reviewed. The client goes to the Approver and can take service requests."}
-            </p>
           )}
           <div className="flex justify-end gap-3 mt-2">
             <button onClick={() => setDialog(null)} className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
