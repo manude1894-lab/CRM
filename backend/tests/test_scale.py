@@ -35,7 +35,7 @@ def test_approved_since_and_sorts(db, make_user, make_account):
     _clients(make_account, rm)
     recent, _ = account_service.list_accounts(db, rm, approved_since=date.today() - timedelta(days=25))
     assert {a.company_name for a in recent} == {"Client 00", "Client 01", "Client 02"}
-    by_approval, _ = account_service.list_accounts(db, rm, sort="approved")
+    by_approval, _ = account_service.list_accounts(db, rm, sort="-approved")
     assert [a.company_name for a in by_approval][:2] == ["Client 00", "Client 01"]  # latest approval first
 
 
@@ -51,7 +51,7 @@ def test_search_finds_the_prospect_id(db, make_user, make_account):
 def test_the_route_takes_the_filters_and_caps_the_page(client, db, make_user, make_account):
     rm = make_user("Rita RM")
     _clients(make_account, rm)
-    r = client.get("/api/v1/accounts", params={"statuses": "Active,Dropped", "sort": "approved", "limit": 2}, headers=auth(rm))
+    r = client.get("/api/v1/accounts", params={"statuses": "Active,Dropped", "sort": "-approved", "limit": 2}, headers=auth(rm))
     assert r.status_code == 200 and r.json()["total"] == 4 and len(r.json()["items"]) == 2
     assert client.get("/api/v1/accounts", params={"limit": 5000}, headers=auth(rm)).status_code == 422
 
@@ -81,3 +81,17 @@ def test_reports_load_people_in_bulk(db, make_user, make_account):
     finally:
         event.remove(db.get_bind(), "before_cursor_execute", listener)
     assert len(statements) < 15  # about 5 queries, not 30+
+
+
+def test_every_column_sorts_both_ways(db, make_user, make_account):
+    rita, bob = make_user("Rita RM"), make_user("Bob RM")
+    make_account(name="Alpha", spoc=rita, risk_rating="Low", client_id="TCPL/00002", is_pep=True)
+    make_account(name="beta", spoc=bob, risk_rating="High", client_id="TCPL/00001")
+    make_account(name="Gamma", spoc=bob, risk_rating=None, client_id=None)
+    admin = make_user("Ada Admin", role="admin")
+    names = lambda sort: [a.company_name for a in account_service.list_accounts(db, admin, sort=sort)[0]]  # noqa: E731
+    assert names("name") == ["Alpha", "beta", "Gamma"] and names("-name") == ["Gamma", "beta", "Alpha"]
+    assert names("risk") == ["beta", "Alpha", "Gamma"] and names("-risk") == ["Alpha", "beta", "Gamma"]  # blank last
+    assert names("client_id")[:2] == ["beta", "Alpha"]
+    assert names("rm") == ["beta", "Gamma", "Alpha"]  # Bob before Rita
+    assert names("pep")[0] == "Alpha"

@@ -172,7 +172,30 @@ def _compute_next_aml_review_date(acc: Account) -> None:
 
 
 # Sort orders for client lists (review 22-11-2026, package 4: lists are paged, filtered and sorted on the server).
-LIST_SORTS = ("name", "approved", "aml", "recent")
+# Triam 22-11-2026: every column of the list sorts; "-" in front reverses the order (e.g. "-name").
+LIST_SORTS = ("name", "approved", "aml", "recent", "client_id", "status", "risk", "rm", "pep")
+
+
+def _list_order(sort: str):
+    from sqlalchemy import case
+    desc = sort.startswith("-")
+    key = sort.lstrip("-")
+    # "x" sorts up (A to Z, oldest date first, risk High first, PEPs first); "-x" sorts down. Blanks always last.
+    columns = {
+        "name": [func.lower(Account.company_name)],
+        "client_id": [Account.client_id, Account.account_uid],
+        "status": [Account.profile_status],
+        "approved": [Account.approved_at],
+        "aml": [Account.next_aml_review_date],
+        "risk": [case({"High": 0, "Medium": 1, "Low": 2}, value=Account.risk_rating, else_=None)],
+        "rm": [func.lower(User.name)],
+        "pep": [case((Account.is_pep.is_(True), 0), else_=1)],
+    }
+    if key == "recent":
+        return [Account.created_at.desc(), Account.id.desc()], False
+    cols = columns.get(key, columns["name"])
+    ordered = [(c.desc() if desc else c.asc()).nulls_last() for c in cols]
+    return [*ordered, func.lower(Account.company_name), Account.id], key == "rm"
 
 
 def list_accounts(
@@ -213,11 +236,9 @@ def list_accounts(
         query = query.filter(Account.approved_at >= datetime.combine(approved_since, datetime.min.time(), tzinfo=timezone.utc))
 
     total = query.count()
-    order = {
-        "approved": (Account.approved_at.desc().nulls_last(), Account.company_name),
-        "aml": (Account.next_aml_review_date.asc().nulls_last(), Account.company_name),
-        "recent": (Account.created_at.desc(), Account.id.desc()),
-    }.get(sort, (Account.company_name, Account.id))
+    order, needs_rm = _list_order(sort or "name")
+    if needs_rm:
+        query = query.outerjoin(User, User.id == Account.spoc_id)
     items = query.order_by(*order).offset(skip).limit(limit).all()
     # Triam UAT 05-11-2026: the list says at which level a case awaiting approval is pending.
     awaiting = {a.id: a for a in items if a.profile_status == client_workflow_service.AWAITING}

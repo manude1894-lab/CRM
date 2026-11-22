@@ -23,7 +23,8 @@ def list_accounts(
     statuses: Optional[str] = Query(None, description="Comma-separated profile statuses, e.g. New,WIP,Rejected"),
     risk: Optional[str] = None,
     approved_since: Optional[date] = None,
-    sort: str = Query("name", description="name | approved | aml | recent"),
+    sort: str = Query("name", description="name | client_id | status | approved | risk | rm | pep | aml | recent; "
+                                             "a leading - reverses it (e.g. -name)"),
     response: Response = None,
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),

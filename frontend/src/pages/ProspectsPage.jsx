@@ -3,7 +3,8 @@ import { prospectsApi, usersApi, countriesApi } from "../api/endpoints";
 import MobileNumberInput from "../components/MobileNumberInput";
 import { dialCodeOptions } from "../utils/dialCodes";
 import { mobileProblem, splitPhone, joinPhone, UAE_CODE } from "../utils/mobile";
-import { Icon, Modal, Field, Input, Select, Textarea, Spinner, ErrorBanner, PageHeader, SelectWithOther } from "../components/ui";
+import { Icon, Modal, Field, Input, Select, Textarea, Spinner, ErrorBanner, PageHeader, SelectWithOther, FilterBar, SearchInput } from "../components/ui";
+import { PAGE_SIZES, usePageSize } from "../components/listing";
 import DuplicateWarning from "../components/DuplicateWarning";
 import { PROSPECT_STATUS_OPTIONS, PROSPECT_SOURCE_OPTIONS, COUNTRY_CALLING_CODES, isRelationshipManager, personLabel, fmtDate } from "../utils/constants";
 import { toast } from "../store/toast";
@@ -37,6 +38,9 @@ export default function ProspectsPage({ onNavigate } = {}) {
   const [items, setItems] = useState([]);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [perColumn, setPerColumn] = usePageSize("prospects", 15);
+  const [more, setMore] = useState({}); // extra sets of cards shown per column
   const [error, setError] = useState(null);
   const [modal, setModal] = useState(false);
   const [form, setForm] = useState({});
@@ -128,6 +132,11 @@ export default function ProspectsPage({ onNavigate } = {}) {
   if (loading) return <Spinner />;
   if (error) return <ErrorBanner message={error} onRetry={load} />;
 
+  // Triam 22-11-2026: a search over the board, and each column shows a set number of cards with "Show more".
+  const q = search.trim().toLowerCase();
+  const matching = q ? items.filter((p) => [p.company_name, p.contact_name, p.prospect_uid, p.contact_email, userById[p.owner_id]?.name]
+    .some((v) => (v || "").toLowerCase().includes(q))) : items;
+
   return (
     <div className="space-y-4">
       <PageHeader title="Prospects"
@@ -138,20 +147,33 @@ export default function ProspectsPage({ onNavigate } = {}) {
         </button>
         </>} />
 
+      <FilterBar>
+        <SearchInput value={search} onChange={setSearch} placeholder="Search by prospect, contact, PROS ID or RM…" />
+        <label className="ml-auto flex items-center gap-1.5 text-xs text-gray-600">
+          <span>Cards per column</span>
+          <select value={perColumn} onChange={(e) => { setPerColumn(Number(e.target.value)); setMore({}); }} aria-label="Cards per column"
+            className="border border-gray-200 rounded-md bg-white px-1.5 py-1 text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand-300">
+            {PAGE_SIZES.map((n) => <option key={n} value={n}>{n}</option>)}
+          </select>
+        </label>
+      </FilterBar>
+
       {/* Each column is at least 220px wide; on a narrow screen the board scrolls sideways instead of overlapping. */}
       <div className="grid grid-cols-1 md:grid-cols-[repeat(3,minmax(260px,1fr))] gap-4 overflow-x-auto pb-2">
         {PROSPECT_STATUS_OPTIONS.map((col) => {
-          const colItems = items.filter((p) => p.status === col);
+          const colAll = matching.filter((p) => p.status === col);
+          const limit = perColumn * (1 + (more[col] || 0));
+          const colItems = colAll.slice(0, limit);
           return (
             <div key={col} className="min-w-0 rounded-xl bg-slate-100/60 border border-slate-200/60 p-2">
               {/* Triam 22-11-2026 design refresh: a lane per status, its colour on top. */}
               <div className={`h-1 rounded-full mb-2 ${LANE_COLOUR[col] || "bg-slate-300"}`} />
               <div className="flex items-center justify-between mb-2 px-1">
                 <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-600">{col}</span>
-                <span className="text-[11px] font-semibold text-slate-500 bg-white border border-slate-200 rounded-full px-2 py-0.5">{colItems.length}</span>
+                <span className="text-[11px] font-semibold text-slate-500 bg-white border border-slate-200 rounded-full px-2 py-0.5">{colAll.length}</span>
               </div>
               <div className="space-y-2 min-h-16">
-                {colItems.length === 0 && <div className="text-xs text-slate-600 text-center py-8">No prospects</div>}
+                {colItems.length === 0 && <div className="text-xs text-slate-600 text-center py-8">{q ? "No matches" : "No prospects"}</div>}
                 {colItems.map((p) => (
                   <div key={p.id} className="bg-white border border-gray-200/70 rounded-xl p-3 shadow-[0_1px_2px_rgba(16,24,40,0.05)] hover:shadow-md transition-shadow">
                     <div className="flex items-start gap-2.5">
@@ -197,6 +219,12 @@ export default function ProspectsPage({ onNavigate } = {}) {
                     )}
                   </div>
                 ))}
+                {colAll.length > colItems.length && (
+                  <button type="button" onClick={() => setMore((m) => ({ ...m, [col]: (m[col] || 0) + 1 }))}
+                    className="w-full py-2 text-xs font-medium text-brand-700 bg-white/70 border border-dashed border-slate-300 rounded-lg hover:bg-white">
+                    Show {Math.min(perColumn, colAll.length - colItems.length)} more ({colAll.length - colItems.length} not shown)
+                  </button>
+                )}
               </div>
             </div>
           );

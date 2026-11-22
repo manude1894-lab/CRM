@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { instructionsApi, invoicesApi, accountsApi, documentsApi } from "../api/endpoints";
 import { useMasters } from "../hooks/useMasters";
 import { Icon, Modal, Field, Input, Select, Textarea, Spinner, ErrorBanner, PageHeader, DateInput } from "../components/ui";
+import { Pager, SortTh, useListView } from "../components/listing";
 import MoneyInput from "../components/MoneyInput";
 import { fmtDate, fmtMoney } from "../utils/constants";
 import { useRequestOptions, pickableStatuses, firstOpenStatus, requestLabel, clientEntities, takesRequests } from "../hooks/useRequestOptions";
@@ -119,6 +120,11 @@ export default function InstructionsPage() {
       && (!clientFilter || i.account_id === Number(clientFilter))
       && (!invoicingFilter || invoicingOf(invoiceById[i.invoice_id]) === invoicingFilter);
   });
+  // Triam 22-11-2026: sortable columns and a page size.
+  const view = useListView(filtered, { key: "serviceRequests", defaultSort: { by: "received", dir: "desc" },
+    resetOn: [search, statusFilter, clientFilter, invoicingFilter],
+    valueOf: (i, by) => ({ client: accountById[i.account_id]?.company_name, entity: i.triam_entity, type: requestLabel(i), status: i.status,
+      received: i.date_received, completed: i.date_completed, charge: i.charge_amount != null ? Number(i.charge_amount) : null }[by]) });
 
   const openNew = () => {
     setForm({ ...emptyForm(clientFilter), triam_entity: clientEntities(accountById[clientFilter])[0] || "" });
@@ -227,22 +233,19 @@ export default function InstructionsPage() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-100 bg-gray-50">
-              <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500">Client</th>
-              <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500">Triam Entity</th>
-              <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500">Request Type</th>
-              <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500">Status</th>
-              <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500">Received</th>
-              <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500">Completed</th>
-              <th className="text-right py-3 px-4 text-xs font-semibold text-gray-500">Charge</th>
-              <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500">Invoice</th>
-              <th className="py-3 px-4 text-xs font-semibold text-gray-500">Actions</th>
+              {[["Client", "client"], ["Triam Entity", "entity"], ["Request Type", "type"], ["Status", "status"],
+                ["Received", "received", "desc"], ["Completed", "completed", "desc"]].map(([label, by, first]) => (
+                <SortTh key={by} label={label} by={by} sort={view.sort} onSort={view.setSort} firstDir={first} className="py-3 px-4 text-xs text-gray-500" />))}
+              <SortTh label="Charge" by="charge" sort={view.sort} onSort={view.setSort} firstDir="desc" className="py-3 px-4 text-xs text-gray-500 text-right" />
+              <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wide">Invoice</th>
+              <th className="py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wide">Actions</th>
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 && (
               <tr><td colSpan={9} className="py-8 text-center text-sm text-gray-500">No service requests match this filter.</td></tr>
             )}
-            {filtered.map((i) => {
+            {view.rows.map((i) => {
               const acc = accountById[i.account_id];
               const inv = invoiceById[i.invoice_id];
               const stage = invoicingOf(inv);
@@ -264,8 +267,8 @@ export default function InstructionsPage() {
                       </select>
                     )}
                   </td>
-                  <td className="py-3 px-4 text-xs text-gray-500">{fmtDate(i.date_received) || "—"}</td>
-                  <td className="py-3 px-4 text-xs text-gray-500">{fmtDate(i.date_completed) || "—"}</td>
+                  <td className="py-3 px-4 text-xs text-gray-500 whitespace-nowrap">{fmtDate(i.date_received) || "—"}</td>
+                  <td className="py-3 px-4 text-xs text-gray-500 whitespace-nowrap">{fmtDate(i.date_completed) || "—"}</td>
                   <td className="py-3 px-4 text-xs text-right text-gray-600 whitespace-nowrap">{i.charge_amount != null ? fmtMoney(i.charge_currency, i.charge_amount) : "—"}</td>
                   <td className="py-3 px-4 text-xs">
                     {stage === "none" ? <span className="text-gray-500">—</span>
@@ -292,6 +295,7 @@ export default function InstructionsPage() {
           </tbody>
         </table>
       </div>
+      <Pager {...view.pager} label="Service requests" />
 
       {modal && (
         <Modal title={modal === "new" ? "New Service Request" : requestLocked ? "Service Request" : "Edit Service Request"} onClose={() => setModal(null)}>

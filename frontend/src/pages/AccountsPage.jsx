@@ -6,6 +6,7 @@ import AccountFormModal from "../components/accounts/AccountFormModal";
 import BulkActionBar from "../components/accounts/BulkActionBar";
 import ImportPreviewModal from "../components/accounts/ImportPreviewModal";
 import ClientProfilePage from "./ClientProfilePage";
+import { Pager, SortTh, usePageSize } from "../components/listing";
 import { BLANK_ACCOUNT_FORM } from "../components/accounts/accountForm";
 import { buildAccountsCsv, parseImportRows } from "../components/accounts/accountCsv";
 import { toast } from "../store/toast";
@@ -27,12 +28,15 @@ const SCOPES = {
   },
 };
 const VIEW_KEY = "triam.clients.view";
-const PAGE_SIZE = 50;
 // Triam 13-11-2026: approved clients are listed with the latest approval on top, and can be filtered by
 // when they were approved.
 const APPROVED_WITHIN = { "": "Approved: any time", 7: "Approved in the last 7 days", 30: "Approved in the last 30 days",
   90: "Approved in the last 90 days", year: "Approved this year" };
-const SORTS = { approved: "Latest approval first", name: "Client name A–Z", aml: "Next AML review first" };
+// The card view has no column headers, so it keeps a sort list; the table sorts by clicking a header (Triam
+// 22-11-2026). Each entry is the server's sort: a column, "-" in front for the reverse order.
+const SORTS = { "-approved": "Latest approval first", name: "Client name A–Z", aml: "Next AML review first" };
+const sortParam = (s) => (s.dir === "desc" ? `-${s.by}` : s.by);
+const sortFromParam = (v) => (v.startsWith("-") ? { by: v.slice(1), dir: "desc" } : { by: v, dir: "asc" });
 const approvedSince = (key) => {
   if (!key) return null;
   const now = new Date();
@@ -45,7 +49,7 @@ export default function AccountsPage({ scope = "onboarding", initialAccountId, i
   const cfg = SCOPES[scope];
   const appliedInitialRef = useRef(false);
   const [accounts, setAccounts] = useState([]); // the current page of clients, filtered and sorted by the server
-  // Review 22-11-2026 (package 4): lists are paged on the server, PAGE_SIZE at a time.
+  // Review 22-11-2026 (package 4): lists are paged on the server; the page size is the user's choice.
   const [page, setPage] = useState(0);
   const [total, setTotal] = useState(0); // clients matching the filters
   const [liveTotal, setLiveTotal] = useState(0); // all clients of this menu item, Dropped aside
@@ -59,7 +63,11 @@ export default function AccountsPage({ scope = "onboarding", initialAccountId, i
   const [statusFilter, setStatusFilter] = useState(() => (initialStatus && SCOPES[scope].statuses.includes(initialStatus) ? initialStatus : ""));
   const [riskFilter, setRiskFilter] = useState("");
   const [approvedWithin, setApprovedWithin] = useState("");
-  const [sortBy, setSortBy] = useState("approved");
+  const [sort, setSort] = useState(scope === "maintenance" ? { by: "approved", dir: "desc" } : { by: "name", dir: "asc" });
+  const sortBy = sortParam(sort);
+  const [pageSize, setPageSize] = usePageSize(`clients.${scope}`, 50);
+  // Triam 22-11-2026: New Client Onboarding shows either the clients or the prospects waiting for one, not both.
+  const [tab, setTab] = useState("clients");
   const [view, setView] = useState(readView);
   const [open, setOpen] = useState(null); // { id, tab } — the client page being shown
   // BRD §4A — a client is created only from an assigned prospect: "Create client" on the prospect
@@ -92,7 +100,7 @@ export default function AccountsPage({ scope = "onboarding", initialAccountId, i
       statuses: (statusFilter ? [statusFilter] : query ? cfg.statuses : liveStatuses).join(","),
       search: query || undefined, risk: riskFilter || undefined,
       approved_since: since ? since.toISOString().slice(0, 10) : undefined,
-      sort: scope === "maintenance" ? sortBy : "name", ...extra,
+      sort: sortBy, ...extra,
     };
   };
 
@@ -104,7 +112,7 @@ export default function AccountsPage({ scope = "onboarding", initialAccountId, i
     setListLoading(true);
     try {
       const [res, live] = await Promise.all([
-        accountsApi.list(listParams({ skip: page * PAGE_SIZE, limit: PAGE_SIZE })),
+        accountsApi.list(listParams({ skip: page * pageSize, limit: pageSize })),
         accountsApi.list({ statuses: liveStatuses.join(","), limit: 1 }),
       ]);
       if (mine !== latestList.current) return;
@@ -132,14 +140,14 @@ export default function AccountsPage({ scope = "onboarding", initialAccountId, i
   };
   useEffect(() => { load(); }, []);
   // A new filter starts again at the first page; a page or filter change reloads the list.
-  useEffect(() => { setPage(0); }, [query, statusFilter, riskFilter, approvedWithin, sortBy]);
+  useEffect(() => { setPage(0); }, [query, statusFilter, riskFilter, approvedWithin, sortBy, pageSize]);
   // A new page of the list starts at its top.
   useEffect(() => { if (page > 0 || !firstRun.current) document.getElementById('main-content')?.scrollTo?.({ top: 0 }); }, [page]);
   const firstRun = useRef(true);
   useEffect(() => {
     if (firstRun.current) { firstRun.current = false; return; }
     loadList();
-  }, [page, query, statusFilter, riskFilter, approvedWithin, sortBy]);
+  }, [page, query, statusFilter, riskFilter, approvedWithin, sortBy, pageSize]);
 
   // Arriving from elsewhere (e.g. "Review" in the Compliance inbox) opens that client's page. The client is read
   // directly: with paging it may not be on the first page of the list.
@@ -236,7 +244,6 @@ export default function AccountsPage({ scope = "onboarding", initialAccountId, i
   // a dropped client leaves the working list, shown when Dropped is picked or searched for).
   const filtered = accounts;
   const ids = filtered.map((a) => a.id);
-  const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const openClient = (a) => setOpen({ id: a.id, tab: "overview" });
   // Prospects sent to an RM and still waiting for their client: the RM sees their own, the Prospecting
   // Coordinator and administrators see all. Newest first (Triam input 19-10-2026).
@@ -262,6 +269,18 @@ export default function AccountsPage({ scope = "onboarding", initialAccountId, i
       />
 
       {scope === "onboarding" && (
+        <div role="tablist" aria-label="Show" className="flex gap-1 border-b border-gray-200">
+          {[["clients", "Clients being onboarded", liveTotal], ["prospects", isAdmin || canAssign ? "Prospects waiting for a client" : "My prospects waiting for a client", waiting.length]].map(([k, label, n]) => (
+            <button key={k} role="tab" type="button" aria-selected={tab === k} onClick={() => setTab(k)}
+              className={`-mb-px px-4 py-2.5 text-sm border-b-2 flex items-center gap-2 ${tab === k ? "border-brand-600 text-brand-700 font-semibold" : "border-transparent text-gray-600 hover:text-gray-900"}`}>
+              {label}
+              <span className={`min-w-[22px] px-1.5 py-0.5 rounded-full text-[11px] font-semibold text-center ${k === "prospects" && n > 0 ? "bg-gold text-brand-900" : "bg-gray-100 text-gray-600"}`}>{n}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {scope === "onboarding" && tab === "prospects" && (
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-x-auto">
           <div className="px-4 py-3 border-b border-gray-100 text-sm font-semibold text-gray-800">
             {isAdmin || canAssign ? "Prospects sent to RMs" : "Prospects sent to me"}
@@ -294,6 +313,7 @@ export default function AccountsPage({ scope = "onboarding", initialAccountId, i
         </div>
       )}
 
+      {(scope !== "onboarding" || tab === "clients") && (<>
       <FilterBar>
         <SearchInput value={search} onChange={setSearch} placeholder="Search by client name or Client ID…" />
         <div className="w-60"><Select aria-label="Filter by status" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
@@ -308,7 +328,8 @@ export default function AccountsPage({ scope = "onboarding", initialAccountId, i
         {scope === "maintenance" && <div className="w-60"><Select aria-label="Approved within" value={approvedWithin} onChange={(e) => setApprovedWithin(e.target.value)}>
           {Object.entries(APPROVED_WITHIN).map(([k, label]) => <option key={k} value={k}>{label}</option>)}
         </Select></div>}
-        {scope === "maintenance" && <div className="w-48"><Select aria-label="Sort" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+        {view === "cards" && <div className="w-48"><Select aria-label="Sort" value={SORTS[sortBy] ? sortBy : ""} onChange={(e) => setSort(sortFromParam(e.target.value))}>
+          {!SORTS[sortBy] && <option value="">Sorted by a column</option>}
           {Object.entries(SORTS).map(([k, label]) => <option key={k} value={k}>{label}</option>)}
         </Select></div>}
         <div className="ml-auto flex border border-gray-200 rounded-lg overflow-hidden bg-white">
@@ -338,10 +359,11 @@ export default function AccountsPage({ scope = "onboarding", initialAccountId, i
                 {!readOnly && <th className="py-2.5 px-3 w-8">
                   <input type="checkbox" aria-label="Select all clients" checked={ids.every((id) => selectedIds.has(id))} onChange={() => toggleSelectAll(ids)} />
                 </th>}
-                {(scope === "maintenance" ? ["Client ID", "Client", "Status", "Approved on", "Risk", "Anchor RM", "PEP", "Next AML review"]
-                  : ["Client ID", "Client", "Status", "Anchor RM", "PEP"]).map((h) => (
-                  <th key={h} className="py-2.5 px-3 font-semibold text-left">{h}</th>
-                ))}
+                {(scope === "maintenance"
+                  ? [["Client ID", "client_id"], ["Client", "name"], ["Status", "status"], ["Approved on", "approved", "desc"], ["Risk", "risk"],
+                    ["Anchor RM", "rm"], ["PEP", "pep"], ["Next AML review", "aml"]]
+                  : [["Client ID", "client_id"], ["Client", "name"], ["Status", "status"], ["Anchor RM", "rm"], ["PEP", "pep"]]
+                ).map(([h, by, firstDir]) => <SortTh key={by} label={h} by={by} sort={sort} onSort={setSort} firstDir={firstDir} />)}
               </tr>
             </thead>
             <tbody>
@@ -378,18 +400,8 @@ export default function AccountsPage({ scope = "onboarding", initialAccountId, i
           ))}
         </div>
       )}
-      {total > 0 && (
-        <nav aria-label="Pages" className={`flex flex-wrap items-center justify-between gap-2 text-xs text-gray-600 ${listLoading ? "opacity-60" : ""}`}>
-          <span>{`Showing ${page * PAGE_SIZE + 1}–${Math.min(total, (page + 1) * PAGE_SIZE)} of ${total}`}</span>
-          {pages > 1 && (
-            <span className="flex items-center gap-2">
-              <Button size="sm" disabled={page === 0 || listLoading} onClick={() => setPage((n) => n - 1)}>Previous</Button>
-              <span>{`Page ${page + 1} of ${pages}`}</span>
-              <Button size="sm" disabled={page + 1 >= pages || listLoading} onClick={() => setPage((n) => n + 1)}>Next</Button>
-            </span>
-          )}
-        </nav>
-      )}
+      <Pager page={page} pageSize={pageSize} total={total} onPage={setPage} onPageSize={setPageSize} busy={listLoading} label="Clients" />
+      </>)}
 
       {newClient && (
         <AccountFormModal key={newClient.key} users={users} countries={countries}
