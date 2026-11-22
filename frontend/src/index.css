@@ -30,4 +30,6 @@ html, body, #root {
     background-color: #f8fafc;
   }
   table tbody tr { transition: background-color 0.12s ease; }
+  /* Tick boxes and radio buttons in Triam navy instead of the browser blue. */
+  input[type="checkbox"], input[type="radio"] { accent-color: #1a3a5c; }
 }

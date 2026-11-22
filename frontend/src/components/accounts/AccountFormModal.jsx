@@ -36,12 +36,12 @@ const alphabetical = (codes) => [...codes].sort((x, y) => x.localeCompare(y));
 const Section = ({ title, children, hasData, onSave, status, error, dirty, readOnly = false }) => {
   const [open, setOpen] = useState(!!hasData);
   return (
-    <div className="mb-2 border border-gray-100 rounded-lg overflow-hidden">
+    <div className={`mb-2 border rounded-lg overflow-hidden transition-colors ${open ? "border-gray-200 shadow-[0_1px_2px_rgba(16,24,40,0.04)]" : "border-gray-200/70"}`}>
       <button type="button" onClick={() => setOpen((o) => !o)}
-        className="w-full flex items-center justify-between px-3 py-2 bg-gray-50 hover:bg-gray-100 transition-colors text-left">
-        <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide flex items-center gap-1.5">
+        className={`w-full flex items-center justify-between px-4 py-2.5 bg-white hover:bg-gray-50 transition-colors text-left ${open ? "border-b border-gray-100" : ""}`}>
+        <span className="text-[13px] font-semibold text-gray-800 flex items-center gap-2">
           {title}
-          {hasData && <span className="w-1.5 h-1.5 rounded-full bg-brand-500 flex-shrink-0" />}
+          {hasData && <span className="w-1.5 h-1.5 rounded-full bg-gold flex-shrink-0" title="Has information" />}
           {onSave && dirty && <span className="normal-case tracking-normal text-[10px] font-semibold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">Unsaved changes</span>}
         </span>
         <Icon name="chevronRight" size={14} className={`text-gray-400 transition-transform flex-shrink-0 ${open ? "rotate-90" : ""}`} />

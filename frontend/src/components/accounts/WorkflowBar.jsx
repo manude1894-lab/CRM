@@ -180,10 +180,11 @@ export default function WorkflowBar({ accountId, refreshKey, onChanged, submitSi
         <div className="flex flex-wrap gap-1.5 ml-auto">
           {state.actions.map((a) => (
             <button key={a.action} type="button" disabled={!a.allowed || busy} title={a.reason || ""} onClick={() => open(a)}
-              className={`px-2.5 py-1 text-xs rounded-lg border disabled:opacity-40 disabled:cursor-not-allowed ${
-                ["reject", "confirm_exit", "mark_exit", "drop"].includes(a.action) ? "border-red-200 text-red-600 hover:bg-red-50"
-                  : a.action === "approve" || a.action === "submit" || a.action === "activate" ? "border-emerald-300 text-emerald-700 hover:bg-emerald-50"
-                  : "border-gray-200 text-gray-600 hover:bg-gray-50"}`}>
+              // Triam 22-11-2026 design refresh: the main step forward is solid; risky ones stay red; the rest quiet.
+              className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+                ["reject", "confirm_exit", "mark_exit", "drop"].includes(a.action) ? "bg-white border-red-200 text-red-600 hover:bg-red-50"
+                  : ["approve", "submit", "activate", "reopen", "resume"].includes(a.action) ? "bg-brand-600 border-brand-600 text-white shadow-sm hover:bg-brand-700"
+                  : "bg-white border-gray-200 text-gray-700 hover:bg-gray-50"}`}>
               {a.label}
             </button>
           ))}

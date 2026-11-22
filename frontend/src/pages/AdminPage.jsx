@@ -7,7 +7,7 @@ import RolesPanel from "../components/admin/RolesPanel";
 import AuditLogPanel from "../components/admin/AuditLogPanel";
 import { useAuthStore } from "../store/auth";
 import { Icon, Modal, Field, Input, Select, Spinner, ErrorBanner, PageHeader, ShowDeactivated } from "../components/ui";
-import { USER_TYPE_LABEL, personLabel } from "../utils/constants";
+import { USER_TYPE_LABEL, initialsOf, personLabel } from "../utils/constants";
 import { toast } from "../store/toast";
 import { confirmDialog } from "../store/confirm";
 
@@ -196,7 +196,7 @@ export default function AdminPage() {
                 <td className="py-3 px-4">
                   <div className={`flex items-center gap-3 ${u.person_id ? "pl-6" : ""}`}>
                     <div className="w-8 h-8 rounded-full text-white text-xs font-bold flex items-center justify-center" style={{ background: "#1a3a5c" }}>
-                      {u.name.split(" ").map((n) => n[0]).slice(0, 2).join("")}
+                      {initialsOf(u.name)}
                     </div>
                     <div>
                       <div className="text-sm font-medium text-gray-800">{u.name}</div>
