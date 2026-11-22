@@ -64,7 +64,7 @@ export default function DocumentPreview({ doc, onClose }) {
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs border border-gray-200 rounded-lg hover:bg-gray-50">
             <Icon name="download" size={13} /> Download
           </button>}
-          <button onClick={onClose} title="Close" className="text-gray-400 hover:text-gray-600"><Icon name="close" size={20} /></button>
+          <button onClick={onClose} title="Close" className="text-gray-500 hover:text-gray-600"><Icon name="close" size={20} /></button>
         </div>
         <div className="flex-1 min-h-0 bg-gray-100 overflow-auto">
           {loading && <div className="h-full flex items-center justify-center"><Spinner /></div>}

@@ -33,7 +33,10 @@ SERVICED = (wf.APPROVED, wf.ACTIVE, wf.INACTIVE, wf.MARKED_EXIT)
 
 
 def _accounts(db: Session, user: User) -> list[Account]:
-    q = db.query(Account)
+    """The clients the user may see, with their people and prospect loaded in bulk (two queries in all, not one
+    per client: review 22-11-2026, package 4)."""
+    from sqlalchemy.orm import selectinload
+    q = db.query(Account).options(selectinload(Account.parties), selectinload(Account.prospect))
     clause = access_control.account_visibility_clause(db, user)
     return (q.filter(clause) if clause is not None else q).all()
 
@@ -156,6 +159,60 @@ def clients_risk(db: Session, user: User) -> dict:
             "rows": [[a.anchor_entity or "—", _client_ref(a), a.company_name, names.tags(a), names(a.spoc_id), a.risk_rating or "—",
                       _iso(a.cdd_completion_date), _iso(a.next_aml_review_date),
                       max((today - a.next_aml_review_date).days, 0) if a.next_aml_review_date else "—"] for a in accs]}
+
+
+SHORT_NUMBER = 3  # an incorporation or licence number shorter than this is almost certainly a typing slip
+
+
+def data_issues(a: Account, today: date) -> list[str]:
+    """Triam data review 21-11-2026: what is wrong or missing on a client past onboarding. Records entered before
+    a rule existed, or loaded through the import, can break rules that the form now enforces."""
+    issues = []
+    company = a.account_type != "Individual"
+    forming = a.client_category == "Under Formation"
+    if a.profile_status in SERVICED:
+        if not a.client_id:
+            issues.append("No Client ID")
+        if not a.risk_rating:
+            issues.append("No risk level")
+    if a.license_start_date and a.license_start_date > today:
+        issues.append(f"Licence start date in the future ({_iso(a.license_start_date)})")
+    if a.incorporation_date and a.incorporation_date > today:
+        issues.append(f"Incorporation date in the future ({_iso(a.incorporation_date)})")
+    if a.license_start_date and a.incorporation_date and a.license_start_date < a.incorporation_date:
+        issues.append("Licence start date before the incorporation date")
+    if company and not forming:
+        for value, label in ((a.registration_number, "Incorporation number"), (a.license_number, "Licence number")):
+            if value and len(value.strip()) < SHORT_NUMBER:
+                issues.append(f"{label} looks too short ('{value.strip()}')")
+        if a.is_regulated is None:
+            issues.append("Regulated (Yes / No) not answered")
+        if not a.licensing_authority:
+            issues.append("No registering authority")
+    if a.engagement_letter_signed is None:
+        issues.append("Engagement letter signed (Yes / No) not answered")
+    if a.is_pep and a.risk_rating and a.risk_rating != "High":
+        issues.append(f"PEP with {a.risk_rating} risk")
+    if (a.edd_reason or "").strip() and a.risk_rating != "High":
+        issues.append(f"EDD reason recorded but risk is {a.risk_rating or 'not set'}")
+    return issues
+
+
+def data_quality(db: Session, user: User) -> dict:
+    """Clients submitted for approval or beyond with data to correct; drafts are left out (they are still being
+    filled in, and Submit checks them)."""
+    today, names = _today(), _Names(db)
+    rows = []
+    for a in sorted(_accounts(db, user), key=lambda a: a.company_name.lower()):
+        if a.profile_status not in (*SERVICED, wf.AWAITING):
+            continue
+        issues = data_issues(a, today)
+        if issues:
+            rows.append([a.company_name, _client_ref(a), a.anchor_entity or "—", names(a.spoc_id), a.profile_status,
+                         len(issues), "; ".join(issues)])
+    return {"title": "Client data to correct",
+            "columns": ["Client Name", "Client ID", "Anchor Triam Entity", "Anchor RM", "Status", "Issues", "What to correct"],
+            "rows": rows}
 
 
 def aml_reviews_due(db: Session, user: User, days: int = 30) -> dict:
@@ -531,6 +588,7 @@ REPORTS = {
     "invoices-service-requests": "Service request invoices",
     "invoices-pending": "Raising invoices pending",
     "service-requests-ageing": "Service requests status and ageing",
+    "data-quality": "Client data to correct",
 }
 
 
@@ -605,6 +663,8 @@ def run(db: Session, user: User, key: str, days: Optional[int] = None, date_from
         return prospects_assigned(db, user, date_from, date_to)
     if key == "prospects-unassigned":
         return prospects_unassigned(db, user)
+    if key == "data-quality":
+        return data_quality(db, user)
     if key == "rejected-with-rm":
         return rejected_with_rm(db, user)
     raise HTTPException(status_code=404, detail="Unknown report")

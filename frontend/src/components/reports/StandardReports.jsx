@@ -7,7 +7,7 @@ import { toast } from "../../store/toast";
 import { useAuthStore } from "../../store/auth";
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
-const show = (v) => (typeof v === "string" && ISO_DATE.test(v) ? fmtDate(v) : v ?? "—");
+const show = (v) => (typeof v === "string" && ISO_DATE.test(v) ? fmtDate(v) : v === true ? "Yes" : v === false ? "No" : v ?? "—");
 // Which inputs each report takes (Triam UAT 18-11-2026: the user picks the days, the dates and the status).
 const TAKES_DAYS = { "documents-expiring": "Within (days)", "aml-reviews-due": "Due within (days)",
   "under-formation": "Pending at least (days, 0 = all)" };
@@ -20,7 +20,7 @@ const REQUEST_TYPES = ["Onboarding", "Service Request"];
 // The side list's groups, in this order; a report not listed here goes under "Other".
 const GROUPS = [
   ["Onboarding", ["onboarding-approved", "onboarding-in-progress", "under-formation", "rejected-with-rm"]],
-  ["Compliance & KYC", ["clients-risk", "aml-reviews-due", "aml-reviews-expired", "amendments"]],
+  ["Compliance & KYC", ["clients-risk", "aml-reviews-due", "aml-reviews-expired", "amendments", "data-quality"]],
   ["Documents", ["documents-expiring", "documents-expired"]],
   ["Prospects", ["prospects-assigned", "prospects-unassigned"]],
   ["Finance & service requests", ["invoices-onboarding", "invoices-service-requests", "invoices-pending", "service-requests-ageing"]],
@@ -102,7 +102,7 @@ export default function StandardReports() {
       <nav aria-label="Reports" className="bg-white border border-gray-200/70 rounded-xl shadow-[0_1px_2px_rgba(16,24,40,0.04)] p-2 lg:sticky lg:top-0">
         {groupReports(list).map(([group, reports]) => (
           <div key={group} className="mb-1">
-            <div className="px-2.5 pt-2.5 pb-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-400">{group}</div>
+            <div className="px-2.5 pt-2.5 pb-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-500">{group}</div>
             {reports.map((r) => (
               <button key={r.key} onClick={() => setKey(r.key)} aria-current={key === r.key ? "page" : undefined}
                 className={`relative w-full text-left px-2.5 py-1.5 rounded-lg text-[13px] leading-snug ${key === r.key
@@ -181,15 +181,16 @@ export default function StandardReports() {
         {busy || !report ? <Spinner /> : (
           <>
             <div className="text-xs text-gray-500 mb-2">{report.title} · {report.rows.length} row{report.rows.length === 1 ? "" : "s"}</div>
-            {report.rows.length === 0 ? <p className="text-sm text-gray-400 py-6 text-center">Nothing to report.</p> : (
-              <div className="overflow-x-auto">
+            {report.rows.length === 0 ? <p className="text-sm text-gray-500 py-6 text-center">Nothing to report.</p> : (
+              <div className="overflow-x-auto focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-300 rounded" tabIndex={0} role="region" aria-label="Report table">
                 <table className="w-full text-sm">
                   <thead><tr className="border-b border-gray-100 bg-gray-50 text-xs text-gray-500">
-                    {report.columns.map((c) => <th key={c} className="text-left py-2 px-3 font-semibold">{c}</th>)}
+                    {/* Review 22-11-2026: the first column (the client) stays in view while scrolling a wide report. */}
+                    {report.columns.map((c, j) => <th key={c} className={`text-left py-2 px-3 font-semibold whitespace-nowrap ${j === 0 ? "sticky left-0 z-[1] bg-gray-50 shadow-[1px_0_0_#f3f4f6]" : ""}`}>{c}</th>)}
                   </tr></thead>
                   <tbody>
                     {report.rows.map((r, i) => (
-                      <tr key={i} className="border-b border-gray-50">{r.map((v, j) => <td key={j} className="py-2 px-3 text-xs text-gray-700">{show(v)}</td>)}</tr>
+                      <tr key={i} className="border-b border-gray-50">{r.map((v, j) => <td key={j} className={`py-2 px-3 text-xs text-gray-700 ${j === 0 ? "sticky left-0 bg-white font-medium text-gray-800 shadow-[1px_0_0_#f3f4f6]" : ""}`}>{show(v)}</td>)}</tr>
                     ))}
                   </tbody>
                 </table>

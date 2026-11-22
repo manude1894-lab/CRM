@@ -7,7 +7,8 @@ from app.database import get_db
 from app.models import User
 from app.schemas import LoginRequest, Token, RefreshTokenRequest, UserRead
 from app.schemas.user import ChangePasswordRequest, ForgotPasswordRequest, ResetPasswordRequest
-from app.services import security_service
+from app.services import rate_limit, security_service
+from app.utils.net import client_ip
 from app.auth.security import (
     verify_password, create_access_token, create_refresh_token, decode_token, issued_before_password_change,
 )
@@ -25,12 +26,17 @@ def _tokens(user: User, **extra) -> dict:
 
 @router.post("/login", response_model=Token, summary="Login with email and password")
 def login(data: LoginRequest, request: Request, db: Session = Depends(get_db)):
-    ip = request.client.host if request.client else None
+    ip = client_ip(request)
+    # Review 22-11-2026: too many failed sign-ins from one address -> refused for a while, whatever the account.
+    if rate_limit.login_failures.blocked(ip):
+        raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                            detail="Too many sign-in attempts from this network. Please try again in 15 minutes.")
     from app.services.user_service import find_by_email
     user = find_by_email(db, data.email)
     security_service.assert_not_locked(user)
     if not user or not user.is_active or not verify_password(data.password, user.hashed_password):
         security_service.record_failure(user if user and user.is_active else None)
+        rate_limit.login_failures.record(ip)
         # BRD §15 audit — failed attempts are recorded too (email only; never the password).
         set_actor(db, user.id if user else None, ip)
         log_event(db, "login_failed", f"Failed login for {data.email}", subject_type="User",
@@ -63,7 +69,12 @@ def change_password(data: ChangePasswordRequest, db: Session = Depends(get_db), 
 
 
 @router.post("/forgot-password", summary="Ask for a password reset link")
-def forgot_password(data: ForgotPasswordRequest, background: BackgroundTasks):
+def forgot_password(data: ForgotPasswordRequest, background: BackgroundTasks, request: Request):
+    ip = client_ip(request)
+    if rate_limit.reset_requests.blocked(ip):
+        raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                            detail="Too many reset requests from this network. Please try again in 15 minutes.")
+    rate_limit.reset_requests.record(ip)
     # The lookup and any emails happen after the response, in their own session: every email gets the
     # same, immediate answer. email_sent says whether reset emails are set up at all (not per user).
     background.add_task(_forgot_password_task, data.email)
@@ -81,7 +92,7 @@ def _forgot_password_task(email: str) -> None:
 
 @router.post("/reset-password", status_code=status.HTTP_204_NO_CONTENT, summary="Set a new password from a reset link")
 def reset_password(data: ResetPasswordRequest, request: Request, db: Session = Depends(get_db)):
-    set_actor(db, None, request.client.host if request.client else None)
+    set_actor(db, None, client_ip(request))
     security_service.reset_password(db, data.token, data.new_password)
     return None
 
@@ -98,6 +109,18 @@ def refresh(data: RefreshTokenRequest, db: Session = Depends(get_db)):
     if not user or issued_before_password_change(payload, user):
         raise HTTPException(status_code=401, detail="User not found or inactive")
     return _tokens(user)
+
+
+@router.post("/logout", status_code=status.HTTP_204_NO_CONTENT, summary="Sign out: end this login's sessions")
+def logout(request: Request, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    """Review 22-11-2026: signing out ends the login's sessions on the server too, so a copied token stops working at
+    once instead of when it expires. (It also signs this login out in its other browser tabs.)"""
+    from datetime import datetime, timezone
+    user.signed_out_at = datetime.now(timezone.utc)
+    set_actor(db, user.id, client_ip(request))
+    log_event(db, "logout", f"{user.name} signed out", subject_type="User", subject_id=user.id)
+    db.commit()
+    return None
 
 
 @router.get("/me", response_model=UserRead, summary="Get current authenticated user")

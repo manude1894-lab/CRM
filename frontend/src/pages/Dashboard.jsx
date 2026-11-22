@@ -1,27 +1,18 @@
 import { formatTimestamp } from "../utils/auditFormat";
 import React, { useEffect, useState } from "react";
-import { dashboardApi, accountsApi } from "../api/endpoints";
+import { dashboardApi } from "../api/endpoints";
 import { Icon, Spinner, ErrorBanner } from "../components/ui";
 import { fmtDate, personLabel } from "../utils/constants";
 import { useAuthStore } from "../store/auth";
+import { dashboardTiles } from "../utils/dashboardTiles";
 
 const DUE_SOON_DAYS = 60;
 const REFRESH_MS = 5 * 60 * 1000;
 
-// Client dates surfaced in "Due soon" (BRD §5, §8, §9, §20).
-const ACCOUNT_DUE_FIELDS = [
-  ["license_expiry_date", "Trade licence expiry"],
-  ["next_aml_review_date", "AML review"],
-  ["engagement_letter_valid_until", "Engagement letter"],
-  ["lei_expiry_date", "LEI expiry"],
-  ["uae_visa_expiry", "UAE visa expiry"],
-  ["passport_expiry_date", "Passport expiry"],
-];
 const SERVICED = ["Approved", "Active", "Inactive", "Marked for Exit"];
 // Statuses listed under Client Data Maintenance (existing clients); the rest are in New Client Onboarding.
 const EXISTING_STATUSES = [...SERVICED, "Exited"];
 
-const daysUntil = (iso) => Math.round((new Date(iso) - new Date(new Date().toDateString())) / 86400000);
 
 // "Kalyan Rao" → "Kalyan"; a name starting with initials ("S T Krishna") is used in full.
 const firstName = (name) => { const first = name.trim().split(/\s+/)[0]; return first.length > 2 ? first : name.trim(); };
@@ -34,8 +25,8 @@ const greeting = () => {
 // Icon chip tones for the KPI tiles (decoration only; the number and label carry the meaning).
 const TONES = {
   navy: "bg-brand-50 text-brand-600",
-  gold: "bg-amber-50 text-amber-600",
-  green: "bg-emerald-50 text-emerald-600",
+  gold: "bg-amber-50 text-amber-700",
+  green: "bg-emerald-50 text-emerald-700",
   slate: "bg-slate-100 text-slate-600",
 };
 
@@ -53,7 +44,7 @@ function StatCard({ label, value, hint, attention, icon, tone = "navy", onClick 
           <Icon name={icon} size={18} />
         </span>
       </div>
-      <div className={`text-[11px] mt-1.5 ${hot ? "text-amber-700 font-medium" : "text-gray-400 group-hover:text-brand-600"}`}>
+      <div className={`text-[11px] mt-1.5 ${hot ? "text-amber-700 font-medium" : "text-gray-500 group-hover:text-brand-600"}`}>
         {hot ? hint : value > 0 ? "View →" : "All clear"}
       </div>
     </button>
@@ -108,7 +99,7 @@ function PendingApprovals({ rows, onOpen }) {
 
 function EmptyState({ text }) {
   return (
-    <div className="flex items-center gap-2 px-4 py-6 text-sm text-gray-400">
+    <div className="flex items-center gap-2 px-4 py-6 text-sm text-gray-500">
       <span className="w-6 h-6 rounded-full bg-emerald-50 text-emerald-500 flex items-center justify-center"><Icon name="check" size={14} /></span>
       {text}
     </div>
@@ -157,7 +148,7 @@ function Pipeline({ statuses, onOpen }) {
                 <span key={status} className="flex-1 px-0.5 pt-1.5 text-[10.5px] leading-tight text-center text-gray-500">{status}</span>
               ))}
             </div>
-            <div className="mt-2 pt-1.5 border-t border-gray-100 text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-400 text-center">{phase}</div>
+            <div className="mt-2 pt-1.5 border-t border-gray-100 text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-500 text-center">{phase}</div>
           </div>
         ))}
       </div>
@@ -168,8 +159,10 @@ function Pipeline({ statuses, onOpen }) {
 export default function Dashboard({ onNavigate = () => {} } = {}) {
   const user = useAuthStore((s) => s.user);
   const coordinator = useAuthStore((s) => s.isProspectCoordinator());
+  const isAdmin = useAuthStore((s) => s.isAdmin());
+  const readOnly = useAuthStore((s) => s.isReadOnly());
+  const can = useAuthStore((s) => s.can);
   const [data, setData] = useState(null);
-  const [accounts, setAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [updatedAt, setUpdatedAt] = useState(null);
@@ -179,11 +172,9 @@ export default function Dashboard({ onNavigate = () => {} } = {}) {
   const load = async () => {
     try {
       setError(null);
-      const [dash, accs, work] = await Promise.all([dashboardApi.get(), accountsApi.list({ limit: 200 }).catch(() => []),
-        dashboardApi.myWork().catch(() => [])]);
+      const [dash, work] = await Promise.all([dashboardApi.get(), dashboardApi.myWork().catch(() => [])]);
       setData(dash);
       setMyWork(work || []);
-      setAccounts(Array.isArray(accs?.items) ? accs.items : []);
       setUpdatedAt(new Date());
     } catch (e) {
       setError(e.response?.data?.detail || "Failed to load dashboard");
@@ -205,14 +196,30 @@ export default function Dashboard({ onNavigate = () => {} } = {}) {
   const kpis = data.kpis;
   const goClient = (id) => onNavigate({ page: "accounts", accountId: id });
 
-  // Due soon: dates on the clients Triam services, overdue first.
-  const due = accounts.filter((a) => SERVICED.includes(a.profile_status)).flatMap((a) => ACCOUNT_DUE_FIELDS
-    .filter(([f]) => a[f] && daysUntil(a[f]) <= DUE_SOON_DAYS)
-    .map(([f, what]) => ({ key: `${a.id}-${f}`, id: a.id, company: a.company_name, what, date: a[f], days: daysUntil(a[f]) })))
-    .sort((x, y) => x.days - y.days);
+  // Due soon: dates on the clients Triam services, overdue first - computed by the server over every client the
+  // user may see (review 22-11-2026), not from the first page of clients.
+  const due = (data.due_soon || []).map((d) => ({ ...d, id: d.account_id, company: d.company_name }));
   const dueShown = showAllDue ? due : due.slice(0, 8);
 
+  // Review 22-11-2026 (package 5): each desk sees the numbers it acts on. Someone holding several roles sees the
+  // tiles of each; administrators and Inquiry & Reports see them all.
+  const go = (page) => () => onNavigate({ page });
+  const tiles = {
+    approver: <StatCard label="Awaiting final approval" value={data.approvals_pending.approver} attention hint="Your decision" icon="shield" tone="gold" onClick={go("approvals")} />,
+    compliance: <StatCard label="Awaiting Compliance" value={data.approvals_pending.compliance} attention hint="Review and decide" icon="shield" tone="gold" onClick={go("approvals")} />,
+    toRaise: <StatCard label="Invoices to raise" value={kpis.invoices_to_raise} attention hint="Requested by RMs" icon="invoices" tone="gold" onClick={go("invoices")} />,
+    overdue: <StatCard label="Overdue invoices" value={kpis.invoices_overdue} attention hint="Chase payment" icon="warn" tone="gold" onClick={go("invoices")} />,
+    prospectsOpen: <StatCard label="Open prospects" value={kpis.prospects_open} icon="kanban" tone="navy" onClick={go("prospects")} />,
+    unassigned: <StatCard label={coordinator ? "Prospects to assign" : "Unassigned prospects"} value={kpis.prospects_unassigned} attention hint={coordinator ? "Assign an RM" : "Available to take"} icon="warn" tone="gold" onClick={go("prospects")} />,
+    preparing: <StatCard label="Clients being prepared" value={kpis.clients_in_progress} icon="accounts" tone="navy" onClick={go("accounts")} />,
+    awaiting: <StatCard label="Awaiting approval" value={kpis.clients_awaiting_approval} attention hint="With Compliance / Approver" icon="shield" tone="gold" onClick={go("approvals")} />,
+    active: <StatCard label="Approved & active clients" value={kpis.clients_active} icon="check" tone="green" onClick={go("maintenance")} />,
+    requests: <StatCard label="Open service requests" value={kpis.service_requests_open} icon="instructions" tone="slate" onClick={go("instructions")} />,
+    unpaid: <StatCard label="Unpaid invoices" value={kpis.invoices_unpaid} attention hint="Follow up payment" icon="invoices" tone="gold" onClick={go("invoices")} />,
+    aml: <StatCard label={`AML reviews due (${DUE_SOON_DAYS} days)`} value={kpis.aml_reviews_due} attention hint="Plan the reviews" icon="calendar" tone="slate" onClick={go("reports")} />,
+  };
   const people = data.portfolio_by_rm || [];
+  const tileKeys = dashboardTiles({ isAdmin, readOnly, coordinator, can, handlesClients: user?.handles_clients !== false });
   const maxClients = Math.max(1, ...people.map((p) => p.total));
 
   return (
@@ -220,16 +227,16 @@ export default function Dashboard({ onNavigate = () => {} } = {}) {
       <div className="flex flex-wrap items-end justify-between gap-2">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 tracking-tight">{greeting()}{user?.name ? `, ${firstName(user.name)}` : ""}</h1>
-          {user?.previous_login_at && <p className="text-xs text-gray-400 mt-0.5">Last login {formatTimestamp(user.previous_login_at)}</p>}
+          {user?.previous_login_at && <p className="text-xs text-gray-500 mt-0.5">Last login {formatTimestamp(user.previous_login_at)}</p>}
         </div>
-        <button onClick={load} className="text-xs text-gray-400 hover:text-brand-600">
+        <button onClick={load} className="text-xs text-gray-500 hover:text-brand-600">
           Updated {updatedAt?.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} · Refresh
         </button>
       </div>
 
       {/* BRD §2 — role-level dashboard: the work waiting for this user. */}
       {myWork.some((w) => w.count > 0) && (
-        <Panel title="My work" right={<span className="text-xs text-gray-400">{user?.business_role_name || ""}</span>}>
+        <Panel title="My work" right={<span className="text-xs text-gray-500">{user?.business_role_name || ""}</span>}>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 p-3">
             {myWork.filter((w) => w.count > 0).map((w) => (
               <button key={w.key} onClick={() => onNavigate({ page: w.page })}
@@ -237,7 +244,7 @@ export default function Dashboard({ onNavigate = () => {} } = {}) {
                 <span className="min-w-[40px] h-10 px-2 rounded-lg bg-brand-600 text-white text-lg font-semibold flex items-center justify-center">{w.count}</span>
                 <span className="min-w-0 flex-1">
                   <span className="block text-sm font-medium text-gray-800">{w.label}</span>
-                  {w.hint && <span className="block text-[11px] text-gray-400">{w.hint}</span>}
+                  {w.hint && <span className="block text-[11px] text-gray-500">{w.hint}</span>}
                 </span>
                 <Icon name="chevronRight" size={16} className="text-gray-300 group-hover:text-brand-500 flex-shrink-0" />
               </button>
@@ -248,18 +255,11 @@ export default function Dashboard({ onNavigate = () => {} } = {}) {
 
       {/* BRD §2 — snapshot MI. */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <StatCard label="Open prospects" value={kpis.prospects_open} icon="kanban" tone="navy" onClick={() => onNavigate({ page: "prospects" })} />
-        <StatCard label={coordinator ? "Prospects to assign" : "Unassigned prospects"} value={kpis.prospects_unassigned} attention hint={coordinator ? "Assign an RM" : "Available to take"} icon="warn" tone="gold" onClick={() => onNavigate({ page: "prospects" })} />
-        <StatCard label="Clients being prepared" value={kpis.clients_in_progress} icon="accounts" tone="navy" onClick={() => onNavigate({ page: "accounts" })} />
-        <StatCard label="Awaiting approval" value={kpis.clients_awaiting_approval} attention hint="With Compliance / Approver" icon="shield" tone="gold" onClick={() => onNavigate({ page: "approvals" })} />
-        <StatCard label="Approved & active clients" value={kpis.clients_active} icon="check" tone="green" onClick={() => onNavigate({ page: "maintenance" })} />
-        <StatCard label="Open service requests" value={kpis.service_requests_open} icon="instructions" tone="slate" onClick={() => onNavigate({ page: "instructions" })} />
-        <StatCard label="Unpaid invoices" value={kpis.invoices_unpaid} attention hint="Follow up payment" icon="invoices" tone="gold" onClick={() => onNavigate({ page: "invoices" })} />
-        <StatCard label={`AML reviews due (${DUE_SOON_DAYS} days)`} value={kpis.aml_reviews_due} attention hint="Plan the reviews" icon="calendar" tone="slate" onClick={() => onNavigate({ page: "reports" })} />
+        {tileKeys.map((k) => <React.Fragment key={k}>{tiles[k]}</React.Fragment>)}
       </div>
 
       <Panel title="Client pipeline"
-        right={<span className="text-xs text-gray-400">With Compliance {data.approvals_pending.compliance} · With the Approver {data.approvals_pending.approver}</span>}>
+        right={<span className="text-xs text-gray-500">With Compliance {data.approvals_pending.compliance} · With the Approver {data.approvals_pending.approver}</span>}>
         <div className="px-4 pt-4 pb-3">
           {/* Each stage opens its own list, filtered to that status: onboarding stages in New Client
               Onboarding, existing-client stages in Client Data Maintenance. */}

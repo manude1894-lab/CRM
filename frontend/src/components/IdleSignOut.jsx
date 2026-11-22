@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useAuthStore } from "../store/auth";
 import { Button } from "./ui";
+import { signOut } from "../utils/signOut";
 
 export const IDLE_MINUTES = 30;
 const WARN_SECONDS = 120;
@@ -20,7 +21,7 @@ export default function IdleSignOut() {
       const remaining = Math.round(IDLE_MINUTES * 60 - (Date.now() - last.current) / 1000);
       if (remaining <= 0) {
         try { sessionStorage.setItem("triam-idle-signout", "1"); } catch { /* storage unavailable */ }
-        logout();
+        signOut();
       } else setLeft(remaining <= WARN_SECONDS ? remaining : null);
     }, 1000);
     return () => { ACTIVITY.forEach((e) => window.removeEventListener(e, touch, { capture: true })); clearInterval(timer); };
@@ -36,7 +37,7 @@ export default function IdleSignOut() {
           You will be signed out in {Math.floor(left / 60)}:{String(left % 60).padStart(2, "0")}.
         </p>
         <div className="flex justify-end gap-2 mt-5">
-          <Button onClick={logout}>Sign out</Button>
+          <Button onClick={signOut}>Sign out</Button>
           <Button variant="primary" onClick={stay} autoFocus>Stay signed in</Button>
         </div>
       </div>

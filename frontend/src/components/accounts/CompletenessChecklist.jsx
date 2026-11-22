@@ -6,13 +6,13 @@ import { accountsApi } from "../../api/endpoints";
  * the Submit button is blocked until this list is empty. `refreshKey` changes after each
  * save so the list stays current.
  */
-export default function CompletenessChecklist({ accountId, refreshKey }) {
+export default function CompletenessChecklist({ accountId, refreshKey, onLoaded }) {
   const [state, setState] = useState(null);
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
     if (!accountId) return;
-    accountsApi.completeness(accountId).then(setState).catch(() => setState(null));
+    accountsApi.completeness(accountId).then((st) => { setState(st); onLoaded?.(st); }).catch(() => { setState(null); onLoaded?.(null); });
   }, [accountId, refreshKey]);
 
   if (!accountId || !state) return null;

@@ -76,6 +76,10 @@ def main():
         if n:
             print(f"-> Seeded the country list ({n} countries)")
         seed_minimal(db)
+        from app.services.account_service import issue_missing_client_ids
+        n = issue_missing_client_ids(db)
+        if n:
+            print(f"-> Issued Client IDs to {n} existing client(s) that had none")
         if "--minimal" not in sys.argv:
             seed_demo(db)
     finally:

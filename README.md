@@ -98,8 +98,14 @@ Set `VITE_API_URL` in `frontend/.env` if the API isn't on `localhost:8000/api/v1
 
 ```bash
 cd backend && pytest -q          # API and business rules (SQLite in memory)
+cd backend && pytest --cov=app   # the same, with coverage (CI requires at least 88%)
 cd frontend && npm test          # Vitest
+cd frontend && npm run coverage  # with coverage of the logic modules (at least 80%)
+cd e2e && pytest                 # browser tests per desk, against a running local CRM with the demo users
 ```
+
+The browser tests need `pip install -r e2e/requirements.txt` and `python -m playwright install chromium`, and
+`E2E_APP_URL` if the frontend is not on `localhost:5173`. CI runs all of these on every pull request.
 
 ## Project layout
 

@@ -68,10 +68,10 @@ export default function ActivitiesPage() {
         subtitle={`${activities.length} report${activities.length === 1 ? "" : "s"}`}
         actions={!readOnly && <>
 <div className="flex gap-2">
-          <button onClick={() => openNew("Visit Report")} className="px-3 py-2 text-sm text-white rounded-lg font-medium flex items-center gap-1.5 hover:opacity-90" style={{ background: "#1a3a5c" }}>
+          <button onClick={() => openNew("Visit Report")} className="px-3 py-2 text-sm text-white rounded-lg font-medium flex items-center gap-1.5 bg-brand-600 hover:bg-brand-700">
             <Icon name="plus" size={14} /> Visit Report
           </button>
-          <button onClick={() => openNew("Call Report")} className="px-3 py-2 text-sm text-white rounded-lg font-medium flex items-center gap-1.5 hover:opacity-90" style={{ background: "#1a3a5c" }}>
+          <button onClick={() => openNew("Call Report")} className="px-3 py-2 text-sm text-white rounded-lg font-medium flex items-center gap-1.5 bg-brand-600 hover:bg-brand-700">
             <Icon name="plus" size={14} /> Call Report
           </button>
         </div>
@@ -85,7 +85,7 @@ export default function ActivitiesPage() {
             {t}
           </button>
         ))}
-        <select value={clientFilter} onChange={(e) => setClientFilter(e.target.value)}
+        <select aria-label="Filter by client" value={clientFilter} onChange={(e) => setClientFilter(e.target.value)}
           className="ml-auto border border-gray-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-brand-400">
           <option value="">All clients</option>
           {accounts.map((a) => <option key={a.id} value={a.id}>{a.company_name}</option>)}
@@ -93,7 +93,7 @@ export default function ActivitiesPage() {
       </div>
 
       <div className="space-y-3">
-        {filtered.length === 0 && <p className="text-sm text-gray-400 text-center py-8">No visit or call reports.</p>}
+        {filtered.length === 0 && <p className="text-sm text-gray-500 text-center py-8">No visit or call reports.</p>}
         {filtered.map((a) => (
           <ActivityCard key={a.id} activity={a} onEdit={readOnly ? undefined : () => { setForm({ ...blankActivity(), ...a, account_id: a.account_id || "" }); setModal("edit"); }}
             onCancel={!readOnly && a.status !== "Cancelled" ? () => cancelActivity(a) : undefined} />
@@ -105,7 +105,7 @@ export default function ActivitiesPage() {
           <ActivityForm form={form} setForm={setForm} accounts={accounts} />
           <div className="flex justify-end gap-3 mt-2">
             <button onClick={() => setModal(null)} className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
-            <button onClick={save} className="px-4 py-2 text-sm text-white rounded-lg" style={{ background: "#1a3a5c" }}>Save</button>
+            <button onClick={save} className="px-4 py-2 text-sm text-white rounded-lg bg-brand-600 hover:bg-brand-700">Save</button>
           </div>
         </Modal>
       )}

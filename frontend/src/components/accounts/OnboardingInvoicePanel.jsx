@@ -48,7 +48,7 @@ export default function OnboardingInvoicePanel({ accountId }) {
   useEffect(() => {
     if (raised) invoicesApi.attachments(state.invoice.id).then((d) => setFiles(d.filter((x) => x.category === "Invoice"))).catch(() => setFiles([]));
   }, [raised, state?.invoice?.id]);
-  if (!accountId) return <p className="text-xs text-gray-400">Save the client first.</p>;
+  if (!accountId) return <p className="text-xs text-gray-500">Save the client first.</p>;
   if (!state) return null;
 
   const set = (k) => (v) => setForm((p) => ({ ...p, [k]: v }));

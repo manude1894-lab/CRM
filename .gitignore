@@ -8,6 +8,9 @@ env/
 *.egg-info/
 .pytest_cache/
 .coverage
+htmlcov/
+coverage/
+test-results/
 
 # Env
 .env

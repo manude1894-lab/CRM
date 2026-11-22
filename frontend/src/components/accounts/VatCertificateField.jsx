@@ -36,13 +36,13 @@ export default function VatCertificateField({ accountId, disabled = false, onCha
     }
   };
 
-  if (!accountId) return <p className="text-[11px] text-gray-400 mt-2">Save the client first to upload the VAT Certificate.</p>;
+  if (!accountId) return <p className="text-[11px] text-gray-500 mt-2">Save the client first to upload the VAT Certificate.</p>;
   return (
     <div className="mt-2">
       {(docs || []).map((d) => (
         <button key={d.id} type="button" onClick={() => documentsApi.download(d.id, d.filename)}
           className="flex items-center gap-1.5 text-xs text-brand-600 hover:underline">
-          <Icon name="download" size={12} />{d.filename}<span className="text-gray-400">· {fmtDate(d.created_at)}</span>
+          <Icon name="download" size={12} />{d.filename}<span className="text-gray-500">· {fmtDate(d.created_at)}</span>
         </button>
       ))}
       {!disabled && (

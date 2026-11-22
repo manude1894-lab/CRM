@@ -21,6 +21,33 @@ def _visible_accounts(db: Session, user: User):
     return q.filter(clause) if clause is not None else q
 
 
+# Client dates shown under "Due soon" (BRD §5, §8, §9, §20), for the clients Triam services.
+DUE_FIELDS = (
+    ("license_expiry_date", "Trade licence expiry"),
+    ("next_aml_review_date", "AML review"),
+    ("engagement_letter_valid_until", "Engagement letter"),
+    ("lei_expiry_date", "LEI expiry"),
+    ("uae_visa_expiry", "UAE visa expiry"),
+    ("passport_expiry_date", "Passport expiry"),
+)
+DUE_SOON_DAYS = 60
+
+
+def _due_soon(accounts, today: date) -> list[dict]:
+    """Dates due within 60 days (or overdue) on every client the user may see, overdue first. Computed here, not in
+    the browser from the first page of clients (review 22-11-2026, package 4)."""
+    rows = []
+    for a in accounts:
+        if a.profile_status not in (wf.APPROVED, wf.ACTIVE, wf.INACTIVE, wf.MARKED_EXIT):
+            continue
+        for field, what in DUE_FIELDS:
+            d = getattr(a, field, None)
+            if d and (d - today).days <= DUE_SOON_DAYS:
+                rows.append({"key": f"{a.id}-{field}", "account_id": a.id, "company_name": a.company_name, "what": what,
+                             "date": d, "days": (d - today).days})
+    return sorted(rows, key=lambda r: r["days"])
+
+
 def build_dashboard(db: Session, user: User) -> dict:
     today = date.today()
     accounts = _visible_accounts(db, user).all()
@@ -36,6 +63,7 @@ def build_dashboard(db: Session, user: User) -> dict:
         Instruction.status.notin_((InstructionStatus.COMPLETED.value, InstructionStatus.CANCELLED.value))).count()
     _, raised = invoice_service.list_invoices(db, user, limit=1, status="Raised")
     _, overdue = invoice_service.list_invoices(db, user, limit=1, status="Overdue")
+    _, to_raise = invoice_service.list_invoices(db, user, limit=1, status="Requested")
 
     visible_ids = {a.id for a in accounts}
     pending = db.query(ApprovalRequest).filter(ApprovalRequest.status == ApprovalStatus.PENDING.value).all()
@@ -89,6 +117,8 @@ def build_dashboard(db: Session, user: User) -> dict:
             "clients_active": by_status[wf.APPROVED] + by_status[wf.ACTIVE],
             "service_requests_open": open_srs,
             "invoices_unpaid": raised + overdue,
+            "invoices_to_raise": to_raise,  # review 22-11-2026: the Accounts desk's tiles
+            "invoices_overdue": overdue,
             "aml_reviews_due": len(aml_due),
         },
         "client_status_breakdown": [{"status": s, "count": by_status[s]} for s in CLIENT_STATUSES],
@@ -99,5 +129,6 @@ def build_dashboard(db: Session, user: User) -> dict:
         "pending_approvals": pending_rows,
         "rejected_clients": rejected,
         "aml_reviews_due": aml_due,
+        "due_soon": _due_soon(accounts, today),
         "portfolio_by_rm": portfolio,
     }

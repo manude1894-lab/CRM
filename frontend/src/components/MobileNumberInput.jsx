@@ -9,7 +9,7 @@ export default function MobileNumberInput({ code, number, onCode, onNumber, opti
     <div>
       <div className="flex gap-2">
         <select aria-label="Country code" value={code || ""} disabled={disabled} onChange={(e) => onCode(e.target.value)}
-          className={`!w-44 w-44 flex-shrink-0 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-400 disabled:bg-gray-50 ${missingCode ? "border-red-300" : "border-gray-200"} ${code ? "" : "text-gray-400"}`}>
+          className={`!w-44 w-44 flex-shrink-0 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-400 disabled:bg-gray-50 ${missingCode ? "border-red-300" : "border-gray-200"} ${code ? "" : "text-gray-500"}`}>
           <option value="" disabled>Select</option>
           {options.map((c) => <option key={c.code} value={c.code} className="text-gray-900">{c.label}</option>)}
         </select>

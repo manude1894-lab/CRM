@@ -14,7 +14,7 @@ export default function AccountCard({ account: a, anchorRm, isSelected, onOpen, 
       className="bg-white border border-gray-100 rounded-xl p-4 shadow-sm cursor-pointer hover:shadow-md hover:border-brand-200 transition-all">
       <div className="flex items-start gap-3">
         <input type="checkbox" checked={isSelected} onClick={(e) => e.stopPropagation()} onChange={onToggleSelected} className="mt-1" />
-        <div className="w-10 h-10 rounded-xl flex-shrink-0 flex items-center justify-center text-white font-bold text-sm" style={{ background: "#1a3a5c" }}>
+        <div className="w-10 h-10 rounded-xl flex-shrink-0 flex items-center justify-center text-white font-bold text-sm bg-brand-600 hover:bg-brand-700">
           {a.company_name.slice(0, 2).toUpperCase()}
         </div>
         <div className="min-w-0 flex-1">
@@ -22,7 +22,7 @@ export default function AccountCard({ account: a, anchorRm, isSelected, onOpen, 
             <h3 className="text-sm font-bold text-gray-800 truncate">{a.company_name}</h3>
             <Badge text={a.profile_status || "New"} />
           </div>
-          <p className="text-[11px] font-mono text-gray-400">{a.client_id || `Temp ${a.temp_id || a.account_uid}`}</p>
+          <p className="text-[11px] font-mono text-gray-500">{a.client_id || `Temp ${a.temp_id || a.account_uid}`}</p>
           {a.approval_stage && <p className="text-[11px] text-amber-700">{a.approval_stage === "Approver" ? "Pending with the Approver" : "Pending with Compliance"}</p>}
           {statusReason(a) && <p className="text-[11px] text-gray-500 truncate" title={statusReason(a)}>{statusReason(a)}</p>}
           <p className="text-xs text-gray-500 truncate">
@@ -33,7 +33,7 @@ export default function AccountCard({ account: a, anchorRm, isSelected, onOpen, 
       <dl className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-gray-50">
         {facts.map(([label, value]) => (
           <div key={label}>
-            <dt className="text-[10px] uppercase tracking-wide text-gray-400">{label}</dt>
+            <dt className="text-[10px] uppercase tracking-wide text-gray-500">{label}</dt>
             <dd className="text-xs font-medium text-gray-700 truncate">{value || "—"}</dd>
           </div>
         ))}

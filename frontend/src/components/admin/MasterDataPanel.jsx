@@ -16,7 +16,7 @@ const ALPHABETICAL_LISTS = ["service", "document_category", "service_request_typ
 // One Triam-entity chip: filled when on.
 const EntityChip = ({ on, title, onClick, children }) => (
   <button type="button" title={title} onClick={onClick}
-    className={`text-[10px] px-1.5 py-0.5 rounded border ${on ? "border-brand-600 bg-brand-600 text-white" : "border-gray-200 text-gray-400 hover:border-gray-300"}`}>
+    className={`text-[10px] px-1.5 py-0.5 rounded border ${on ? "border-brand-600 bg-brand-600 text-white" : "border-gray-200 text-gray-500 hover:border-gray-300"}`}>
     {children}
   </button>
 );
@@ -148,9 +148,9 @@ export default function MasterDataPanel() {
           </div>
         )}
 
-        {loading ? <p className="text-xs text-gray-400">Loading…</p> : (
+        {loading ? <p className="text-xs text-gray-500">Loading…</p> : (
           <div className="space-y-1 mb-4">
-            {items.length === 0 && <p className="text-xs text-gray-400">No items yet.</p>}
+            {items.length === 0 && <p className="text-xs text-gray-500">No items yet.</p>}
             {items.map((item, i) => (
               <div key={item.id} className={`${!item.is_active && !showInactive ? "hidden" : ""} flex items-center justify-between gap-2 px-2 py-1.5 rounded-lg ${item.is_active ? "bg-gray-50" : "bg-gray-50 opacity-60"}`}>
                 <div className={`flex items-center gap-2 min-w-0 flex-1 ${listType === "service" ? "flex-wrap" : ""}`}>
@@ -161,7 +161,7 @@ export default function MasterDataPanel() {
                   ) : (
                     <span className="text-sm text-gray-700 truncate">{item.label}</span>
                   )}
-                  {item.code !== item.label && <span className="text-[10px] font-mono text-gray-400 flex-shrink-0">{item.code}</span>}
+                  {item.code !== item.label && <span className="text-[10px] font-mono text-gray-500 flex-shrink-0">{item.code}</span>}
                   {item.meta?.opens_free_text && <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 flex-shrink-0">opens free text</span>}
                   {!item.is_active && <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-200 text-gray-500 flex-shrink-0">Inactive</span>}
                   {ENTITY_LISTS.includes(listType) && (
@@ -177,7 +177,7 @@ export default function MasterDataPanel() {
                       <span className="text-[10px] text-amber-700 mr-1">One-time service for</span>
                       {entities.map((e) => (
                         <button key={e.code} type="button" title={`One-time service for ${e.label}`} onClick={() => toggleOneTime(item, e.code)}
-                          className={`text-[10px] px-1.5 py-0.5 rounded border ${oneTimeOf(item).includes(e.code) ? "border-amber-500 bg-amber-500 text-white" : "border-gray-200 text-gray-400 hover:border-gray-300"}`}>
+                          className={`text-[10px] px-1.5 py-0.5 rounded border ${oneTimeOf(item).includes(e.code) ? "border-amber-500 bg-amber-500 text-white" : "border-gray-200 text-gray-500 hover:border-gray-300"}`}>
                           {e.code}
                         </button>
                       ))}
@@ -186,14 +186,14 @@ export default function MasterDataPanel() {
                 </div>
                 <div className="flex gap-1 flex-shrink-0">
                   {!ALPHABETICAL_LISTS.includes(listType) && <>
-                    <button onClick={() => move(i, -1)} disabled={i === 0} title="Move up" className="p-1 rounded hover:bg-gray-100 text-gray-400 disabled:opacity-30">▲</button>
-                    <button onClick={() => move(i, 1)} disabled={i === items.length - 1} title="Move down" className="p-1 rounded hover:bg-gray-100 text-gray-400 disabled:opacity-30">▼</button>
+                    <button onClick={() => move(i, -1)} disabled={i === 0} title="Move up" className="p-1 rounded hover:bg-gray-100 text-gray-600 disabled:opacity-30">▲</button>
+                    <button onClick={() => move(i, 1)} disabled={i === items.length - 1} title="Move down" className="p-1 rounded hover:bg-gray-100 text-gray-600 disabled:opacity-30">▼</button>
                   </>}
-                  <button onClick={() => { setEditingId(item.id); setEditingLabel(item.label); }} title="Rename" className="p-1 rounded hover:bg-brand-50 text-gray-400 hover:text-brand-600">
+                  <button onClick={() => { setEditingId(item.id); setEditingLabel(item.label); }} title="Rename" className="p-1 rounded hover:bg-brand-50 text-gray-500 hover:text-brand-600">
                     <Icon name="edit" size={12} />
                   </button>
                   <button onClick={() => patch(item, { is_active: !item.is_active })}
-                    className={`px-2 py-0.5 text-[11px] rounded border ${item.is_active ? "border-gray-200 text-gray-500 hover:bg-gray-100" : "border-emerald-200 text-emerald-600 hover:bg-emerald-50"}`}>
+                    className={`px-2 py-0.5 text-[11px] rounded border ${item.is_active ? "border-gray-200 text-gray-500 hover:bg-gray-100" : "border-emerald-200 text-emerald-700 hover:bg-emerald-50"}`}>
                     {item.is_active ? "Deactivate" : "Activate"}
                   </button>
                 </div>
@@ -212,7 +212,7 @@ export default function MasterDataPanel() {
             placeholder={isEntityList ? "Code, e.g. TPTL (required)" : "Code (optional, defaults to the label)"}
             aria-invalid={isEntityList && !!newLabel && !entityCodeOk}
             className={`w-56 text-xs border rounded-lg px-2 py-1.5 ${isEntityList && newLabel && !entityCodeOk ? "border-red-300" : "border-gray-200"}`} />
-          <button onClick={add} disabled={!newLabel.trim() || !entityCodeOk} className="px-3 py-1.5 text-xs text-white rounded-lg disabled:opacity-50" style={{ background: "#1a3a5c" }}>Add</button>
+          <button onClick={add} disabled={!newLabel.trim() || !entityCodeOk} className="px-3 py-1.5 text-xs text-white rounded-lg disabled:opacity-50 bg-brand-600 hover:bg-brand-700">Add</button>
         </div>
       </div>
     </div>

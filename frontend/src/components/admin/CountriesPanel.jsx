@@ -71,14 +71,14 @@ export default function CountriesPanel() {
     <div className="bg-white rounded-xl border border-gray-100 p-5 shadow-sm">
       <div className="flex flex-wrap items-center gap-2 mb-3">
         <div className="w-64"><SearchInput value={search} onChange={setSearch} placeholder="Search countries, code or +ISD" /></div>
-        <div className="w-40"><Select value={riskFilter} onChange={(e) => setRiskFilter(e.target.value)}>
+        <div className="w-40"><Select aria-label="Filter by country risk" value={riskFilter} onChange={(e) => setRiskFilter(e.target.value)}>
           <option value="">All risk levels</option>
           {RISKS.map((r) => <option key={r} value={r}>{r} risk</option>)}
         </Select></div>
-        <span className="text-xs text-gray-400">{rows.length} countries</span>
+        <span className="text-xs text-gray-500">{rows.length} countries</span>
         {adding === null && (
           <button onClick={() => setAdding({ ...BLANK })}
-            className="ml-auto px-3 py-1.5 text-xs text-white rounded-lg" style={{ background: "#1a3a5c" }}>Add country</button>
+            className="ml-auto px-3 py-1.5 text-xs text-white rounded-lg bg-brand-600 hover:bg-brand-700">Add country</button>
         )}
       </div>
       {adding !== null && (
@@ -91,7 +91,7 @@ export default function CountriesPanel() {
           </Select></Field></div>
           <div className="flex gap-2 mb-4">
             <button onClick={() => setAdding(null)} className="px-3 py-2 text-xs border border-gray-200 rounded-lg bg-white">Cancel</button>
-            <button onClick={add} className="px-3 py-2 text-xs text-white rounded-lg" style={{ background: "#1a3a5c" }}>Add</button>
+            <button onClick={add} className="px-3 py-2 text-xs text-white rounded-lg bg-brand-600 hover:bg-brand-700">Add</button>
           </div>
         </div>
       )}
@@ -119,13 +119,13 @@ export default function CountriesPanel() {
                           onChange={(e) => setEditing((x) => ({ ...x, code: e.target.value.toUpperCase() }))} /></td>
                         <td className="py-1 px-3"><Input className="!w-20" value={editing.dial_code} maxLength={8} placeholder="+971"
                           onChange={(e) => setEditing((x) => ({ ...x, dial_code: asDial(e.target.value) }))} /></td>
-                        <td className="py-1 px-3"><Select className="!w-28" value={editing.risk_level} onChange={(e) => setEditing((x) => ({ ...x, risk_level: e.target.value }))}>
+                        <td className="py-1 px-3"><Select aria-label="Country risk" className="!w-28" value={editing.risk_level} onChange={(e) => setEditing((x) => ({ ...x, risk_level: e.target.value }))}>
                           {RISKS.map((x) => <option key={x}>{x}</option>)}
                         </Select></td>
                         <td className="py-1.5 px-3 text-xs text-gray-500">{fmtDate(r.changed_at) || "—"}</td>
                         <td className="py-1 px-3 text-right whitespace-nowrap">
                           <button onClick={() => setEditing(null)} className="px-2 py-1 text-xs border border-gray-200 rounded-lg mr-1">Cancel</button>
-                          <button onClick={save} className="px-2 py-1 text-xs text-white rounded-lg" style={{ background: "#1a3a5c" }}>Save</button>
+                          <button onClick={save} className="px-2 py-1 text-xs text-white rounded-lg bg-brand-600 hover:bg-brand-700">Save</button>
                         </td>
                       </>
                     ) : (
@@ -151,7 +151,7 @@ export default function CountriesPanel() {
                   )}
                 </React.Fragment>
               ))}
-              {shown.length === 0 && <tr><td colSpan={6} className="py-6 text-center text-xs text-gray-400">No countries match.</td></tr>}
+              {shown.length === 0 && <tr><td colSpan={6} className="py-6 text-center text-xs text-gray-500">No countries match.</td></tr>}
             </tbody>
           </table>
         </div>

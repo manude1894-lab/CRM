@@ -13,6 +13,8 @@ class KPISummary(BaseModel):
     clients_active: int
     service_requests_open: int
     invoices_unpaid: int
+    invoices_to_raise: int = 0
+    invoices_overdue: int = 0
     aml_reviews_due: int
 
 
@@ -63,6 +65,16 @@ class RejectedClient(BaseModel):
     reason_text: Optional[str] = None
 
 
+class DueSoon(BaseModel):
+    """A client date due within 60 days, or overdue (review 22-11-2026: computed on the server)."""
+    key: str
+    account_id: int
+    company_name: str
+    what: str
+    date: date
+    days: int
+
+
 class DashboardResponse(BaseModel):
     kpis: KPISummary
     client_status_breakdown: List[StatusCount]
@@ -70,4 +82,5 @@ class DashboardResponse(BaseModel):
     pending_approvals: List[PendingApproval] = []
     rejected_clients: List[RejectedClient] = []
     aml_reviews_due: List[AmlReviewDue]
+    due_soon: List[DueSoon] = []
     portfolio_by_rm: List[PortfolioRow]

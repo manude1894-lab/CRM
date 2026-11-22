@@ -23,16 +23,16 @@ export default function ActivityCard({ activity: a, onEdit, onCancel, compact = 
           <div className="flex items-center gap-2 flex-wrap">
             {!compact && <span className="font-semibold text-sm text-gray-800">{a.company_name}</span>}
             <Badge text={a.activity_type} />
-            <span className="text-xs text-gray-400">{a.activity_uid}</span>
+            <span className="text-xs text-gray-500">{a.activity_uid}</span>
             {a.status !== "Completed" && <span className="text-[11px] text-gray-500">{a.status}</span>}
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-400 whitespace-nowrap">{fmtDate(a.activity_date)}</span>
+            <span className="text-xs text-gray-500 whitespace-nowrap">{fmtDate(a.activity_date)}</span>
             {onEdit && (
-              <button onClick={onEdit} title="Edit" className="p-1 rounded hover:bg-brand-50 text-gray-400 hover:text-brand-600"><Icon name="edit" size={13} /></button>
+              <button onClick={onEdit} title="Edit" className="p-1 rounded hover:bg-brand-50 text-gray-500 hover:text-brand-600"><Icon name="edit" size={13} /></button>
             )}
             {onCancel && (
-              <button onClick={onCancel} title="Cancel" className="p-1 rounded hover:bg-red-50 text-gray-400 hover:text-red-500"><Icon name="close" size={13} /></button>
+              <button onClick={onCancel} title="Cancel" className="p-1 rounded hover:bg-red-50 text-gray-500 hover:text-red-500"><Icon name="close" size={13} /></button>
             )}
           </div>
         </div>

@@ -64,6 +64,28 @@ def list_for_account(db: Session, account_id: int, user: User) -> list[Document]
     )
 
 
+# Review 22-11-2026: a file's first bytes must match its type, so a renamed file (say, a program saved as .pdf) is
+# refused. Office files: .docx / .xlsx are ZIP packages; .doc / .xls the older compound-file format.
+_SIGNATURES = {
+    ".png": (bytes.fromhex("89504e470d0a1a0a"),),
+    ".jpg": (bytes.fromhex("ffd8ff"),), ".jpeg": (bytes.fromhex("ffd8ff"),),
+    ".bmp": (b"BM",),
+    ".docx": (bytes.fromhex("504b0304"),), ".xlsx": (bytes.fromhex("504b0304"),),
+    ".doc": (bytes.fromhex("d0cf11e0a1b11ae1"),), ".xls": (bytes.fromhex("d0cf11e0a1b11ae1"),),
+}
+
+
+def assert_content_matches(filename: str, data: bytes) -> None:
+    ext = _ext(filename)
+    if ext == ".pdf":
+        ok = b"%PDF-" in data[:1024]  # a PDF may carry a few bytes before its header
+    else:
+        ok = any(data.startswith(sig) for sig in _SIGNATURES.get(ext, (b"",)))
+    if not ok:
+        raise HTTPException(status_code=400, detail=f"{filename} is not a real {ext.lstrip('.').upper()} file. "
+                                                    "Upload the original document, not a renamed file.")
+
+
 def read_upload(upload: UploadFile) -> tuple[str, bytes]:
     """Checks a file upload against the allowed types and the size limit; returns (filename, bytes)."""
     filename = _safe_filename(upload.filename)
@@ -76,6 +98,7 @@ def read_upload(upload: UploadFile) -> tuple[str, bytes]:
         raise HTTPException(status_code=400, detail="Empty file")
     if len(data) > settings.MAX_UPLOAD_MB * 1024 * 1024:
         raise HTTPException(status_code=413, detail=f"File exceeds the {settings.MAX_UPLOAD_MB} MB limit")
+    assert_content_matches(filename, data)
     return filename, data
 
 
@@ -105,6 +128,7 @@ def create_for_account(
         raise HTTPException(status_code=400, detail="Empty file")
     if len(data) > limit:
         raise HTTPException(status_code=413, detail=f"File exceeds the {settings.MAX_UPLOAD_MB} MB limit")
+    assert_content_matches(filename, data)
 
     doc = Document(
         account_id=account_id,

@@ -57,17 +57,17 @@ export default function CommandPalette({ onNavigate }) {
   return (
     <>
       <button onClick={() => setOpen(true)}
-        className="flex items-center gap-2 text-xs text-gray-400 bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg transition-colors">
+        className="flex items-center gap-2 text-xs text-gray-600 bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg transition-colors">
         <Icon name="search" size={14} />
         <span className="hidden sm:inline">Search…</span>
-        <span className="hidden sm:inline text-gray-400 border border-gray-300 rounded px-1 text-[10px]">Ctrl K</span>
+        <span className="hidden sm:inline text-gray-600 border border-gray-300 rounded px-1 text-[10px]">Ctrl K</span>
       </button>
 
       {open && (
         <div className="fixed inset-0 z-50 flex items-start justify-center pt-24" style={{ background: "rgba(0,0,0,0.4)" }} onClick={() => setOpen(false)}>
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100">
-              <Icon name="search" size={16} className="text-gray-400 flex-shrink-0" />
+              <Icon name="search" size={16} className="text-gray-500 flex-shrink-0" />
               <input
                 ref={inputRef}
                 value={q}
@@ -75,27 +75,27 @@ export default function CommandPalette({ onNavigate }) {
                 placeholder="Search clients by name or Client ID…"
                 className="flex-1 text-sm outline-none"
               />
-              <button onClick={() => setOpen(false)} className="text-gray-400 hover:text-gray-600 flex-shrink-0">
+              <button aria-label="Close" onClick={() => setOpen(false)} className="text-gray-500 hover:text-gray-600 flex-shrink-0">
                 <Icon name="close" size={16} />
               </button>
             </div>
 
             <div className="max-h-96 overflow-y-auto">
               {q.trim().length < 2 && (
-                <p className="text-xs text-gray-400 text-center py-8">Type at least 2 characters to search.</p>
+                <p className="text-xs text-gray-500 text-center py-8">Type at least 2 characters to search.</p>
               )}
               {q.trim().length >= 2 && !loading && clients.length === 0 && (
-                <p className="text-xs text-gray-400 text-center py-8">No matches found.</p>
+                <p className="text-xs text-gray-500 text-center py-8">No matches found.</p>
               )}
 
               {clients.length > 0 && (
                 <div className="py-1.5">
-                  <p className="px-4 py-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Clients</p>
+                  <p className="px-4 py-1 text-[10px] font-semibold text-gray-500 uppercase tracking-wide">Clients</p>
                   {clients.map((a) => (
                     <button key={a.id} onClick={() => goToClient(a)}
                       className="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center justify-between">
                       <span className="text-sm text-gray-800">{a.company_name}</span>
-                      <span className="text-xs text-gray-400 font-mono">{a.client_id || a.temp_id}</span>
+                      <span className="text-xs text-gray-500 font-mono">{a.client_id || a.temp_id}</span>
                     </button>
                   ))}
                 </div>

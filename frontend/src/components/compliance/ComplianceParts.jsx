@@ -16,7 +16,7 @@ export function ChangeList({ diff }) {
   if (!diff) return null;
   const fields = diff.account || [];
   const parties = diff.parties || [];
-  if (!fields.length && !parties.length) return <p className="text-xs text-gray-400">No changes yet.</p>;
+  if (!fields.length && !parties.length) return <p className="text-xs text-gray-500">No changes yet.</p>;
   return (
     <div className="space-y-3">
       {fields.length > 0 && (
@@ -51,7 +51,7 @@ export function ChangeList({ diff }) {
           {p.changes.length > 0 && (
             <ul className="mt-1 space-y-0.5 text-gray-600">
               {p.changes.map((c) => (
-                <li key={c.field}>{c.label}: {p.action === "changed" && <><span className="line-through text-gray-400">{show(c.old)}</span> → </>}<span className="text-emerald-800">{show(c.new)}</span></li>
+                <li key={c.field}>{c.label}: {p.action === "changed" && <><span className="line-through text-gray-500">{show(c.old)}</span> → </>}<span className="text-emerald-800">{show(c.new)}</span></li>
               ))}
             </ul>
           )}
@@ -137,7 +137,7 @@ export function DecisionButtons({ actions, busy, onAction, labels = {}, submitSi
           <div className="flex justify-end gap-3 mt-2">
             <button onClick={() => setDialog(null)} className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
             <button onClick={confirm} disabled={busy || rejectInvalid}
-              className="px-4 py-2 text-sm text-white rounded-lg font-medium disabled:opacity-50" style={{ background: "#1a3a5c" }}>
+              className="px-4 py-2 text-sm text-white rounded-lg font-medium disabled:opacity-50 bg-brand-600 hover:bg-brand-700">
               {busy ? "Working…" : LABEL[dialog]}
             </button>
           </div>

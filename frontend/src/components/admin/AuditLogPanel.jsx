@@ -44,21 +44,21 @@ export default function AuditLogPanel({ users }) {
   return (
     <div className="bg-white rounded-xl border border-gray-100 p-5 shadow-sm">
       <div className="flex flex-wrap items-end gap-2 mb-4">
-        <Select value={filters.subject_type} onChange={set("subject_type")} className="text-xs !w-auto">
+        <Select aria-label="Filter by record type" value={filters.subject_type} onChange={set("subject_type")} className="text-xs !w-auto">
           <option value="">All records</option>
           {SUBJECTS.map(([s, label]) => <option key={s} value={s}>{label}</option>)}
         </Select>
-        <Select value={filters.action} onChange={set("action")} className="text-xs !w-auto">
+        <Select aria-label="Filter by action" value={filters.action} onChange={set("action")} className="text-xs !w-auto">
           <option value="">All actions</option>
           {ACTIONS.map(([code, label]) => <option key={code} value={code}>{label}</option>)}
         </Select>
-        <Select value={filters.user_id} onChange={set("user_id")} className="text-xs !w-auto">
+        <Select aria-label="Filter by user" value={filters.user_id} onChange={set("user_id")} className="text-xs !w-auto">
           <option value="">All users</option>
           {users.map((u) => <option key={u.id} value={u.id}>{personLabel(u, users)}</option>)}
         </Select>
         <DateInput value={filters.date_from} onChange={set("date_from")} className="text-xs !w-auto" title="From" />
         <DateInput value={filters.date_to} onChange={set("date_to")} className="text-xs !w-auto" title="To" />
-        <span className="text-xs text-gray-400 ml-auto">{data.total} entr{data.total === 1 ? "y" : "ies"}</span>
+        <span className="text-xs text-gray-500 ml-auto">{data.total} entr{data.total === 1 ? "y" : "ies"}</span>
         <button onClick={exportCsv} disabled={exporting || !data.total}
           className="px-2.5 py-1.5 text-xs border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600 disabled:opacity-40">
           {exporting ? "Exporting…" : "Export CSV"}

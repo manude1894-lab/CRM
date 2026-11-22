@@ -172,7 +172,7 @@ export const EXPORT_HEADERS = [
   "TRN/VAT Number", "Corp Tax Registered", "Corp Tax Registration No.", "Financial Year End",
   "Has Introducer", "Introducer Name",
   "Profile Status", "Engagement Letter Signed", "Engagement Letter Valid Until",
-  "AML Classification", "EDD Reason", "KYC Verified By", "CDD Completion Date", "Next AML Review Date", "Is PEP",
+  "EDD Reason", "KYC Verified By", "CDD Completion Date", "Next AML Review Date", "Is PEP",
   "Date of Birth", "Country of Birth", "Nationality", "Passport Number", "Passport Expiry", "Country of Residence",
   ...ADDRESS_COLS.map((c) => `Residential Address ${c}`),
   "Individual Mobile Country Code", "Individual Mobile Number", "Individual Email", "UAE Visa Number", "UAE Visa Expiry", "Nature of Services Sought",
@@ -180,9 +180,13 @@ export const EXPORT_HEADERS = [
 ];
 
 // Builds the export CSV text. Headers are chosen so the file round-trips through parseCSV.
+// Triam data review 21-11-2026: answers read Yes / No (blank = not answered); the import reads them back. The AML
+// Classification column is gone: the form no longer has that field (EDD follows the High risk level).
+const yesNo = (v) => (v === true ? "Yes" : v === false ? "No" : v);
+
 export function buildAccountsCsv(accounts, users) {
   const userName = (id) => users.find((u) => u.id === id)?.name;
-  const rows = accounts.map((a) => [
+  const rows = accounts.map((a) => ({ ...a, ...Object.fromEntries([...IMPORT_BOOLEAN_FIELDS].map((f) => [f, yesNo(a[f])])) })).map((a) => [
     a.account_uid, a.client_id, a.search_name, a.account_type, a.company_name, a.client_category, a.country,
     a.contact_mobile_country_code, a.contact_mobile_number, a.contact_email, a.is_one_time_service, a.single_point_of_contact,
     a.anchor_entity, (a.non_anchor_entities || []).join("; "),
@@ -197,7 +201,7 @@ export function buildAccountsCsv(accounts, users) {
     a.trn_vat_number, a.corp_tax_registered, a.corp_tax_registration_number, a.financial_year_end,
     a.has_introducer, a.introducer_name,
     a.profile_status, a.engagement_letter_signed, a.engagement_letter_valid_until,
-    a.aml_classification, a.edd_reason, a.kyc_verified_by, a.cdd_completion_date, a.next_aml_review_date, a.is_pep,
+    a.edd_reason, a.kyc_verified_by, a.cdd_completion_date, a.next_aml_review_date, a.is_pep,
     a.date_of_birth, a.country_of_birth, a.nationality, a.passport_number, a.passport_expiry_date, a.country_of_residence,
     ...addrRow(a.residential_address),
     a.individual_mobile_country_code, a.individual_mobile_number, a.individual_email, a.uae_visa_number, a.uae_visa_expiry,

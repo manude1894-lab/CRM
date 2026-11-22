@@ -90,6 +90,20 @@ def _default_search_name(db: Session, company_name: str, anchor_entity: Optional
     raise HTTPException(status_code=400, detail="Please enter a Unique Search Name. The default one is already taken.")
 
 
+def issue_missing_client_ids(db: Session) -> int:
+    """Triam data review 21-11-2026: clients past onboarding that never got a Client ID (records from before IDs
+    existed, or imported without one) get it now, from their Anchor Triam Entity. Run at every deploy; does
+    nothing once all have one. A client with no entity is left for the "Client data to correct" report."""
+    accs = (db.query(Account).filter(Account.client_id.is_(None), Account.anchor_entity.isnot(None),
+                                     Account.profile_status.notin_(client_workflow_service.ONBOARDING))
+            .order_by(Account.approved_at, Account.id).all())
+    for acc in accs:
+        acc.client_id = next_client_id(db, acc.anchor_entity)
+        db.flush()
+    db.commit()
+    return len(accs)
+
+
 def next_client_id(db: Session, entity_code: str) -> str:
     """BRD §19 — {ENTITY}/{00000}, separate counter per entity. The counter row is locked so
     concurrent saves can't take the same number (FOR UPDATE is a no-op on SQLite, used in tests)."""
@@ -157,6 +171,10 @@ def _compute_next_aml_review_date(acc: Account) -> None:
         acc.next_aml_review_date = None
 
 
+# Sort orders for client lists (review 22-11-2026, package 4: lists are paged, filtered and sorted on the server).
+LIST_SORTS = ("name", "approved", "aml", "recent")
+
+
 def list_accounts(
     db: Session,
     user: User,
@@ -164,7 +182,12 @@ def list_accounts(
     limit: int = 100,
     search: Optional[str] = None,
     country: Optional[str] = None,
+    statuses: Optional[list[str]] = None,
+    risk: Optional[str] = None,
+    approved_since: Optional[date] = None,
+    sort: str = "name",
 ) -> tuple[list[Account], int]:
+    from app.models import Prospect
     query = db.query(Account)
     # BRD §13 RM privacy + supervisor visibility.
     visibility = access_control.account_visibility_clause(db, user)
@@ -172,18 +195,30 @@ def list_accounts(
         query = query.filter(visibility)
 
     if search:
-        pattern = f"%{search}%"
+        pattern = f"%{search.strip()}%"
         query = query.filter(or_(
             Account.company_name.ilike(pattern),
             Account.search_name.ilike(pattern),
             Account.client_id.ilike(pattern),
             Account.account_uid.ilike(pattern),
+            Account.prospect.has(Prospect.prospect_uid.ilike(pattern)),  # the temporary ID people search by
         ))
     if country:
         query = query.filter(Account.country == country)
+    if statuses:
+        query = query.filter(Account.profile_status.in_(statuses))
+    if risk:
+        query = query.filter(Account.risk_rating == risk)
+    if approved_since:
+        query = query.filter(Account.approved_at >= datetime.combine(approved_since, datetime.min.time(), tzinfo=timezone.utc))
 
     total = query.count()
-    items = query.order_by(Account.company_name).offset(skip).limit(limit).all()
+    order = {
+        "approved": (Account.approved_at.desc().nulls_last(), Account.company_name),
+        "aml": (Account.next_aml_review_date.asc().nulls_last(), Account.company_name),
+        "recent": (Account.created_at.desc(), Account.id.desc()),
+    }.get(sort, (Account.company_name, Account.id))
+    items = query.order_by(*order).offset(skip).limit(limit).all()
     # Triam UAT 05-11-2026: the list says at which level a case awaiting approval is pending.
     awaiting = {a.id: a for a in items if a.profile_status == client_workflow_service.AWAITING}
     if awaiting:
@@ -613,6 +648,15 @@ def import_accounts(
                    else None)
         mobiles, mobile_problem = _import_mobiles(row)
         problem = problem or mobile_problem
+        # Triam data review 21-11-2026: an existing client gets its Client ID from the Anchor Triam Entity, so the
+        # entity is required; and dates follow the form's rules.
+        today = date.today()
+        if not problem and not (row.anchor_entity or "").strip():
+            problem = "Anchor Triam Entity is required (the Client ID is made from it)"
+        if not problem and row.license_start_date and row.license_start_date > today:
+            problem = f"License Start Date {row.license_start_date.isoformat()} is in the future"
+        if not problem and row.incorporation_date and row.incorporation_date > today:
+            problem = f"Incorporation Date {row.incorporation_date.isoformat()} is in the future"
         if not problem and row.passport_number:  # Triam 20-11-2026: same format as on the form
             from app.schemas.identity import passport_number
             try:
@@ -804,6 +848,17 @@ def missing_mandatory(account: Account) -> list[dict]:
              when=account.licensing_authority == "Other")
         need("Licensing & Regulatory", "license_start_date", "License Start / Registration Date", when=not forming)
         need("Licensing & Regulatory", "license_expiry_date", "License Expiry Date", when=not forming)
+        # Triam data review 21-11-2026: a date entered before the rule existed (e.g. 2099) is caught at Submit.
+        today = date.today()
+        if account.license_start_date and account.license_start_date > today:
+            missing.append({"section": "Licensing & Regulatory", "field": "license_start_date",
+                            "label": "License Start Date is in the future. Correct it"})
+        if account.incorporation_date and account.incorporation_date > today:
+            missing.append({"section": "Client info", "field": "incorporation_date",
+                            "label": "Incorporation Date is in the future. Correct it"})
+        if account.license_start_date and account.incorporation_date and account.license_start_date < account.incorporation_date:
+            missing.append({"section": "Licensing & Regulatory", "field": "license_start_date",
+                            "label": "License Start Date is before the Incorporation Date. Correct it"})
         if not forming and account.license_expiry_date and account.license_expiry_date < date.today():
             missing.append({"section": "Licensing & Regulatory", "field": "license_expiry_date",
                             "label": "Trade licence has expired. A valid licence is needed to onboard the client"})

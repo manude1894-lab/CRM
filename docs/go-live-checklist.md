@@ -29,6 +29,9 @@ Five wrong passwords in a row lock an account for 15 minutes. An administrator c
 - [ ] Email: `SMTP_ENABLED=true`, `SMTP_HOST`, `SMTP_PORT` (587), `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM_EMAIL` (Triam's mailbox). Send a test by submitting a test client for approval.
 - [ ] SMS (when Triam has chosen a provider): `SMS_ENABLED=true`, `SMS_PROVIDER=http`, `SMS_API_URL`, `SMS_API_KEY`, `SMS_SENDER_ID`. Which events send an SMS is set by `SMS_NOTIFICATION_TYPES`.
 
+- [ ] Error alerts: `ALERT_EMAILS` (comma-separated, needs the email settings above) and/or `ALERT_WEBHOOK_URL` (a Teams or Slack incoming webhook). Every server crash and every page that fails to load in a browser is sent there with a short reference, which users also see. The same error is sent at most once in 15 minutes. Admin → System Health shows whether alerts are set up and how many errors there have been since the last restart.
+- [ ] Staging: a copy of the CRM for trying changes before UAT and production - see [staging.md](staging.md).
+
 ## 4. Backups
 
 - [ ] Turn on daily backups for the database on the hosting platform, with weekly copies kept.

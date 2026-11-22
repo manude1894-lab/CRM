@@ -196,18 +196,18 @@ export default function InstructionsPage() {
       <PageHeader title="Service Requests"
         subtitle={<>{filtered.length} of {instructions.length} service requests</>}
         actions={!readOnly &&
-          <button onClick={openNew} className="px-3 py-2 text-sm text-white rounded-lg font-medium flex items-center gap-1.5 hover:opacity-90" style={{ background: "#1a3a5c" }}>
+          <button onClick={openNew} className="px-3 py-2 text-sm text-white rounded-lg font-medium flex items-center gap-1.5 bg-brand-600 hover:bg-brand-700">
             <Icon name="plus" size={14} /> New Service Request
           </button>
         } />
 
       <div className="flex gap-2 flex-wrap items-center">
         <div className="relative flex-1 min-w-48">
-          <Icon name="search" size={15} className="absolute left-3 top-2.5 text-gray-400" />
+          <Icon name="search" size={15} className="absolute left-3 top-2.5 text-gray-500" />
           <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search client, request type, comments..."
             className="w-full pl-8 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-brand-400" />
         </div>
-        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
+        <select aria-label="Filter by status" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
           className="border border-gray-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-brand-400">
           <option value="All">All statuses ({instructions.length})</option>
           {allStatuses.map((s) => <option key={s} value={s}>{s} ({counts[s] || 0})</option>)}
@@ -216,7 +216,7 @@ export default function InstructionsPage() {
           className="border border-gray-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-brand-400">
           {Object.entries(INVOICING).map(([k, label]) => <option key={k} value={k}>{label}{k ? ` (${invoicingCounts[k] || 0})` : ""}</option>)}
         </select>
-        <select value={clientFilter} onChange={(e) => setClientFilter(e.target.value)}
+        <select aria-label="Filter by client" value={clientFilter} onChange={(e) => setClientFilter(e.target.value)}
           className="border border-gray-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-brand-400">
           <option value="">All clients</option>
           {accounts.map((a) => <option key={a.id} value={a.id}>{a.company_name}</option>)}
@@ -240,7 +240,7 @@ export default function InstructionsPage() {
           </thead>
           <tbody>
             {filtered.length === 0 && (
-              <tr><td colSpan={9} className="py-8 text-center text-sm text-gray-400">No service requests match this filter.</td></tr>
+              <tr><td colSpan={9} className="py-8 text-center text-sm text-gray-500">No service requests match this filter.</td></tr>
             )}
             {filtered.map((i) => {
               const acc = accountById[i.account_id];
@@ -250,15 +250,15 @@ export default function InstructionsPage() {
                 <tr key={i.id} className="border-b border-gray-50 hover:bg-gray-50">
                   <td className="py-3 px-4 text-xs">
                     <div className="font-medium text-gray-800">{acc?.company_name || "—"}</div>
-                    <div className="text-gray-400 font-mono">{acc?.client_id || ""}</div>
+                    <div className="text-gray-500 font-mono">{acc?.client_id || ""}</div>
                   </td>
                   <td className="py-3 px-4 text-xs text-gray-600">{i.triam_entity || "—"}</td>
                   <td className="py-3 px-4 text-xs text-gray-600">{requestLabel(i)}</td>
                   <td className="py-3 px-4">
                     {CLOSED.includes(i.status) || readOnly ? (
-                      <span className={`text-xs ${i.status === "Dropped" ? "text-gray-400" : i.status === "Completed" ? "text-emerald-700" : "text-gray-600"}`} title={i.cancel_reason || ""}>{i.status}</span>
+                      <span className={`text-xs ${i.status === "Dropped" ? "text-gray-500" : i.status === "Completed" ? "text-emerald-700" : "text-gray-600"}`} title={i.cancel_reason || ""}>{i.status}</span>
                     ) : (
-                      <select value={i.status} onChange={(e) => quickSetStatus(i, e.target.value)}
+                      <select aria-label="Request status" value={i.status} onChange={(e) => quickSetStatus(i, e.target.value)}
                         className="text-xs border-0 bg-transparent focus:outline-none cursor-pointer max-w-[11rem]">
                         {pickableStatuses(optionsFor(i.triam_entity), i.status).map((s) => <option key={s} value={s}>{s}</option>)}
                       </select>
@@ -268,19 +268,19 @@ export default function InstructionsPage() {
                   <td className="py-3 px-4 text-xs text-gray-500">{fmtDate(i.date_completed) || "—"}</td>
                   <td className="py-3 px-4 text-xs text-right text-gray-600 whitespace-nowrap">{i.charge_amount != null ? fmtMoney(i.charge_currency, i.charge_amount) : "—"}</td>
                   <td className="py-3 px-4 text-xs">
-                    {stage === "none" ? <span className="text-gray-400">—</span>
+                    {stage === "none" ? <span className="text-gray-500">—</span>
                       : stage === "accountant" ? <span className="px-1.5 py-0.5 rounded bg-amber-50 text-amber-700">With the Accountant</span>
-                        : <span className="text-gray-600">{inv.invoice_number || `#${inv.id}`} <span className="text-gray-400">({inv.status})</span></span>}
+                        : <span className="text-gray-600">{inv.invoice_number || `#${inv.id}`} <span className="text-gray-500">({inv.status})</span></span>}
                   </td>
                   <td className="py-3 px-4">
                     <div className="flex gap-1">
                       <button onClick={() => openEdit(i)} title={accountant && stage === "accountant" ? "Open to invoice" : "Open"}
                         aria-label={`Open ${requestLabel(i)}`}
-                        className={`p-1.5 rounded hover:bg-brand-50 ${accountant && stage === "accountant" ? "text-amber-600" : "text-gray-400"} hover:text-brand-600`}>
+                        className={`p-1.5 rounded hover:bg-brand-50 ${accountant && stage === "accountant" ? "text-amber-700" : "text-gray-500"} hover:text-brand-600`}>
                         <Icon name={readOnly || i.status === "Dropped" ? "view" : "edit"} size={14} />
                       </button>
                       {!readOnly && !CLOSED.includes(i.status) && (
-                        <button onClick={() => cancelRequest(i)} title="Cancel request" className="p-1.5 rounded hover:bg-red-50 text-gray-400 hover:text-red-500">
+                        <button onClick={() => cancelRequest(i)} title="Cancel request" className="p-1.5 rounded hover:bg-red-50 text-gray-500 hover:text-red-500">
                           <Icon name="close" size={14} />
                         </button>
                       )}
@@ -399,7 +399,7 @@ export default function InstructionsPage() {
               <button onClick={() => save(false)} disabled={busy} className="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-60">Save</button>
               {!withAccountant && (
                 <button onClick={() => save(true)} disabled={busy} title="Saves and sends the request to the Accountant's queue for invoicing"
-                  className="px-4 py-2 text-sm text-white rounded-lg disabled:opacity-60" style={{ background: "#1a3a5c" }}>{busy ? "Sending…" : "Submit"}</button>
+                  className="px-4 py-2 text-sm text-white rounded-lg disabled:opacity-60 bg-brand-600 hover:bg-brand-700">{busy ? "Sending…" : "Submit"}</button>
               )}
             </div>
           )}
@@ -487,7 +487,7 @@ function AccountantSection({ invoice, canManage, onDone }) {
         <div className="flex justify-end gap-3 mt-2">
           <button onClick={onDone} className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
           <button onClick={saveDetails} disabled={busy} className="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-60">Save</button>
-          <button onClick={sendToRm} disabled={busy} className="px-4 py-2 text-sm text-white rounded-lg disabled:opacity-60" style={{ background: "#1a3a5c" }}>{busy ? "Sending…" : "Send to RM"}</button>
+          <button onClick={sendToRm} disabled={busy} className="px-4 py-2 text-sm text-white rounded-lg disabled:opacity-60 bg-brand-600 hover:bg-brand-700">{busy ? "Sending…" : "Send to RM"}</button>
         </div>
       )}
     </div>

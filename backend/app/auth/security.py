@@ -61,9 +61,18 @@ def create_refresh_token(user_id: int, role: str) -> str:
 
 
 def issued_before_password_change(payload: dict, user) -> bool:
-    """A password change (own or admin reset) ends every session that was open before it."""
+    """A password change (own or admin reset) ends every session that was open before it; so does signing out
+    (review 22-11-2026), which ends the login's sessions on the server."""
     issued_ms = payload.get("iat_ms") or int(payload.get("iat", 0)) * 1000
-    return issued_ms < password_stamp(user)
+    return issued_ms < max(password_stamp(user), _stamp(getattr(user, "signed_out_at", None)))
+
+
+def _stamp(moment) -> int:
+    if moment is None:
+        return 0
+    if moment.tzinfo is None:
+        moment = moment.replace(tzinfo=timezone.utc)
+    return int(moment.timestamp() * 1000)
 
 
 def password_stamp(user) -> int:

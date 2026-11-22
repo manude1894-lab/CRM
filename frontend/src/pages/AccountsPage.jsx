@@ -27,6 +27,7 @@ const SCOPES = {
   },
 };
 const VIEW_KEY = "triam.clients.view";
+const PAGE_SIZE = 50;
 // Triam 13-11-2026: approved clients are listed with the latest approval on top, and can be filtered by
 // when they were approved.
 const APPROVED_WITHIN = { "": "Approved: any time", 7: "Approved in the last 7 days", 30: "Approved in the last 30 days",
@@ -37,18 +38,18 @@ const approvedSince = (key) => {
   const now = new Date();
   return key === "year" ? new Date(now.getFullYear(), 0, 1) : new Date(now.getTime() - Number(key) * 86400000);
 };
-const byKey = {
-  approved: (x, y) => String(y.approved_at || "").localeCompare(String(x.approved_at || "")),
-  name: (x, y) => (x.company_name || "").localeCompare(y.company_name || ""),
-  aml: (x, y) => String(x.next_aml_review_date || "9999").localeCompare(String(y.next_aml_review_date || "9999")),
-};
 
 const readView = () => { try { return localStorage.getItem(VIEW_KEY) || "table"; } catch { return "table"; } };
 
 export default function AccountsPage({ scope = "onboarding", initialAccountId, initialOpenForm, initialProspectId, initialStatus, onNavigate } = {}) {
   const cfg = SCOPES[scope];
   const appliedInitialRef = useRef(false);
-  const [accounts, setAccounts] = useState([]);
+  const [accounts, setAccounts] = useState([]); // the current page of clients, filtered and sorted by the server
+  // Review 22-11-2026 (package 4): lists are paged on the server, PAGE_SIZE at a time.
+  const [page, setPage] = useState(0);
+  const [total, setTotal] = useState(0); // clients matching the filters
+  const [liveTotal, setLiveTotal] = useState(0); // all clients of this menu item, Dropped aside
+  const [listLoading, setListLoading] = useState(false);
   const [users, setUsers] = useState([]);
   const [countries, setCountries] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -80,16 +81,48 @@ export default function AccountsPage({ scope = "onboarding", initialAccountId, i
   const [prospects, setProspects] = useState([]);
   const [shownProspect, setShownProspect] = useState(null);
 
+  // The server applies the filters: this menu item's statuses (Dropped only when picked or searched for), the
+  // search, the risk level, the approval date and the sort.
+  const liveStatuses = cfg.statuses.filter((st) => st !== "Dropped");
+  const [query, setQuery] = useState(""); // the search, applied 300 ms after typing stops
+  useEffect(() => { const t = setTimeout(() => setQuery(search.trim()), 300); return () => clearTimeout(t); }, [search]);
+  const listParams = (extra = {}) => {
+    const since = scope === "maintenance" ? approvedSince(approvedWithin) : null;
+    return {
+      statuses: (statusFilter ? [statusFilter] : query ? cfg.statuses : liveStatuses).join(","),
+      search: query || undefined, risk: riskFilter || undefined,
+      approved_since: since ? since.toISOString().slice(0, 10) : undefined,
+      sort: scope === "maintenance" ? sortBy : "name", ...extra,
+    };
+  };
+
+  // Only the latest request's answer is shown: changing a filter on page 2 also returns to page 1, and the answer
+  // for the old page must not land after the new one.
+  const latestList = useRef(0);
+  const loadList = async () => {
+    const mine = ++latestList.current;
+    setListLoading(true);
+    try {
+      const [res, live] = await Promise.all([
+        accountsApi.list(listParams({ skip: page * PAGE_SIZE, limit: PAGE_SIZE })),
+        accountsApi.list({ statuses: liveStatuses.join(","), limit: 1 }),
+      ]);
+      if (mine !== latestList.current) return;
+      setAccounts(res.items || []); setTotal(res.total || 0); setLiveTotal(live.total || 0);
+    } catch (e) {
+      if (mine === latestList.current) setError(e.response?.data?.detail || "Failed to load clients");
+    } finally { if (mine === latestList.current) setListLoading(false); }
+  };
   // `silent` refreshes in the background without the full-page spinner.
   const load = async ({ silent = false } = {}) => {
     try {
       if (!silent) setLoading(true);
       setError(null);
-      const [accRes, usersRes, countriesRes, prospectRes] = await Promise.all([
-        accountsApi.list({ limit: 500 }), usersApi.list(), countriesApi.list().catch(() => []),
+      const [usersRes, countriesRes, prospectRes] = await Promise.all([
+        usersApi.list(), countriesApi.list().catch(() => []),
         scope === "onboarding" ? prospectsApi.list().catch(() => []) : Promise.resolve([]),
+        loadList(),
       ]);
-      setAccounts(accRes.items || []);
       setProspects(prospectRes || []);
       setUsers(usersRes || []);
       setCountries(countriesRes || []);
@@ -98,19 +131,29 @@ export default function AccountsPage({ scope = "onboarding", initialAccountId, i
     } finally { setLoading(false); }
   };
   useEffect(() => { load(); }, []);
-
-  // Arriving from elsewhere (e.g. "Review" in the Compliance inbox) opens that client's page.
+  // A new filter starts again at the first page; a page or filter change reloads the list.
+  useEffect(() => { setPage(0); }, [query, statusFilter, riskFilter, approvedWithin, sortBy]);
+  // A new page of the list starts at its top.
+  useEffect(() => { if (page > 0 || !firstRun.current) document.getElementById('main-content')?.scrollTo?.({ top: 0 }); }, [page]);
+  const firstRun = useRef(true);
   useEffect(() => {
-    const target = accounts.find((a) => a.id === initialAccountId);
-    if (!appliedInitialRef.current && initialAccountId && target) {
-      appliedInitialRef.current = true;
+    if (firstRun.current) { firstRun.current = false; return; }
+    loadList();
+  }, [page, query, statusFilter, riskFilter, approvedWithin, sortBy]);
+
+  // Arriving from elsewhere (e.g. "Review" in the Compliance inbox) opens that client's page. The client is read
+  // directly: with paging it may not be on the first page of the list.
+  useEffect(() => {
+    if (appliedInitialRef.current || !initialAccountId) return;
+    appliedInitialRef.current = true;
+    accountsApi.get(initialAccountId).then((target) => {
       if (!cfg.statuses.includes(target.profile_status || "New")) {
         onNavigate?.({ page: scope === "onboarding" ? "maintenance" : "accounts", accountId: target.id, openForm: initialOpenForm });
         return;
       }
       setOpen({ id: initialAccountId, tab: initialOpenForm ? "profile" : "overview" });
-    }
-  }, [initialAccountId, accounts]);
+    }).catch(() => toast.error("That client could not be opened"));
+  }, [initialAccountId]);
 
   const changeView = (v) => { setView(v); try { localStorage.setItem(VIEW_KEY, v); } catch { /* ignore */ } };
   const userName = (id) => users.find((u) => u.id === id)?.name || "—";
@@ -140,10 +183,19 @@ export default function AccountsPage({ scope = "onboarding", initialAccountId, i
     } finally { setBulkApplying(false); }
   };
 
-  const exportCSV = () => {
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(new Blob([buildAccountsCsv(accounts, users)], { type: "text/csv" }));
-    a.download = exportFilename("clients"); a.click();
+  // Every client matching the filters, not only the page on screen.
+  const exportCSV = async () => {
+    try {
+      const all = [];
+      for (let skip = 0; ; skip += 1000) {
+        const res = await accountsApi.list(listParams({ skip, limit: 1000 }));
+        all.push(...(res.items || []));
+        if (all.length >= (res.total || 0) || !(res.items || []).length) break;
+      }
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(new Blob([buildAccountsCsv(all, users)], { type: "text/csv" }));
+      a.download = exportFilename("clients"); a.click();
+    } catch (e) { toast.error(e.response?.data?.detail || "Export failed"); }
   };
 
   const handleImportFile = async (file) => {
@@ -180,19 +232,11 @@ export default function AccountsPage({ scope = "onboarding", initialAccountId, i
     );
   }
 
-  // Only this menu item's clients: being onboarded, or existing (Triam input 19-10-2026).
-  const scoped = accounts.filter((a) => cfg.statuses.includes(a.profile_status || "New"));
-  // Triam UAT 18-11-2026: a dropped client leaves the working list. It shows when Dropped is picked, or when searched for.
-  const live = scoped.filter((a) => a.profile_status !== "Dropped");
-  // Matches legal name, Unique Search Name (BRD §3) or Client ID (BRD §18).
-  const q = search.toLowerCase();
-  const since = scope === "maintenance" ? approvedSince(approvedWithin) : null;
-  const filtered = scoped.filter((a) => (!q || [a.company_name, a.search_name, a.client_id, a.temp_id, a.account_uid].some((v) => (v || "").toLowerCase().includes(q)))
-    && (statusFilter ? (a.profile_status || "New") === statusFilter : (!!q || a.profile_status !== "Dropped"))
-    && (!riskFilter || a.risk_rating === riskFilter)
-    && (!since || (a.approved_at && new Date(a.approved_at) >= since)));
-  if (scope === "maintenance") filtered.sort(byKey[sortBy]);
+  // The server returns this menu item's clients, filtered and sorted (Triam input 19-10-2026; UAT 18-11-2026:
+  // a dropped client leaves the working list, shown when Dropped is picked or searched for).
+  const filtered = accounts;
   const ids = filtered.map((a) => a.id);
+  const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const openClient = (a) => setOpen({ id: a.id, tab: "overview" });
   // Prospects sent to an RM and still waiting for their client: the RM sees their own, the Prospecting
   // Coordinator and administrators see all. Newest first (Triam input 19-10-2026).
@@ -203,7 +247,7 @@ export default function AccountsPage({ scope = "onboarding", initialAccountId, i
 
   return (
     <div className="space-y-4">
-      <PageHeader title={cfg.title} subtitle={cfg.subtitle(live.length)}
+      <PageHeader title={cfg.title} subtitle={cfg.subtitle(liveTotal)}
         actions={<>
           {isAdmin && <Button onClick={exportCSV}>Export CSV</Button>}
           {isAdmin && scope === "maintenance" && (
@@ -221,9 +265,9 @@ export default function AccountsPage({ scope = "onboarding", initialAccountId, i
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-x-auto">
           <div className="px-4 py-3 border-b border-gray-100 text-sm font-semibold text-gray-800">
             {isAdmin || canAssign ? "Prospects sent to RMs" : "Prospects sent to me"}
-            <span className="ml-2 text-xs font-normal text-gray-400">{waiting.length} waiting for the client to be created</span>
+            <span className="ml-2 text-xs font-normal text-gray-500">{waiting.length} waiting for the client to be created</span>
           </div>
-          {waiting.length === 0 ? <p className="px-4 py-5 text-sm text-gray-400">No prospects waiting.</p> : (
+          {waiting.length === 0 ? <p className="px-4 py-5 text-sm text-gray-500">No prospects waiting.</p> : (
             <table className="w-full text-sm">
               <thead><tr className="border-b border-gray-100 bg-gray-50 text-xs text-gray-500">
                 {["Date Sent", "Prospect Name", "Contact Name", "Contact Phone", "Contact Email", "Services the prospect is looking for"].map((h) => (
@@ -236,7 +280,7 @@ export default function AccountsPage({ scope = "onboarding", initialAccountId, i
                     <td className="py-2.5 px-3 text-xs text-gray-600 whitespace-nowrap">{fmtDate(p.assigned_at || p.created_at)}</td>
                     <td className="py-2.5 px-3">
                       <button onClick={() => setShownProspect(p)} className="font-medium text-brand-700 hover:underline text-left">{p.company_name}</button>
-                      <div className="text-[11px] text-gray-400 font-mono">{p.prospect_uid}{isAdmin || p.owner_id !== me?.id ? ` · ${userName(p.owner_id)}` : ""}</div>
+                      <div className="text-[11px] text-gray-500 font-mono">{p.prospect_uid}{isAdmin || p.owner_id !== me?.id ? ` · ${userName(p.owner_id)}` : ""}</div>
                     </td>
                     <td className="py-2.5 px-3 text-xs text-gray-600">{p.contact_name || "—"}</td>
                     <td className="py-2.5 px-3 text-xs text-gray-600">{p.contact_phone || "—"}</td>
@@ -252,12 +296,12 @@ export default function AccountsPage({ scope = "onboarding", initialAccountId, i
 
       <FilterBar>
         <SearchInput value={search} onChange={setSearch} placeholder="Search by client name or Client ID…" />
-        <div className="w-60"><Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+        <div className="w-60"><Select aria-label="Filter by status" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
           <option value="">{scope === "onboarding" ? "All statuses except Dropped" : "All statuses"}</option>
           {cfg.statuses.map((s) => <option key={s}>{s}</option>)}
         </Select></div>
         {/* Risk level and AML review are set by Compliance at approval, so only existing clients have them. */}
-        {scope === "maintenance" && <div className="w-40"><Select value={riskFilter} onChange={(e) => setRiskFilter(e.target.value)}>
+        {scope === "maintenance" && <div className="w-40"><Select aria-label="Filter by risk level" value={riskFilter} onChange={(e) => setRiskFilter(e.target.value)}>
           <option value="">All risk levels</option>
           {["High", "Medium", "Low"].map((r) => <option key={r} value={r}>{r} risk</option>)}
         </Select></div>}
@@ -284,15 +328,15 @@ export default function AccountsPage({ scope = "onboarding", initialAccountId, i
 
       {filtered.length === 0 ? (
         <EmptyState
-          title={scoped.length === 0 ? `No clients in ${cfg.title}` : "No clients match these filters"}
-          text={scoped.length === 0 ? cfg.empty : "Try a different search or clear the filters."} />
+          title={liveTotal === 0 && !query && !statusFilter ? `No clients in ${cfg.title}` : "No clients match these filters"}
+          text={liveTotal === 0 && !query && !statusFilter ? cfg.empty : "Try a different search or clear the filters."} />
       ) : view === "table" ? (
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50 text-xs text-gray-500">
                 {!readOnly && <th className="py-2.5 px-3 w-8">
-                  <input type="checkbox" checked={ids.every((id) => selectedIds.has(id))} onChange={() => toggleSelectAll(ids)} />
+                  <input type="checkbox" aria-label="Select all clients" checked={ids.every((id) => selectedIds.has(id))} onChange={() => toggleSelectAll(ids)} />
                 </th>}
                 {(scope === "maintenance" ? ["Client ID", "Client", "Status", "Approved on", "Risk", "Anchor RM", "PEP", "Next AML review"]
                   : ["Client ID", "Client", "Status", "Anchor RM", "PEP"]).map((h) => (
@@ -304,12 +348,12 @@ export default function AccountsPage({ scope = "onboarding", initialAccountId, i
               {filtered.map((a) => (
                 <tr key={a.id} onClick={() => openClient(a)} className="border-b border-gray-50 hover:bg-gray-50 cursor-pointer">
                   {!readOnly && <td className="py-2.5 px-3" onClick={(e) => e.stopPropagation()}>
-                    <input type="checkbox" checked={selectedIds.has(a.id)} onChange={() => toggleSelected(a.id)} />
+                    <input type="checkbox" aria-label={`Select ${a.company_name}`} checked={selectedIds.has(a.id)} onChange={() => toggleSelected(a.id)} />
                   </td>}
-                  <td className="py-2.5 px-3 font-mono text-xs text-gray-600">{a.client_id || <span className="text-gray-400" title="Temporary ID until the Final approval">{a.temp_id || a.account_uid}</span>}</td>
+                  <td className="py-2.5 px-3 font-mono text-xs text-gray-600">{a.client_id || <span className="text-gray-500" title="Temporary ID until the Final approval">{a.temp_id || a.account_uid}</span>}</td>
                   <td className="py-2.5 px-3">
                     <div className="font-medium text-gray-800">{a.company_name}</div>
-                    <div className="text-xs text-gray-400">{a.account_type === "Individual" ? "Individual" : [a.client_category, a.country].filter(Boolean).join(" · ") || "Corporate"}{a.is_pep ? " · PEP" : ""}</div>
+                    <div className="text-xs text-gray-500">{a.account_type === "Individual" ? "Individual" : [a.client_category, a.country].filter(Boolean).join(" · ") || "Corporate"}{a.is_pep ? " · PEP" : ""}</div>
                   </td>
                   <td className="py-2.5 px-3">
                     <Badge text={a.profile_status || "New"} />
@@ -333,6 +377,18 @@ export default function AccountsPage({ scope = "onboarding", initialAccountId, i
               onOpen={() => openClient(a)} onToggleSelected={() => toggleSelected(a.id)} />
           ))}
         </div>
+      )}
+      {total > 0 && (
+        <nav aria-label="Pages" className={`flex flex-wrap items-center justify-between gap-2 text-xs text-gray-600 ${listLoading ? "opacity-60" : ""}`}>
+          <span>{`Showing ${page * PAGE_SIZE + 1}–${Math.min(total, (page + 1) * PAGE_SIZE)} of ${total}`}</span>
+          {pages > 1 && (
+            <span className="flex items-center gap-2">
+              <Button size="sm" disabled={page === 0 || listLoading} onClick={() => setPage((n) => n - 1)}>Previous</Button>
+              <span>{`Page ${page + 1} of ${pages}`}</span>
+              <Button size="sm" disabled={page + 1 >= pages || listLoading} onClick={() => setPage((n) => n + 1)}>Next</Button>
+            </span>
+          )}
+        </nav>
       )}
 
       {newClient && (

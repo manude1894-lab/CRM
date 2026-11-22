@@ -167,7 +167,7 @@ export default function AccountPartyModal({ account, onClose, onChange, role }) 
         <div className="flex border-b border-gray-100 mb-4 -mt-2">
           {[...ROLES, ...leftoverRoles].map((r) => (
             <button key={r} onClick={() => switchTab(r)} title={leftoverRoles.includes(r) ? "Not used for this client: remove these records" : undefined}
-              className={`px-3 py-2 text-sm font-medium border-b-2 -mb-px ${tab === r ? "border-brand-500 text-brand-600" : "border-transparent text-gray-400 hover:text-gray-600"} ${leftoverRoles.includes(r) ? "line-through decoration-amber-500" : ""}`}>
+              className={`px-3 py-2 text-sm font-medium border-b-2 -mb-px ${tab === r ? "border-brand-500 text-brand-600" : "border-transparent text-gray-500 hover:text-gray-600"} ${leftoverRoles.includes(r) ? "line-through decoration-amber-500" : ""}`}>
               {partyLabel(r)} ({parties.filter((p) => p.party_role === r).length})
             </button>
           ))}
@@ -181,7 +181,7 @@ export default function AccountPartyModal({ account, onClose, onChange, role }) 
       )}
 
       {tab === "Shareholder" && !editing && (
-        <p className={`text-xs mb-2 ${ownershipTotal === 100 ? "text-gray-400" : "text-amber-600 font-medium"}`}>
+        <p className={`text-xs mb-2 ${ownershipTotal === 100 ? "text-gray-500" : "text-amber-700 font-medium"}`}>
           Total individual ownership: {ownershipTotal.toFixed(2)}%{ownershipTotal !== 100 && " (should total 100%)"} · entity shareholders are not counted
         </p>
       )}
@@ -192,18 +192,18 @@ export default function AccountPartyModal({ account, onClose, onChange, role }) 
             <>
               <div className="space-y-2 mb-3">
                 {rowsForTab.length === 0
-                  ? <p className="text-sm text-gray-400 text-center py-6">No {partyLabel(tab).toLowerCase().replace(/y$/, "ie")}s on record.</p>
+                  ? <p className="text-sm text-gray-500 text-center py-6">No {partyLabel(tab).toLowerCase().replace(/y$/, "ie")}s on record.</p>
                   : rowsForTab.map((p, i) => (
                     <div key={p.id} className="bg-gray-50 rounded-lg">
                     <div className="flex items-center justify-between p-2.5">
                       <div>
                         <div className="text-sm font-medium text-gray-800">
-                          <span className="text-xs text-gray-400 mr-1.5">{partyLabel(tab)} {i + 1}</span>
+                          <span className="text-xs text-gray-500 mr-1.5">{partyLabel(tab)} {i + 1}</span>
                           {p.full_name}
                           {p.is_pep && <span className="ml-1.5 text-xs px-1.5 py-0.5 rounded bg-red-100 text-red-700">PEP</span>}
                           {p.nominee_director_name && <span className="ml-1.5 text-xs px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">Nominee: {p.nominee_director_name}</span>}
                         </div>
-                        <div className="text-xs text-gray-400">
+                        <div className="text-xs text-gray-500">
                           {p.constitution}
                           {parties.filter((o) => samePerson(o, p)).map((o) => (
                             <span key={o.id} className="ml-1 px-1 rounded bg-brand-50 text-brand-700">also {o.party_role}</span>
@@ -218,8 +218,8 @@ export default function AccountPartyModal({ account, onClose, onChange, role }) 
                           className={`px-2 py-1 text-[11px] rounded border ${docsFor === p.id ? "border-brand-300 text-brand-700 bg-white" : "border-gray-200 text-gray-600 hover:bg-white"}`}>
                           Documents
                         </button>
-                        {!readOnly && <button onClick={() => startEdit(p)} title="Edit" className="p-1.5 rounded hover:bg-brand-50 text-gray-400 hover:text-brand-600"><Icon name="edit" size={14} /></button>}
-                        {!readOnly && <button onClick={() => remove(p)} title="Remove" className="p-1.5 rounded hover:bg-red-50 text-gray-400 hover:text-red-500"><Icon name="close" size={14} /></button>}
+                        {!readOnly && <button onClick={() => startEdit(p)} title="Edit" className="p-1.5 rounded hover:bg-brand-50 text-gray-500 hover:text-brand-600"><Icon name="edit" size={14} /></button>}
+                        {!readOnly && <button onClick={() => remove(p)} title="Remove" className="p-1.5 rounded hover:bg-red-50 text-gray-500 hover:text-red-500"><Icon name="close" size={14} /></button>}
                       </div>
                     </div>
                     {docsFor === p.id && (
@@ -251,7 +251,7 @@ export default function AccountPartyModal({ account, onClose, onChange, role }) 
                       {removedShown.map((r) => (
                         <div key={r.id} className="p-2 rounded-lg border border-gray-100 text-xs text-gray-500">
                           <span className="line-through text-gray-600">{r.full_name}</span> · {r.party_role}
-                          <div className="text-[11px] text-gray-400">
+                          <div className="text-[11px] text-gray-500">
                             Removed {fmtDate(r.removed_at)}{r.removed_by_name ? ` by ${r.removed_by_name}` : ""}{r.removed_reason ? `. Reason: ${r.removed_reason}` : ""}
                           </div>
                         </div>
@@ -419,7 +419,7 @@ function PartyForm({ form, setForm, countries, onCancel, onSave, copyFrom = [] }
 
       <div className="flex justify-end gap-3 mt-3">
         <button onClick={onCancel} className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
-        <button onClick={onSave} className="px-4 py-2 text-sm text-white rounded-lg" style={{ background: "#1a3a5c" }}>Save {form.party_role}</button>
+        <button onClick={onSave} className="px-4 py-2 text-sm text-white rounded-lg bg-brand-600 hover:bg-brand-700">Save {form.party_role}</button>
       </div>
     </div>
   );

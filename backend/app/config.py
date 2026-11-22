@@ -19,7 +19,8 @@ class Settings(BaseSettings):
     JWT_SECRET_KEY: str = "change-me-in-production-use-openssl-rand-hex-32"
     JWT_REFRESH_SECRET_KEY: str = "change-me-refresh-secret-in-production"
     JWT_ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
+    # Review 22-11-2026: 15 minutes; the screen renews it silently with the refresh token, so users see no change.
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
     # CORS — add your Railway frontend URL here via CORS_ORIGINS env var
@@ -44,6 +45,10 @@ class Settings(BaseSettings):
     SMTP_USE_TLS: bool = True
     # The CRM's web address, used in emailed links (password reset), e.g. https://crm.asktriam.com
     APP_URL: str = ""
+    # Error alerts (review 22-11-2026): where crashes are reported. Comma-separated emails and/or a Teams / Slack
+    # incoming-webhook address.
+    ALERT_EMAILS: str = ""
+    ALERT_WEBHOOK_URL: str = ""
     PASSWORD_RESET_MINUTES: int = 30
 
     # SMS notifications (BRD §17) — provider to be chosen by Triam; off until configured.
