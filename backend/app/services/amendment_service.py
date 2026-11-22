@@ -372,7 +372,7 @@ def view(db: Session, acc: Account, user: User) -> dict:
                 out["previous"] = db.get(ApprovalRequest, req.previous_request_id)
         else:  # Pending
             out["diff"] = req.changes
-            if approver and not access_control.same_person(req.maker, user):
+            if approver and not access_control.same_person(req.maker, user) and not access_control.is_clients_rm(db, acc, user):
                 out["actions"] += ["approve", "reject"]
             if req.maker_id == user.id or approver:
                 out["actions"].append("withdraw")
@@ -424,6 +424,8 @@ def _assert_checker(db: Session, acc: Account, user: User, req: ApprovalRequest)
         raise HTTPException(status_code=403, detail="Needs an approver (CO / MLRO)")
     if access_control.same_person(req.maker, user):
         raise HTTPException(status_code=403, detail="You submitted this amendment, so another approver must review it")
+    if access_control.is_clients_rm(db, acc, user):  # Triam 22-11-2026: an RM who is also CO
+        raise HTTPException(status_code=403, detail="You are this client's RM, so another approver must review it")
 
 
 def approve(db: Session, acc: Account, user: User, comment: Optional[str] = None) -> ApprovalRequest:

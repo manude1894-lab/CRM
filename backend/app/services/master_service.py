@@ -3,6 +3,8 @@
 Also the single place other services call to validate that a stored value comes from an active
 master list (BRD §4 "selection from the configured Triam Entity list", §18).
 """
+import re
+
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
@@ -42,7 +44,14 @@ def get_item(db: Session, item_id: int) -> MasterItem:
 def create_item(db: Session, list_type: str, data: MasterItemCreate) -> MasterItem:
     _check_type(list_type)
     code = (data.code or data.label).strip()
-    exists = db.query(MasterItem).filter(MasterItem.list_type == list_type, MasterItem.code == code).first()
+    if list_type == "triam_entity":
+        # Triam 22-11-2026: an entity's code is the Client ID prefix (TCPL/00001) and its tag everywhere, so it is
+        # required and short; it can't be changed later. (A TPTL entry was saved with its full name as the code.)
+        code = (data.code or "").strip().upper()
+        if not re.fullmatch(r"[A-Z0-9]{2,6}", code):
+            raise HTTPException(status_code=400, detail="Enter the entity's short code: 2 to 6 letters or digits, e.g. TPTL. "
+                                                        "It is the Client ID prefix (TPTL/00001) and can't be changed later.")
+    exists =db.query(MasterItem).filter(MasterItem.list_type == list_type, MasterItem.code == code).first()
     if exists:
         raise HTTPException(status_code=400, detail=f"'{code}' already exists in this list" + ("" if exists.is_active else " (inactive; reactivate it instead)"))
     if data.sort_order is None:

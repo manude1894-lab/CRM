@@ -52,3 +52,13 @@ export function servicesNotOffered(items = [], entities = [], sought = []) {
   const known = new Set(items.map((i) => i.code));
   return (sought || []).filter((s) => known.has(s) && !offered.has(s));
 }
+
+// "TPTL – Triam Professional ..." -> "TPTL": the leading code of an entity's name - a word of 2 to 6 letters / digits
+// followed by a dash, or written in capitals. "Triam Professional ..." suggests nothing.
+export const suggestEntityCode = (label) => {
+  const text = (label || "").trim();
+  const dashed = /^([A-Za-z0-9]{2,6})\s*[–—-]/.exec(text);
+  if (dashed) return dashed[1].toUpperCase();
+  const capitals = /^([A-Z0-9]{2,6})(\s|$)/.exec(text);
+  return capitals ? capitals[1] : "";
+};

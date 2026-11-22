@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { mastersApi } from "../../api/endpoints";
 import { invalidateMasters } from "../../hooks/useMasters";
+import { suggestEntityCode } from "../../hooks/masterUtils";
 import { Icon, ShowDeactivated } from "../ui";
 import { toast } from "../../store/toast";
 
@@ -10,6 +11,7 @@ import { toast } from "../../store/toast";
 const ENTITY_LISTS = ["service", "service_request_type", "service_request_status"];
 // Kept in alphabetical order by the system (no manual ordering); matches master_service.ALPHABETICAL_LISTS.
 const ALPHABETICAL_LISTS = ["service", "document_category", "service_request_type", "licensing_authority", "tag", "regulator"];
+
 
 // One Triam-entity chip: filled when on.
 const EntityChip = ({ on, title, onClick, children }) => (
@@ -27,6 +29,14 @@ export default function MasterDataPanel() {
   const [loading, setLoading] = useState(false);
   const [newLabel, setNewLabel] = useState("");
   const [newCode, setNewCode] = useState("");
+  const [codeTouched, setCodeTouched] = useState(false);
+  // Triam 22-11-2026: a Triam entity's code is required and short - it is the Client ID prefix (TPTL/00001).
+  const isEntityList = listType === "triam_entity";
+  const entityCodeOk = !isEntityList || /^[A-Z0-9]{2,6}$/.test(newCode);
+  const setLabel = (v) => {
+    setNewLabel(v);
+    if (isEntityList && !codeTouched) setNewCode(suggestEntityCode(v));
+  };
   const [editingId, setEditingId] = useState(null);
   const [editingLabel, setEditingLabel] = useState("");
   const [entities, setEntities] = useState([]);
@@ -50,9 +60,10 @@ export default function MasterDataPanel() {
 
   const add = async () => {
     if (!newLabel.trim()) return;
+    if (!entityCodeOk) return toast.error("Enter the entity's short code: 2 to 6 letters or digits, e.g. TPTL");
     try {
       await mastersApi.create(listType, { label: newLabel.trim(), code: newCode.trim() || undefined });
-      setNewLabel(""); setNewCode(""); changed();
+      setNewLabel(""); setNewCode(""); setCodeTouched(false); changed();
     } catch (e) { toast.error(e.response?.data?.detail || "Failed to add item"); }
   };
 
@@ -193,11 +204,15 @@ export default function MasterDataPanel() {
 
         <div className="mb-3"><ShowDeactivated noun="items" count={items.filter((i) => !i.is_active).length} open={showInactive} onToggle={() => setShowInactive((v) => !v)} /></div>
         <div className="flex flex-wrap gap-2 pt-3 border-t border-gray-100">
-          <input value={newLabel} onChange={(e) => setNewLabel(e.target.value)} onKeyDown={(e) => e.key === "Enter" && add()}
-            placeholder="New item label" className="flex-1 min-w-48 text-xs border border-gray-200 rounded-lg px-2 py-1.5" />
-          <input value={newCode} onChange={(e) => setNewCode(e.target.value)} onKeyDown={(e) => e.key === "Enter" && add()}
-            placeholder="Code (optional, defaults to the label)" className="w-56 text-xs border border-gray-200 rounded-lg px-2 py-1.5" />
-          <button onClick={add} className="px-3 py-1.5 text-xs text-white rounded-lg" style={{ background: "#1a3a5c" }}>Add</button>
+          <input value={newLabel} onChange={(e) => setLabel(e.target.value)} onKeyDown={(e) => e.key === "Enter" && add()}
+            placeholder={isEntityList ? "Entity name, e.g. TPTL – Triam Professional & Prof Dev Mgmt LLC" : "New item label"}
+            className="flex-1 min-w-48 text-xs border border-gray-200 rounded-lg px-2 py-1.5" />
+          <input value={newCode} onKeyDown={(e) => e.key === "Enter" && add()} maxLength={isEntityList ? 6 : undefined}
+            onChange={(e) => { setCodeTouched(true); setNewCode(isEntityList ? e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "") : e.target.value); }}
+            placeholder={isEntityList ? "Code, e.g. TPTL (required)" : "Code (optional, defaults to the label)"}
+            aria-invalid={isEntityList && !!newLabel && !entityCodeOk}
+            className={`w-56 text-xs border rounded-lg px-2 py-1.5 ${isEntityList && newLabel && !entityCodeOk ? "border-red-300" : "border-gray-200"}`} />
+          <button onClick={add} disabled={!newLabel.trim() || !entityCodeOk} className="px-3 py-1.5 text-xs text-white rounded-lg disabled:opacity-50" style={{ background: "#1a3a5c" }}>Add</button>
         </div>
       </div>
     </div>
