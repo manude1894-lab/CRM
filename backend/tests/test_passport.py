@@ -89,8 +89,8 @@ def test_import_tidies_the_passport_number_and_refuses_a_bad_one(db, make_user):
     from app.models import Account
     admin = make_user("Ada", role="admin")
     results = account_service.import_accounts(db, admin, [
-        AccountImportRow(company_name="Good Person", account_type="Individual", passport_number="n 123-4567"),
-        AccountImportRow(company_name="Bad Person", account_type="Individual", passport_number="AB!"),
+        AccountImportRow(company_name="Good Person", account_type="Individual", anchor_entity="TCPL", passport_number="n 123-4567"),
+        AccountImportRow(company_name="Bad Person", account_type="Individual", anchor_entity="TCPL", passport_number="AB!"),
     ], dry_run=False)
     assert [r.status for r in results] == ["ok", "error"] and "Passport Number" in results[1].message
     assert db.query(Account).filter(Account.company_name == "Good Person").one().passport_number == "N1234567"

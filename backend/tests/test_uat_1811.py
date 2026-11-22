@@ -89,9 +89,9 @@ def test_imported_mobile_numbers_take_digits_only(db, make_user):
     from app.schemas.account import AccountImportRow
     admin = make_user("Ada", role="admin")
     rows = [
-        AccountImportRow(company_name="Letters Ltd", contact_mobile_country_code="+971", contact_mobile_number="50ABC4567"),
-        AccountImportRow(company_name="Short Ltd", contact_mobile_country_code="+971", contact_mobile_number="5012"),
-        AccountImportRow(company_name="Good Ltd", contact_mobile_country_code="+971", contact_mobile_number="050-123 4567"),
+        AccountImportRow(company_name="Letters Ltd", anchor_entity="TCPL", contact_mobile_country_code="+971", contact_mobile_number="50ABC4567"),
+        AccountImportRow(company_name="Short Ltd", anchor_entity="TCPL", contact_mobile_country_code="+971", contact_mobile_number="5012"),
+        AccountImportRow(company_name="Good Ltd", anchor_entity="TCPL", contact_mobile_country_code="+971", contact_mobile_number="050-123 4567"),
     ]
     results = account_service.import_accounts(db, admin, rows, dry_run=False)
     assert [r.status for r in results] == ["error", "error", "ok"]

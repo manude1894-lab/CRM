@@ -7,7 +7,7 @@ import { toast } from "../../store/toast";
 import { useAuthStore } from "../../store/auth";
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
-const show = (v) => (typeof v === "string" && ISO_DATE.test(v) ? fmtDate(v) : v ?? "—");
+const show = (v) => (typeof v === "string" && ISO_DATE.test(v) ? fmtDate(v) : v === true ? "Yes" : v === false ? "No" : v ?? "—");
 // Which inputs each report takes (Triam UAT 18-11-2026: the user picks the days, the dates and the status).
 const TAKES_DAYS = { "documents-expiring": "Within (days)", "aml-reviews-due": "Due within (days)",
   "under-formation": "Pending at least (days, 0 = all)" };
@@ -20,7 +20,7 @@ const REQUEST_TYPES = ["Onboarding", "Service Request"];
 // The side list's groups, in this order; a report not listed here goes under "Other".
 const GROUPS = [
   ["Onboarding", ["onboarding-approved", "onboarding-in-progress", "under-formation", "rejected-with-rm"]],
-  ["Compliance & KYC", ["clients-risk", "aml-reviews-due", "aml-reviews-expired", "amendments"]],
+  ["Compliance & KYC", ["clients-risk", "aml-reviews-due", "aml-reviews-expired", "amendments", "data-quality"]],
   ["Documents", ["documents-expiring", "documents-expired"]],
   ["Prospects", ["prospects-assigned", "prospects-unassigned"]],
   ["Finance & service requests", ["invoices-onboarding", "invoices-service-requests", "invoices-pending", "service-requests-ageing"]],

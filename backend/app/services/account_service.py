@@ -90,6 +90,20 @@ def _default_search_name(db: Session, company_name: str, anchor_entity: Optional
     raise HTTPException(status_code=400, detail="Please enter a Unique Search Name. The default one is already taken.")
 
 
+def issue_missing_client_ids(db: Session) -> int:
+    """Triam data review 21-11-2026: clients past onboarding that never got a Client ID (records from before IDs
+    existed, or imported without one) get it now, from their Anchor Triam Entity. Run at every deploy; does
+    nothing once all have one. A client with no entity is left for the "Client data to correct" report."""
+    accs = (db.query(Account).filter(Account.client_id.is_(None), Account.anchor_entity.isnot(None),
+                                     Account.profile_status.notin_(client_workflow_service.ONBOARDING))
+            .order_by(Account.approved_at, Account.id).all())
+    for acc in accs:
+        acc.client_id = next_client_id(db, acc.anchor_entity)
+        db.flush()
+    db.commit()
+    return len(accs)
+
+
 def next_client_id(db: Session, entity_code: str) -> str:
     """BRD §19 — {ENTITY}/{00000}, separate counter per entity. The counter row is locked so
     concurrent saves can't take the same number (FOR UPDATE is a no-op on SQLite, used in tests)."""
@@ -634,6 +648,15 @@ def import_accounts(
                    else None)
         mobiles, mobile_problem = _import_mobiles(row)
         problem = problem or mobile_problem
+        # Triam data review 21-11-2026: an existing client gets its Client ID from the Anchor Triam Entity, so the
+        # entity is required; and dates follow the form's rules.
+        today = date.today()
+        if not problem and not (row.anchor_entity or "").strip():
+            problem = "Anchor Triam Entity is required (the Client ID is made from it)"
+        if not problem and row.license_start_date and row.license_start_date > today:
+            problem = f"License Start Date {row.license_start_date.isoformat()} is in the future"
+        if not problem and row.incorporation_date and row.incorporation_date > today:
+            problem = f"Incorporation Date {row.incorporation_date.isoformat()} is in the future"
         if not problem and row.passport_number:  # Triam 20-11-2026: same format as on the form
             from app.schemas.identity import passport_number
             try:
@@ -825,6 +848,17 @@ def missing_mandatory(account: Account) -> list[dict]:
              when=account.licensing_authority == "Other")
         need("Licensing & Regulatory", "license_start_date", "License Start / Registration Date", when=not forming)
         need("Licensing & Regulatory", "license_expiry_date", "License Expiry Date", when=not forming)
+        # Triam data review 21-11-2026: a date entered before the rule existed (e.g. 2099) is caught at Submit.
+        today = date.today()
+        if account.license_start_date and account.license_start_date > today:
+            missing.append({"section": "Licensing & Regulatory", "field": "license_start_date",
+                            "label": "License Start Date is in the future. Correct it"})
+        if account.incorporation_date and account.incorporation_date > today:
+            missing.append({"section": "Client info", "field": "incorporation_date",
+                            "label": "Incorporation Date is in the future. Correct it"})
+        if account.license_start_date and account.incorporation_date and account.license_start_date < account.incorporation_date:
+            missing.append({"section": "Licensing & Regulatory", "field": "license_start_date",
+                            "label": "License Start Date is before the Incorporation Date. Correct it"})
         if not forming and account.license_expiry_date and account.license_expiry_date < date.today():
             missing.append({"section": "Licensing & Regulatory", "field": "license_expiry_date",
                             "label": "Trade licence has expired. A valid licence is needed to onboard the client"})
