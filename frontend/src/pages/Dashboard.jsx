@@ -1,6 +1,6 @@
 import { formatTimestamp } from "../utils/auditFormat";
 import React, { useEffect, useState } from "react";
-import { dashboardApi, accountsApi } from "../api/endpoints";
+import { dashboardApi } from "../api/endpoints";
 import { Icon, Spinner, ErrorBanner } from "../components/ui";
 import { fmtDate, personLabel } from "../utils/constants";
 import { useAuthStore } from "../store/auth";
@@ -8,20 +8,10 @@ import { useAuthStore } from "../store/auth";
 const DUE_SOON_DAYS = 60;
 const REFRESH_MS = 5 * 60 * 1000;
 
-// Client dates surfaced in "Due soon" (BRD §5, §8, §9, §20).
-const ACCOUNT_DUE_FIELDS = [
-  ["license_expiry_date", "Trade licence expiry"],
-  ["next_aml_review_date", "AML review"],
-  ["engagement_letter_valid_until", "Engagement letter"],
-  ["lei_expiry_date", "LEI expiry"],
-  ["uae_visa_expiry", "UAE visa expiry"],
-  ["passport_expiry_date", "Passport expiry"],
-];
 const SERVICED = ["Approved", "Active", "Inactive", "Marked for Exit"];
 // Statuses listed under Client Data Maintenance (existing clients); the rest are in New Client Onboarding.
 const EXISTING_STATUSES = [...SERVICED, "Exited"];
 
-const daysUntil = (iso) => Math.round((new Date(iso) - new Date(new Date().toDateString())) / 86400000);
 
 // "Kalyan Rao" → "Kalyan"; a name starting with initials ("S T Krishna") is used in full.
 const firstName = (name) => { const first = name.trim().split(/\s+/)[0]; return first.length > 2 ? first : name.trim(); };
@@ -169,7 +159,6 @@ export default function Dashboard({ onNavigate = () => {} } = {}) {
   const user = useAuthStore((s) => s.user);
   const coordinator = useAuthStore((s) => s.isProspectCoordinator());
   const [data, setData] = useState(null);
-  const [accounts, setAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [updatedAt, setUpdatedAt] = useState(null);
@@ -179,11 +168,9 @@ export default function Dashboard({ onNavigate = () => {} } = {}) {
   const load = async () => {
     try {
       setError(null);
-      const [dash, accs, work] = await Promise.all([dashboardApi.get(), accountsApi.list({ limit: 200 }).catch(() => []),
-        dashboardApi.myWork().catch(() => [])]);
+      const [dash, work] = await Promise.all([dashboardApi.get(), dashboardApi.myWork().catch(() => [])]);
       setData(dash);
       setMyWork(work || []);
-      setAccounts(Array.isArray(accs?.items) ? accs.items : []);
       setUpdatedAt(new Date());
     } catch (e) {
       setError(e.response?.data?.detail || "Failed to load dashboard");
@@ -205,11 +192,9 @@ export default function Dashboard({ onNavigate = () => {} } = {}) {
   const kpis = data.kpis;
   const goClient = (id) => onNavigate({ page: "accounts", accountId: id });
 
-  // Due soon: dates on the clients Triam services, overdue first.
-  const due = accounts.filter((a) => SERVICED.includes(a.profile_status)).flatMap((a) => ACCOUNT_DUE_FIELDS
-    .filter(([f]) => a[f] && daysUntil(a[f]) <= DUE_SOON_DAYS)
-    .map(([f, what]) => ({ key: `${a.id}-${f}`, id: a.id, company: a.company_name, what, date: a[f], days: daysUntil(a[f]) })))
-    .sort((x, y) => x.days - y.days);
+  // Due soon: dates on the clients Triam services, overdue first - computed by the server over every client the
+  // user may see (review 22-11-2026), not from the first page of clients.
+  const due = (data.due_soon || []).map((d) => ({ ...d, id: d.account_id, company: d.company_name }));
   const dueShown = showAllDue ? due : due.slice(0, 8);
 
   const people = data.portfolio_by_rm || [];

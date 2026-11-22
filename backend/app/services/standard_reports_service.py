@@ -33,7 +33,10 @@ SERVICED = (wf.APPROVED, wf.ACTIVE, wf.INACTIVE, wf.MARKED_EXIT)
 
 
 def _accounts(db: Session, user: User) -> list[Account]:
-    q = db.query(Account)
+    """The clients the user may see, with their people and prospect loaded in bulk (two queries in all, not one
+    per client: review 22-11-2026, package 4)."""
+    from sqlalchemy.orm import selectinload
+    q = db.query(Account).options(selectinload(Account.parties), selectinload(Account.prospect))
     clause = access_control.account_visibility_clause(db, user)
     return (q.filter(clause) if clause is not None else q).all()
 

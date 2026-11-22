@@ -1,5 +1,7 @@
 """Clients router (stored as Account)."""
-from fastapi import APIRouter, Depends, HTTPException, status, Response
+from datetime import date
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status, Response
 from sqlalchemy.orm import Session
 from typing import Optional
 
@@ -15,15 +17,20 @@ router = APIRouter(prefix="/accounts", tags=["Clients"])
 
 @router.get("", summary="List accounts")
 def list_accounts(
-    skip: int = 0, limit: int = 100,
+    skip: int = Query(0, ge=0), limit: int = Query(100, ge=1, le=1000),
     search: Optional[str] = None,
     country: Optional[str] = None,
+    statuses: Optional[str] = Query(None, description="Comma-separated profile statuses, e.g. New,WIP,Rejected"),
+    risk: Optional[str] = None,
+    approved_since: Optional[date] = None,
+    sort: str = Query("name", description="name | approved | aml | recent"),
     response: Response = None,
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
+    wanted = [x.strip() for x in statuses.split(",") if x.strip()] if statuses else None
     items, total = account_service.list_accounts(
-        db, user, skip, limit, search, country,
+        db, user, skip, limit, search, country, wanted, risk, approved_since, sort,
     )
     if response is not None:
         response.headers["X-Total-Count"] = str(total)

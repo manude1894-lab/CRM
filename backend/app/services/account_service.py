@@ -157,6 +157,10 @@ def _compute_next_aml_review_date(acc: Account) -> None:
         acc.next_aml_review_date = None
 
 
+# Sort orders for client lists (review 22-11-2026, package 4: lists are paged, filtered and sorted on the server).
+LIST_SORTS = ("name", "approved", "aml", "recent")
+
+
 def list_accounts(
     db: Session,
     user: User,
@@ -164,7 +168,12 @@ def list_accounts(
     limit: int = 100,
     search: Optional[str] = None,
     country: Optional[str] = None,
+    statuses: Optional[list[str]] = None,
+    risk: Optional[str] = None,
+    approved_since: Optional[date] = None,
+    sort: str = "name",
 ) -> tuple[list[Account], int]:
+    from app.models import Prospect
     query = db.query(Account)
     # BRD §13 RM privacy + supervisor visibility.
     visibility = access_control.account_visibility_clause(db, user)
@@ -172,18 +181,30 @@ def list_accounts(
         query = query.filter(visibility)
 
     if search:
-        pattern = f"%{search}%"
+        pattern = f"%{search.strip()}%"
         query = query.filter(or_(
             Account.company_name.ilike(pattern),
             Account.search_name.ilike(pattern),
             Account.client_id.ilike(pattern),
             Account.account_uid.ilike(pattern),
+            Account.prospect.has(Prospect.prospect_uid.ilike(pattern)),  # the temporary ID people search by
         ))
     if country:
         query = query.filter(Account.country == country)
+    if statuses:
+        query = query.filter(Account.profile_status.in_(statuses))
+    if risk:
+        query = query.filter(Account.risk_rating == risk)
+    if approved_since:
+        query = query.filter(Account.approved_at >= datetime.combine(approved_since, datetime.min.time(), tzinfo=timezone.utc))
 
     total = query.count()
-    items = query.order_by(Account.company_name).offset(skip).limit(limit).all()
+    order = {
+        "approved": (Account.approved_at.desc().nulls_last(), Account.company_name),
+        "aml": (Account.next_aml_review_date.asc().nulls_last(), Account.company_name),
+        "recent": (Account.created_at.desc(), Account.id.desc()),
+    }.get(sort, (Account.company_name, Account.id))
+    items = query.order_by(*order).offset(skip).limit(limit).all()
     # Triam UAT 05-11-2026: the list says at which level a case awaiting approval is pending.
     awaiting = {a.id: a for a in items if a.profile_status == client_workflow_service.AWAITING}
     if awaiting:

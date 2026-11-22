@@ -2,20 +2,21 @@ import React, { useEffect, useState } from "react";
 import { useAuthStore } from "./store/auth";
 import { authApi } from "./api/endpoints";
 import { signOut } from "./utils/signOut";
-import { Icon, ToastHost, ConfirmDialogHost } from "./components/ui";
+import { Icon, Spinner, ToastHost, ConfirmDialogHost } from "./components/ui";
 import NotificationBell from "./components/NotificationBell";
 import CommandPalette from "./components/CommandPalette";
 import PageErrorBoundary from "./components/PageErrorBoundary";
 import LoginPage from "./pages/LoginPage";
 import Dashboard from "./pages/Dashboard";
-import ProspectsPage from "./pages/ProspectsPage";
-import AccountsPage from "./pages/AccountsPage";
-import ActivitiesPage from "./pages/ActivitiesPage";
-import InstructionsPage from "./pages/InstructionsPage";
-import InvoicesPage from "./pages/InvoicesPage";
-import ReportsPage from "./pages/ReportsPage";
-import AdminPage from "./pages/AdminPage";
-import ApprovalsPage from "./pages/ApprovalsPage";
+// Review 22-11-2026 (package 4): each page's code loads when the page is first opened, not up front.
+const ProspectsPage = React.lazy(() => import("./pages/ProspectsPage"));
+const AccountsPage = React.lazy(() => import("./pages/AccountsPage"));
+const ActivitiesPage = React.lazy(() => import("./pages/ActivitiesPage"));
+const InstructionsPage = React.lazy(() => import("./pages/InstructionsPage"));
+const InvoicesPage = React.lazy(() => import("./pages/InvoicesPage"));
+const ReportsPage = React.lazy(() => import("./pages/ReportsPage"));
+const AdminPage = React.lazy(() => import("./pages/AdminPage"));
+const ApprovalsPage = React.lazy(() => import("./pages/ApprovalsPage"));
 import ChangePasswordModal from "./components/ChangePasswordModal";
 import IdleSignOut from "./components/IdleSignOut";
 import { ROLE_LABEL, fmtToday } from "./utils/constants";
@@ -267,6 +268,7 @@ export default function App() {
 
         <main id="main-content" tabIndex={-1} className="flex-1 overflow-y-auto p-3 md:p-6 focus:outline-none">
           <PageErrorBoundary key={`${page}-${user?.id}-${jumpTo?.nonce || ""}`}>
+          <React.Suspense fallback={<Spinner />}>
           <PageComponent
             {...(activeItem.props || {})}
             onNavigate={(t) => { setJumpTo(t); setPage(t.page); }}
@@ -275,6 +277,7 @@ export default function App() {
             initialProspectId={jumpTo?.page === "accounts" ? jumpTo.prospectId : undefined}
             initialStatus={jumpTo?.page === activeItem.key ? jumpTo.status : undefined}
           />
+          </React.Suspense>
           </PageErrorBoundary>
         </main>
       </div>
