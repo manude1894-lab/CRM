@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { amendmentApi, workflowApi } from "../api/endpoints";
 import { Modal, Spinner, ErrorBanner, PageHeader } from "../components/ui";
+import { Pager, SortTh, useListView } from "../components/listing";
 import { useMasters } from "../hooks/useMasters";
 import { formatTimestamp } from "../utils/auditFormat";
 import { toast } from "../store/toast";
@@ -43,6 +44,11 @@ export default function ApprovalsPage({ onNavigate }) {
   };
   useEffect(() => { load(); }, [tab, type]);
 
+  // Triam 22-11-2026: sortable columns and a page size.
+  const view = useListView(rows, { key: "approvals", defaultSort: { by: "submitted", dir: "desc" }, resetOn: [tab, type],
+    valueOf: (r, by) => ({ type: REQUEST_TYPE_LABEL[r.request_type] || r.request_type, client: r.company_name, maker: r.maker_name,
+      submitted: r.submitted_at, decided: r.decided_at }[by]) });
+
   const open = (r) => {
     // New client profiles are reviewed on the client screen itself, next to the information.
     if (r.request_type === "client_profile") onNavigate?.({ page: "accounts", accountId: r.account_id, openForm: true });
@@ -74,16 +80,16 @@ export default function ApprovalsPage({ onNavigate }) {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50 text-xs text-gray-500">
-                <th className="text-left py-2.5 px-4 font-semibold">Type</th>
-                <th className="text-left py-2.5 px-4 font-semibold">Client</th>
-                <th className="text-left py-2.5 px-4 font-semibold">Submitted by</th>
-                <th className="text-left py-2.5 px-4 font-semibold">Submitted</th>
-                {!level && <th className="text-left py-2.5 px-4 font-semibold">Decision</th>}
+                <SortTh label="Type" by="type" sort={view.sort} onSort={view.setSort} />
+                <SortTh label="Client" by="client" sort={view.sort} onSort={view.setSort} />
+                <SortTh label="Submitted by" by="maker" sort={view.sort} onSort={view.setSort} />
+                <SortTh label="Submitted" by="submitted" sort={view.sort} onSort={view.setSort} firstDir="desc" />
+                {!level && <SortTh label="Decision" by="decided" sort={view.sort} onSort={view.setSort} firstDir="desc" />}
                 <th className="py-2.5 px-4" />
               </tr>
             </thead>
             <tbody>
-              {rows.map((r) => (
+              {view.rows.map((r) => (
                 <tr key={r.id} className="border-b border-gray-50 align-top">
                   <td className="py-2.5 px-4">
                     <span className={`text-[11px] font-semibold px-2 py-0.5 rounded ${TYPE_STYLE[r.request_type] || "bg-gray-100 text-gray-600"}`}>
@@ -124,6 +130,7 @@ export default function ApprovalsPage({ onNavigate }) {
           </table>
         </div>
       )}
+      {!loading && !error && <Pager {...view.pager} label="Requests" />}
       {review && (
         <ReviewModal row={review} onNavigate={onNavigate} onClose={() => setReview(null)} onDecided={() => { setReview(null); load(); }} />
       )}

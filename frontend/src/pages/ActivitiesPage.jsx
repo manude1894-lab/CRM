@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { activitiesApi, accountsApi } from "../api/endpoints";
 import { Icon, Modal, Spinner, ErrorBanner, PageHeader } from "../components/ui";
+import { Pager, useListView } from "../components/listing";
 import { toast } from "../store/toast";
 import { useAuthStore } from "../store/auth";
 import { reasonDialog } from "../store/confirm";
@@ -33,6 +34,7 @@ export default function ActivitiesPage() {
 
   const filtered = activities.filter((a) => (typeFilter === "All" || a.activity_type === typeFilter)
     && (!clientFilter || a.account_id === Number(clientFilter)));
+  const view = useListView(filtered, { key: "callReports", defaultSize: 15, resetOn: [typeFilter, clientFilter] }); // Triam 22-11-2026
 
   const openNew = (type) => { setForm(blankActivity(clientFilter, type)); setModal("new"); };
 
@@ -94,11 +96,12 @@ export default function ActivitiesPage() {
 
       <div className="space-y-3">
         {filtered.length === 0 && <p className="text-sm text-gray-500 text-center py-8">No visit or call reports.</p>}
-        {filtered.map((a) => (
+        {view.rows.map((a) => (
           <ActivityCard key={a.id} activity={a} onEdit={readOnly ? undefined : () => { setForm({ ...blankActivity(), ...a, account_id: a.account_id || "" }); setModal("edit"); }}
             onCancel={!readOnly && a.status !== "Cancelled" ? () => cancelActivity(a) : undefined} />
         ))}
       </div>
+      <Pager {...view.pager} label="Reports" />
 
       {modal && (
         <Modal title={modal === "new" ? `New ${form.activity_type}` : `Edit ${form.activity_uid}`} onClose={() => setModal(null)}>

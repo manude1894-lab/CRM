@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { accountsApi, documentsApi, instructionsApi, invoicesApi } from "../api/endpoints";
 import { Button, EmptyState, ErrorBanner, Field, FilterBar, Icon, Input, Modal, PageHeader, SearchInput, Select, Spinner, Textarea, DateInput } from "../components/ui";
+import { Pager, SortTh, useListView } from "../components/listing";
 import { fmtDate } from "../utils/constants";
 import { useAuthStore } from "../store/auth";
 import { toast } from "../store/toast";
@@ -37,12 +38,17 @@ export default function InvoicesPage() {
     .catch((e) => setError(e.response?.data?.detail || "Failed to load invoices"));
   useEffect(() => { load(); }, []);
 
+  const q = search.trim().toLowerCase();
+  const matching = (invoices || []).filter((i) => (!status || i.status === status)
+    && (!q || [i.company_name, i.client_id, i.invoice_number, i.description].some((v) => (v || "").toLowerCase().includes(q))));
+  // Triam 22-11-2026: sortable columns and a page size.
+  const view = useListView(matching, { key: "invoices", defaultSort: { by: "requested", dir: "desc" }, resetOn: [q, status],
+    valueOf: (i, by) => ({ client: i.company_name, amount: Number(i.amount), status: i.status, invoice: i.invoice_number,
+      requested: i.requested_at || i.created_at }[by]) });
+  const rows = view.rows;
+
   if (error) return <ErrorBanner message={error} onRetry={load} />;
   if (!invoices) return <Spinner />;
-
-  const q = search.trim().toLowerCase();
-  const rows = invoices.filter((i) => (!status || i.status === status)
-    && (!q || [i.company_name, i.client_id, i.invoice_number, i.description].some((v) => (v || "").toLowerCase().includes(q))));
   const waiting = invoices.filter((i) => ["Requested", "Draft"].includes(i.status) && !unsent(i)).length;
   const outstanding = invoices.filter((i) => ["Raised", "Overdue"].includes(i.status));
 
@@ -75,15 +81,19 @@ export default function InvoicesPage() {
         </div>
       </FilterBar>
 
-      {rows.length === 0 ? (
+      {matching.length === 0 ? (
         <EmptyState title="No invoices" text="Request an invoice for a new client or a completed service request; Accounts is notified." />
       ) : (
         <div className="bg-white border border-gray-100 rounded-xl shadow-sm overflow-x-auto">
           <table className="w-full text-sm">
             <thead><tr className="border-b border-gray-100 bg-gray-50 text-xs text-gray-500">
-              {["Client", "Description", "Amount", "Status", "Invoice", "Requested", ""].map((h) => (
-                <th key={h} className={`py-2.5 px-3 font-semibold ${h === "Amount" ? "text-right" : "text-left"}`}>{h}</th>
-              ))}
+              <SortTh label="Client" by="client" sort={view.sort} onSort={view.setSort} />
+              <th className="py-2.5 px-3 font-semibold text-left uppercase tracking-wide">Description</th>
+              <SortTh label="Amount" by="amount" sort={view.sort} onSort={view.setSort} firstDir="desc" className="text-right" />
+              <SortTh label="Status" by="status" sort={view.sort} onSort={view.setSort} />
+              <SortTh label="Invoice" by="invoice" sort={view.sort} onSort={view.setSort} />
+              <SortTh label="Requested" by="requested" sort={view.sort} onSort={view.setSort} firstDir="desc" />
+              <th className="py-2.5 px-3" />
             </tr></thead>
             <tbody>
               {rows.map((i) => (
@@ -135,6 +145,7 @@ export default function InvoicesPage() {
           </table>
         </div>
       )}
+      <Pager {...view.pager} label="Invoices" />
 
       {requesting && <RequestModal draft={requesting === true ? null : requesting} onClose={() => setRequesting(false)} onDone={() => { setRequesting(false); load(); }} />}
       {raising && <RaiseModal invoice={raising} onClose={() => setRaising(null)} onDone={() => { setRaising(null); load(); }} />}
