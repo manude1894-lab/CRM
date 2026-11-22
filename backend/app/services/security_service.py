@@ -13,7 +13,7 @@ from app.auth.permissions import has_permission
 from app.auth.security import create_reset_token, hash_password, password_stamp, reset_token_user_id, verify_password
 from app.config import settings
 from app.models import Notification, User, UserRole
-from app.services import notification_service
+from app.services import alert_service, notification_service
 
 # Passwords shipped with the demo / minimal seed. Anyone still using one is told to change it.
 DEFAULT_PASSWORDS = {"admin123", "rm123", "ops123", "screen123"}
@@ -189,6 +189,9 @@ def system_health(db: Session) -> list[dict]:
         _check("version", "Running the latest version", bool(running_commit()),
                "Not known here: the hosting platform did not say which commit this server was built from.",
                severity="low", detail=f"Commit {running_commit()} (compare with the latest commit on main)" if running_commit() else None),
+        _check("alerts", "Error alerts are sent to the support desk", alert_service.configured(),
+               "Set ALERT_EMAILS (needs SMTP) and/or ALERT_WEBHOOK_URL (a Teams or Slack webhook) on the hosting platform.",
+               severity="medium", detail=f"{len(alert_service.recent)} error(s) since the server started" if alert_service.recent else None),
         _check("backups", "Daily database backups confirmed", False,
                "Cannot be checked from inside the application. Confirm daily backups on the hosting platform, with weekly "
                "copies kept, and test one restore.",

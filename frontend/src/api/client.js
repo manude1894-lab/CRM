@@ -6,6 +6,8 @@ import { formatValidationDetail } from "../utils/apiErrors";
 // so Railway can set API_URL env var without rebuilding the image.
 const API_URL = window.__API_URL__ || import.meta.env.VITE_API_URL || "http://localhost:8000/api/v1";
 
+export { API_URL };
+
 export const api = axios.create({
   baseURL: API_URL,
   headers: { "Content-Type": "application/json" },

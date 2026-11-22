@@ -2,7 +2,8 @@
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from apscheduler.schedulers.background import BackgroundScheduler
 
@@ -78,6 +79,18 @@ def health():
     # The commit lets a deploy check compare what runs with the latest commit on main (review 22-11-2026).
     from app.services.security_service import running_commit
     return {"status": "ok", "commit": running_commit()}
+
+
+# ─── Error alerts (review 22-11-2026, package 6) ────────────────────────────────
+@app.exception_handler(Exception)
+async def unexpected_error(request: Request, exc: Exception):
+    """An unexpected server error: logged and sent to the support desk with a reference the user can quote."""
+    import traceback
+    from app.services import alert_service
+    ref = alert_service.report("server", f"{request.method} {request.url.path}", type(exc).__name__, str(exc),
+                               extra="".join(traceback.format_exception(exc))[-2000:])
+    return JSONResponse(status_code=500, content={"detail": f"Something went wrong on the server (reference {ref}). "
+                                                            "Please try again; if it keeps happening, quote the reference."})
 
 
 # ─── Routers ───────────────────────────────────────────────────────────────

@@ -267,7 +267,7 @@ export default function App() {
         </header>
 
         <main id="main-content" tabIndex={-1} className="flex-1 overflow-y-auto p-3 md:p-6 focus:outline-none">
-          <PageErrorBoundary key={`${page}-${user?.id}-${jumpTo?.nonce || ""}`}>
+          <PageErrorBoundary where={page} key={`${page}-${user?.id}-${jumpTo?.nonce || ""}`}>
           <React.Suspense fallback={<Spinner />}>
           <PageComponent
             {...(activeItem.props || {})}

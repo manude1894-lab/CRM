@@ -45,8 +45,11 @@ class AddressLimit:
 # 20 failed sign-ins per address in 15 minutes; 5 password-reset requests per address in 15 minutes.
 login_failures = AddressLimit(max_events=20, window_seconds=15 * 60)
 reset_requests = AddressLimit(max_events=5, window_seconds=15 * 60)
+# Browser error reports: 20 per address in 15 minutes (review 22-11-2026, package 6).
+error_reports = AddressLimit(max_events=20, window_seconds=15 * 60)
 
 
 def reset_all() -> None:
     login_failures.reset()
     reset_requests.reset()
+    error_reports.reset()
