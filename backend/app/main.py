@@ -75,7 +75,9 @@ def root():
 
 @app.get("/health", tags=["Health"])
 def health():
-    return {"status": "ok"}
+    # The commit lets a deploy check compare what runs with the latest commit on main (review 22-11-2026).
+    from app.services.security_service import running_commit
+    return {"status": "ok", "commit": running_commit()}
 
 
 # ─── Routers ───────────────────────────────────────────────────────────────

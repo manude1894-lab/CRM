@@ -159,3 +159,12 @@ def people(make_user, make_role, seed_master):
         "other_rm": make_user("Otto RM"),
         "approver": make_user("Ada Approver", business_role=make_role("Approver", ["client.final_approve"])),
     }
+
+
+@pytest.fixture(autouse=True)
+def _fresh_rate_limits():
+    """The per-address sign-in and reset limits are kept in memory; each test starts with none counted."""
+    from app.services import rate_limit
+    rate_limit.reset_all()
+    yield
+    rate_limit.reset_all()

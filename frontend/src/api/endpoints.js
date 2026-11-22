@@ -5,6 +5,8 @@ export const authApi = {
   login: (email, password) => api.post("/auth/login", { email, password }).then((r) => r.data),
   changePassword: (current_password, new_password) => api.post("/auth/change-password", { current_password, new_password }),
   me: () => api.get("/auth/me").then((r) => r.data),
+  // Review 22-11-2026: ends this login's sessions on the server too.
+  logout: () => api.post("/auth/logout"),
   forgotPassword: (email) => api.post("/auth/forgot-password", { email }),
   resetPassword: (token, new_password) => api.post("/auth/reset-password", { token, new_password }),
 };

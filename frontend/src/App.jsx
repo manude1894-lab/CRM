@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useAuthStore } from "./store/auth";
 import { authApi } from "./api/endpoints";
+import { signOut } from "./utils/signOut";
 import { Icon, ToastHost, ConfirmDialogHost } from "./components/ui";
 import NotificationBell from "./components/NotificationBell";
 import CommandPalette from "./components/CommandPalette";
@@ -46,7 +47,6 @@ const NAV = [
 export default function App() {
   const user = useAuthStore((s) => s.user);
   const isAuthenticated = useAuthStore((s) => !!s.accessToken);
-  const logout = useAuthStore((s) => s.logout);
   // Hooks must all run before the early "not logged in" return below (React rules of hooks).
   const can = useAuthStore((s) => s.can);
   const setUser = useAuthStore((s) => s.setUser);
@@ -250,7 +250,7 @@ export default function App() {
                           className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
                           <Icon name="key" size={16} className="text-gray-400" /> Change password
                         </button>
-                        <button type="button" role="menuitem" onClick={() => { setProfileMenu(false); logout(); }}
+                        <button type="button" role="menuitem" onClick={() => { setProfileMenu(false); signOut(); }}
                           className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-red-600 hover:bg-red-50">
                           <Icon name="logout" size={16} /> Sign out
                         </button>

@@ -8,6 +8,7 @@ from app.auth.permissions import has_permission
 from app.audit import set_actor
 from app.database import get_db
 from app.models.user import User, UserRole
+from app.utils.net import client_ip
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
@@ -33,7 +34,7 @@ def get_current_user(
     if user is None or issued_before_password_change(payload, user):
         raise credentials_exception
     # Every change written through this request's session is attributed to this user (app.audit).
-    set_actor(db, user.id, request.client.host if request.client else None)
+    set_actor(db, user.id, client_ip(request))
     # Read-only users (Inquiry & Reports) may look and run reports, but not change anything.
     if request.method not in ("GET", "HEAD", "OPTIONS") and has_permission(user, "read_only") \
             and not any(request.url.path.endswith(p) for p in READ_ONLY_ALLOWED):

@@ -19,7 +19,8 @@ class Settings(BaseSettings):
     JWT_SECRET_KEY: str = "change-me-in-production-use-openssl-rand-hex-32"
     JWT_REFRESH_SECRET_KEY: str = "change-me-refresh-secret-in-production"
     JWT_ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
+    # Review 22-11-2026: 15 minutes; the screen renews it silently with the refresh token, so users see no change.
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
     # CORS — add your Railway frontend URL here via CORS_ORIGINS env var

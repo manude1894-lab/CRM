@@ -150,6 +150,14 @@ def _check(key, label, ok, fix, severity="high", detail=None):
     return {"key": key, "label": label, "ok": bool(ok), "severity": severity, "fix": None if ok else fix, "detail": detail}
 
 
+def running_commit() -> str | None:
+    """The git commit this server was built from (Railway sets RAILWAY_GIT_COMMIT_SHA), so a deploy that did not
+    happen is visible: compare it with the latest commit on main (review 22-11-2026)."""
+    import os
+    sha = (os.environ.get("RAILWAY_GIT_COMMIT_SHA") or os.environ.get("GIT_COMMIT") or "").strip()
+    return sha[:7] or None
+
+
 def system_health(db: Session) -> list[dict]:
     users = db.query(User).filter(User.is_active == True).all()  # noqa: E712
     admins = [u for u in users if u.role == UserRole.ADMIN]
@@ -178,6 +186,9 @@ def system_health(db: Session) -> list[dict]:
                severity="medium"),
         _check("sms", "SMS notifications switched on", settings.SMS_ENABLED,
                "Waiting for Triam's choice of SMS provider (SMS_ENABLED, SMS_PROVIDER, SMS_API_URL, SMS_API_KEY).", severity="low"),
+        _check("version", "Running the latest version", bool(running_commit()),
+               "Not known here: the hosting platform did not say which commit this server was built from.",
+               severity="low", detail=f"Commit {running_commit()} (compare with the latest commit on main)" if running_commit() else None),
         _check("backups", "Daily database backups confirmed", False,
                "Cannot be checked from inside the application. Confirm daily backups on the hosting platform, with weekly "
                "copies kept, and test one restore.",
