@@ -42,7 +42,7 @@ export default function ChangePasswordModal({ onClose, onChanged, reason }) {
       <Field label="Current password" required><Input type="password" autoComplete="current-password" value={current} onChange={(e) => setCurrent(e.target.value)} /></Field>
       <Field label="New password" required>
         <Input type="password" autoComplete="new-password" value={next} onChange={(e) => setNext(e.target.value)} />
-        <p className={`text-[11px] mt-1 ${problem ? "text-red-600" : "text-gray-400"}`}>{problem || PASSWORD_HINT}</p>
+        <p className={`text-[11px] mt-1 ${problem ? "text-red-600" : "text-gray-500"}`}>{problem || PASSWORD_HINT}</p>
       </Field>
       <Field label="Repeat new password" required>
         <Input type="password" autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} />
@@ -51,7 +51,7 @@ export default function ChangePasswordModal({ onClose, onChanged, reason }) {
       <div className="flex justify-end gap-3 mt-2">
         <button onClick={onClose} className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
         <button onClick={save} disabled={busy || !current || !next || !confirm}
-          className="px-4 py-2 text-sm text-white rounded-lg disabled:opacity-50" style={{ background: "#1a3a5c" }}>
+          className="px-4 py-2 text-sm text-white rounded-lg disabled:opacity-50 bg-brand-600 hover:bg-brand-700">
           {busy ? "Saving…" : "Change password"}
         </button>
       </div>

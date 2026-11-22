@@ -84,7 +84,7 @@ export default function NotificationBell({ onNavigate }) {
 
   return (
     <div className="relative" ref={ref}>
-      <button onClick={togglePanel} className="relative text-gray-400 hover:text-gray-600 p-1.5 rounded" title="Notifications">
+      <button onClick={togglePanel} className="relative text-gray-500 hover:text-gray-600 p-1.5 rounded" title="Notifications">
         <Icon name="bell" size={18} />
         {unreadCount > 0 && (
           <span className="absolute -top-0.5 -right-0.5 bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[16px] h-4 px-1 flex items-center justify-center">
@@ -106,13 +106,13 @@ export default function NotificationBell({ onNavigate }) {
             </div>
           )}
           {!loadFailed && notifications.length === 0 && (
-            <p className="text-xs text-gray-400 text-center py-6">No notifications yet.</p>
+            <p className="text-xs text-gray-500 text-center py-6">No notifications yet.</p>
           )}
           {notifications.map((n) => (
             <button key={n.id} onClick={() => openItem(n)}
               className={`w-full text-left px-4 py-3 border-b border-gray-50 hover:bg-gray-50 ${!n.read_at ? "bg-brand-50/40" : ""}`}>
               <p className="text-xs text-gray-700 leading-snug">{n.message}</p>
-              <p className="text-[10px] text-gray-400 mt-1">{formatTimestamp(n.created_at)}</p>
+              <p className="text-[10px] text-gray-500 mt-1">{formatTimestamp(n.created_at)}</p>
             </button>
           ))}
         </div>

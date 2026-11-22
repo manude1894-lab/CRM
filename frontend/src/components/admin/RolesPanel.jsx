@@ -55,7 +55,7 @@ export default function RolesPanel({ departments, users, onChanged }) {
         <div>
           <h3 className="text-sm font-semibold text-gray-700">Business Roles</h3>
         </div>
-        <button onClick={() => setForm({ ...BLANK })} className="px-3 py-1.5 text-xs text-white rounded-lg flex items-center gap-1" style={{ background: "#1a3a5c" }}>
+        <button onClick={() => setForm({ ...BLANK })} className="px-3 py-1.5 text-xs text-white rounded-lg flex items-center gap-1 bg-brand-600 hover:bg-brand-700">
           <Icon name="plus" size={14} /> Add Role
         </button>
       </div>
@@ -75,19 +75,19 @@ export default function RolesPanel({ departments, users, onChanged }) {
               <tr key={r.id} className={`border-b border-gray-50 align-top ${!r.is_active && !showInactive ? "hidden" : ""}`}>
                 <td className="py-2.5 px-4">
                   <div className="font-medium text-gray-800">{r.name}</div>
-                  <div className="text-xs text-gray-400">{[r.description, deptName(r.department_id)].filter(Boolean).join(" · ")}</div>
+                  <div className="text-xs text-gray-500">{[r.description, deptName(r.department_id)].filter(Boolean).join(" · ")}</div>
                 </td>
                 <td className="py-2.5 px-4">
                   <div className="flex flex-wrap gap-1">
-                    {r.permissions.length === 0 && <span className="text-xs text-gray-400">No extra permissions</span>}
+                    {r.permissions.length === 0 && <span className="text-xs text-gray-500">No extra permissions</span>}
                     {r.permissions.map((p) => <span key={p} className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-brand-50 text-brand-700">{p}</span>)}
                   </div>
                 </td>
                 <td className="py-2.5 px-4 text-xs text-gray-600">{memberCount(r.id)}</td>
-                <td className="py-2.5 px-4 text-xs">{r.is_active ? <span className="text-green-600">● Active</span> : <span className="text-gray-400">○ Inactive</span>}</td>
+                <td className="py-2.5 px-4 text-xs">{r.is_active ? <span className="text-green-700">● Active</span> : <span className="text-gray-500">○ Inactive</span>}</td>
                 <td className="py-2.5 px-4 whitespace-nowrap text-right">
-                  <button onClick={() => setForm({ ...r, department_id: r.department_id || "", description: r.description || "" })}
-                    className="p-1.5 rounded hover:bg-brand-50 text-gray-400 hover:text-brand-600 mr-1"><Icon name="edit" size={14} /></button>
+                  <button aria-label="Edit" onClick={() => setForm({ ...r, department_id: r.department_id || "", description: r.description || "" })}
+                    className="p-1.5 rounded hover:bg-brand-50 text-gray-500 hover:text-brand-600 mr-1"><Icon name="edit" size={14} /></button>
                   <button onClick={() => toggleActive(r)}
                     className={`px-2 py-1 rounded text-[11px] border ${r.is_active ? "border-gray-200 text-gray-500 hover:text-red-600 hover:border-red-200" : "border-green-200 text-green-700 hover:bg-green-50"}`}>
                     {r.is_active ? "Deactivate" : "Activate"}
@@ -95,7 +95,7 @@ export default function RolesPanel({ departments, users, onChanged }) {
                 </td>
               </tr>
             ))}
-            {roles.length === 0 && <tr><td colSpan={5} className="py-6 text-center text-xs text-gray-400">No roles yet.</td></tr>}
+            {roles.length === 0 && <tr><td colSpan={5} className="py-6 text-center text-xs text-gray-500">No roles yet.</td></tr>}
           </tbody>
         </table>
       </div>
@@ -126,7 +126,7 @@ export default function RolesPanel({ departments, users, onChanged }) {
           </label>
           <div className="flex justify-end gap-3 mt-4">
             <button onClick={() => setForm(null)} className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
-            <button onClick={save} className="px-4 py-2 text-sm text-white rounded-lg" style={{ background: "#1a3a5c" }}>Save Role</button>
+            <button onClick={save} className="px-4 py-2 text-sm text-white rounded-lg bg-brand-600 hover:bg-brand-700">Save Role</button>
           </div>
         </Modal>
       )}

@@ -89,14 +89,14 @@ export default function ApprovalsPage({ onNavigate }) {
                     <span className={`text-[11px] font-semibold px-2 py-0.5 rounded ${TYPE_STYLE[r.request_type] || "bg-gray-100 text-gray-600"}`}>
                       {REQUEST_TYPE_LABEL[r.request_type] || r.request_type}
                     </span>
-                    {r.changes?.count > 0 && <div className="text-[11px] text-gray-400 mt-1">{r.changes.count} change{r.changes.count === 1 ? "" : "s"}</div>}
+                    {r.changes?.count > 0 && <div className="text-[11px] text-gray-500 mt-1">{r.changes.count} change{r.changes.count === 1 ? "" : "s"}</div>}
                     {r.request_type === "client_profile" && r.status === "Pending" && (
                       <div className="text-[11px] text-amber-700 mt-1">{r.stage === "Approver" ? "With the Approver" : "With Compliance"}</div>
                     )}
                   </td>
                   <td className="py-2.5 px-4">
                     <div className="font-medium text-gray-800">{r.company_name}</div>
-                    <div className="text-xs text-gray-400">
+                    <div className="text-xs text-gray-500">
                       <span className="font-mono">{r.client_id || r.temp_id || "—"}</span>
                       {r.account_type && <> · {r.account_type}</>}
                     </div>
@@ -111,14 +111,14 @@ export default function ApprovalsPage({ onNavigate }) {
                     </td>
                   )}
                   <td className="py-2.5 px-4 text-right">
-                    <button onClick={() => open(r)} className="px-3 py-1.5 text-xs text-white rounded-lg" style={{ background: "#1a3a5c" }}>
+                    <button onClick={() => open(r)} className="px-3 py-1.5 text-xs text-white rounded-lg bg-brand-600 hover:bg-brand-700">
                       {level && !readOnly ? "Review" : "Open"}
                     </button>
                   </td>
                 </tr>
               ))}
               {rows.length === 0 && (
-                <tr><td colSpan={6} className="py-10 text-center text-sm text-gray-400">{level ? "Nothing waiting at this level." : `No ${tab.toLowerCase()} requests.`}</td></tr>
+                <tr><td colSpan={6} className="py-10 text-center text-sm text-gray-500">{level ? "Nothing waiting at this level." : `No ${tab.toLowerCase()} requests.`}</td></tr>
               )}
             </tbody>
           </table>
@@ -182,7 +182,7 @@ function ReviewModal({ row, onClose, onDecided, onNavigate }) {
         <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-gray-100">
           <button onClick={goto} className="text-xs text-brand-600 hover:underline">Open the full client</button>
           {actions.length > 0 && <DecisionButtons actions={actions} busy={busy} onAction={act} />}
-          {isCurrent && actions.length === 0 && !readOnly && <span className="text-[11px] text-gray-400">You submitted this, so another approver must review it.</span>}
+          {isCurrent && actions.length === 0 && !readOnly && <span className="text-[11px] text-gray-500">You submitted this, so another approver must review it.</span>}
         </div>
       </div>
     </Modal>

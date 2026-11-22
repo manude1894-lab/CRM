@@ -34,8 +34,8 @@ const greeting = () => {
 // Icon chip tones for the KPI tiles (decoration only; the number and label carry the meaning).
 const TONES = {
   navy: "bg-brand-50 text-brand-600",
-  gold: "bg-amber-50 text-amber-600",
-  green: "bg-emerald-50 text-emerald-600",
+  gold: "bg-amber-50 text-amber-700",
+  green: "bg-emerald-50 text-emerald-700",
   slate: "bg-slate-100 text-slate-600",
 };
 
@@ -53,7 +53,7 @@ function StatCard({ label, value, hint, attention, icon, tone = "navy", onClick 
           <Icon name={icon} size={18} />
         </span>
       </div>
-      <div className={`text-[11px] mt-1.5 ${hot ? "text-amber-700 font-medium" : "text-gray-400 group-hover:text-brand-600"}`}>
+      <div className={`text-[11px] mt-1.5 ${hot ? "text-amber-700 font-medium" : "text-gray-500 group-hover:text-brand-600"}`}>
         {hot ? hint : value > 0 ? "View →" : "All clear"}
       </div>
     </button>
@@ -108,7 +108,7 @@ function PendingApprovals({ rows, onOpen }) {
 
 function EmptyState({ text }) {
   return (
-    <div className="flex items-center gap-2 px-4 py-6 text-sm text-gray-400">
+    <div className="flex items-center gap-2 px-4 py-6 text-sm text-gray-500">
       <span className="w-6 h-6 rounded-full bg-emerald-50 text-emerald-500 flex items-center justify-center"><Icon name="check" size={14} /></span>
       {text}
     </div>
@@ -157,7 +157,7 @@ function Pipeline({ statuses, onOpen }) {
                 <span key={status} className="flex-1 px-0.5 pt-1.5 text-[10.5px] leading-tight text-center text-gray-500">{status}</span>
               ))}
             </div>
-            <div className="mt-2 pt-1.5 border-t border-gray-100 text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-400 text-center">{phase}</div>
+            <div className="mt-2 pt-1.5 border-t border-gray-100 text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-500 text-center">{phase}</div>
           </div>
         ))}
       </div>
@@ -220,16 +220,16 @@ export default function Dashboard({ onNavigate = () => {} } = {}) {
       <div className="flex flex-wrap items-end justify-between gap-2">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 tracking-tight">{greeting()}{user?.name ? `, ${firstName(user.name)}` : ""}</h1>
-          {user?.previous_login_at && <p className="text-xs text-gray-400 mt-0.5">Last login {formatTimestamp(user.previous_login_at)}</p>}
+          {user?.previous_login_at && <p className="text-xs text-gray-500 mt-0.5">Last login {formatTimestamp(user.previous_login_at)}</p>}
         </div>
-        <button onClick={load} className="text-xs text-gray-400 hover:text-brand-600">
+        <button onClick={load} className="text-xs text-gray-500 hover:text-brand-600">
           Updated {updatedAt?.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} · Refresh
         </button>
       </div>
 
       {/* BRD §2 — role-level dashboard: the work waiting for this user. */}
       {myWork.some((w) => w.count > 0) && (
-        <Panel title="My work" right={<span className="text-xs text-gray-400">{user?.business_role_name || ""}</span>}>
+        <Panel title="My work" right={<span className="text-xs text-gray-500">{user?.business_role_name || ""}</span>}>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 p-3">
             {myWork.filter((w) => w.count > 0).map((w) => (
               <button key={w.key} onClick={() => onNavigate({ page: w.page })}
@@ -237,7 +237,7 @@ export default function Dashboard({ onNavigate = () => {} } = {}) {
                 <span className="min-w-[40px] h-10 px-2 rounded-lg bg-brand-600 text-white text-lg font-semibold flex items-center justify-center">{w.count}</span>
                 <span className="min-w-0 flex-1">
                   <span className="block text-sm font-medium text-gray-800">{w.label}</span>
-                  {w.hint && <span className="block text-[11px] text-gray-400">{w.hint}</span>}
+                  {w.hint && <span className="block text-[11px] text-gray-500">{w.hint}</span>}
                 </span>
                 <Icon name="chevronRight" size={16} className="text-gray-300 group-hover:text-brand-500 flex-shrink-0" />
               </button>
@@ -259,7 +259,7 @@ export default function Dashboard({ onNavigate = () => {} } = {}) {
       </div>
 
       <Panel title="Client pipeline"
-        right={<span className="text-xs text-gray-400">With Compliance {data.approvals_pending.compliance} · With the Approver {data.approvals_pending.approver}</span>}>
+        right={<span className="text-xs text-gray-500">With Compliance {data.approvals_pending.compliance} · With the Approver {data.approvals_pending.approver}</span>}>
         <div className="px-4 pt-4 pb-3">
           {/* Each stage opens its own list, filtered to that status: onboarding stages in New Client
               Onboarding, existing-client stages in Client Data Maintenance. */}

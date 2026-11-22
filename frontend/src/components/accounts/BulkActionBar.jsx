@@ -5,7 +5,7 @@ import { isRelationshipManager, personLabel } from "../../utils/constants";
 
 const BulkField = ({ value, placeholder, options, disabled, onChange, onApply }) => (
   <div className="flex items-center gap-1.5">
-    <Select value={value} onChange={(e) => onChange(e.target.value)} className="text-xs">
+    <Select aria-label={placeholder} value={value} onChange={(e) => onChange(e.target.value)} className="text-xs">
       <option value="">{placeholder}</option>
       {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
     </Select>

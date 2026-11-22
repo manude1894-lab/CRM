@@ -131,7 +131,7 @@ export default function WorkflowBar({ accountId, refreshKey, onChanged, submitSi
             : commentLabel || NEEDS_REASON[dialog.action] || OPTIONAL_NOTE[dialog.action] || "Comment (optional)"}
             required={dialog.action === "reject" || !!NEEDS_REASON[dialog.action] || !!commentLabel || (dialog.action === "drop" && reasonCode === "Other")}>
             <Textarea rows={commentLabel ? 5 : 3} value={text} onChange={(e) => setText(e.target.value)} maxLength={commentLabel ? 4000 : dialog.action === "reject" ? 2000 : 500} />
-            {commentLabel && <div className={`text-[11px] text-right mt-0.5 ${words > MAX_WORDS ? "text-red-600" : "text-gray-400"}`}>{words} / {MAX_WORDS} words</div>}
+            {commentLabel && <div className={`text-[11px] text-right mt-0.5 ${words > MAX_WORDS ? "text-red-600" : "text-gray-500"}`}>{words} / {MAX_WORDS} words</div>}
           </Field>
           {dialog.action === "submit" && (
             <>
@@ -144,7 +144,7 @@ export default function WorkflowBar({ accountId, refreshKey, onChanged, submitSi
           <div className="flex justify-end gap-3 mt-2">
             <button onClick={() => setDialog(null)} className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
             <button onClick={() => run(dialog.action)} disabled={busy || rejectTooShort || reasonMissing || commentBad || kycMissing || dropIncomplete}
-              className="px-4 py-2 text-sm text-white rounded-lg font-medium disabled:opacity-50" style={{ background: "#1a3a5c" }}>
+              className="px-4 py-2 text-sm text-white rounded-lg font-medium disabled:opacity-50 bg-brand-600 hover:bg-brand-700">
               {busy ? "Working…" : dialog.label}
             </button>
           </div>
@@ -162,7 +162,7 @@ export default function WorkflowBar({ accountId, refreshKey, onChanged, submitSi
           </span>
         )}
         {state.status_updated_at && (
-          <span className="text-[11px] text-gray-400">since {fmtDate(state.status_updated_at)}{state.status_updated_by ? ` · ${state.status_updated_by}` : ""}</span>
+          <span className="text-[11px] text-gray-500">since {fmtDate(state.status_updated_at)}{state.status_updated_by ? ` · ${state.status_updated_by}` : ""}</span>
         )}
         <div className="flex flex-wrap gap-1.5 ml-auto">
           {state.actions.map((a) => (

@@ -102,7 +102,7 @@ export default function StandardReports() {
       <nav aria-label="Reports" className="bg-white border border-gray-200/70 rounded-xl shadow-[0_1px_2px_rgba(16,24,40,0.04)] p-2 lg:sticky lg:top-0">
         {groupReports(list).map(([group, reports]) => (
           <div key={group} className="mb-1">
-            <div className="px-2.5 pt-2.5 pb-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-400">{group}</div>
+            <div className="px-2.5 pt-2.5 pb-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-500">{group}</div>
             {reports.map((r) => (
               <button key={r.key} onClick={() => setKey(r.key)} aria-current={key === r.key ? "page" : undefined}
                 className={`relative w-full text-left px-2.5 py-1.5 rounded-lg text-[13px] leading-snug ${key === r.key
@@ -181,8 +181,8 @@ export default function StandardReports() {
         {busy || !report ? <Spinner /> : (
           <>
             <div className="text-xs text-gray-500 mb-2">{report.title} · {report.rows.length} row{report.rows.length === 1 ? "" : "s"}</div>
-            {report.rows.length === 0 ? <p className="text-sm text-gray-400 py-6 text-center">Nothing to report.</p> : (
-              <div className="overflow-x-auto">
+            {report.rows.length === 0 ? <p className="text-sm text-gray-500 py-6 text-center">Nothing to report.</p> : (
+              <div className="overflow-x-auto focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-300 rounded" tabIndex={0} role="region" aria-label="Report table">
                 <table className="w-full text-sm">
                   <thead><tr className="border-b border-gray-100 bg-gray-50 text-xs text-gray-500">
                     {report.columns.map((c) => <th key={c} className="text-left py-2 px-3 font-semibold">{c}</th>)}

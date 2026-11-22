@@ -27,8 +27,8 @@ let resetToken = (() => {
 const Label = ({ children }) => <label className="block text-xs font-medium text-gray-600 mb-1">{children}</label>;
 
 const PrimaryButton = ({ onClick, busy, busyText, children }) => (
-  <button onClick={onClick} disabled={busy} style={{ background: "#1a3a5c" }}
-    className="w-full text-white font-semibold py-2.5 rounded-lg transition-opacity hover:opacity-90 disabled:opacity-60 shadow-sm">
+  <button onClick={onClick} disabled={busy}
+    className="w-full text-white font-semibold py-2.5 rounded-lg transition-opacity disabled:opacity-60 shadow-sm bg-brand-600 hover:bg-brand-700">
     {busy ? busyText : children}
   </button>
 );
@@ -88,7 +88,7 @@ export default function LoginPage() {
   };
 
   const emailInput = (props) => (
-    <Input type="email" value={email} onChange={(e) => setEmail(e.target.value.replace(/\s/g, ""))}
+    <Input type="email" aria-label="Email" value={email} onChange={(e) => setEmail(e.target.value.replace(/\s/g, ""))}
       autoCapitalize="none" autoCorrect="off" {...props} />
   );
   const backToSignIn = (
@@ -109,8 +109,7 @@ export default function LoginPage() {
           style={{ background: "#E8B84B" }}
         />
         <div
-          className="absolute -bottom-32 -left-16 w-80 h-80 rounded-full opacity-10"
-          style={{ background: "#1a3a5c" }}
+          className="absolute -bottom-32 -left-16 w-80 h-80 rounded-full opacity-10 bg-brand-600 hover:bg-brand-700"
         />
         <div className="relative">
           <div className="inline-flex items-center justify-center bg-white rounded-2xl p-5 shadow-xl">
@@ -168,7 +167,7 @@ export default function LoginPage() {
                     Forgot password?
                   </button>
                 </div>
-                <Input type="password" autoFocus={!!handedOverEmail} value={password}
+                <Input type="password" aria-label="Password" autoFocus={!!handedOverEmail} value={password}
                   onChange={(e) => setPassword(e.target.value)} onKeyDown={(e) => e.key === "Enter" && submit()} />
               </div>
               <PrimaryButton onClick={submit} busy={loading} busyText="Signing in...">Sign In</PrimaryButton>
@@ -190,12 +189,12 @@ export default function LoginPage() {
             <div className="space-y-4">
               <div>
                 <Label>New password</Label>
-                <Input type="password" autoComplete="new-password" autoFocus value={password} onChange={(e) => setPassword(e.target.value)} />
-                <p className="text-[11px] mt-1 text-gray-400">{PASSWORD_HINT}</p>
+                <Input type="password" aria-label="New password" autoComplete="new-password" autoFocus value={password} onChange={(e) => setPassword(e.target.value)} />
+                <p className="text-[11px] mt-1 text-gray-500">{PASSWORD_HINT}</p>
               </div>
               <div>
                 <Label>Repeat new password</Label>
-                <Input type="password" autoComplete="new-password" value={repeat} onChange={(e) => setRepeat(e.target.value)}
+                <Input type="password" aria-label="Repeat the new password" autoComplete="new-password" value={repeat} onChange={(e) => setRepeat(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && savePassword()} />
               </div>
               <PrimaryButton onClick={savePassword} busy={loading} busyText="Saving...">Save password</PrimaryButton>

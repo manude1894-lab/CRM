@@ -157,7 +157,7 @@ export default function AdminPage() {
       <PageHeader title="Administration"
         actions={<>
 {tab === "users" && <button onClick={() => { setForm({ name: "", email: "", password: "", role: "rm", is_active: true, department_id: "", title: "", mobile: "", supervisor_id: "", business_role_id: "", can_export_reports: false }); setAddon(BLANK_ADDON); setModal("new"); }}
-          className="px-3 py-2 text-sm text-white rounded-lg font-medium flex items-center gap-1.5 hover:opacity-90" style={{ background: "#1a3a5c" }}>
+          className="px-3 py-2 text-sm text-white rounded-lg font-medium flex items-center gap-1.5 bg-brand-600 hover:bg-brand-700">
           <Icon name="plus" size={14} /> Add User
         </button>}
         </>} />
@@ -195,14 +195,14 @@ export default function AdminPage() {
               <tr key={u.id} className={`border-b border-gray-50 hover:bg-gray-50 ${!u.is_active && !showInactive ? "hidden" : ""}`}>
                 <td className="py-3 px-4">
                   <div className={`flex items-center gap-3 ${u.person_id ? "pl-6" : ""}`}>
-                    <div className="w-8 h-8 rounded-full text-white text-xs font-bold flex items-center justify-center" style={{ background: "#1a3a5c" }}>
+                    <div className="w-8 h-8 rounded-full text-white text-xs font-bold flex items-center justify-center bg-brand-600 hover:bg-brand-700">
                       {initialsOf(u.name)}
                     </div>
                     <div>
                       <div className="text-sm font-medium text-gray-800">{u.name}</div>
                       {u.person_id
-                        ? <div className="text-[11px] text-gray-400">Add-on login of {userById(u.person_id)?.email || "their main login"}</div>
-                        : u.title && <div className="text-xs text-gray-400">{u.title}</div>}
+                        ? <div className="text-[11px] text-gray-500">Add-on login of {userById(u.person_id)?.email || "their main login"}</div>
+                        : u.title && <div className="text-xs text-gray-500">{u.title}</div>}
                     </div>
                   </div>
                 </td>
@@ -218,7 +218,7 @@ export default function AdminPage() {
                   )}
                 </td>
                 <td className="py-3 px-4">
-                  <span className={`text-xs font-medium ${u.is_active ? "text-green-600" : "text-gray-400"}`}>
+                  <span className={`text-xs font-medium ${u.is_active ? "text-green-700" : "text-gray-500"}`}>
                     {u.is_active ? "● Active" : "○ Inactive"}
                     {u.locked_until && new Date(u.locked_until) > new Date() && (
                       <span className="ml-1.5 px-1.5 py-0.5 rounded bg-red-50 text-red-700" title="Too many wrong passwords. Set a new password to unlock.">Locked</span>
@@ -226,8 +226,8 @@ export default function AdminPage() {
                   </span>
                 </td>
                 <td className="py-3 px-4">
-                  <button onClick={() => { setForm({ ...u, password: "" }); setAddon(BLANK_ADDON); setModal("edit"); }}
-                    className="p-1.5 rounded hover:bg-brand-50 text-gray-400 hover:text-brand-600 mr-1">
+                  <button aria-label="Edit" onClick={() => { setForm({ ...u, password: "" }); setAddon(BLANK_ADDON); setModal("edit"); }}
+                    className="p-1.5 rounded hover:bg-brand-50 text-gray-500 hover:text-brand-600 mr-1">
                     <Icon name="edit" size={14} />
                   </button>
                   {u.id !== me?.id && <button onClick={() => toggleActive(u)}
@@ -250,7 +250,7 @@ export default function AdminPage() {
         <div className="bg-white rounded-xl border border-gray-100 p-5 shadow-sm">
           <h3 className="text-sm font-semibold text-gray-700 mb-3">Departments</h3>
           <div className="space-y-1.5 mb-3">
-            {departments.length === 0 && <p className="text-xs text-gray-400">No departments yet.</p>}
+            {departments.length === 0 && <p className="text-xs text-gray-500">No departments yet.</p>}
             {departments.map((d) => (
               <div key={d.id} className={`${!d.is_active && !showInactiveDepts ? "hidden" : ""} flex items-center justify-between p-1.5 rounded-lg ${d.is_active ? "bg-gray-50" : "bg-gray-50 opacity-60"}`}>
                 {editingDeptId === d.id ? (
@@ -266,10 +266,10 @@ export default function AdminPage() {
                 )}
                 <div className="flex gap-1">
                   <button onClick={() => toggleDepartmentActive(d)} title={d.is_active ? "Deactivate" : "Activate"}
-                    className={`p-1 rounded hover:bg-gray-100 ${d.is_active ? "text-green-500" : "text-gray-400"}`}>
+                    className={`p-1 rounded hover:bg-gray-100 ${d.is_active ? "text-green-500" : "text-gray-500"}`}>
                     <Icon name="check" size={12} />
                   </button>
-                  <button onClick={() => { setEditingDeptId(d.id); setEditingDeptName(d.name); }} className="p-1 rounded hover:bg-brand-50 text-gray-400 hover:text-brand-600">
+                  <button aria-label="Edit" onClick={() => { setEditingDeptId(d.id); setEditingDeptName(d.name); }} className="p-1 rounded hover:bg-brand-50 text-gray-500 hover:text-brand-600">
                     <Icon name="edit" size={12} />
                   </button>
                 </div>
@@ -281,7 +281,7 @@ export default function AdminPage() {
             <input value={deptName} onChange={(e) => setDeptName(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && addDepartment()}
               placeholder="New department name" className="flex-1 text-xs border border-gray-200 rounded-lg px-2 py-1.5" />
-            <button onClick={addDepartment} className="px-2.5 py-1.5 text-xs text-white rounded-lg" style={{ background: "#1a3a5c" }}>Add</button>
+            <button onClick={addDepartment} className="px-2.5 py-1.5 text-xs text-white rounded-lg bg-brand-600 hover:bg-brand-700">Add</button>
           </div>
         </div>
       </div>
@@ -353,13 +353,13 @@ export default function AdminPage() {
           {modal === "edit" && !form.person_id ? (
             <div className="mt-2 rounded-lg border border-gray-200 p-3">
               <div className="text-xs font-semibold text-gray-700 mb-1">Add-on logins</div>
-              {addonsOf(form.id).length === 0 && <p className="text-xs text-gray-400 mb-2">None yet.</p>}
+              {addonsOf(form.id).length === 0 && <p className="text-xs text-gray-500 mb-2">None yet.</p>}
               {addonsOf(form.id).map((a) => (
                 <div key={a.id} className="flex items-center justify-between text-xs py-1 border-b border-gray-50">
                   <span className="text-gray-700">{a.email}</span>
                   <span className="flex items-center gap-2">
                     <span className="px-2 py-0.5 rounded-full bg-brand-50 text-brand-700 text-[11px]">{roleName(a.business_role_id) || "—"}</span>
-                    <span className={a.is_active ? "text-green-600" : "text-gray-400"}>{a.is_active ? "Active" : "Inactive"}</span>
+                    <span className={a.is_active ? "text-green-700" : "text-gray-500"}>{a.is_active ? "Active" : "Inactive"}</span>
                   </span>
                 </div>
               ))}
@@ -379,7 +379,7 @@ export default function AdminPage() {
           ) : null}
           <div className="flex justify-end gap-3 mt-4">
             <button onClick={() => setModal(null)} className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
-            <button onClick={save} className="px-4 py-2 text-sm text-white rounded-lg" style={{ background: "#1a3a5c" }}>Save</button>
+            <button onClick={save} className="px-4 py-2 text-sm text-white rounded-lg bg-brand-600 hover:bg-brand-700">Save</button>
           </div>
         </Modal>
       )}

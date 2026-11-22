@@ -2,8 +2,8 @@ import React from "react";
 import { Modal } from "../ui";
 
 const STATUS_LABELS = {
-  ok: <span className="text-emerald-600 font-medium">Will create</span>,
-  duplicate: <span className="text-amber-600 font-medium">Duplicate</span>,
+  ok: <span className="text-emerald-700 font-medium">Will create</span>,
+  duplicate: <span className="text-amber-700 font-medium">Duplicate</span>,
   error: <span className="text-red-600 font-medium">Error</span>,
 };
 
@@ -31,10 +31,10 @@ export default function ImportPreviewModal({ results, importing, onConfirm, onCl
           <tbody>
             {results.map((r) => (
               <tr key={r.row_index} className="border-t border-gray-100">
-                <td className="p-2 text-gray-400">{r.row_index + 1}</td>
+                <td className="p-2 text-gray-500">{r.row_index + 1}</td>
                 <td className="p-2 text-gray-700">{r.company_name || "—"}</td>
                 <td className="p-2">{STATUS_LABELS[r.status]}</td>
-                <td className="p-2 text-gray-400">{r.message || "—"}</td>
+                <td className="p-2 text-gray-500">{r.message || "—"}</td>
               </tr>
             ))}
           </tbody>
@@ -43,8 +43,7 @@ export default function ImportPreviewModal({ results, importing, onConfirm, onCl
       <div className="flex justify-end gap-3 mt-5">
         <button onClick={onClose} className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
         <button onClick={onConfirm} disabled={importing || okCount === 0}
-          className="px-4 py-2 text-sm text-white rounded-lg font-medium disabled:opacity-50"
-          style={{ background: "#1a3a5c" }}>
+          className="px-4 py-2 text-sm text-white rounded-lg font-medium disabled:opacity-50 bg-brand-600 hover:bg-brand-700">
           {importing ? "Importing..." : `Import ${okCount} Client(s)`}
         </button>
       </div>

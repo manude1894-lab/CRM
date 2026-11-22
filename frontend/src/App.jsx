@@ -116,6 +116,8 @@ export default function App() {
 
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden">
+      {/* Accessibility (review 22-11-2026): keyboard users skip the menu straight to the page. Shown when focused. */}
+      <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:px-3 focus:py-2 focus:rounded-lg focus:bg-white focus:text-brand-700 focus:shadow-lg focus:text-sm focus:font-semibold">Skip to content</a>
       {/* Sidebar — beside the page on a computer; over the page on a phone. */}
       {isPhone && sidebarOpen && <div className="fixed inset-0 z-30 bg-black/30" onClick={() => setSidebarOpen(false)} />}
       <aside
@@ -152,7 +154,7 @@ export default function App() {
           {navItems.map((item, i) => (
             <React.Fragment key={item.key}>
             {item.group && item.group !== navItems[i - 1]?.group && (sidebarOpen
-              ? <div className="px-3 pt-5 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/40">{item.group}</div>
+              ? <div className="px-3 pt-5 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/60">{item.group}</div>
               : <div className="mx-3 my-2 border-t border-white/10" />)}
             <button onClick={() => go(item.key)}
               title={sidebarOpen ? undefined : item.label}
@@ -167,7 +169,7 @@ export default function App() {
           ))}
         </nav>
         {sidebarOpen && (
-          <div className="px-5 py-3 border-t border-white/10 text-[10px] text-white/35 tracking-wide">Triam Management Services · CRM</div>
+          <div className="px-5 py-3 border-t border-white/10 text-[10px] text-white/60 tracking-wide">Triam Management Services · CRM</div>
         )}
       </aside>
 
@@ -177,7 +179,7 @@ export default function App() {
           // the account still uses a default password.
           <div className="flex flex-wrap items-center gap-3 px-6 py-2 bg-amber-50 border-b border-amber-200 text-sm text-amber-900">
             <span className="flex-1">You signed in with a default password. Please change it now to keep client data safe.</span>
-            <button onClick={() => setPasswordOpen(true)} className="px-3 py-1 text-xs text-white rounded-lg" style={{ background: "#1a3a5c" }}>Change password</button>
+            <button onClick={() => setPasswordOpen(true)} className="px-3 py-1 text-xs text-white rounded-lg bg-brand-600 hover:bg-brand-700">Change password</button>
           </div>
         )}
         {passwordOpen && (
@@ -188,7 +190,7 @@ export default function App() {
           {/* On a phone the menu is hidden until opened from here; on a computer the toggle is in the sidebar. */}
           {isPhone ? (
             <button onClick={() => setSidebarOpen(true)} title="Open menu" aria-label="Open menu"
-              className="p-1 rounded-md text-gray-400 hover:text-gray-700 hover:bg-gray-100">
+              className="p-1 rounded-md text-gray-600 hover:text-gray-700 hover:bg-gray-100">
               {/* Fine-line "side panel" icon */}
               <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
                 <rect x="3" y="4" width="18" height="16" rx="2.5" /><path d="M9 4v16" />
@@ -197,7 +199,7 @@ export default function App() {
           ) : <span />}
           <div className="flex items-center gap-2 md:gap-3 min-w-0">
             <CommandPalette onNavigate={(t) => { setJumpTo(t); setPage(t.page); }} />
-            <div className="text-xs text-gray-500 bg-gray-100 px-3 py-1.5 rounded-lg hidden sm:block">
+            <div className="text-xs text-gray-600 bg-gray-100 px-3 py-1.5 rounded-lg hidden sm:block">
               {fmtToday()}
             </div>
             <NotificationBell onNavigate={(t) => { setJumpTo({ ...t, nonce: Date.now() }); setPage(t.page); }} />
@@ -206,22 +208,22 @@ export default function App() {
                 {/* Profile menu: who is signed in, switching login, password and sign out. */}
                 <button type="button" onClick={() => setProfileMenu((o) => !o)} aria-haspopup="menu" aria-expanded={profileMenu}
                   title="Your profile" className="flex items-center gap-2.5 rounded-lg px-1.5 py-1 hover:bg-gray-50 text-left">
-                  <div className="w-8 h-8 rounded-full text-white text-xs font-bold flex items-center justify-center" style={{ background: "#1a3a5c" }}>{avatar}</div>
+                  <div className="w-8 h-8 rounded-full text-white text-xs font-bold flex items-center justify-center bg-brand-600 hover:bg-brand-700">{avatar}</div>
                   <div className="hidden md:block leading-tight">
                     <div className="text-sm font-semibold text-gray-800">{user.name}</div>
                     <div className="text-[11px] text-gray-500">
                       <span className="font-semibold text-brand-700">{roleLabel}</span>
-                      {(user.permissions || []).includes("read_only") && <span className="ml-1 px-1 rounded bg-gray-100 text-gray-500">Read-only</span>}
+                      {(user.permissions || []).includes("read_only") && <span className="ml-1 px-1 rounded bg-gray-100 text-gray-600">Read-only</span>}
                     </div>
                   </div>
-                  <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" className={`hidden md:block text-gray-400 transition-transform ${profileMenu ? "rotate-180" : ""}`}><path d="M7 10l5 5 5-5z" /></svg>
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" className={`hidden md:block text-gray-500 transition-transform ${profileMenu ? "rotate-180" : ""}`}><path d="M7 10l5 5 5-5z" /></svg>
                 </button>
                 {profileMenu && (
                   <>
                     <div className="fixed inset-0 z-40" onClick={() => setProfileMenu(false)} />
                     <div role="menu" className="absolute right-0 top-12 z-50 w-72 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden">
                       <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100">
-                        <div className="w-10 h-10 rounded-full text-white text-sm font-bold flex items-center justify-center flex-shrink-0" style={{ background: "#1a3a5c" }}>{avatar}</div>
+                        <div className="w-10 h-10 rounded-full text-white text-sm font-bold flex items-center justify-center flex-shrink-0 bg-brand-600 hover:bg-brand-700">{avatar}</div>
                         <div className="min-w-0">
                           <div className="text-sm font-semibold text-gray-800 truncate">{user.name}</div>
                           <div className="text-xs text-gray-500 truncate">{user.email}</div>
@@ -229,13 +231,13 @@ export default function App() {
                         </div>
                       </div>
                       {(user.previous_login_at || user.last_login_at) && (
-                        <div className="px-4 py-2 text-[11px] text-gray-400 border-b border-gray-100">
+                        <div className="px-4 py-2 text-[11px] text-gray-500 border-b border-gray-100">
                           {user.previous_login_at ? `Last login ${formatTimestamp(user.previous_login_at)}` : `Logged in ${formatTimestamp(user.last_login_at)}`}
                         </div>
                       )}
                       {(user.linked_logins || []).length > 0 && (
                         <div className="py-1 border-b border-gray-100">
-                          <div className="px-4 pt-1 pb-0.5 text-[10px] font-semibold uppercase tracking-wider text-gray-400">Switch login</div>
+                          <div className="px-4 pt-1 pb-0.5 text-[10px] font-semibold uppercase tracking-wider text-gray-500">Switch login</div>
                           {user.linked_logins.map((l) => (
                             <button key={l.id} type="button" role="menuitem" onClick={() => { setProfileMenu(false); openLogin(l); }}
                               className="block w-full text-left px-4 py-1.5 hover:bg-gray-50">
@@ -248,7 +250,7 @@ export default function App() {
                       <div className="py-1">
                         <button type="button" role="menuitem" onClick={() => { setProfileMenu(false); setPasswordOpen(true); }}
                           className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
-                          <Icon name="key" size={16} className="text-gray-400" /> Change password
+                          <Icon name="key" size={16} className="text-gray-500" /> Change password
                         </button>
                         <button type="button" role="menuitem" onClick={() => { setProfileMenu(false); signOut(); }}
                           className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-red-600 hover:bg-red-50">
@@ -263,7 +265,7 @@ export default function App() {
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-3 md:p-6">
+        <main id="main-content" tabIndex={-1} className="flex-1 overflow-y-auto p-3 md:p-6 focus:outline-none">
           <PageErrorBoundary key={`${page}-${user?.id}-${jumpTo?.nonce || ""}`}>
           <PageComponent
             {...(activeItem.props || {})}

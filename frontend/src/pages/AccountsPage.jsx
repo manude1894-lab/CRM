@@ -221,9 +221,9 @@ export default function AccountsPage({ scope = "onboarding", initialAccountId, i
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-x-auto">
           <div className="px-4 py-3 border-b border-gray-100 text-sm font-semibold text-gray-800">
             {isAdmin || canAssign ? "Prospects sent to RMs" : "Prospects sent to me"}
-            <span className="ml-2 text-xs font-normal text-gray-400">{waiting.length} waiting for the client to be created</span>
+            <span className="ml-2 text-xs font-normal text-gray-500">{waiting.length} waiting for the client to be created</span>
           </div>
-          {waiting.length === 0 ? <p className="px-4 py-5 text-sm text-gray-400">No prospects waiting.</p> : (
+          {waiting.length === 0 ? <p className="px-4 py-5 text-sm text-gray-500">No prospects waiting.</p> : (
             <table className="w-full text-sm">
               <thead><tr className="border-b border-gray-100 bg-gray-50 text-xs text-gray-500">
                 {["Date Sent", "Prospect Name", "Contact Name", "Contact Phone", "Contact Email", "Services the prospect is looking for"].map((h) => (
@@ -236,7 +236,7 @@ export default function AccountsPage({ scope = "onboarding", initialAccountId, i
                     <td className="py-2.5 px-3 text-xs text-gray-600 whitespace-nowrap">{fmtDate(p.assigned_at || p.created_at)}</td>
                     <td className="py-2.5 px-3">
                       <button onClick={() => setShownProspect(p)} className="font-medium text-brand-700 hover:underline text-left">{p.company_name}</button>
-                      <div className="text-[11px] text-gray-400 font-mono">{p.prospect_uid}{isAdmin || p.owner_id !== me?.id ? ` · ${userName(p.owner_id)}` : ""}</div>
+                      <div className="text-[11px] text-gray-500 font-mono">{p.prospect_uid}{isAdmin || p.owner_id !== me?.id ? ` · ${userName(p.owner_id)}` : ""}</div>
                     </td>
                     <td className="py-2.5 px-3 text-xs text-gray-600">{p.contact_name || "—"}</td>
                     <td className="py-2.5 px-3 text-xs text-gray-600">{p.contact_phone || "—"}</td>
@@ -252,12 +252,12 @@ export default function AccountsPage({ scope = "onboarding", initialAccountId, i
 
       <FilterBar>
         <SearchInput value={search} onChange={setSearch} placeholder="Search by client name or Client ID…" />
-        <div className="w-60"><Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+        <div className="w-60"><Select aria-label="Filter by status" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
           <option value="">{scope === "onboarding" ? "All statuses except Dropped" : "All statuses"}</option>
           {cfg.statuses.map((s) => <option key={s}>{s}</option>)}
         </Select></div>
         {/* Risk level and AML review are set by Compliance at approval, so only existing clients have them. */}
-        {scope === "maintenance" && <div className="w-40"><Select value={riskFilter} onChange={(e) => setRiskFilter(e.target.value)}>
+        {scope === "maintenance" && <div className="w-40"><Select aria-label="Filter by risk level" value={riskFilter} onChange={(e) => setRiskFilter(e.target.value)}>
           <option value="">All risk levels</option>
           {["High", "Medium", "Low"].map((r) => <option key={r} value={r}>{r} risk</option>)}
         </Select></div>}
@@ -292,7 +292,7 @@ export default function AccountsPage({ scope = "onboarding", initialAccountId, i
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50 text-xs text-gray-500">
                 {!readOnly && <th className="py-2.5 px-3 w-8">
-                  <input type="checkbox" checked={ids.every((id) => selectedIds.has(id))} onChange={() => toggleSelectAll(ids)} />
+                  <input type="checkbox" aria-label="Select all clients" checked={ids.every((id) => selectedIds.has(id))} onChange={() => toggleSelectAll(ids)} />
                 </th>}
                 {(scope === "maintenance" ? ["Client ID", "Client", "Status", "Approved on", "Risk", "Anchor RM", "PEP", "Next AML review"]
                   : ["Client ID", "Client", "Status", "Anchor RM", "PEP"]).map((h) => (
@@ -304,12 +304,12 @@ export default function AccountsPage({ scope = "onboarding", initialAccountId, i
               {filtered.map((a) => (
                 <tr key={a.id} onClick={() => openClient(a)} className="border-b border-gray-50 hover:bg-gray-50 cursor-pointer">
                   {!readOnly && <td className="py-2.5 px-3" onClick={(e) => e.stopPropagation()}>
-                    <input type="checkbox" checked={selectedIds.has(a.id)} onChange={() => toggleSelected(a.id)} />
+                    <input type="checkbox" aria-label={`Select ${a.company_name}`} checked={selectedIds.has(a.id)} onChange={() => toggleSelected(a.id)} />
                   </td>}
-                  <td className="py-2.5 px-3 font-mono text-xs text-gray-600">{a.client_id || <span className="text-gray-400" title="Temporary ID until the Final approval">{a.temp_id || a.account_uid}</span>}</td>
+                  <td className="py-2.5 px-3 font-mono text-xs text-gray-600">{a.client_id || <span className="text-gray-500" title="Temporary ID until the Final approval">{a.temp_id || a.account_uid}</span>}</td>
                   <td className="py-2.5 px-3">
                     <div className="font-medium text-gray-800">{a.company_name}</div>
-                    <div className="text-xs text-gray-400">{a.account_type === "Individual" ? "Individual" : [a.client_category, a.country].filter(Boolean).join(" · ") || "Corporate"}{a.is_pep ? " · PEP" : ""}</div>
+                    <div className="text-xs text-gray-500">{a.account_type === "Individual" ? "Individual" : [a.client_category, a.country].filter(Boolean).join(" · ") || "Corporate"}{a.is_pep ? " · PEP" : ""}</div>
                   </td>
                   <td className="py-2.5 px-3">
                     <Badge text={a.profile_status || "New"} />

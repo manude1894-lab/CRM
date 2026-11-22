@@ -133,7 +133,7 @@ export default function ProspectsPage({ onNavigate } = {}) {
       <PageHeader title="Prospects"
         subtitle={`${items.length} prospect${items.length === 1 ? "" : "s"}`}
         actions={!readOnly && <>
-<button onClick={openNew} className="px-3 py-2 text-sm text-white rounded-lg font-medium flex items-center gap-1.5 hover:opacity-90" style={{ background: "#1a3a5c" }}>
+<button onClick={openNew} className="px-3 py-2 text-sm text-white rounded-lg font-medium flex items-center gap-1.5 bg-brand-600 hover:bg-brand-700">
           <Icon name="plus" size={14} /> Add Prospect
         </button>
         </>} />
@@ -151,18 +151,18 @@ export default function ProspectsPage({ onNavigate } = {}) {
                 <span className="text-[11px] font-semibold text-slate-500 bg-white border border-slate-200 rounded-full px-2 py-0.5">{colItems.length}</span>
               </div>
               <div className="space-y-2 min-h-16">
-                {colItems.length === 0 && <div className="text-xs text-slate-400 text-center py-8">No prospects</div>}
+                {colItems.length === 0 && <div className="text-xs text-slate-600 text-center py-8">No prospects</div>}
                 {colItems.map((p) => (
                   <div key={p.id} className="bg-white border border-gray-200/70 rounded-xl p-3 shadow-[0_1px_2px_rgba(16,24,40,0.05)] hover:shadow-md transition-shadow">
                     <div className="flex items-start gap-2.5">
                       <span className="w-8 h-8 rounded-lg bg-brand-50 text-brand-700 text-[11px] font-bold flex items-center justify-center flex-shrink-0">{initials(p.company_name)}</span>
                       <div className="min-w-0 flex-1">
                         <button onClick={() => openEdit(p)} className="block text-[13px] font-semibold text-gray-900 text-left leading-snug hover:text-brand-600">{p.company_name}</button>
-                        <span className="inline-block mt-0.5 font-mono text-[10px] text-gray-500 bg-gray-100 rounded px-1.5 py-px">{p.prospect_uid}</span>
+                        <span className="inline-block mt-0.5 font-mono text-[10px] text-gray-600 bg-gray-100 rounded px-1.5 py-px">{p.prospect_uid}</span>
                       </div>
                     </div>
                     {p.contact_name && <div className="text-xs text-gray-600 mt-2">{p.contact_name}</div>}
-                    <div className="text-[11px] text-gray-400 mt-1 space-y-0.5">
+                    <div className="text-[11px] text-gray-500 mt-1 space-y-0.5">
                       {p.owner_id
                         ? <div>RM: <span className="text-gray-600">{p.owner_name || userById[p.owner_id]?.name || `User #${p.owner_id}`}</span></div>
                         : <div className="text-amber-700 font-medium">Not yet assigned</div>}
@@ -244,7 +244,7 @@ export default function ProspectsPage({ onNavigate } = {}) {
           {coordinator && !form.converted_account_id && (
             <Field label="Assignor's comments (optional)">
               <Textarea rows={3} value={form.assignor_comments || ""} onChange={(e) => setForm((p) => ({ ...p, assignor_comments: e.target.value }))} />
-              <div className={`text-[11px] text-right mt-0.5 ${wordCount(form.assignor_comments) > 250 ? "text-red-600" : "text-gray-400"}`}>{wordCount(form.assignor_comments)} / 250 words · sent to the RM on Submit</div>
+              <div className={`text-[11px] text-right mt-0.5 ${wordCount(form.assignor_comments) > 250 ? "text-red-600" : "text-gray-500"}`}>{wordCount(form.assignor_comments)} / 250 words · sent to the RM on Submit</div>
             </Field>
           )}
           {/* Stamped by the system when the prospect is submitted to the RM (Triam UAT 26-10-2026). */}
@@ -255,7 +255,7 @@ export default function ProspectsPage({ onNavigate } = {}) {
             <button onClick={() => setModal(false)} className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">{readOnly ? "Close" : "Cancel"}</button>
             {!readOnly && <button onClick={() => save(false)} className="px-4 py-2 text-sm border border-brand-300 text-brand-700 rounded-lg hover:bg-brand-50">Save</button>}
             {!readOnly && !form.converted_account_id && (
-              <button onClick={() => save(true)} className="px-4 py-2 text-sm text-white rounded-lg" style={{ background: "#1a3a5c" }}>Submit</button>
+              <button onClick={() => save(true)} className="px-4 py-2 text-sm text-white rounded-lg bg-brand-600 hover:bg-brand-700">Submit</button>
             )}
           </div>
         </Modal>
@@ -274,12 +274,12 @@ export default function ProspectsPage({ onNavigate } = {}) {
           )}
           <Field label="Assignor's comments (optional)">
             <Textarea rows={4} value={assign.comments} onChange={(e) => setAssign((a) => ({ ...a, comments: e.target.value }))} maxLength={4000} />
-            <div className={`text-[11px] text-right mt-0.5 ${wordCount(assign.comments) > 250 ? "text-red-600" : "text-gray-400"}`}>{wordCount(assign.comments)} / 250 words</div>
+            <div className={`text-[11px] text-right mt-0.5 ${wordCount(assign.comments) > 250 ? "text-red-600" : "text-gray-500"}`}>{wordCount(assign.comments)} / 250 words</div>
           </Field>
           <div className="flex justify-end gap-3 mt-2">
             <button onClick={() => setAssign(null)} className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
             <button onClick={doAssign} disabled={!assign.rm_id || wordCount(assign.comments) > 250}
-              className="px-4 py-2 text-sm text-white rounded-lg disabled:opacity-50" style={{ background: "#1a3a5c" }}>Assign</button>
+              className="px-4 py-2 text-sm text-white rounded-lg disabled:opacity-50 bg-brand-600 hover:bg-brand-700">Assign</button>
           </div>
         </Modal>
       )}

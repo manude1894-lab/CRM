@@ -45,7 +45,7 @@ export default function ClientDocumentsFolder({ accountId, onChange, onboarding 
 
   const load = () => documentsApi.folder(accountId).then(setFolder).catch(() => setFolder(null));
   useEffect(() => { if (accountId) load(); }, [accountId]);
-  if (!folder) return <p className="text-xs text-gray-400">Loading documents…</p>;
+  if (!folder) return <p className="text-xs text-gray-500">Loading documents…</p>;
 
   const inScope = (d) => (partyId ? d.party_id === partyId : scope === "client" ? !d.party_id : true);
   const documents = folder.documents.filter(inScope);
@@ -136,7 +136,7 @@ export default function ClientDocumentsFolder({ accountId, onChange, onboarding 
             <Icon name="view" size={12} className="flex-shrink-0" /><span className="truncate">{d.filename}</span>
           </button>
         )}
-        <div className="text-[10px] text-gray-400">
+        <div className="text-[10px] text-gray-500">
           {d.link_url ? "Link" : fmtBytes(d.size_bytes)} · {fmtDate(d.created_at)}{d.uploaded_by_name ? ` · ${d.uploaded_by_name}` : ""}
           {d.party_name && <> · <span className="text-gray-600">{d.party_name}</span></>}
           {d.notes && <> · {d.notes}</>}
@@ -144,13 +144,13 @@ export default function ClientDocumentsFolder({ accountId, onChange, onboarding 
       </div>
       <div className="flex items-center gap-1 flex-shrink-0">
         {!d.link_url && d.can_download !== false && (
-          <button onClick={() => documentsApi.download(d.id, d.filename)} title="Download" className="p-1 rounded hover:bg-brand-50 text-gray-400 hover:text-brand-600">
+          <button onClick={() => documentsApi.download(d.id, d.filename)} title="Download" className="p-1 rounded hover:bg-brand-50 text-gray-500 hover:text-brand-600">
             <Icon name="download" size={13} />
           </button>
         )}
         {d.can_delete
-          ? <button onClick={() => remove(d)} title="Remove" className="p-1 rounded hover:bg-red-50 text-gray-400 hover:text-red-500"><Icon name="del" size={13} /></button>
-          : <span title={d.lock_reason || ""} className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 cursor-help">{d.stage === "Locked" ? "Locked" : "Protected"}</span>}
+          ? <button onClick={() => remove(d)} title="Remove" className="p-1 rounded hover:bg-red-50 text-gray-500 hover:text-red-500"><Icon name="del" size={13} /></button>
+          : <span title={d.lock_reason || ""} className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 cursor-help">{d.stage === "Locked" ? "Locked" : "Protected"}</span>}
       </div>
     </div>
   );
@@ -170,7 +170,7 @@ export default function ClientDocumentsFolder({ accountId, onChange, onboarding 
           <span className="font-mono font-semibold text-gray-800">{folder.client_id || folder.temp_id || "—"}</span>
           <span className={`px-2 py-0.5 rounded font-semibold ${stage.style}`}>{folder.stage}</span>
         </>}
-        <span className="text-gray-400">{documents.length} document{documents.length === 1 ? "" : "s"}</span>
+        <span className="text-gray-500">{documents.length} document{documents.length === 1 ? "" : "s"}</span>
         {!locked && !uploading && (
           <button onClick={() => setUploading(true)}
             className={`ml-auto px-2.5 py-1 text-xs rounded-lg flex items-center gap-1 ${uploadPending ? "text-white" : "border border-gray-200 text-gray-600 hover:bg-gray-50"}`}
@@ -187,9 +187,9 @@ export default function ClientDocumentsFolder({ accountId, onChange, onboarding 
       {/* BRD §14 — prompt for uploads only when it is time: during onboarding, while the folder is empty. */}
       {onboarding && !partyId && !locked && !uploading && documents.length === 0 && (
         <div className="flex flex-wrap items-center gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2">
-          <Icon name="warn" size={14} className="text-amber-600" />
+          <Icon name="warn" size={14} className="text-amber-700" />
           <span className="text-xs text-amber-900 flex-1">No documents yet. Upload the client's KYC and corporate documents before submitting for approval.</span>
-          <button onClick={() => setUploading(true)} className="px-2.5 py-1 text-xs text-white rounded-lg" style={{ background: "#1a3a5c" }}>Upload now</button>
+          <button onClick={() => setUploading(true)} className="px-2.5 py-1 text-xs text-white rounded-lg bg-brand-600 hover:bg-brand-700">Upload now</button>
         </div>
       )}
 
@@ -204,13 +204,13 @@ export default function ClientDocumentsFolder({ accountId, onChange, onboarding 
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <select value={category} onChange={(e) => { setCategory(e.target.value); if (cats.items.find((i) => i.code === e.target.value)?.meta?.link_suggested) setMode("link"); }}
+            <select aria-label="Document category" value={category} onChange={(e) => { setCategory(e.target.value); if (cats.items.find((i) => i.code === e.target.value)?.meta?.link_suggested) setMode("link"); }}
               className="border border-gray-200 rounded-lg px-2 py-1 text-xs bg-white focus:outline-none focus:border-brand-400 max-w-md">
               <option value="">— document category —</option>
               {categoryOptions.map((c) => <option key={c} value={c}>{cats.labelOf(c)}{sectionOf(c) ? ` (${sectionOf(c)})` : ""}</option>)}
             </select>
             {!partyId && scope !== "client" && forPeople(category) && parties.length > 0 && (
-              <select value={selectedParty} onChange={(e) => setSelectedParty(e.target.value)}
+              <select aria-label="Person the document is for" value={selectedParty} onChange={(e) => setSelectedParty(e.target.value)}
                 className="border border-gray-200 rounded-lg px-2 py-1 text-xs bg-white focus:outline-none focus:border-brand-400">
                 <option value="">— belongs to (client) —</option>
                 {parties.map((pt) => <option key={pt.id} value={pt.id}>{pt.name}</option>)}
@@ -228,27 +228,27 @@ export default function ClientDocumentsFolder({ accountId, onChange, onboarding 
               </>
             )}
           </div>
-          {mode === "file" && <p className="text-[10px] text-gray-400">Word, Excel, PDF, JPG, JPEG, PNG or BMP.</p>}
+          {mode === "file" && <p className="text-[10px] text-gray-500">Word, Excel, PDF, JPG, JPEG, PNG or BMP.</p>}
           <input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Note (optional, e.g. certified true copy)" maxLength={500}
             className="w-full border border-gray-200 rounded-lg px-2 py-1 text-xs bg-white focus:outline-none focus:border-brand-400" />
           <div className="flex gap-2 justify-end">
             <button onClick={() => setUploading(false)} className="px-2.5 py-1 text-xs border border-gray-200 rounded-lg bg-white hover:bg-gray-50">Cancel</button>
-            <button onClick={upload} disabled={busy} className="px-2.5 py-1 text-xs text-white rounded-lg disabled:opacity-60" style={{ background: "#1a3a5c" }}>
+            <button onClick={upload} disabled={busy} className="px-2.5 py-1 text-xs text-white rounded-lg disabled:opacity-60 bg-brand-600 hover:bg-brand-700">
               {busy ? "Saving…" : mode === "link" ? "Add link" : "Upload"}
             </button>
           </div>
         </div>
       )}
 
-      {Object.keys(groups).length === 0 && <p className="text-xs text-gray-400 italic">{partyId ? "No documents for this person yet." : "No documents filed against this client yet."}</p>}
+      {Object.keys(groups).length === 0 && <p className="text-xs text-gray-500 italic">{partyId ? "No documents for this person yet." : "No documents filed against this client yet."}</p>}
       {Object.entries(groups).sort(([a], [b]) => cats.labelOf(a).localeCompare(cats.labelOf(b))).map(([cat, docs]) => {
         const open = openCats[cat] ?? true;
         return (
           <div key={cat} className="rounded-lg bg-gray-50 border border-gray-100">
             <button onClick={() => setOpenCats((o) => ({ ...o, [cat]: !open }))} className="w-full flex items-center gap-2 px-2.5 py-1.5 text-left">
-              <Icon name="chevronRight" size={12} className={`text-gray-400 transition-transform ${open ? "rotate-90" : ""}`} />
+              <Icon name="chevronRight" size={12} className={`text-gray-500 transition-transform ${open ? "rotate-90" : ""}`} />
               <span className="text-xs font-semibold text-gray-700">{cats.labelOf(cat)}</span>
-              <span className="text-[10px] text-gray-400">({docs.length})</span>
+              <span className="text-[10px] text-gray-500">({docs.length})</span>
             </button>
             {open && <div className="px-2.5 pb-2 space-y-1">{docs.map((d) => <Row key={d.id} d={d} />)}</div>}
           </div>

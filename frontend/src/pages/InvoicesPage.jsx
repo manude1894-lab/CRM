@@ -68,7 +68,7 @@ export default function InvoicesPage() {
       <FilterBar>
         <SearchInput value={search} onChange={setSearch} placeholder="Search client, invoice no. or description…" />
         <div className="w-44">
-          <Select value={status} onChange={(e) => setStatus(e.target.value)}>
+          <Select aria-label="Filter by status" value={status} onChange={(e) => setStatus(e.target.value)}>
             <option value="">All statuses</option>
             {STATUSES.map((s) => <option key={s}>{s}</option>)}
           </Select>
@@ -90,7 +90,7 @@ export default function InvoicesPage() {
                 <tr key={i.id} className="border-b border-gray-50 align-top">
                   <td className="py-2.5 px-3">
                     <div className="font-medium text-gray-800">{i.company_name || "—"}</div>
-                    <div className="text-[11px] font-mono text-gray-400">{i.client_id}</div>
+                    <div className="text-[11px] font-mono text-gray-500">{i.client_id}</div>
                   </td>
                   <td className="py-2.5 px-3 text-xs text-gray-600 max-w-xs">
                     {i.kind && <span className="mr-1 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-gray-100 text-gray-600">{i.kind}</span>}
@@ -102,30 +102,30 @@ export default function InvoicesPage() {
                         {i.introducer_involved ? <>Introducer: {money(i.introducer_currency, i.introducer_amount)}.</> : i.introducer_involved === false ? "No introducer." : null}
                       </div>
                     )}
-                    {i.notes && <div className="text-gray-400">{i.notes}</div>}
+                    {i.notes && <div className="text-gray-500">{i.notes}</div>}
                   </td>
                   <td className="py-2.5 px-3 text-right whitespace-nowrap">{money(i.currency, i.amount)}</td>
                   <td className="py-2.5 px-3"><span className={`text-[11px] font-semibold px-2 py-0.5 rounded ${STATUS_STYLE[i.status] || "bg-gray-100"}`}>{unsent(i) ? "Draft · not sent" : i.status}</span></td>
                   <td className="py-2.5 px-3 text-xs text-gray-600 whitespace-nowrap">
-                    {i.invoice_number ? <><div className="font-mono">{i.invoice_number}</div><div className="text-gray-400">{fmtDate(i.raised_date)}{i.paid_date ? ` · paid ${fmtDate(i.paid_date)}` : ""}</div></> : "—"}
+                    {i.invoice_number ? <><div className="font-mono">{i.invoice_number}</div><div className="text-gray-500">{fmtDate(i.raised_date)}{i.paid_date ? ` · paid ${fmtDate(i.paid_date)}` : ""}</div></> : "—"}
                   </td>
-                  <td className="py-2.5 px-3 text-xs text-gray-500 whitespace-nowrap">{i.requested_by_name || "—"}<div className="text-gray-400">{fmtDate(i.requested_at || i.created_at)}</div></td>
+                  <td className="py-2.5 px-3 text-xs text-gray-500 whitespace-nowrap">{i.requested_by_name || "—"}<div className="text-gray-500">{fmtDate(i.requested_at || i.created_at)}</div></td>
                   <td className="py-2.5 px-3 text-right whitespace-nowrap">
                     <div className="flex justify-end gap-1.5">
                       <button onClick={() => setFiles(i)} className="px-2 py-1 text-xs border border-gray-200 rounded-lg hover:bg-gray-50">
                         Files{i.attachment_count ? ` (${i.attachment_count})` : ""}
                       </button>
                       {!readOnly && unsent(i) && (
-                        <button onClick={() => setRequesting(i)} className="px-2 py-1 text-xs text-white rounded-lg" style={{ background: "#1a3a5c" }}>Edit / Submit</button>
+                        <button onClick={() => setRequesting(i)} className="px-2 py-1 text-xs text-white rounded-lg bg-brand-600 hover:bg-brand-700">Edit / Submit</button>
                       )}
                       {!readOnly && accountsTeam && ["Requested", "Draft"].includes(i.status) && !unsent(i) && (
-                        <button onClick={() => setRaising(i)} className="px-2 py-1 text-xs text-white rounded-lg" style={{ background: "#1a3a5c" }}>Raise</button>
+                        <button onClick={() => setRaising(i)} className="px-2 py-1 text-xs text-white rounded-lg bg-brand-600 hover:bg-brand-700">Raise</button>
                       )}
                       {!readOnly && accountsTeam && ["Raised", "Overdue"].includes(i.status) && (
                         <button onClick={() => markPaid(i)} className="px-2 py-1 text-xs border border-emerald-300 text-emerald-700 rounded-lg hover:bg-emerald-50">Mark paid</button>
                       )}
                       {!readOnly && !["Paid", "Cancelled"].includes(i.status) && (accountsTeam || ["Requested", "Draft"].includes(i.status)) && (
-                        <button onClick={() => cancelInvoice(i)} title="Cancel invoice" className="p-1 rounded hover:bg-red-50 text-gray-400 hover:text-red-500"><Icon name="close" size={13} /></button>
+                        <button onClick={() => cancelInvoice(i)} title="Cancel invoice" className="p-1 rounded hover:bg-red-50 text-gray-500 hover:text-red-500"><Icon name="close" size={13} /></button>
                       )}
                     </div>
                   </td>
@@ -272,9 +272,9 @@ function FilesModal({ invoice, accountsTeam, onClose }) {
       {docs === null ? <Spinner /> : Object.entries(groups).map(([kind, list]) => (
         <div key={kind} className="mb-3">
           <div className="text-xs font-semibold text-gray-600 mb-1">{kind === "Invoice" ? "Invoice" : "Pricing approvals"}</div>
-          {list.length === 0 ? <p className="text-xs text-gray-400">None yet.</p> : list.map((d) => (
+          {list.length === 0 ? <p className="text-xs text-gray-500">None yet.</p> : list.map((d) => (
             <button key={d.id} onClick={() => documentsApi.download(d.id, d.filename)} className="flex items-center gap-1.5 text-xs text-brand-600 hover:underline">
-              <Icon name="download" size={12} />{d.filename}<span className="text-gray-400">· {fmtDate(d.created_at)}</span>
+              <Icon name="download" size={12} />{d.filename}<span className="text-gray-500">· {fmtDate(d.created_at)}</span>
             </button>
           ))}
           {((kind === "Invoice" && accountsTeam) || (kind === "Pricing Approval" && canAddApproval)) && (

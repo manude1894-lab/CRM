@@ -111,7 +111,7 @@ export const Modal = ({ title, onClose, children, size = "md" }) => {
       <div className={`bg-white rounded-2xl shadow-2xl w-full ${width} max-h-[90vh] overflow-y-auto mx-4`}>
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
           <h2 className="text-base font-semibold text-gray-800">{title}</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+          <button aria-label="Close" onClick={onClose} className="text-gray-500 hover:text-gray-600">
             <Icon name="close" size={20} />
           </button>
         </div>
@@ -143,7 +143,7 @@ export const FilterBar = ({ children }) => <div className="flex items-center gap
 
 export const SearchInput = ({ value, onChange, placeholder = "Search…" }) => (
   <div className="relative flex-1 min-w-[220px] max-w-md">
-    <Icon name="search" size={15} className="absolute left-3 top-2.5 text-gray-400" />
+    <Icon name="search" size={15} className="absolute left-3 top-2.5 text-gray-500" />
     <input value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder}
       className="w-full pl-8 pr-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:border-brand-400" />
   </div>
@@ -152,7 +152,7 @@ export const SearchInput = ({ value, onChange, placeholder = "Search…" }) => (
 export const EmptyState = ({ title, text, action }) => (
   <div className="text-center py-14 px-4 bg-white border border-dashed border-gray-200 rounded-xl">
     <div className="text-sm font-medium text-gray-700">{title}</div>
-    {text && <div className="text-xs text-gray-400 mt-1">{text}</div>}
+    {text && <div className="text-xs text-gray-500 mt-1">{text}</div>}
     {action && <div className="mt-3">{action}</div>}
   </div>
 );
@@ -163,7 +163,7 @@ export const Tabs = ({ tabs, active, onChange }) => (
     {tabs.map((t) => (
       <button key={t.key} onClick={() => onChange(t.key)}
         className={`px-4 py-2.5 text-sm whitespace-nowrap -mb-px border-b-2 ${active === t.key ? "border-brand-500 text-brand-700 font-semibold" : "border-transparent text-gray-500 hover:text-gray-800"}`}>
-        {t.label}{t.count != null && <span className="ml-1.5 text-xs text-gray-400">{t.count}</span>}
+        {t.label}{t.count != null && <span className="ml-1.5 text-xs text-gray-500">{t.count}</span>}
       </button>
     ))}
   </div>
@@ -195,29 +195,48 @@ export const FactList = ({ items }) => (
 );
 
 /** Primary / secondary buttons with one look everywhere. */
-export const Button = ({ variant = "secondary", className = "", children, ...props }) => {
-  const look = variant === "primary" ? "text-white border-transparent hover:opacity-90" : variant === "danger"
-    ? "border-red-200 text-red-600 hover:bg-red-50 bg-white" : "border-gray-200 text-gray-700 hover:bg-gray-50 bg-white";
+// The CRM's buttons (design kit, review 22-11-2026): primary = the step forward (navy), secondary = everyday,
+// danger = destructive or irreversible, quiet = low-emphasis. size "sm" for rows, bars and cards.
+const BUTTON_LOOK = {
+  primary: "bg-brand-600 border-brand-600 text-white shadow-sm hover:bg-brand-700",
+  secondary: "bg-white border-gray-200 text-gray-700 hover:bg-gray-50",
+  danger: "bg-white border-red-200 text-red-600 hover:bg-red-50",
+  quiet: "bg-transparent border-transparent text-gray-600 hover:bg-gray-100",
+};
+const BUTTON_SIZE = { md: "px-3 py-2 text-sm", sm: "px-2.5 py-1 text-xs" };
+
+export const Button = ({ variant = "secondary", size = "md", className = "", type = "button", children, ...props }) => (
+  <button type={type} {...props}
+    className={`${BUTTON_SIZE[size] || BUTTON_SIZE.md} rounded-lg border font-medium inline-flex items-center gap-1.5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${BUTTON_LOOK[variant] || BUTTON_LOOK.secondary} ${className}`}>
+    {children}
+  </button>
+);
+
+// ─── Form primitives ────────────────────────────────────────────────────
+// Accessibility (review 22-11-2026): a Field's label names the inputs inside it. Field gives its label an id and
+// shares it; Input, Select, Textarea and DateInput use it as aria-labelledby unless they are named otherwise. This
+// covers fields with two controls too (country code + number).
+const FieldLabelContext = React.createContext(null);
+const useFieldLabel = (props) => {
+  const labelId = React.useContext(FieldLabelContext);
+  return props["aria-label"] || props["aria-labelledby"] || !labelId ? {} : { "aria-labelledby": labelId };
+};
+
+export const Field = ({ label, children, required }) => {
+  const labelId = React.useId();
   return (
-    <button {...props} style={variant === "primary" ? { background: "#1a3a5c" } : undefined}
-      className={`px-3 py-2 text-sm rounded-lg border font-medium flex items-center gap-1.5 disabled:opacity-50 ${look} ${className}`}>
-      {children}
-    </button>
+    <div className="mb-4">
+      <label id={labelId} className="block text-xs font-medium text-gray-600 mb-1">
+        {label}{required && <span className="text-red-600 ml-0.5" aria-hidden="true">*</span>}
+      </label>
+      <FieldLabelContext.Provider value={labelId}>{children}</FieldLabelContext.Provider>
+    </div>
   );
 };
 
-// ─── Form primitives ────────────────────────────────────────────────────
-export const Field = ({ label, children, required }) => (
-  <div className="mb-4">
-    <label className="block text-xs font-medium text-gray-600 mb-1">
-      {label}{required && <span className="text-red-400 ml-0.5">*</span>}
-    </label>
-    {children}
-  </div>
-);
-
 export const Input = ({ className = "", ...props }) => (
   <input
+    {...useFieldLabel(props)}
     {...props}
     className={`w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-400 focus:ring-1 focus:ring-brand-100 ${className}`}
   />
@@ -225,6 +244,7 @@ export const Input = ({ className = "", ...props }) => (
 
 export const Select = ({ children, className = "", ...props }) => (
   <select
+    {...useFieldLabel(props)}
     {...props}
     className={`w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-400 ${className}`}
   >
@@ -253,6 +273,7 @@ const maskDMY = (raw) => {
 };
 
 export const DateInput = ({ value, onChange, min, max, disabled, className = "", placeholder = "DD MM YYYY", required, ...rest }) => {
+  const fieldLabel = useFieldLabel(rest);
   const [text, setText] = React.useState(isoToText(value));
   const [problem, setProblem] = React.useState(null);
   const [pop, setPop] = React.useState(null); // { top|bottom, left } while the calendar is open
@@ -301,11 +322,11 @@ export const DateInput = ({ value, onChange, min, max, disabled, className = "",
 
   return (
     <div className={`relative ${className.includes("w-") ? "" : "w-full"}`}>
-      <input {...rest} type="text" inputMode="numeric" value={text} placeholder={placeholder} disabled={disabled} required={required}
+      <input {...fieldLabel} {...rest} type="text" inputMode="numeric" value={text} placeholder={placeholder} disabled={disabled} required={required}
         onChange={onType} onBlur={() => commit(text)} title={problem || "DD MM YYYY"}
         className={`w-full border rounded-lg pl-3 pr-9 py-2 text-sm focus:outline-none focus:ring-1 disabled:bg-gray-50 disabled:text-gray-500 ${problem ? "border-red-300 focus:border-red-400 focus:ring-red-100" : "border-gray-200 focus:border-brand-400 focus:ring-brand-100"} ${className}`} />
       <button type="button" onClick={openCalendar} disabled={disabled} tabIndex={-1} title="Choose from calendar"
-        className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-brand-600 disabled:opacity-40">
+        className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1 text-gray-500 hover:text-brand-600 disabled:opacity-40">
         <Icon name="calendar" size={16} />
       </button>
       {problem && <p className="text-[11px] text-red-600 mt-0.5">{problem}</p>}
@@ -314,18 +335,18 @@ export const DateInput = ({ value, onChange, min, max, disabled, className = "",
           <div className="fixed inset-0 z-[60]" onClick={() => setPop(null)} />
           <div className="fixed z-[61] w-[280px] bg-white border border-gray-200 rounded-xl shadow-xl p-3" style={pop}>
             <div className="flex items-center gap-1 mb-2">
-              <button type="button" onClick={() => shift(-1)} className="p-1 rounded hover:bg-gray-100 text-gray-500"><Icon name="chevronLeft" size={16} /></button>
-              <select value={cursor.m} onChange={(e) => setCursor((c) => ({ ...c, m: +e.target.value }))}
+              <button aria-label="Previous month" type="button" onClick={() => shift(-1)} className="p-1 rounded hover:bg-gray-100 text-gray-600"><Icon name="chevronLeft" size={16} /></button>
+              <select aria-label="Month" value={cursor.m} onChange={(e) => setCursor((c) => ({ ...c, m: +e.target.value }))}
                 className="flex-1 text-sm border border-gray-200 rounded px-1 py-0.5">
                 {MONTHS_SHORT.map((mName, i) => <option key={mName} value={i + 1}>{mName}</option>)}
               </select>
-              <select value={cursor.y} onChange={(e) => setCursor((c) => ({ ...c, y: +e.target.value }))}
+              <select aria-label="Year" value={cursor.y} onChange={(e) => setCursor((c) => ({ ...c, y: +e.target.value }))}
                 className="text-sm border border-gray-200 rounded px-1 py-0.5">
                 {years.map((y) => <option key={y} value={y}>{y}</option>)}
               </select>
-              <button type="button" onClick={() => shift(1)} className="p-1 rounded hover:bg-gray-100 text-gray-500"><Icon name="chevronRight" size={16} /></button>
+              <button aria-label="Next month" type="button" onClick={() => shift(1)} className="p-1 rounded hover:bg-gray-100 text-gray-600"><Icon name="chevronRight" size={16} /></button>
             </div>
-            <div className="grid grid-cols-7 gap-0.5 text-center text-[11px] text-gray-400 mb-1">
+            <div className="grid grid-cols-7 gap-0.5 text-center text-[11px] text-gray-500 mb-1">
               {["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"].map((d) => <div key={d}>{d}</div>)}
             </div>
             <div className="grid grid-cols-7 gap-0.5">
@@ -353,10 +374,11 @@ export const DateInput = ({ value, onChange, min, max, disabled, className = "",
   );
 };
 
-export const Textarea = (props) => (
+export const Textarea = ({ rows = 3, ...props }) => (
   <textarea
+    {...useFieldLabel(props)}
     {...props}
-    rows={3}
+    rows={rows}
     className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-400 resize-none"
   />
 );
@@ -474,7 +496,7 @@ export const MultiSelect = ({ options, value, onChange, getLabel = (opt) => opt,
             <input type="checkbox" checked={selected.includes(opt)} onChange={() => toggle(opt)} /> {getLabel(opt)}
           </label>
         ))}
-        {searchable && rows.length === 0 && <div className="text-xs text-gray-400">No match</div>}
+        {searchable && rows.length === 0 && <div className="text-xs text-gray-500">No match</div>}
       </div>
     </div>
   );
@@ -529,7 +551,7 @@ export const ToastHost = () => {
               <Icon name={style.icon} size={12} />
             </span>
             <p className="text-sm text-gray-700 flex-1 leading-snug">{t.message}</p>
-            <button onClick={() => dismiss(t.id)} className="text-gray-300 hover:text-gray-500 flex-shrink-0">
+            <button aria-label="Close" onClick={() => dismiss(t.id)} className="text-gray-300 hover:text-gray-500 flex-shrink-0">
               <Icon name="close" size={14} />
             </button>
           </div>

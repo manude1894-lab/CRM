@@ -10,7 +10,7 @@ import ActivityForm, { activityPayload, activityProblem, blankActivity } from ".
 import ActivityCard from "../activities/ActivityCard";
 import MoneyInput from "../MoneyInput";
 
-const STATUS_STYLE = { Completed: "bg-emerald-50 text-emerald-700", "On Hold": "bg-gray-100 text-gray-600", Dropped: "bg-gray-100 text-gray-400" };
+const STATUS_STYLE = { Completed: "bg-emerald-50 text-emerald-700", "On Hold": "bg-gray-100 text-gray-600", Dropped: "bg-gray-100 text-gray-500" };
 
 /**
  * BRD §15 — servicing an existing client: its Visit / Call Reports and its Service Requests, in one
@@ -69,7 +69,7 @@ export default function ClientServicingModal({ account, onClose, startWith = nul
 
   const tabBtn = (key, label, count) => (
     <button onClick={() => setTab(key)}
-      className={`px-3 py-2 text-sm font-medium border-b-2 -mb-px ${tab === key ? "border-brand-500 text-brand-600" : "border-transparent text-gray-400 hover:text-gray-600"}`}>
+      className={`px-3 py-2 text-sm font-medium border-b-2 -mb-px ${tab === key ? "border-brand-500 text-brand-600" : "border-transparent text-gray-500 hover:text-gray-600"}`}>
       {label}{count != null && ` (${count})`}
     </button>
   );
@@ -87,17 +87,17 @@ export default function ClientServicingModal({ account, onClose, startWith = nul
           <ActivityForm form={form} setForm={setForm} lockClient />
           <div className="flex justify-end gap-2">
             <button onClick={() => setForm(null)} className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
-            <button onClick={saveActivity} disabled={busy} className="px-3 py-1.5 text-sm text-white rounded-lg disabled:opacity-60" style={{ background: "#1a3a5c" }}>Save</button>
+            <button onClick={saveActivity} disabled={busy} className="px-3 py-1.5 text-sm text-white rounded-lg disabled:opacity-60 bg-brand-600 hover:bg-brand-700">Save</button>
           </div>
         </div>
       ) : (
         <div className="space-y-2">
           {!readOnly && <div className="flex gap-2">
-            <button onClick={() => setForm(blankActivity(account.id, "Visit Report"))} className="px-2.5 py-1 text-xs text-white rounded-lg" style={{ background: "#1a3a5c" }}>+ Visit Report</button>
-            <button onClick={() => setForm(blankActivity(account.id, "Call Report"))} className="px-2.5 py-1 text-xs text-white rounded-lg" style={{ background: "#1a3a5c" }}>+ Call Report</button>
+            <button onClick={() => setForm(blankActivity(account.id, "Visit Report"))} className="px-2.5 py-1 text-xs text-white rounded-lg bg-brand-600 hover:bg-brand-700">+ Visit Report</button>
+            <button onClick={() => setForm(blankActivity(account.id, "Call Report"))} className="px-2.5 py-1 text-xs text-white rounded-lg bg-brand-600 hover:bg-brand-700">+ Call Report</button>
           </div>}
           {activities === null ? <Spinner /> : activities.length === 0
-            ? <p className="text-sm text-gray-400 text-center py-6">No visit or call reports for this client yet.</p>
+            ? <p className="text-sm text-gray-500 text-center py-6">No visit or call reports for this client yet.</p>
             : activities.map((a) => (
               <ActivityCard key={a.id} activity={a} compact
                 onEdit={readOnly ? undefined : () => setForm({ ...blankActivity(account.id), ...a, account_id: a.account_id || account.id })} />
@@ -135,17 +135,17 @@ export default function ClientServicingModal({ account, onClose, startWith = nul
           <Field label="Details"><Textarea rows={3} value={sr.comments} onChange={(e) => setSr((p) => ({ ...p, comments: e.target.value }))} /></Field>
           <div className="flex justify-end gap-2">
             <button onClick={() => setSr(null)} className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
-            <button onClick={saveRequest} disabled={busy} className="px-3 py-1.5 text-sm text-white rounded-lg disabled:opacity-60" style={{ background: "#1a3a5c" }}>Create</button>
+            <button onClick={saveRequest} disabled={busy} className="px-3 py-1.5 text-sm text-white rounded-lg disabled:opacity-60 bg-brand-600 hover:bg-brand-700">Create</button>
           </div>
         </div>
       ) : (
         <div className="space-y-2">
           {readOnly ? null : takesRequests(account) ? (
             <button onClick={() => setSr(blankRequest())}
-              className="px-2.5 py-1 text-xs text-white rounded-lg" style={{ background: "#1a3a5c" }}>+ New Service Request</button>
+              className="px-2.5 py-1 text-xs text-white rounded-lg bg-brand-600 hover:bg-brand-700">+ New Service Request</button>
           ) : <p className="text-xs text-gray-500">{NOT_YET_SERVICEABLE}</p>}
           {requests === null ? <Spinner /> : requests.length === 0
-            ? <p className="text-sm text-gray-400 text-center py-6">No service requests for this client yet.</p>
+            ? <p className="text-sm text-gray-500 text-center py-6">No service requests for this client yet.</p>
             : (
               <table className="w-full text-xs">
                 <thead><tr className="text-gray-500 border-b border-gray-100">
@@ -155,7 +155,7 @@ export default function ClientServicingModal({ account, onClose, startWith = nul
                 <tbody>
                   {requests.map((r) => (
                     <tr key={r.id} className="border-b border-gray-50 align-top">
-                      <td className="py-1.5 pr-2 text-gray-700">{requestLabel(r)}{r.triam_entity && <span className="text-gray-400"> · {r.triam_entity}</span>}{r.comments && <div className="text-gray-400">{r.comments}</div>}</td>
+                      <td className="py-1.5 pr-2 text-gray-700">{requestLabel(r)}{r.triam_entity && <span className="text-gray-500"> · {r.triam_entity}</span>}{r.comments && <div className="text-gray-500">{r.comments}</div>}</td>
                       <td className="py-1.5"><span className={`px-1.5 py-0.5 rounded ${STATUS_STYLE[r.status] || "bg-gray-100"}`}>{r.status}</span></td>
                       <td className="py-1.5 text-gray-500">{fmtDate(r.date_received) || "—"}</td>
                       <td className="py-1.5 text-gray-500">{fmtDate(r.date_completed) || "—"}</td>
