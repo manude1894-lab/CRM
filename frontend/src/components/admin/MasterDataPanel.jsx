@@ -10,11 +10,6 @@ import { toast } from "../../store/toast";
 const ENTITY_LISTS = ["service", "service_request_type", "service_request_status"];
 // Kept in alphabetical order by the system (no manual ordering); matches master_service.ALPHABETICAL_LISTS.
 const ALPHABETICAL_LISTS = ["service", "document_category", "service_request_type", "licensing_authority", "tag", "regulator"];
-const ENTITY_HINT = {
-  service: " Tick the Triam entities that offer each service. One-time: the Triam entities for which it is a one-time service (Triam 14-11-2026); a client answering Yes to 'Is this a one-time service?' is offered only these.",
-  service_request_type: " Tick the Triam entities each request type is for; none ticked = every entity.",
-  service_request_status: " Tick the Triam entities each status is used by; none ticked = every entity. The order here is the order in the drop-down.",
-};
 
 // One Triam-entity chip: filled when on.
 const EntityChip = ({ on, title, onClick, children }) => (
@@ -132,8 +127,7 @@ export default function MasterDataPanel() {
       </div>
 
       <div className="md:col-span-3 bg-white rounded-xl border border-gray-100 p-5 shadow-sm">
-        <h3 className="text-sm font-semibold text-gray-700 mb-1">{types.find((t) => t.list_type === listType)?.title}</h3>
-        <p className="text-xs text-gray-400 mb-3">Deactivate a value instead of deleting it.{ENTITY_LISTS.includes(listType) && ENTITY_HINT[listType]}</p>
+        <h3 className="text-sm font-semibold text-gray-700 mb-3">{types.find((t) => t.list_type === listType)?.title}</h3>
 
         {!loading && ENTITY_LISTS.includes(listType) && items.length > 0 && (
           <div className="flex flex-wrap items-center gap-1 px-2 py-1.5 mb-1 rounded-lg border border-gray-100">
