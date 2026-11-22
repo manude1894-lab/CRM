@@ -185,11 +185,12 @@ export default function StandardReports() {
               <div className="overflow-x-auto focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-300 rounded" tabIndex={0} role="region" aria-label="Report table">
                 <table className="w-full text-sm">
                   <thead><tr className="border-b border-gray-100 bg-gray-50 text-xs text-gray-500">
-                    {report.columns.map((c) => <th key={c} className="text-left py-2 px-3 font-semibold">{c}</th>)}
+                    {/* Review 22-11-2026: the first column (the client) stays in view while scrolling a wide report. */}
+                    {report.columns.map((c, j) => <th key={c} className={`text-left py-2 px-3 font-semibold whitespace-nowrap ${j === 0 ? "sticky left-0 z-[1] bg-gray-50 shadow-[1px_0_0_#f3f4f6]" : ""}`}>{c}</th>)}
                   </tr></thead>
                   <tbody>
                     {report.rows.map((r, i) => (
-                      <tr key={i} className="border-b border-gray-50">{r.map((v, j) => <td key={j} className="py-2 px-3 text-xs text-gray-700">{show(v)}</td>)}</tr>
+                      <tr key={i} className="border-b border-gray-50">{r.map((v, j) => <td key={j} className={`py-2 px-3 text-xs text-gray-700 ${j === 0 ? "sticky left-0 bg-white font-medium text-gray-800 shadow-[1px_0_0_#f3f4f6]" : ""}`}>{show(v)}</td>)}</tr>
                     ))}
                   </tbody>
                 </table>

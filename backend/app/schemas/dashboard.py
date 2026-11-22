@@ -13,6 +13,8 @@ class KPISummary(BaseModel):
     clients_active: int
     service_requests_open: int
     invoices_unpaid: int
+    invoices_to_raise: int = 0
+    invoices_overdue: int = 0
     aml_reviews_due: int
 
 

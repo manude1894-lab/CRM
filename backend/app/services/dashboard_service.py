@@ -63,6 +63,7 @@ def build_dashboard(db: Session, user: User) -> dict:
         Instruction.status.notin_((InstructionStatus.COMPLETED.value, InstructionStatus.CANCELLED.value))).count()
     _, raised = invoice_service.list_invoices(db, user, limit=1, status="Raised")
     _, overdue = invoice_service.list_invoices(db, user, limit=1, status="Overdue")
+    _, to_raise = invoice_service.list_invoices(db, user, limit=1, status="Requested")
 
     visible_ids = {a.id for a in accounts}
     pending = db.query(ApprovalRequest).filter(ApprovalRequest.status == ApprovalStatus.PENDING.value).all()
@@ -116,6 +117,8 @@ def build_dashboard(db: Session, user: User) -> dict:
             "clients_active": by_status[wf.APPROVED] + by_status[wf.ACTIVE],
             "service_requests_open": open_srs,
             "invoices_unpaid": raised + overdue,
+            "invoices_to_raise": to_raise,  # review 22-11-2026: the Accounts desk's tiles
+            "invoices_overdue": overdue,
             "aml_reviews_due": len(aml_due),
         },
         "client_status_breakdown": [{"status": s, "count": by_status[s]} for s in CLIENT_STATUSES],

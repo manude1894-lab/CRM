@@ -4,6 +4,7 @@ import { Icon, Modal, Field, Input, Select, MultiSelect, CountrySelect, Textarea
 import AccountPartyModal from "../AccountPartyModal";
 import NameLookup from "./NameLookup";
 import CompletenessChecklist from "./CompletenessChecklist";
+import SectionIndex, { SectionIndexProvider, useSectionIndex } from "./SectionIndex";
 import WorkflowBar from "./WorkflowBar";
 import AmendmentBar from "./AmendmentBar";
 import ClientDocumentsFolder from "./ClientDocumentsFolder";
@@ -35,8 +36,10 @@ const alphabetical = (codes) => [...codes].sort((x, y) => x.localeCompare(y));
 // readOnly: the client is locked (submitted, approved without an amendment, exited) — fields are shown, not editable.
 const Section = ({ title, children, hasData, onSave, status, error, dirty, readOnly = false }) => {
   const [open, setOpen] = useState(!!hasData);
+  const ref = useRef(null);
+  useSectionIndex(typeof title === "string" ? title : String(title), ref, () => setOpen(true), status === "error");
   return (
-    <div className={`mb-2 border rounded-lg overflow-hidden transition-colors ${open ? "border-gray-200 shadow-[0_1px_2px_rgba(16,24,40,0.04)]" : "border-gray-200/70"}`}>
+    <div ref={ref} className={`scroll-mt-14 mb-2 border rounded-lg overflow-hidden transition-colors ${open ? "border-gray-200 shadow-[0_1px_2px_rgba(16,24,40,0.04)]" : "border-gray-200/70"}`}>
       <button type="button" onClick={() => setOpen((o) => !o)}
         className={`w-full flex items-center justify-between px-4 py-2.5 bg-white hover:bg-gray-50 transition-colors text-left ${open ? "border-b border-gray-100" : ""}`}>
         <span className="text-[13px] font-semibold text-gray-800 flex items-center gap-2">
@@ -310,12 +313,16 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
     }
   };
 
+  const topRef = useRef(null);
+  const [missingFields, setMissingFields] = useState([]); // for the section index
   const sectionProps = (key) => ({ onSave: locked ? undefined : () => saveSection(key), readOnly: locked, status: sectionStatus[key], error: sectionError[key], dirty: sectionDirty(key) });
   const today = new Date().toISOString().slice(0, 10);
 
   return (
     <Modal title={mode === "edit" ? "Edit Client" : "New Client"} onClose={cancel}>
-      <div className="space-y-3">
+      <SectionIndexProvider>
+      <SectionIndex missing={locked || approvedClient ? [] : missingFields} topRef={topRef} />
+      <div ref={topRef} className="space-y-3 scroll-mt-14">
         {form._id && !hideWorkflow && (
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 px-3 py-2 rounded-lg bg-gray-50 border border-gray-100 text-xs text-gray-600">
             <span>Client ID <span className="font-mono font-semibold text-gray-800">{form._client_id || "—"}</span></span>
@@ -327,7 +334,7 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
         {form._id && approvedClient && (
           <AmendmentBar accountId={form._id} refreshKey={refreshKey} onState={onAmendmentState} onDecided={onAmendmentDecided} submitSignal={amendSubmitSignal} />
         )}
-        {!locked && !approvedClient && <CompletenessChecklist accountId={form._id} refreshKey={refreshKey} />}
+        {!locked && !approvedClient && <CompletenessChecklist accountId={form._id} refreshKey={refreshKey} onLoaded={(st) => setMissingFields(st?.missing || [])} />}
         <fieldset disabled={locked} className="min-w-0">
         {/* Triam 20-11-2026 (S T Krishna): the onboarding form begins with the Triam entities, then the RMs. The
             entities decide the services offered below, the Client ID prefix and the offshore rules. */}
@@ -736,6 +743,7 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
           </button>
         )}
       </div>
+      </SectionIndexProvider>
     </Modal>
   );
 }

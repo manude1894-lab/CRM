@@ -4,6 +4,7 @@ import { dashboardApi } from "../api/endpoints";
 import { Icon, Spinner, ErrorBanner } from "../components/ui";
 import { fmtDate, personLabel } from "../utils/constants";
 import { useAuthStore } from "../store/auth";
+import { dashboardTiles } from "../utils/dashboardTiles";
 
 const DUE_SOON_DAYS = 60;
 const REFRESH_MS = 5 * 60 * 1000;
@@ -158,6 +159,9 @@ function Pipeline({ statuses, onOpen }) {
 export default function Dashboard({ onNavigate = () => {} } = {}) {
   const user = useAuthStore((s) => s.user);
   const coordinator = useAuthStore((s) => s.isProspectCoordinator());
+  const isAdmin = useAuthStore((s) => s.isAdmin());
+  const readOnly = useAuthStore((s) => s.isReadOnly());
+  const can = useAuthStore((s) => s.can);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -197,7 +201,25 @@ export default function Dashboard({ onNavigate = () => {} } = {}) {
   const due = (data.due_soon || []).map((d) => ({ ...d, id: d.account_id, company: d.company_name }));
   const dueShown = showAllDue ? due : due.slice(0, 8);
 
+  // Review 22-11-2026 (package 5): each desk sees the numbers it acts on. Someone holding several roles sees the
+  // tiles of each; administrators and Inquiry & Reports see them all.
+  const go = (page) => () => onNavigate({ page });
+  const tiles = {
+    approver: <StatCard label="Awaiting final approval" value={data.approvals_pending.approver} attention hint="Your decision" icon="shield" tone="gold" onClick={go("approvals")} />,
+    compliance: <StatCard label="Awaiting Compliance" value={data.approvals_pending.compliance} attention hint="Review and decide" icon="shield" tone="gold" onClick={go("approvals")} />,
+    toRaise: <StatCard label="Invoices to raise" value={kpis.invoices_to_raise} attention hint="Requested by RMs" icon="invoices" tone="gold" onClick={go("invoices")} />,
+    overdue: <StatCard label="Overdue invoices" value={kpis.invoices_overdue} attention hint="Chase payment" icon="warn" tone="gold" onClick={go("invoices")} />,
+    prospectsOpen: <StatCard label="Open prospects" value={kpis.prospects_open} icon="kanban" tone="navy" onClick={go("prospects")} />,
+    unassigned: <StatCard label={coordinator ? "Prospects to assign" : "Unassigned prospects"} value={kpis.prospects_unassigned} attention hint={coordinator ? "Assign an RM" : "Available to take"} icon="warn" tone="gold" onClick={go("prospects")} />,
+    preparing: <StatCard label="Clients being prepared" value={kpis.clients_in_progress} icon="accounts" tone="navy" onClick={go("accounts")} />,
+    awaiting: <StatCard label="Awaiting approval" value={kpis.clients_awaiting_approval} attention hint="With Compliance / Approver" icon="shield" tone="gold" onClick={go("approvals")} />,
+    active: <StatCard label="Approved & active clients" value={kpis.clients_active} icon="check" tone="green" onClick={go("maintenance")} />,
+    requests: <StatCard label="Open service requests" value={kpis.service_requests_open} icon="instructions" tone="slate" onClick={go("instructions")} />,
+    unpaid: <StatCard label="Unpaid invoices" value={kpis.invoices_unpaid} attention hint="Follow up payment" icon="invoices" tone="gold" onClick={go("invoices")} />,
+    aml: <StatCard label={`AML reviews due (${DUE_SOON_DAYS} days)`} value={kpis.aml_reviews_due} attention hint="Plan the reviews" icon="calendar" tone="slate" onClick={go("reports")} />,
+  };
   const people = data.portfolio_by_rm || [];
+  const tileKeys = dashboardTiles({ isAdmin, readOnly, coordinator, can, handlesClients: user?.handles_clients !== false });
   const maxClients = Math.max(1, ...people.map((p) => p.total));
 
   return (
@@ -233,14 +255,7 @@ export default function Dashboard({ onNavigate = () => {} } = {}) {
 
       {/* BRD §2 — snapshot MI. */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <StatCard label="Open prospects" value={kpis.prospects_open} icon="kanban" tone="navy" onClick={() => onNavigate({ page: "prospects" })} />
-        <StatCard label={coordinator ? "Prospects to assign" : "Unassigned prospects"} value={kpis.prospects_unassigned} attention hint={coordinator ? "Assign an RM" : "Available to take"} icon="warn" tone="gold" onClick={() => onNavigate({ page: "prospects" })} />
-        <StatCard label="Clients being prepared" value={kpis.clients_in_progress} icon="accounts" tone="navy" onClick={() => onNavigate({ page: "accounts" })} />
-        <StatCard label="Awaiting approval" value={kpis.clients_awaiting_approval} attention hint="With Compliance / Approver" icon="shield" tone="gold" onClick={() => onNavigate({ page: "approvals" })} />
-        <StatCard label="Approved & active clients" value={kpis.clients_active} icon="check" tone="green" onClick={() => onNavigate({ page: "maintenance" })} />
-        <StatCard label="Open service requests" value={kpis.service_requests_open} icon="instructions" tone="slate" onClick={() => onNavigate({ page: "instructions" })} />
-        <StatCard label="Unpaid invoices" value={kpis.invoices_unpaid} attention hint="Follow up payment" icon="invoices" tone="gold" onClick={() => onNavigate({ page: "invoices" })} />
-        <StatCard label={`AML reviews due (${DUE_SOON_DAYS} days)`} value={kpis.aml_reviews_due} attention hint="Plan the reviews" icon="calendar" tone="slate" onClick={() => onNavigate({ page: "reports" })} />
+        {tileKeys.map((k) => <React.Fragment key={k}>{tiles[k]}</React.Fragment>)}
       </div>
 
       <Panel title="Client pipeline"
