@@ -31,18 +31,30 @@ const greeting = () => {
   return h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
 };
 
-function StatCard({ label, value, hint, attention, icon, onClick }) {
+// Icon chip tones for the KPI tiles (decoration only; the number and label carry the meaning).
+const TONES = {
+  navy: "bg-brand-50 text-brand-600",
+  gold: "bg-amber-50 text-amber-600",
+  green: "bg-emerald-50 text-emerald-600",
+  slate: "bg-slate-100 text-slate-600",
+};
+
+function StatCard({ label, value, hint, attention, icon, tone = "navy", onClick }) {
   const hot = attention && value > 0;
   return (
     <button onClick={onClick}
-      className="text-left bg-white rounded-xl border border-gray-200/70 px-4 py-3.5 hover:border-brand-200 hover:shadow-sm transition-all group">
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-xs font-medium text-gray-500 truncate">{label}</span>
-        <Icon name={icon} size={16} className="text-gray-300 group-hover:text-brand-500 flex-shrink-0" />
+      className="text-left bg-white rounded-xl border border-gray-200/70 shadow-[0_1px_2px_rgba(16,24,40,0.04)] px-4 py-4 hover:border-brand-200 hover:shadow-md transition-all group">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="text-xs font-medium text-gray-500 leading-snug line-clamp-2">{label}</div>
+          <div className="text-[28px] leading-8 font-semibold text-gray-900 mt-1.5">{value}</div>
+        </div>
+        <span className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${TONES[tone]}`}>
+          <Icon name={icon} size={18} />
+        </span>
       </div>
-      <div className="text-2xl font-bold text-gray-900 mt-1 tabular-nums">{value}</div>
-      <div className={`text-[11px] mt-0.5 ${hot ? "text-amber-600 font-medium" : "text-gray-400"}`}>
-        {hot ? hint : value > 0 ? "View" : "All clear"}
+      <div className={`text-[11px] mt-1.5 ${hot ? "text-amber-700 font-medium" : "text-gray-400 group-hover:text-brand-600"}`}>
+        {hot ? hint : value > 0 ? "View →" : "All clear"}
       </div>
     </button>
   );
@@ -103,25 +115,51 @@ function EmptyState({ text }) {
   );
 }
 
-/** BRD §9 — the client lifecycle New → … → Exited, with how many clients are at each status. */
-function Lifecycle({ statuses, onOpen }) {
+// The lifecycle's statuses grouped into phases (BRD §9; onboarding statuses of Triam UAT 18-11-2026).
+const PHASES = [
+  ["Onboarding", ["New", "WIP", "Pending with Client", "Pending with Regn Authority", "On Hold", "Rejected"]],
+  ["Approval", ["Awaiting Approval"]],
+  ["Serviced", ["Approved", "Active", "Inactive", "Marked for Exit"]],
+  ["Closed", ["Exited", "Dropped"]],
+];
+const PLOT_H = 120; // px of column height for the largest stage
+
+/** BRD §9 — the client pipeline: one column per status, grouped by phase, each opening its own list.
+ * Single series (clients per status), so one hue and no legend; the count rides each column's cap. */
+function Pipeline({ statuses, onOpen }) {
+  const count = Object.fromEntries(statuses.map((s) => [s.status, s.count]));
+  const known = new Set(PHASES.flatMap(([, list]) => list));
+  const phases = [...PHASES, ["Other", statuses.map((s) => s.status).filter((s) => !known.has(s))]]
+    .map(([name, list]) => [name, list.filter((s) => s in count)]).filter(([, list]) => list.length);
+  const max = Math.max(1, ...statuses.map((s) => s.count));
   return (
     <div className="overflow-x-auto">
-      <div className="flex min-w-[720px]">
-        {statuses.map((s, i) => {
-          const busy = s.count > 0;
-          return (
-            <button key={s.status} onClick={() => onOpen(s.status)} title={`${s.status}: ${s.count} (open the list)`}
-              className="flex-1 min-w-0 relative group px-1 pt-3 pb-3 flex flex-col items-center justify-start text-center">
-              <span className={`absolute top-[26px] h-0.5 bg-gray-200 ${i === 0 ? "left-1/2 right-0" : i === statuses.length - 1 ? "left-0 right-1/2" : "left-0 right-0"}`} />
-              <span className={`relative mx-auto flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold tabular-nums transition-colors
-                ${busy ? "bg-brand-600 text-white ring-4 ring-brand-50" : "bg-white text-gray-400 border border-gray-200 group-hover:border-brand-300"}`}>
-                {s.count}
-              </span>
-              <span className={`block mt-2 text-[11px] leading-tight ${busy ? "text-gray-800 font-medium" : "text-gray-400"}`}>{s.status}</span>
-            </button>
-          );
-        })}
+      <div className="flex min-w-[760px] gap-3">
+        {phases.map(([phase, list]) => (
+          <div key={phase} className="flex flex-col" style={{ flex: list.length }}>
+            <div className="flex items-end border-b border-gray-200" style={{ height: PLOT_H + 22 }}>
+              {list.map((status) => {
+                const n = count[status];
+                return (
+                  <button key={status} onClick={() => onOpen(status)} title={`${status}: ${n} client${n === 1 ? "" : "s"} · open the list`}
+                    aria-label={`${status}: ${n}`} className="group flex-1 h-full flex flex-col items-center justify-end px-1 rounded-t-md hover:bg-brand-50/60">
+                    <span className={`text-xs font-semibold mb-1 ${n ? "text-gray-800" : "text-gray-300"}`}>{n}</span>
+                    {n > 0 && (
+                      <span className="w-full max-w-[24px] rounded-t-[4px] bg-brand-600 group-hover:bg-brand-500 transition-colors"
+                        style={{ height: Math.max(4, (n / max) * PLOT_H) }} />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="flex">
+              {list.map((status) => (
+                <span key={status} className="flex-1 px-0.5 pt-1.5 text-[10.5px] leading-tight text-center text-gray-500">{status}</span>
+              ))}
+            </div>
+            <div className="mt-2 pt-1.5 border-t border-gray-100 text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-400 text-center">{phase}</div>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -195,12 +233,13 @@ export default function Dashboard({ onNavigate = () => {} } = {}) {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 p-3">
             {myWork.filter((w) => w.count > 0).map((w) => (
               <button key={w.key} onClick={() => onNavigate({ page: w.page })}
-                className="flex items-center gap-3 text-left rounded-lg border border-gray-100 hover:border-brand-300 hover:bg-brand-50/40 px-3 py-2.5">
-                <span className="text-2xl font-bold text-brand-700 w-10 text-center">{w.count}</span>
-                <span className="min-w-0">
+                className="group flex items-center gap-3 text-left rounded-lg border border-gray-100 bg-gray-50/40 hover:bg-white hover:border-brand-200 hover:shadow-sm px-3 py-2.5 transition-all">
+                <span className="min-w-[40px] h-10 px-2 rounded-lg bg-brand-600 text-white text-lg font-semibold flex items-center justify-center">{w.count}</span>
+                <span className="min-w-0 flex-1">
                   <span className="block text-sm font-medium text-gray-800">{w.label}</span>
                   {w.hint && <span className="block text-[11px] text-gray-400">{w.hint}</span>}
                 </span>
+                <Icon name="chevronRight" size={16} className="text-gray-300 group-hover:text-brand-500 flex-shrink-0" />
               </button>
             ))}
           </div>
@@ -209,15 +248,25 @@ export default function Dashboard({ onNavigate = () => {} } = {}) {
 
       {/* BRD §2 — snapshot MI. */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <StatCard label="Open prospects" value={kpis.prospects_open} icon="kanban" onClick={() => onNavigate({ page: "prospects" })} />
-        <StatCard label={coordinator ? "Prospects to assign" : "Unassigned prospects"} value={kpis.prospects_unassigned} attention hint={coordinator ? "Assign an RM" : "Available to take"} icon="warn" onClick={() => onNavigate({ page: "prospects" })} />
-        <StatCard label="Clients being prepared" value={kpis.clients_in_progress} icon="accounts" onClick={() => onNavigate({ page: "accounts" })} />
-        <StatCard label="Awaiting approval" value={kpis.clients_awaiting_approval} attention hint="With Compliance / Approver" icon="shield" onClick={() => onNavigate({ page: "approvals" })} />
-        <StatCard label="Approved & active clients" value={kpis.clients_active} icon="check" onClick={() => onNavigate({ page: "maintenance" })} />
-        <StatCard label="Open service requests" value={kpis.service_requests_open} icon="instructions" onClick={() => onNavigate({ page: "instructions" })} />
-        <StatCard label="Unpaid invoices" value={kpis.invoices_unpaid} attention hint="Follow up payment" icon="invoices" onClick={() => onNavigate({ page: "invoices" })} />
-        <StatCard label={`AML reviews due (${DUE_SOON_DAYS} days)`} value={kpis.aml_reviews_due} attention hint="Plan the reviews" icon="calendar" onClick={() => onNavigate({ page: "reports" })} />
+        <StatCard label="Open prospects" value={kpis.prospects_open} icon="kanban" tone="navy" onClick={() => onNavigate({ page: "prospects" })} />
+        <StatCard label={coordinator ? "Prospects to assign" : "Unassigned prospects"} value={kpis.prospects_unassigned} attention hint={coordinator ? "Assign an RM" : "Available to take"} icon="warn" tone="gold" onClick={() => onNavigate({ page: "prospects" })} />
+        <StatCard label="Clients being prepared" value={kpis.clients_in_progress} icon="accounts" tone="navy" onClick={() => onNavigate({ page: "accounts" })} />
+        <StatCard label="Awaiting approval" value={kpis.clients_awaiting_approval} attention hint="With Compliance / Approver" icon="shield" tone="gold" onClick={() => onNavigate({ page: "approvals" })} />
+        <StatCard label="Approved & active clients" value={kpis.clients_active} icon="check" tone="green" onClick={() => onNavigate({ page: "maintenance" })} />
+        <StatCard label="Open service requests" value={kpis.service_requests_open} icon="instructions" tone="slate" onClick={() => onNavigate({ page: "instructions" })} />
+        <StatCard label="Unpaid invoices" value={kpis.invoices_unpaid} attention hint="Follow up payment" icon="invoices" tone="gold" onClick={() => onNavigate({ page: "invoices" })} />
+        <StatCard label={`AML reviews due (${DUE_SOON_DAYS} days)`} value={kpis.aml_reviews_due} attention hint="Plan the reviews" icon="calendar" tone="slate" onClick={() => onNavigate({ page: "reports" })} />
       </div>
+
+      <Panel title="Client pipeline"
+        right={<span className="text-xs text-gray-400">With Compliance {data.approvals_pending.compliance} · With the Approver {data.approvals_pending.approver}</span>}>
+        <div className="px-4 pt-4 pb-3">
+          {/* Each stage opens its own list, filtered to that status: onboarding stages in New Client
+              Onboarding, existing-client stages in Client Data Maintenance. */}
+          <Pipeline statuses={data.client_status_breakdown || []}
+            onOpen={(status) => onNavigate({ page: EXISTING_STATUSES.includes(status) ? "maintenance" : "accounts", status, nonce: Date.now() })} />
+        </div>
+      </Panel>
 
       <PendingApprovals rows={data.pending_approvals || []} onOpen={goClient} />
 
@@ -238,15 +287,6 @@ export default function Dashboard({ onNavigate = () => {} } = {}) {
         </Panel>
       )}
 
-      <Panel title="Client lifecycle"
-        right={<span className="text-xs text-gray-400">With Compliance {data.approvals_pending.compliance} · With the Approver {data.approvals_pending.approver}</span>}>
-        <div className="px-3 py-2">
-          {/* Each stage opens its own list, filtered to that status: onboarding stages in New Client
-              Onboarding, existing-client stages in Client Data Maintenance. */}
-          <Lifecycle statuses={data.client_status_breakdown || []}
-            onOpen={(status) => onNavigate({ page: EXISTING_STATUSES.includes(status) ? "maintenance" : "accounts", status, nonce: Date.now() })} />
-        </div>
-      </Panel>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         <Panel title={`Due soon (next ${DUE_SOON_DAYS} days)`} right={due.length > 0 && <span className="text-xs font-medium text-gray-500">{due.length}</span>}>

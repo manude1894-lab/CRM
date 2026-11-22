@@ -36,12 +36,12 @@ const alphabetical = (codes) => [...codes].sort((x, y) => x.localeCompare(y));
 const Section = ({ title, children, hasData, onSave, status, error, dirty, readOnly = false }) => {
   const [open, setOpen] = useState(!!hasData);
   return (
-    <div className="mb-2 border border-gray-100 rounded-lg overflow-hidden">
+    <div className={`mb-2 border rounded-lg overflow-hidden transition-colors ${open ? "border-gray-200 shadow-[0_1px_2px_rgba(16,24,40,0.04)]" : "border-gray-200/70"}`}>
       <button type="button" onClick={() => setOpen((o) => !o)}
-        className="w-full flex items-center justify-between px-3 py-2 bg-gray-50 hover:bg-gray-100 transition-colors text-left">
-        <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide flex items-center gap-1.5">
+        className={`w-full flex items-center justify-between px-4 py-2.5 bg-white hover:bg-gray-50 transition-colors text-left ${open ? "border-b border-gray-100" : ""}`}>
+        <span className="text-[13px] font-semibold text-gray-800 flex items-center gap-2">
           {title}
-          {hasData && <span className="w-1.5 h-1.5 rounded-full bg-brand-500 flex-shrink-0" />}
+          {hasData && <span className="w-1.5 h-1.5 rounded-full bg-gold flex-shrink-0" title="Has information" />}
           {onSave && dirty && <span className="normal-case tracking-normal text-[10px] font-semibold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">Unsaved changes</span>}
         </span>
         <Icon name="chevronRight" size={14} className={`text-gray-400 transition-transform flex-shrink-0 ${open ? "rotate-90" : ""}`} />
@@ -216,9 +216,6 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
   const oneTimeQuestion = (
     <YesNo label="Is this a one-time service?" required={req("is_one_time_service")} value={form.is_one_time_service} onChange={setValue("is_one_time_service")} />
   );
-  const oneTimeNote = oneTime && (
-    <p className="text-[11px] text-gray-500 -mt-2 mb-3">One-time service: only the one-time services of the client's Triam entities are offered{oneTimeEntities.length ? ` (Triam entities: ${oneTimeEntities.join(", ")})` : ""}.</p>
-  );
   const tags = useMasters("tag", TAG_OPTIONS);
   const regulators = useMasters("regulator", REGULATOR_OPTIONS);
   const authorities = useMasters("licensing_authority", []);
@@ -331,12 +328,6 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
           <AmendmentBar accountId={form._id} refreshKey={refreshKey} onState={onAmendmentState} onDecided={onAmendmentDecided} submitSignal={amendSubmitSignal} />
         )}
         {!locked && !approvedClient && <CompletenessChecklist accountId={form._id} refreshKey={refreshKey} />}
-        {mode === "new" && form._prospect_uid && (
-          <div className="mb-3 text-xs rounded-lg bg-brand-50 text-brand-700 px-3 py-2">
-            Creating the client from prospect <span className="font-mono font-semibold">{form._prospect_uid}</span>. This is the client's
-            temporary ID until the Final approval, when the Client ID is issued.
-          </div>
-        )}
         <fieldset disabled={locked} className="min-w-0">
         {/* Triam 20-11-2026 (S T Krishna): the onboarding form begins with the Triam entities, then the RMs. The
             entities decide the services offered below, the Client ID prefix and the offshore rules. */}
@@ -346,9 +337,6 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
               <option value="">— select —</option>
               {entityOptions(form.anchor_entity).map((t) => <option key={t} value={t}>{entities.labelOf(t)}</option>)}
             </Select>
-            {form._client_id && saved.anchor_entity && form.anchor_entity !== saved.anchor_entity && (
-              <p className="text-[11px] text-amber-700 mt-1">The Client ID {form._client_id} stays as it is: a Client ID never changes, even when the Anchor Entity does.</p>
-            )}
           </Field>
           <Field label="Non-anchor Entities">
             <MultiSelect options={entityOptions(form.non_anchor_entities).filter((t) => t !== form.anchor_entity)} value={form.non_anchor_entities} onChange={setValue("non_anchor_entities")} />
@@ -403,9 +391,6 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
                 <CountrySelect value={form.country} onChange={set("country")} countries={countries} />
               </Field>
             </div>
-            {form.client_category === "Under Formation" && (
-              <p className="text-[11px] text-gray-500 -mt-2 mb-3">Licence, incorporation, address and tax details may be left blank until the company is formed.</p>
-            )}
             {form.client_category === "Existing" && <div className="grid grid-cols-2 gap-3">{oneTimeQuestion}</div>}
             <div className="grid grid-cols-2 gap-3">
               <Field label="Contact Mobile" required={req("contact_mobile_number")}>
@@ -422,7 +407,6 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
                 </p>
               )}
             </Field>
-            {oneTimeNote}
           </>
         )}
         <Field label="Single Point of Contact (Client Contact Name)">
@@ -541,9 +525,6 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
                 (unless a value was already saved); the Financial Year End stays, optional. */}
             <Section title={offshore ? "Financial Year" : "Tax"} hasData={!!(form.trn_vat_number || form.financial_year_end || form.corp_tax_registered)}
               {...sectionProps("tax")}>
-              {offshore && (
-                <p className="text-[11px] text-gray-500 mb-2">No VAT or Corporate Tax for offshore (BVI) companies. The Financial Year End is optional.</p>
-              )}
               <div className="grid grid-cols-2 gap-3">
                 {showVat && <Field label="TRN / VAT Registration No.">
                   <Input value={form.trn_vat_number} onChange={(e) => setForm({ ...form, trn_vat_number: taxNumber(e.target.value, form.country) })} maxLength={20} placeholder={taxNumberHint(form.country)} />
@@ -596,7 +577,6 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
             <Field label="Nature of Services Sought" required={req("nature_of_services_sought")}>
               <MultiSelect options={serviceOptions(false)} value={form.nature_of_services_sought} onChange={setValue("nature_of_services_sought")} />
             </Field>
-            {oneTimeNote}
             <Field label="Detailed Nature of Profession / Business">
               <Textarea rows={2} value={form.nature_of_business} onChange={set("nature_of_business")} maxLength={1000} />
             </Field>
@@ -664,7 +644,6 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
           <div className="grid grid-cols-2 gap-3">
             <Field label="Screening Date"><DateInput max={today} value={form.screening_date || ""} onChange={set("screening_date")} /></Field>
           </div>
-          <p className="text-[11px] text-gray-500">File the screening report in the client's documents, or in the person's own record.</p>
         </Section>
 
         <Section title="Biz Rationale Report" hasData={!!(form.br_person_met || form.br_rationale)} {...sectionProps("bizRationale")}>

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { accountsApi } from "../api/endpoints";
-import { Badge, Button, Embedded, ErrorBanner, FactList, PageHeader, Panel, Spinner, Tabs } from "../components/ui";
+import { Badge, Button, Embedded, ErrorBanner, FactList, Icon, Panel, Spinner, Tabs } from "../components/ui";
 import AccountFormModal from "../components/accounts/AccountFormModal";
 import AccountPartyModal from "../components/AccountPartyModal";
 import ClientDocumentsFolder from "../components/accounts/ClientDocumentsFolder";
@@ -10,7 +10,7 @@ import WorkflowBar from "../components/accounts/WorkflowBar";
 import CompletenessChecklist from "../components/accounts/CompletenessChecklist";
 import { accountToForm, isFoundation, isOffshore } from "../components/accounts/accountForm";
 import { useAuthStore } from "../store/auth";
-import { fmtDate, WITH_RM_STATUSES } from "../utils/constants";
+import { fmtDate, initialsOf, WITH_RM_STATUSES } from "../utils/constants";
 import { fmtFYE } from "../utils/fye";
 
 const yesNo = (v) => (v === true ? "Yes" : v === false ? "No" : null);
@@ -62,18 +62,32 @@ export default function ClientProfilePage({ accountId, initialTab = "overview", 
 
   return (
     <div className="space-y-4">
-      <PageHeader
-        back={{ label: backLabel, onClick: onBack }}
-        title={a.company_name}
-        subtitle={[a.client_id || `Temporary ID ${a.temp_id || a.account_uid}`, individual ? "Individual" : "Corporate", a.anchor_entity, userName(a.spoc_id) && `Anchor RM: ${userName(a.spoc_id)}`].filter(Boolean).join(" · ")}
-        actions={!readOnly && <>
-          {["Approved", "Active"].includes(a.profile_status) && (
-            <Button onClick={() => { setServicingStart("request"); setTab("servicing"); }}>New service request</Button>
-          )}
-          <Button onClick={() => setTab("profile")}>Edit profile</Button>
-        </>}
-      />
-      <div className="flex flex-wrap gap-1.5 items-center">
+      {/* Triam 22-11-2026 design refresh: the client's header as one card (initials, name, ID, key facts, status). */}
+      <button onClick={onBack} className="flex items-center gap-1 text-xs text-gray-500 hover:text-brand-600">
+        <Icon name="chevronLeft" size={14} /> {backLabel}
+      </button>
+      <div className="bg-white border border-gray-200/70 rounded-xl shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+      <div className="flex flex-wrap items-start gap-4 p-5 pb-3">
+        <span className="w-12 h-12 rounded-xl bg-brand-600 text-gold text-base font-bold flex items-center justify-center flex-shrink-0">{initialsOf(a.company_name)}</span>
+        <div className="min-w-0 flex-1">
+          <h1 className="text-xl font-bold text-gray-900 tracking-tight leading-tight">{a.company_name}</h1>
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1 text-sm text-gray-500">
+            <span className="font-mono text-xs text-gray-700 bg-gray-100 rounded px-1.5 py-0.5">{a.client_id || `Temporary ID ${a.temp_id || a.account_uid}`}</span>
+            {[individual ? "Individual" : "Corporate", a.anchor_entity, userName(a.spoc_id) && `Anchor RM: ${userName(a.spoc_id)}`].filter(Boolean).map((x) => (
+              <span key={x} className="before:content-['·'] before:mr-2 before:text-gray-300">{x}</span>
+            ))}
+          </div>
+        </div>
+        {!readOnly && (
+          <div className="flex items-center gap-2 flex-wrap">
+            {["Approved", "Active"].includes(a.profile_status) && (
+              <Button onClick={() => { setServicingStart("request"); setTab("servicing"); }}>New service request</Button>
+            )}
+            <Button onClick={() => setTab("profile")}>Edit profile</Button>
+          </div>
+        )}
+      </div>
+      <div className="flex flex-wrap gap-1.5 items-center px-5 pb-4 empty:hidden">
         {/* BRD §11: existing relationships show status + date + Risk Level + Next AML Review on top. */}
         {existing && a.next_aml_review_date && (
           <span className={`text-[11px] px-2 py-0.5 rounded ${new Date(a.next_aml_review_date) < new Date() ? "bg-red-50 text-red-700" : "bg-gray-100 text-gray-600"}`}>
@@ -86,7 +100,10 @@ export default function ClientProfilePage({ accountId, initialTab = "overview", 
       </div>
 
       {/* Status, approval actions and review history — the same on every tab. */}
-      <WorkflowBar key={`wf-${version}-${wfVersion}`} accountId={a.id} onChanged={refresh} />
+      <div className="border-t border-gray-100 [&>div]:mb-0 [&>div]:border-0 [&>div]:rounded-none [&>div]:rounded-b-xl">
+        <WorkflowBar key={`wf-${version}-${wfVersion}`} accountId={a.id} onChanged={refresh} />
+      </div>
+      </div>
 
       <Tabs tabs={tabs} active={tab} onChange={setTab} />
 

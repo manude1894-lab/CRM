@@ -30,6 +30,9 @@ const MOVE_STYLE = {
   Dropped: "border-rose-200 text-rose-600 hover:bg-rose-50",
 };
 
+const LANE_COLOUR = { New: "bg-brand-500", Won: "bg-emerald-500", Dropped: "bg-slate-400" };
+const initials = (name) => (name || "?").split(/\s+/).filter((w) => /[A-Za-z0-9]/.test(w[0] || "")).slice(0, 2).map((w) => w[0].toUpperCase()).join("") || "?";
+
 export default function ProspectsPage({ onNavigate } = {}) {
   const [items, setItems] = useState([]);
   const [users, setUsers] = useState([]);
@@ -140,19 +143,25 @@ export default function ProspectsPage({ onNavigate } = {}) {
         {PROSPECT_STATUS_OPTIONS.map((col) => {
           const colItems = items.filter((p) => p.status === col);
           return (
-            <div key={col} className="min-w-0">
+            <div key={col} className="min-w-0 rounded-xl bg-slate-100/60 border border-slate-200/60 p-2">
+              {/* Triam 22-11-2026 design refresh: a lane per status, its colour on top. */}
+              <div className={`h-1 rounded-full mb-2 ${LANE_COLOUR[col] || "bg-slate-300"}`} />
               <div className="flex items-center justify-between mb-2 px-1">
-                <span className="text-xs font-semibold text-gray-700">{col}</span>
-                <span className="text-xs text-gray-400 bg-gray-100 rounded-full px-2 py-0.5">{colItems.length}</span>
+                <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-600">{col}</span>
+                <span className="text-[11px] font-semibold text-slate-500 bg-white border border-slate-200 rounded-full px-2 py-0.5">{colItems.length}</span>
               </div>
               <div className="space-y-2 min-h-16">
+                {colItems.length === 0 && <div className="text-xs text-slate-400 text-center py-8">No prospects</div>}
                 {colItems.map((p) => (
-                  <div key={p.id} className="bg-white border border-gray-100 rounded-xl p-3 shadow-sm">
-                    <div className="flex items-start justify-between gap-2">
-                      <button onClick={() => openEdit(p)} className="text-xs font-semibold text-gray-800 text-left hover:text-brand-600">{p.company_name}</button>
+                  <div key={p.id} className="bg-white border border-gray-200/70 rounded-xl p-3 shadow-[0_1px_2px_rgba(16,24,40,0.05)] hover:shadow-md transition-shadow">
+                    <div className="flex items-start gap-2.5">
+                      <span className="w-8 h-8 rounded-lg bg-brand-50 text-brand-700 text-[11px] font-bold flex items-center justify-center flex-shrink-0">{initials(p.company_name)}</span>
+                      <div className="min-w-0 flex-1">
+                        <button onClick={() => openEdit(p)} className="block text-[13px] font-semibold text-gray-900 text-left leading-snug hover:text-brand-600">{p.company_name}</button>
+                        <span className="inline-block mt-0.5 font-mono text-[10px] text-gray-500 bg-gray-100 rounded px-1.5 py-px">{p.prospect_uid}</span>
+                      </div>
                     </div>
-                    <div className="text-[11px] text-gray-400 mt-1">{p.prospect_uid}</div>
-                    {p.contact_name && <div className="text-xs text-gray-500 mt-1">{p.contact_name}</div>}
+                    {p.contact_name && <div className="text-xs text-gray-600 mt-2">{p.contact_name}</div>}
                     <div className="text-[11px] text-gray-400 mt-1 space-y-0.5">
                       {p.owner_id
                         ? <div>RM: <span className="text-gray-600">{p.owner_name || userById[p.owner_id]?.name || `User #${p.owner_id}`}</span></div>
@@ -164,7 +173,7 @@ export default function ProspectsPage({ onNavigate } = {}) {
                       <button onClick={() => onNavigate?.({ page: "accounts", accountId: p.converted_account_id })}
                         className="mt-1 text-[11px] text-emerald-700 hover:underline">Client created. Open</button>
                     )}
-                    {!readOnly && <div className="flex items-center gap-1 mt-2 flex-wrap" onClick={(e) => e.stopPropagation()}>
+                    {!readOnly && <div className="flex items-center gap-1 mt-2.5 pt-2.5 border-t border-gray-100 flex-wrap empty:hidden" onClick={(e) => e.stopPropagation()}>
                       {!p.converted_account_id && coordinator && (
                         <button onClick={() => setAssign({ prospect: p, rm_id: p.owner_id || "", comments: p.assignor_comments || "" })}
                           className="text-xs px-2.5 py-1 rounded-md border border-sky-200 bg-sky-50 text-sky-800 font-medium hover:bg-sky-100">{p.owner_id ? "Reassign" : "Assign"}</button>

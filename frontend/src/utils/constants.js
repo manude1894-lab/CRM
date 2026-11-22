@@ -150,3 +150,7 @@ export const csvDate = (v) => {
 
 // Why the RM set the client's current onboarding status (Dropped, On Hold, Pending ...): "reason · note".
 export const statusReason = (a) => [a?.status_reason_code, a?.status_reason].filter(Boolean).join(" · ");
+
+// Initials for a badge: the first letter or digit of the first two words ("Ritu (MLRO)" -> "RM", "ABC Ltd" -> "AL").
+export const initialsOf = (name) => (name || "").split(/\s+/).map((w) => w.replace(/[^A-Za-z0-9]/g, "")).filter(Boolean)
+  .slice(0, 2).map((w) => w[0].toUpperCase()).join("") || "?";

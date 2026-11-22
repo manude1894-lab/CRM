@@ -17,3 +17,19 @@ html, body, #root {
   from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+/* Triam 22-11-2026 design refresh: one consistent data-grid header across every page's tables. Page classes on a
+   <th> still win (utilities come after the base layer). */
+@layer base {
+  table thead th {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #64748b;
+    background-color: #f8fafc;
+  }
+  table tbody tr { transition: background-color 0.12s ease; }
+  /* Tick boxes and radio buttons in Triam navy instead of the browser blue. */
+  input[type="checkbox"], input[type="radio"] { accent-color: #1a3a5c; }
+}
