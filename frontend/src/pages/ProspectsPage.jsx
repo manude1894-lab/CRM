@@ -222,7 +222,7 @@ export default function ProspectsPage({ onNavigate } = {}) {
                 {colAll.length > colItems.length && (
                   <button type="button" onClick={() => setMore((m) => ({ ...m, [col]: (m[col] || 0) + 1 }))}
                     className="w-full py-2 text-xs font-medium text-brand-700 bg-white/70 border border-dashed border-slate-300 rounded-lg hover:bg-white">
-                    Show {Math.min(perColumn, colAll.length - colItems.length)} more ({colAll.length - colItems.length} not shown)
+                    Show {Math.min(perColumn, colAll.length - colItems.length)} more
                   </button>
                 )}
               </div>

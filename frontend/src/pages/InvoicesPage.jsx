@@ -201,12 +201,12 @@ function RequestModal({ draft, onClose, onDone }) {
       </Field>
       {/* Triam 23-11-2026: an onboarding invoice can be requested at any stage of onboarding, before approval; a
           service request invoice needs a service request, which opens once Compliance has approved the client. */}
-      {!draft && <Field label="What is the invoice for?" required>
+      {!draft && <Field label="Invoice for" required>
         <Select value={form.purpose} onChange={(e) => setForm((f) => ({ ...f, purpose: e.target.value, instruction_id: "",
           description: e.target.value === "onboarding" ? "Onboarding services" : f.description === "Onboarding services" ? "" : f.description }))}>
-          <option value="onboarding">Onboarding services (any stage, also before approval)</option>
-          <option value="request">A service request (approved clients)</option>
-          <option value="other">Something else</option>
+          <option value="onboarding">Onboarding services</option>
+          <option value="request">Service request</option>
+          <option value="other">Other</option>
         </Select>
       </Field>}
       {!draft && form.purpose === "request" && <Field label="Service request" required>
