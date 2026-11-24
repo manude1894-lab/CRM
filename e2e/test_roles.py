@@ -29,6 +29,12 @@ ROLES = {
 }
 
 
+def tile_texts(pg):
+    """The dashboard tiles, once the dashboard has loaded (it loads after sign-in)."""
+    pg.locator("div.grid.grid-cols-2 > *").first.wait_for(timeout=30000)
+    return pg.locator("div.grid.grid-cols-2 > *").all_inner_texts()
+
+
 def menu_items(pg):
     return [t.strip() for t in pg.locator("aside nav button, aside nav a").all_inner_texts() if t.strip()]
 
@@ -42,7 +48,7 @@ def test_each_desk_sees_its_menu_tiles_and_pages(page, email):
         assert label in items, f"{email}: {label} missing from {items}"
     for label in want["not_menu"]:
         assert label not in items, f"{email}: should not see {label}"
-    tiles = page.locator("div.grid.grid-cols-2 > *").all_inner_texts()
+    tiles = tile_texts(page)
     for label in want["tiles"]:
         assert any(t.startswith(label) for t in tiles), f"{email}: tile {label} missing from {tiles}"
     for label in items:
@@ -55,7 +61,7 @@ def test_each_desk_sees_its_menu_tiles_and_pages(page, email):
 def test_admin_opens_every_page_including_admin(page):
     sign_in(page, "admin@ezeetechgroup.com", "admin123")
     items = menu_items(page)
-    assert "Admin" in items and len(page.locator("div.grid.grid-cols-2 > *").all_inner_texts()) >= 8
+    assert "Admin" in items and len(tile_texts(page)) >= 8
     for label in items:
         page.locator("aside nav").get_by_text(label, exact=True).first.click()
         page.wait_for_load_state("networkidle")

@@ -68,3 +68,20 @@ def cancel_activity(activity_id: int, data: CancelRequest, db: Session = Depends
              summary="Add a correction note to a final report (the report stays as written)")
 def add_correction(activity_id: int, data: CorrectionCreate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     return activity_service.add_correction(db, activity_id, data.text, user)
+
+
+@router.get("/{activity_id}/pdf", summary="A final Visit / Call Report as a PDF document")
+def activity_pdf(activity_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    from fastapi import HTTPException
+    from fastapi.responses import Response as FileResponse
+    from app.audit import log_event
+    from app.services import report_export_service
+    act = activity_service.get_activity(db, activity_id, user)
+    if act.finalised_at is None:
+        raise HTTPException(status_code=400, detail="Only a saved (final) report can be downloaded; finish the draft first")
+    content = report_export_service.activity_pdf(act, user)
+    log_event(db, "activity_download", f"{act.activity_type.value} {act.activity_uid} ({act.company_name}) downloaded as PDF",
+              user_id=user.id, subject_type="Activity", subject_id=act.id, account_id=act.account_id)
+    db.commit()
+    name = report_export_service.activity_filename(act)
+    return FileResponse(content=content, media_type="application/pdf", headers={"Content-Disposition": f'attachment; filename="{name}"'})
