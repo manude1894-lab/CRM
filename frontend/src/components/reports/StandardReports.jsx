@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { departmentsApi, reportsApi, usersApi } from "../../api/endpoints";
 import { useMasters } from "../../hooks/useMasters";
 import { Pager, SortTh, useListView } from "../listing";
@@ -47,6 +47,37 @@ const groupReports = (list) => {
 
 /** BRD §20a — the standard reports, shown on screen and downloaded as Excel or PDF by the users the
  * Administrator allows (Triam UAT 19-11-2026). */
+/**
+ * Triam 24-11-2026: a wide report scrolls sideways inside a box of fixed height, so its scrollbar is always in view
+ * (not below the last row); the headings stay at the top; arrows and a fade show that more columns are there.
+ */
+function useSideScroll(deps) {
+  const ref = useRef(null);
+  const [edges, setEdges] = useState({ more: false, left: false, right: false });
+  const [height, setHeight] = useState(null);
+  // The box ends at the bottom of the window, so its sideways scrollbar is on screen without scrolling the page.
+  const fit = () => {
+    const el = ref.current;
+    if (el) setHeight(Math.max(320, Math.round(window.innerHeight - el.getBoundingClientRect().top - 16)));
+  };
+  const measure = () => {
+    const el = ref.current;
+    if (!el) return;
+    const more = el.scrollWidth > el.clientWidth + 2;
+    setEdges({ more, left: more && el.scrollLeft > 2, right: more && el.scrollLeft + el.clientWidth < el.scrollWidth - 2 });
+  };
+  useEffect(() => {
+    measure(); fit();
+    window.addEventListener("resize", fit);
+    const el = ref.current;
+    const ro = el && typeof ResizeObserver !== "undefined" ? new ResizeObserver(measure) : null;
+    if (ro) ro.observe(el);
+    return () => { window.removeEventListener("resize", fit); if (ro) ro.disconnect(); };
+  }, deps);
+  const by = (dir) => ref.current?.scrollBy({ left: dir * Math.max(240, (ref.current.clientWidth || 600) * 0.6), behavior: "smooth" });
+  return { ref, edges, measure, by, height };
+}
+
 export default function StandardReports() {
   const canExport = useAuthStore((s) => s.can("report.export"));
   const [exporting, setExporting] = useState(null);
@@ -103,6 +134,7 @@ export default function StandardReports() {
     } finally { setExporting(null); }
   };
   useEffect(() => { run(key); }, [key]);
+  const side = useSideScroll([report, busy]);
   const view = useListView(report?.rows || [], { key: "reports", defaultSize: 50, valueOf: (r, j) => r[j], resetOn: [report] });
   useEffect(() => { view.setSort(null); }, [report?.title]);
 
@@ -192,20 +224,35 @@ export default function StandardReports() {
           <>
             <div className="text-xs text-gray-500 mb-2">{report.title} · {report.rows.length} row{report.rows.length === 1 ? "" : "s"}</div>
             {report.rows.length === 0 ? <p className="text-sm text-gray-500 py-6 text-center">Nothing to report.</p> : (
-              <div className="overflow-x-auto focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-300 rounded" tabIndex={0} role="region" aria-label="Report table">
+              <>
+              {side.edges.more && (
+                <div className="flex items-center justify-end gap-2 mb-1.5 text-[11px] text-gray-500">
+                  <span>More columns: scroll sideways (or Shift + mouse wheel)</span>
+                  <button type="button" aria-label="Scroll left" onClick={() => side.by(-1)} disabled={!side.edges.left}
+                    className="w-7 h-7 rounded-md border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-40">&#9664;</button>
+                  <button type="button" aria-label="Scroll right" onClick={() => side.by(1)} disabled={!side.edges.right}
+                    className="w-7 h-7 rounded-md border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-40">&#9654;</button>
+                </div>
+              )}
+              <div className="relative">
+              {side.edges.right && <div aria-hidden="true" className="pointer-events-none absolute top-0 right-0 bottom-3 w-10 z-[4] bg-gradient-to-l from-white to-transparent" />}
+              <div ref={side.ref} onScroll={side.measure} style={side.height ? { maxHeight: side.height } : undefined}
+                className="report-scroll max-h-[70vh] overflow-auto border border-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-300 rounded" tabIndex={0} role="region" aria-label="Report table">
                 <table className="w-full text-sm">
                   <thead><tr className="border-b border-gray-100 bg-gray-50 text-xs text-gray-500">
                     {/* Review 22-11-2026: the first column (the client) stays in view while scrolling a wide report. */}
                     {report.columns.map((c, j) => <SortTh key={c} label={c} by={j} sort={view.sort} onSort={view.setSort}
-                      className={`py-2 align-bottom ${isNumber(report.rows[0]?.[j]) ? "text-right" : ""} ${j === 0 ? "sticky left-0 z-[1] bg-gray-50 shadow-[1px_0_0_#f3f4f6]" : ""}`} />)}
+                      className={`py-2 align-bottom sticky top-0 bg-gray-50 shadow-[0_1px_0_#e5e7eb] ${isNumber(report.rows[0]?.[j]) ? "text-right" : ""} ${j === 0 ? "left-0 z-[3] shadow-[1px_1px_0_#e5e7eb]" : "z-[2]"}`} />)}
                   </tr></thead>
                   <tbody>
                     {view.rows.map((r, i) => (
-                      <tr key={i} className="border-b border-gray-50 align-top hover:bg-gray-50/60">{r.map((v, j) => <td key={j} className={`py-2 px-3 text-xs text-gray-700 ${cellClass(v)} ${j === 0 ? "sticky left-0 bg-white font-medium text-gray-800 shadow-[1px_0_0_#f3f4f6] min-w-[9rem]" : ""}`}><Cell value={v} /></td>)}</tr>
+                      <tr key={i} className="border-b border-gray-50 align-top hover:bg-gray-50/60">{r.map((v, j) => <td key={j} className={`py-2 px-3 text-xs text-gray-700 ${cellClass(v)} ${j === 0 ? "sticky left-0 z-[1] bg-white font-medium text-gray-800 shadow-[1px_0_0_#f3f4f6] min-w-[9rem]" : ""}`}><Cell value={v} /></td>)}</tr>
                     ))}
                   </tbody>
                 </table>
               </div>
+              </div>
+              </>
             )}
             {report.rows.length > 0 && <div className="mt-3"><Pager {...view.pager} label="Rows" /></div>}
           </>
