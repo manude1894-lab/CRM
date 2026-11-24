@@ -615,9 +615,12 @@ RESTRICTED = {
 
 
 def may_run(user: User, key: str) -> bool:
+    """Administrators and Inquiry & Reports (read only, BRD §13: sees everything, changes nothing) may run every
+    report (Triam 24-11-2026); the restricted ones are otherwise for their desks."""
+    from app.auth.permissions import has_permission
     from app.models import UserRole
     rule = RESTRICTED.get(key)
-    return rule is None or user.role == UserRole.ADMIN or rule(user)
+    return rule is None or user.role == UserRole.ADMIN or has_permission(user, "read_only") or rule(user)
 
 
 def available(user: User) -> dict:
