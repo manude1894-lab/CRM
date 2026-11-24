@@ -8,7 +8,7 @@ from app.models.client_id import ClientIdSequence
 from app.models.approval import ApprovalRequest, ApprovalStatus
 from app.models.account import Account
 from app.models.notification import Notification
-from app.models.activity import Activity, ActivityType, ActivityStatus
+from app.models.activity import Activity, ActivityCorrection, ActivityType, ActivityStatus
 from app.models.account_party import AccountParty, AccountPartyRole, AccountPartyConstitution
 from app.models.instruction import Instruction, InstructionStatus
 from app.models.invoice import Invoice, InvoiceLedgerStatus
@@ -26,7 +26,7 @@ __all__ = [
     "ApprovalRequest", "ApprovalStatus",
     "Account",
     "Notification",
-    "Activity", "ActivityType", "ActivityStatus",
+    "Activity", "ActivityCorrection", "ActivityType", "ActivityStatus",
     "AccountParty", "AccountPartyRole", "AccountPartyConstitution",
     "Instruction", "InstructionStatus",
     "Invoice", "InvoiceLedgerStatus",

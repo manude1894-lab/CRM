@@ -12,7 +12,7 @@ from app.services import activity_service, instruction_service, notification_ser
 
 
 def visit(**kw):
-    base = dict(activity_date=date(2026, 10, 5), activity_type="Visit Report", status="Completed",
+    base = dict(activity_date=date(2026, 10, 5), activity_type="Visit Report", final=True,
                 summary="Discussed renewal of the trade licence", client_contact="Omar Haddad", location="Client office, JLT")
     base.update(kw)
     return ActivityCreate(**base)
@@ -38,9 +38,11 @@ def test_report_templates_require_their_fields(db, make_user, make_account):
     with pytest.raises(HTTPException) as e:
         activity_service.create_activity(db, visit(account_id=acc.id, activity_type="Call Report", client_contact=""), rm)
     assert "Client contact spoken to" in e.value.detail
-    call = activity_service.create_activity(db, visit(account_id=acc.id, activity_type="Call Report", location=None), rm)
-    with pytest.raises(HTTPException):
-        activity_service.update_activity(db, call.id, ActivityUpdate(client_contact=""), rm)
+    draft = activity_service.create_activity(db, visit(account_id=acc.id, location=None, final=False), rm)
+    assert draft.status.value == "Draft"  # a draft may be unfinished
+    with pytest.raises(HTTPException) as e:  # but not the final report
+        activity_service.update_activity(db, draft.id, ActivityUpdate(final=True), rm)
+    assert "Location" in e.value.detail
 
 
 def test_activity_needs_a_client_and_access(db, make_user, make_account):

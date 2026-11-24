@@ -6,8 +6,9 @@ import { useAuthStore } from "../../store/auth";
 import { useMasters } from "../../hooks/useMasters";
 import { fmtDate } from "../../utils/constants";
 import { useRequestOptions, requestLabel, clientEntities, takesRequests, NOT_YET_SERVICEABLE } from "../../hooks/useRequestOptions";
-import ActivityForm, { activityPayload, activityProblem, blankActivity } from "../activities/ActivityForm";
+import { blankActivity } from "../activities/ActivityForm";
 import ActivityCard from "../activities/ActivityCard";
+import ReportDialog from "../activities/ReportDialog";
 import MoneyInput from "../MoneyInput";
 
 const STATUS_STYLE = { Completed: "bg-emerald-50 text-emerald-700", "On Hold": "bg-gray-100 text-gray-600", Dropped: "bg-gray-100 text-gray-500" };
@@ -34,22 +35,19 @@ export default function ClientServicingModal({ account, onClose, startWith = nul
   const srOpts = optionsFor(sr?.triam_entity);
 
   const load = () => {
-    activitiesApi.list({ account_id: account.id, limit: 200 }).then((r) => setActivities(r.items || [])).catch(() => setActivities([]));
+    // Triam 23-11-2026: the client's whole report history, however long (pages of 500).
+    (async () => {
+      const all = [];
+      for (let skip = 0; ; skip += 500) {
+        const r = await activitiesApi.list({ account_id: account.id, skip, limit: 500 });
+        all.push(...(r.items || []));
+        if (all.length >= (r.total || 0) || !(r.items || []).length) break;
+      }
+      return all;
+    })().then(setActivities).catch(() => setActivities([]));
     instructionsApi.list({ account_id: account.id, limit: 200 }).then((r) => setRequests(r.items || [])).catch(() => setRequests([]));
   };
   useEffect(load, [account.id]);
-
-  const saveActivity = async () => {
-    const problem = activityProblem(form);
-    if (problem) return toast.error(problem);
-    setBusy(true);
-    try {
-      const payload = activityPayload(form);
-      if (form.id) await activitiesApi.update(form.id, payload); else await activitiesApi.create(payload);
-      toast.success(`${form.activity_type} saved`);
-      setForm(null); load();
-    } catch (e) { toast.error(e.response?.data?.detail || "Save failed"); } finally { setBusy(false); }
-  };
 
   const saveRequest = async () => {
     if (!sr.instruction_type) return toast.error("Choose the request type");
@@ -82,15 +80,9 @@ export default function ClientServicingModal({ account, onClose, startWith = nul
         {tabBtn("requests", "Service Requests", requests?.length)}
       </div>
 
-      {tab === "reports" && (form ? (
-        <div>
-          <ActivityForm form={form} setForm={setForm} lockClient />
-          <div className="flex justify-end gap-2">
-            <button onClick={() => setForm(null)} className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
-            <button onClick={saveActivity} disabled={busy} className="px-3 py-1.5 text-sm text-white rounded-lg disabled:opacity-60 bg-brand-600 hover:bg-brand-700">Save</button>
-          </div>
-        </div>
-      ) : (
+      {form && <ReportDialog report={form} lockClient readOnly={readOnly} onClose={() => setForm(null)}
+        onSaved={() => { setForm(null); load(); }} />}
+      {tab === "reports" && (
         <div className="space-y-2">
           {!readOnly && <div className="flex gap-2">
             <button onClick={() => setForm(blankActivity(account.id, "Visit Report"))} className="px-2.5 py-1 text-xs text-white rounded-lg bg-brand-600 hover:bg-brand-700">+ Visit Report</button>
@@ -100,10 +92,10 @@ export default function ClientServicingModal({ account, onClose, startWith = nul
             ? <p className="text-sm text-gray-500 text-center py-6">No visit or call reports for this client yet.</p>
             : activities.map((a) => (
               <ActivityCard key={a.id} activity={a} compact
-                onEdit={readOnly ? undefined : () => setForm({ ...blankActivity(account.id), ...a, account_id: a.account_id || account.id })} />
+                onOpen={() => setForm({ ...blankActivity(account.id), ...a, account_id: a.account_id || account.id })} />
             ))}
         </div>
-      ))}
+      )}
 
       {tab === "requests" && (sr ? (
         <div>

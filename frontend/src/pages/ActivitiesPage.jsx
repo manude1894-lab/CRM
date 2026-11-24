@@ -1,118 +1,116 @@
-import React, { useEffect, useState } from "react";
-import { activitiesApi, accountsApi } from "../api/endpoints";
-import { Icon, Modal, Spinner, ErrorBanner, PageHeader } from "../components/ui";
-import { Pager, useListView } from "../components/listing";
+import React, { useEffect, useRef, useState } from "react";
+import { activitiesApi, accountsApi, usersApi } from "../api/endpoints";
+import { DateInput, FilterBar, Icon, PageHeader, SearchInput, Select, Spinner, ErrorBanner } from "../components/ui";
+import { Pager, usePageSize } from "../components/listing";
 import { toast } from "../store/toast";
 import { useAuthStore } from "../store/auth";
 import { reasonDialog } from "../store/confirm";
-import ActivityForm, { ACTIVITY_TYPES, activityPayload, activityProblem, blankActivity } from "../components/activities/ActivityForm";
+import { ACTIVITY_TYPES, blankActivity } from "../components/activities/ActivityForm";
 import ActivityCard from "../components/activities/ActivityCard";
+import ReportDialog from "../components/activities/ReportDialog";
 
-/** Visit Reports and Call Reports across all the clients this user can see (BRD §15). */
+/**
+ * Visit Reports and Call Reports across all the clients this user can see (BRD §15). Triam 23-11-2026: every past
+ * report can be found and reviewed at any time: the list is paged on the server (nothing is cut off) and filtered
+ * by text, type, client, writer, state and date.
+ */
 export default function ActivitiesPage() {
   const readOnly = useAuthStore((s) => s.isReadOnly());
-  const [activities, setActivities] = useState([]);
+  const [items, setItems] = useState(null);
+  const [total, setTotal] = useState(0);
   const [accounts, setAccounts] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [users, setUsers] = useState([]);
   const [error, setError] = useState(null);
-  const [typeFilter, setTypeFilter] = useState("All");
-  const [clientFilter, setClientFilter] = useState("");
-  const [modal, setModal] = useState(null);
-  const [form, setForm] = useState({});
+  const [busy, setBusy] = useState(false);
+  const [search, setSearch] = useState("");
+  const [query, setQuery] = useState("");
+  const [f, setF] = useState({ activity_type: "", account_id: "", owner_id: "", status: "", date_from: "", date_to: "" });
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = usePageSize("callReports", 15);
+  const [open, setOpen] = useState(null); // the report in the dialog
+  const latest = useRef(0);
+
+  useEffect(() => { const t = setTimeout(() => setQuery(search.trim()), 300); return () => clearTimeout(t); }, [search]);
+  useEffect(() => {
+    accountsApi.list({ limit: 1000 }).then((r) => setAccounts(r.items || [])).catch(() => {});
+    usersApi.list().then((u) => setUsers(u || [])).catch(() => {});
+  }, []);
 
   const load = async () => {
+    const ticket = ++latest.current;
+    setBusy(true);
     try {
-      setLoading(true); setError(null);
-      const [actRes, accRes] = await Promise.all([activitiesApi.list({ limit: 500 }), accountsApi.list({ limit: 500 })]);
-      setActivities(actRes.items || []);
-      setAccounts(accRes.items || []);
+      const params = { skip: page * pageSize, limit: pageSize, search: query || undefined,
+        ...Object.fromEntries(Object.entries(f).filter(([, v]) => v)) };
+      const r = await activitiesApi.list(params);
+      if (ticket !== latest.current) return;
+      setItems(r.items || []); setTotal(r.total || 0); setError(null);
     } catch (e) {
-      setError(e.response?.data?.detail || "Failed to load visit and call reports");
-    } finally { setLoading(false); }
+      if (ticket === latest.current) setError(e.response?.data?.detail || "Failed to load visit and call reports");
+    } finally { if (ticket === latest.current) setBusy(false); }
   };
-  useEffect(() => { load(); }, []);
+  useEffect(() => { setPage(0); }, [query, f, pageSize]);
+  useEffect(() => { load(); }, [page, query, f, pageSize]);
 
-  const filtered = activities.filter((a) => (typeFilter === "All" || a.activity_type === typeFilter)
-    && (!clientFilter || a.account_id === Number(clientFilter)));
-  const view = useListView(filtered, { key: "callReports", defaultSize: 15, resetOn: [typeFilter, clientFilter] }); // Triam 22-11-2026
-
-  const openNew = (type) => { setForm(blankActivity(clientFilter, type)); setModal("new"); };
-
-  const save = async () => {
-    const problem = activityProblem(form);
-    if (problem) return toast.error(problem);
-    try {
-      const payload = activityPayload(form);
-      if (modal === "new") await activitiesApi.create(payload);
-      else await activitiesApi.update(form.id, payload);
-      toast.success(`${form.activity_type} saved`);
-      setModal(null); load();
-    } catch (e) {
-      toast.error(e.response?.data?.detail || "Save failed");
-    }
-  };
-
-  // Visit / Call Reports are never deleted: cancelled with a reason and kept on record.
-  const cancelActivity = async (a) => {
+  const set = (k) => (e) => setF((p) => ({ ...p, [k]: e.target.value }));
+  const cancelReport = async (a) => {
     const reason = await reasonDialog({ title: `Cancel ${a.activity_type}`, confirmLabel: "Cancel report",
       message: "The report will be marked Cancelled and kept on record." });
     if (!reason) return;
     try { await activitiesApi.cancel(a.id, reason); load(); }
     catch (e) { toast.error(e.response?.data?.detail || "Cancel failed"); }
   };
+  const writers = users.filter((u) => u.is_active !== false && u.role !== "admin" && !u.person_id);
+  const filtering = query || Object.values(f).some(Boolean);
 
-  if (loading) return <Spinner />;
-  if (error) return <ErrorBanner message={error} onRetry={load} />;
+  if (error && items === null) return <ErrorBanner message={error} onRetry={load} />;
+  if (items === null) return <Spinner />;
 
   return (
     <div className="space-y-4">
       <PageHeader title="Call Reports / Contact Notes"
-        subtitle={`${activities.length} report${activities.length === 1 ? "" : "s"}`}
-        actions={!readOnly && <>
-<div className="flex gap-2">
-          <button onClick={() => openNew("Visit Report")} className="px-3 py-2 text-sm text-white rounded-lg font-medium flex items-center gap-1.5 bg-brand-600 hover:bg-brand-700">
-            <Icon name="plus" size={14} /> Visit Report
-          </button>
-          <button onClick={() => openNew("Call Report")} className="px-3 py-2 text-sm text-white rounded-lg font-medium flex items-center gap-1.5 bg-brand-600 hover:bg-brand-700">
-            <Icon name="plus" size={14} /> Call Report
-          </button>
-        </div>
-        </>} />
+        subtitle={`${total} report${total === 1 ? "" : "s"}${filtering ? " match these filters" : ""}`}
+        actions={!readOnly && (
+          <div className="flex gap-2">
+            {["Visit Report", "Call Report"].map((t) => (
+              <button key={t} onClick={() => setOpen(blankActivity(f.account_id, t))}
+                className="px-3 py-2 text-sm text-white rounded-lg font-medium flex items-center gap-1.5 bg-brand-600 hover:bg-brand-700">
+                <Icon name="plus" size={14} /> {t}
+              </button>
+            ))}
+          </div>
+        )} />
 
-      <div className="flex gap-2 flex-wrap items-center">
-        {["All", ...ACTIVITY_TYPES].map((t) => (
-          <button key={t} onClick={() => setTypeFilter(t)}
-            className={`px-3 py-1.5 text-xs rounded-lg border transition-colors ${typeFilter === t ? "text-white border-transparent" : "border-gray-200 text-gray-600 hover:bg-gray-50"}`}
-            style={typeFilter === t ? { background: "#1a3a5c" } : {}}>
-            {t}
-          </button>
-        ))}
-        <select aria-label="Filter by client" value={clientFilter} onChange={(e) => setClientFilter(e.target.value)}
-          className="ml-auto border border-gray-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-brand-400">
+      <FilterBar>
+        <SearchInput value={search} onChange={setSearch} placeholder="Search client, contact or discussion…" />
+        <div className="w-36"><Select aria-label="Filter by type" value={f.activity_type} onChange={set("activity_type")}>
+          <option value="">All types</option>{ACTIVITY_TYPES.map((t) => <option key={t}>{t}</option>)}
+        </Select></div>
+        <div className="w-56"><Select aria-label="Filter by client" value={f.account_id} onChange={set("account_id")}>
           <option value="">All clients</option>
           {accounts.map((a) => <option key={a.id} value={a.id}>{a.company_name}</option>)}
-        </select>
-      </div>
+        </Select></div>
+        <div className="w-44"><Select aria-label="Filter by writer" value={f.owner_id} onChange={set("owner_id")}>
+          <option value="">Everyone</option>{writers.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+        </Select></div>
+        <div className="w-36"><Select aria-label="Filter by state" value={f.status} onChange={set("status")}>
+          <option value="">Draft and final</option>{["Draft", "Final", "Cancelled"].map((s) => <option key={s}>{s}</option>)}
+        </Select></div>
+        <div className="w-40"><DateInput aria-label="From date" placeholder="From DD MM YYYY" value={f.date_from} onChange={set("date_from")} /></div>
+        <div className="w-40"><DateInput aria-label="To date" placeholder="To DD MM YYYY" value={f.date_to} onChange={set("date_to")} /></div>
+      </FilterBar>
 
-      <div className="space-y-3">
-        {filtered.length === 0 && <p className="text-sm text-gray-500 text-center py-8">No visit or call reports.</p>}
-        {view.rows.map((a) => (
-          <ActivityCard key={a.id} activity={a} onEdit={readOnly ? undefined : () => { setForm({ ...blankActivity(), ...a, account_id: a.account_id || "" }); setModal("edit"); }}
-            onCancel={!readOnly && a.status !== "Cancelled" ? () => cancelActivity(a) : undefined} />
+      <div className={`space-y-3 ${busy ? "opacity-60" : ""}`}>
+        {items.length === 0 && <p className="text-sm text-gray-500 text-center py-8">{filtering ? "No reports match these filters." : "No visit or call reports yet."}</p>}
+        {items.map((a) => (
+          <ActivityCard key={a.id} activity={a} onOpen={() => setOpen({ ...blankActivity(), ...a, account_id: a.account_id || "" })}
+            onCancel={!readOnly && a.status !== "Cancelled" ? () => cancelReport(a) : undefined} />
         ))}
       </div>
-      <Pager {...view.pager} label="Reports" />
+      <Pager page={page} pageSize={pageSize} total={total} onPage={setPage} onPageSize={setPageSize} busy={busy} label="Reports" />
 
-      {modal && (
-        <Modal title={modal === "new" ? `New ${form.activity_type}` : `Edit ${form.activity_uid}`} onClose={() => setModal(null)}>
-          <ActivityForm form={form} setForm={setForm} accounts={accounts} />
-          <div className="flex justify-end gap-3 mt-2">
-            <button onClick={() => setModal(null)} className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
-            <button onClick={save} className="px-4 py-2 text-sm text-white rounded-lg bg-brand-600 hover:bg-brand-700">Save</button>
-          </div>
-        </Modal>
-      )}
+      {open && <ReportDialog report={open} accounts={accounts} readOnly={readOnly} onClose={() => setOpen(null)}
+        onSaved={() => { setOpen(null); load(); }} />}
     </div>
   );
 }
-

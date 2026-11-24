@@ -186,6 +186,7 @@ export const activitiesApi = {
   create: (data) => api.post("/activities", data).then((r) => r.data),
   update: (id, data) => api.patch(`/activities/${id}`, data).then((r) => r.data),
   cancel: (id, reason) => api.post(`/activities/${id}/cancel`, { reason }),
+  correct: (id, text) => api.post(`/activities/${id}/corrections`, { text }).then((r) => r.data),
 };
 
 // ─── Dashboard ─────────────────────────────────────────────────────────

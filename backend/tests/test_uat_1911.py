@@ -47,11 +47,14 @@ def test_excel_download_holds_the_report_and_is_logged(db, make_user, make_accou
     assert r.status_code == 200 and r.headers["content-type"].startswith("application/vnd.openxmlformats")
     assert "attachment" in r.headers["content-disposition"] and ".xlsx" in r.headers["content-disposition"]
     ws = load_workbook(io.BytesIO(r.content)).active
-    assert ws["A1"].value == "AML reviews due in the next 30 days"
-    header = [c.value for c in ws[4]]
-    row = dict(zip(header, [c.value for c in ws[5]]))
+    # Triam 23-11-2026: a heading block (Triam CRM, title, filters, generated, confidential) above the table.
+    assert ws["A1"].value == "Triam CRM" and ws["A2"].value == "AML reviews due in the next 30 days"
+    assert ws["A3"].value == "Filters: Days: 30"
+    head = next(r for r in range(1, 12) if ws.cell(row=r, column=1).value == "Anchor Triam Entity")
+    header = [c.value for c in ws[head]]
+    row = dict(zip(header, [c.value for c in ws[head + 1]]))
     assert row["Client Name"] == "Due Soon" and row["Client Tag"] == "Freezone" and row["Days left"] == 10
-    assert ws["F5"].number_format == "DD MM YYYY"  # the AML expiry date is a real date
+    assert ws.cell(row=head + 1, column=header.index("AML Expiry Date") + 1).number_format == "DD MM YYYY"  # a real date
     log = db.query(AuditLog).filter(AuditLog.action == "report_export").one()
     assert log.user_id == rm.id and "Excel" in log.summary
 

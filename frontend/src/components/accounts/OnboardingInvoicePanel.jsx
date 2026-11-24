@@ -32,7 +32,7 @@ const fromState = (s) => {
 
 /**
  * Triam UAT 19-11-2026 (row 153): Invoice for Onboarding Services, after "Is entity regulated". The RM prepares it
- * and submits it to the Accounts Department (once Compliance has approved the client); Accounts answers with the
+ * and submits it to the Accounts Department at any stage of onboarding (Triam 23-11-2026); Accounts answers with the
  * invoice No., date, amount and file and raises it ("Submit to RM"), which shows here. It has its own Save and
  * Submit, so it works while the profile itself is locked for approval.
  */

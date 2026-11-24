@@ -2,7 +2,7 @@
 
 The RM answers Yes / No; with Yes, the amount payable by the client and to the Regn / Govt Authority, whether an
 introducer / referrer is involved and what they are paid, and comments. Save keeps a draft; Submit sends it to the
-Accounts Department once Compliance has approved the client. Accounts answers with the invoice (No., date, amount,
+Accounts Department at any stage of onboarding (Triam 23-11-2026). Accounts answers with the invoice (No., date, amount,
 file) and raises it, which tells the RM.
 """
 import io
@@ -29,22 +29,18 @@ def setup(db, people, make_user, make_role):
     return {**people, "accountant": accountant, "acc": acc}
 
 
-def test_saved_as_a_draft_before_compliance_approval_then_sent_to_accounts(db, setup):
+def test_saved_as_a_draft_then_sent_to_accounts_before_approval(db, setup):
+    """Triam 23-11-2026 (S T Krishna): unlike a service request, the onboarding invoice goes to Accounts while the
+    client is still being onboarded, before any approval."""
     s = setup
     rm, acc = s["maker"], s["acc"]
+    assert acc.profile_status in wf.WITH_RM  # not submitted, not approved
     st = onb.save(db, acc.id, OnboardingInvoiceSave(**YES), rm)
     assert st.wanted is True and st.editable and st.invoice.status == "Draft" and st.invoice.kind == "Onboarding"
     assert (st.invoice.amount, st.invoice.govt_authority_amount, st.invoice.introducer_currency) == (Decimal("15000"), Decimal("4000"), "USD")
-    assert not st.can_submit and "Compliance has approved" in st.why_not
-    with pytest.raises(HTTPException) as e:
-        onb.save(db, acc.id, OnboardingInvoiceSave(**YES, submit=True), rm)
-    assert "Compliance has approved" in e.value.detail
+    assert st.can_submit and st.why_not is None
     assert onb.state(db, acc.id, s["accountant"]).invoice is None  # the RM's draft isn't Accounts' yet
 
-    flow.submit(db, acc, rm)
-    flow.compliance_approve(db, acc, s["checker"])
-    db.refresh(acc)
-    assert onb.state(db, acc.id, rm).can_submit
     st = onb.save(db, acc.id, OnboardingInvoiceSave(**YES, submit=True), rm)
     assert st.invoice.status == "Requested" and not st.editable
     assert db.query(Notification).filter(Notification.user_id == s["accountant"].id,
@@ -52,6 +48,33 @@ def test_saved_as_a_draft_before_compliance_approval_then_sent_to_accounts(db, s
     with pytest.raises(HTTPException) as e:  # it is with Accounts now
         onb.save(db, acc.id, OnboardingInvoiceSave(**YES), rm)
     assert e.value.status_code == 409
+
+
+def test_also_while_awaiting_approval_but_not_once_dropped(db, setup):
+    s = setup
+    rm, acc = s["maker"], s["acc"]
+    flow.submit(db, acc, rm)
+    db.refresh(acc)
+    assert acc.profile_status == wf.AWAITING
+    assert onb.save(db, acc.id, OnboardingInvoiceSave(**YES, submit=True), rm).invoice.status == "Requested"
+    acc.profile_status = wf.DROPPED
+    db.commit()
+    assert not onb.state(db, acc.id, rm).editable
+
+
+def test_the_invoices_page_request_is_the_same_onboarding_invoice(db, setup):
+    from app.schemas.invoice import InvoiceRequest
+    s = setup
+    rm, acc = s["maker"], s["acc"]
+    inv = invoice_service.request_invoice(db, InvoiceRequest(account_id=acc.id, description="Onboarding services",
+                                                             amount=Decimal("9000"), onboarding=True), rm)
+    assert inv.kind == "Onboarding" and inv.status == "Requested"
+    db.refresh(acc)
+    assert acc.onboarding_invoice_wanted is True and onb.state(db, acc.id, rm).invoice.id == inv.id
+    with pytest.raises(HTTPException) as e:  # one onboarding invoice per client
+        invoice_service.request_invoice(db, InvoiceRequest(account_id=acc.id, description="Again", amount=Decimal("1"),
+                                                           onboarding=True), rm)
+    assert e.value.status_code == 409 and "already has an onboarding invoice" in e.value.detail
 
 
 def test_accounts_answers_with_the_invoice_and_the_rm_is_told(db, setup):
