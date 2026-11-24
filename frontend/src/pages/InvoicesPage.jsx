@@ -161,7 +161,7 @@ function RequestModal({ draft, onClose, onDone }) {
   const [requests, setRequests] = useState([]);
   const [form, setForm] = useState(draft
     ? { account_id: String(draft.account_id), instruction_id: "", description: draft.description || "", amount: draft.amount ?? "", currency: draft.currency || "AED", notes: draft.notes || "" }
-    : { account_id: "", instruction_id: "", description: "", amount: "", currency: "AED", notes: "" });
+    : { account_id: "", purpose: "onboarding", instruction_id: "", description: "Onboarding services", amount: "", currency: "AED", notes: "" });
   const [approvals, setApprovals] = useState([]);
   const [busy, setBusy] = useState(false);
   useEffect(() => { accountsApi.list({ limit: 1000 }).then((r) => setClients(r.items || r || [])).catch(() => {}); }, []);
@@ -177,12 +177,14 @@ function RequestModal({ draft, onClose, onDone }) {
 
   const save = async (send) => {
     if (!form.account_id || !form.description.trim() || form.amount === "") return toast.error("Choose the client and enter the description and amount");
+    if (!draft && form.purpose === "request" && !form.instruction_id) return toast.error("Choose the service request to invoice");
     setBusy(send ? "submit" : "save");
     try {
       const fields = { description: form.description.trim(), amount: form.amount, currency: form.currency, notes: form.notes.trim() || null };
       let inv;
       if (draft) inv = await invoicesApi.update(draft.id, fields);
-      else inv = await invoicesApi.request({ ...fields, account_id: Number(form.account_id), instruction_id: form.instruction_id ? Number(form.instruction_id) : null, submit: send });
+      else inv = await invoicesApi.request({ ...fields, account_id: Number(form.account_id), submit: send,
+        instruction_id: form.purpose === "request" && form.instruction_id ? Number(form.instruction_id) : null, onboarding: form.purpose === "onboarding" });
       for (const f of approvals) await invoicesApi.attach(inv.id, f, "Pricing Approval");
       if (draft && send) await invoicesApi.submitRequest(draft.id);
       toast.success(send ? "Invoice requested. Accounts has been notified." : "Saved as a draft. Accounts sees it once you submit it.");
@@ -199,9 +201,19 @@ function RequestModal({ draft, onClose, onDone }) {
           {draft && !clients.some((c) => c.id === draft.account_id) && <option value={draft.account_id}>{draft.company_name}</option>}
         </Select>
       </Field>
-      {!draft && <Field label="For a service request (optional; leave empty for the onboarding invoice)">
+      {/* Triam 23-11-2026: an onboarding invoice can be requested at any stage of onboarding, before approval; a
+          service request invoice needs a service request, which opens once Compliance has approved the client. */}
+      {!draft && <Field label="What is the invoice for?" required>
+        <Select value={form.purpose} onChange={(e) => setForm((f) => ({ ...f, purpose: e.target.value, instruction_id: "",
+          description: e.target.value === "onboarding" ? "Onboarding services" : f.description === "Onboarding services" ? "" : f.description }))}>
+          <option value="onboarding">Onboarding services (any stage, also before approval)</option>
+          <option value="request">A service request (approved clients)</option>
+          <option value="other">Something else</option>
+        </Select>
+      </Field>}
+      {!draft && form.purpose === "request" && <Field label="Service request" required>
         <Select value={form.instruction_id} onChange={pickRequest} disabled={!form.account_id}>
-          <option value="">— client onboarding / other —</option>
+          <option value="">{form.account_id && !requests.length ? "— no open service request for this client —" : "— choose —"}</option>
           {requests.map((r) => <option key={r.id} value={r.id}>{r.instruction_type} · {r.status}{r.charge_amount ? ` · ${r.charge_amount}` : ""}</option>)}
         </Select>
       </Field>}

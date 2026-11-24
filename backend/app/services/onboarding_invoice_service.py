@@ -6,8 +6,10 @@ paid), and comments; Save keeps it as their draft, Submit sends it to the Accoun
 kind "Onboarding", so Accounts answers it like any invoice request: Invoice No., date, currency, amount and the
 invoice file, then Raise ("Submit to RM"), which tells the RM.
 
-It goes to Accounts once Compliance has approved the client, as service requests do (Triam 12-11-2026); until then
-it can be prepared and saved. One onboarding invoice per client; once Accounts has it, it changes only through
+Unlike a service request, it goes to Accounts at any stage of onboarding, before the client is approved (Triam,
+S T Krishna 23-11-2026: "RMs should be able to raise requests for Invoice even if the relationship is not in
+'approved' stage. This is the difference between Service Requests and Onboarding stage"). Only a Dropped or Exited
+client takes none. One onboarding invoice per client; once Accounts has it, it changes only through
 Accounts (who may cancel it, after which the RM can send a new one).
 """
 from decimal import Decimal
@@ -21,7 +23,7 @@ from app.auth.permissions import has_permission
 from app.models import Account, Invoice, User
 from app.models.invoice import ONBOARDING
 from app.schemas.invoice import OnboardingInvoiceSave, OnboardingInvoiceState, invoice_read
-from app.services import access_control, client_workflow_service as wf, instruction_service, invoice_service
+from app.services import access_control, client_workflow_service as wf, invoice_service
 
 DESCRIPTION = "Onboarding services"
 CLOSED = (wf.EXITED, wf.DROPPED)
@@ -55,8 +57,8 @@ def _why_not(acc: Account, inv: Optional[Invoice], data: Optional[OnboardingInvo
         return "Say whether an introducer / referrer is involved"
     if involved and not (data.introducer_amount if data is not None else (inv.introducer_amount if inv else None)):
         return "Enter the amount payable to the introducer"
-    if not instruction_service.takes_requests(acc):
-        return "The invoice goes to Accounts once Compliance has approved the client"
+    if acc.profile_status in CLOSED:
+        return f"This client is {acc.profile_status}"
     return None
 
 

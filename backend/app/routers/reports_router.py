@@ -37,6 +37,35 @@ def run_standard_report(key: str, days: Optional[int] = None, date_from: Optiona
                                         request_type, sr_type)
 
 
+def _filters_used(db: Session, **f) -> list:
+    """The filters behind a downloaded report, in words, printed at the top of the file (Triam 23-11-2026)."""
+    from app.models import Department
+    from app.services.report_export_service import _shown
+    out = []
+    if f["days"] is not None:
+        out.append(("Days", str(f["days"])))
+    if f["date_from"] or f["date_to"]:
+        out.append(("Period", f"{_shown(f['date_from'].isoformat()) if f['date_from'] else 'start'} to "
+                              f"{_shown(f['date_to'].isoformat()) if f['date_to'] else 'today'}"))
+    if f["status"]:
+        out.append(("Status", f["status"]))
+    if f["department_id"]:
+        dept = db.get(Department, f["department_id"])
+        out.append(("Department", dept.name if dept else str(f["department_id"])))
+    if f["entity"]:
+        out.append(("Triam entity", f["entity"]))
+    if f["tag"]:
+        out.append(("Client tag", f["tag"]))
+    if f["rm_id"]:
+        rm = db.get(User, f["rm_id"])
+        out.append(("Anchor RM", rm.name if rm else str(f["rm_id"])))
+    if f["request_type"]:
+        out.append(("Request type", f["request_type"]))
+    if f["sr_type"]:
+        out.append(("Service request type", f["sr_type"]))
+    return out
+
+
 @router.get("/standard/{key}/export", summary="Download a standard report as Excel (xlsx) or PDF")
 def export_standard_report(key: str, format: str = "xlsx", days: Optional[int] = None, date_from: Optional[date] = None,
                            date_to: Optional[date] = None, status: Optional[str] = None, department_id: Optional[int] = None,
@@ -50,7 +79,9 @@ def export_standard_report(key: str, format: str = "xlsx", days: Optional[int] =
     report = standard_reports_service.run(db, user, key, days, date_from, date_to, status, department_id, entity, tag, rm_id,
                                           request_type, sr_type)
     media_type, build = FORMATS[format]
-    content = build(report, user)
+    content = build(report, user, _filters_used(db, days=days, date_from=date_from, date_to=date_to, status=status,
+                                                department_id=department_id, entity=entity, tag=tag, rm_id=rm_id,
+                                                request_type=request_type, sr_type=sr_type))
     log_event(db, "report_export", f"{report['title']} downloaded as {'Excel' if format == 'xlsx' else 'PDF'} "
               f"({len(report['rows'])} rows)", user_id=user.id, subject_type="Report",
               changes={"report": key, "format": format, "rows": len(report["rows"])})

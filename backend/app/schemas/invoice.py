@@ -27,6 +27,9 @@ class InvoiceRequest(BaseModel):
     """The RM / Sales instruction to the Accounts Department."""
     account_id: int
     instruction_id: Optional[int] = None  # the service request being invoiced
+    # Triam 23-11-2026: an invoice for onboarding services is the client's one onboarding invoice (as on the client
+    # form); it may be requested before the client is approved. Ignored when a service request is given.
+    onboarding: bool = False
     description: str = Field(..., min_length=2, max_length=500)
     amount: Decimal = Field(..., ge=0)
     currency: str = "AED"

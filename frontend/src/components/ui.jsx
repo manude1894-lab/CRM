@@ -539,13 +539,13 @@ const TOAST_STYLES = {
 export const ToastHost = () => {
   const toasts = useToastStore((s) => s.toasts);
   const dismiss = useToastStore((s) => s.dismiss);
-  if (toasts.length === 0) return null;
+  // Always present and a live region, so screen readers announce each message (WCAG 4.1.3).
   return (
-    <div className="fixed z-[100] bottom-5 right-5 flex flex-col gap-2 w-80 max-w-[calc(100vw-2.5rem)]">
+    <div role="status" aria-live="polite" className="fixed z-[100] bottom-5 right-5 flex flex-col gap-2 w-80 max-w-[calc(100vw-2.5rem)]">
       {toasts.map((t) => {
         const style = TOAST_STYLES[t.variant] || TOAST_STYLES.info;
         return (
-          <div key={t.id}
+          <div key={t.id} role={t.variant === "error" ? "alert" : undefined}
             className={`flex items-start gap-2.5 bg-white rounded-lg shadow-lg ring-1 ${style.ring} border border-gray-100 px-4 py-3 animate-[fadeIn_0.15s_ease-out]`}>
             <span className={`flex-shrink-0 mt-0.5 w-5 h-5 rounded-full ${style.bg} text-white flex items-center justify-center`}>
               <Icon name={style.icon} size={12} />

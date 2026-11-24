@@ -201,7 +201,8 @@ export default function AccountsPage({ scope = "onboarding", initialAccountId, i
         if (all.length >= (res.total || 0) || !(res.items || []).length) break;
       }
       const a = document.createElement("a");
-      a.href = URL.createObjectURL(new Blob([buildAccountsCsv(all, users)], { type: "text/csv" }));
+      // A UTF-8 marker first, so Excel shows accents, dashes and Arabic names correctly (Triam 23-11-2026).
+      a.href = URL.createObjectURL(new Blob(["\uFEFF" + buildAccountsCsv(all, users)], { type: "text/csv;charset=utf-8" }));
       a.download = exportFilename("clients"); a.click();
     } catch (e) { toast.error(e.response?.data?.detail || "Export failed"); }
   };

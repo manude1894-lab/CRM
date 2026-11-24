@@ -8,8 +8,15 @@ const TYPE_COLORS = {
 };
 
 /** One activity / Visit Report / Call Report in a list. */
-export default function ActivityCard({ activity: a, onEdit, onCancel, compact = false }) {
+const STATE = {
+  Completed: ["Final", "bg-emerald-50 text-emerald-700 border-emerald-200"],
+  Cancelled: ["Cancelled", "bg-gray-100 text-gray-600 border-gray-200"],
+};
+const stateOf = (a) => STATE[a.status] || ["Draft", "bg-amber-50 text-amber-800 border-amber-200"];
+
+export default function ActivityCard({ activity: a, onOpen, onCancel, compact = false }) {
   const report = a.activity_type === "Visit Report" || a.activity_type === "Call Report";
+  const [stateLabel, stateLook] = stateOf(a);
   return (
     <div className={`bg-white border border-gray-100 rounded-xl ${compact ? "p-3" : "p-4 shadow-sm hover:shadow-md"} transition-shadow flex gap-3`}>
       <div className="flex-shrink-0">
@@ -24,12 +31,16 @@ export default function ActivityCard({ activity: a, onEdit, onCancel, compact = 
             {!compact && <span className="font-semibold text-sm text-gray-800">{a.company_name}</span>}
             <Badge text={a.activity_type} />
             <span className="text-xs text-gray-500">{a.activity_uid}</span>
-            {a.status !== "Completed" && <span className="text-[11px] text-gray-500">{a.status}</span>}
+            <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded border ${stateLook}`}>{stateLabel}</span>
+            {a.owner_name && <span className="text-[11px] text-gray-500">by {a.owner_name}</span>}
           </div>
           <div className="flex items-center gap-2">
             <span className="text-xs text-gray-500 whitespace-nowrap">{fmtDate(a.activity_date)}</span>
-            {onEdit && (
-              <button onClick={onEdit} title="Edit" className="p-1 rounded hover:bg-brand-50 text-gray-500 hover:text-brand-600"><Icon name="edit" size={13} /></button>
+            {onOpen && (
+              <button onClick={onOpen} title={stateLabel === "Draft" ? "Continue the draft" : "Open the report"}
+                aria-label={`Open ${a.activity_uid}`} className="p-1 rounded hover:bg-brand-50 text-gray-500 hover:text-brand-600">
+                <Icon name={stateLabel === "Draft" ? "edit" : "view"} size={13} />
+              </button>
             )}
             {onCancel && (
               <button onClick={onCancel} title="Cancel" className="p-1 rounded hover:bg-red-50 text-gray-500 hover:text-red-500"><Icon name="close" size={13} /></button>
@@ -42,11 +53,21 @@ export default function ActivityCard({ activity: a, onEdit, onCancel, compact = 
             {a.location && <> at {a.location}</>}{a.attendees && <> · Triam: {a.attendees}</>}{a.purpose && <> · {a.purpose}</>}
           </div>
         )}
-        <p className="text-sm text-gray-700 mb-1 whitespace-pre-line">{a.summary}</p>
+        <p className="text-sm text-gray-700 mb-1 whitespace-pre-line">{a.summary || <span className="text-gray-500 italic">No discussion points yet</span>}</p>
         <div className="flex flex-wrap gap-4 text-xs text-gray-500">
           {a.outcome && <span><strong className="text-gray-600">Outcome:</strong> {a.outcome}</span>}
           {a.next_action && <span><strong className="text-gray-600">Next:</strong> {a.next_action}{a.due_date ? ` (by ${fmtDate(a.due_date)})` : ""}</span>}
         </div>
+        {a.status === "Cancelled" && a.cancel_reason && <div className="text-xs text-gray-500 mt-1">Cancelled: {a.cancel_reason}</div>}
+        {(a.corrections || []).length > 0 && (
+          <div className="mt-2 space-y-1">
+            {a.corrections.map((c) => (
+              <div key={c.id} className="text-xs rounded-md bg-amber-50/70 border border-amber-100 px-2 py-1 text-gray-700">
+                <span className="font-semibold text-amber-800">Correction</span> · {c.author_name || "—"}, {fmtDate(c.created_at)}: {c.text}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

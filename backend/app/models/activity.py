@@ -13,6 +13,9 @@ class ActivityType(str, enum.Enum):
 
 
 class ActivityStatus(str, enum.Enum):
+    # Triam 23-11-2026 (S T Krishna): "Save Draft" keeps a report as Draft (still editable); "Save the Report"
+    # makes it final (Completed): kept as written for later review, corrected only by adding a note.
+    DRAFT = "Draft"
     PLANNED = "Planned"
     COMPLETED = "Completed"
     CANCELLED = "Cancelled"
@@ -45,8 +48,28 @@ class Activity(Base):
     purpose = Column(String(200), nullable=True)
 
     cancel_reason = Column(String(500), nullable=True)  # set when cancelled — records are never deleted
+    finalised_at = Column(DateTime(timezone=True), nullable=True)  # "Save the Report"; locked from then on
+    finalised_by_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     account = relationship("Account")
     owner = relationship("User", back_populates="activities", foreign_keys=[owner_id])
+    finalised_by = relationship("User", foreign_keys=[finalised_by_id])
+    corrections = relationship("ActivityCorrection", order_by="ActivityCorrection.id", cascade="all, delete-orphan",
+                               back_populates="activity")
+
+
+class ActivityCorrection(Base):
+    """A note added to a final report (Triam 23-11-2026): the report's text stays as written; the note says what
+    was wrong or missing, by whom and when."""
+    __tablename__ = "activity_corrections"
+
+    id = Column(Integer, primary_key=True)
+    activity_id = Column(Integer, ForeignKey("activities.id", ondelete="CASCADE"), nullable=False, index=True)
+    author_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    text = Column(Text, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    activity = relationship("Activity", back_populates="corrections")
+    author = relationship("User")

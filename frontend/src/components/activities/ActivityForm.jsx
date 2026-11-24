@@ -2,11 +2,13 @@ import React from "react";
 import { Field, Input, Select, Textarea, DateInput } from "../ui";
 
 export const ACTIVITY_TYPES = ["Visit Report", "Call Report"];
-export const ACTIVITY_STATUSES = ["Planned", "Completed", "Cancelled", "Overdue"];
+// Triam 23-11-2026: a report is a Draft until "Save the Report" makes it final (status Completed).
+export const isFinal = (a) => a?.status === "Completed";
+export const isEditable = (a) => !a?.id || ["Draft", "Planned", "Overdue"].includes(a.status);
 
 export const blankActivity = (accountId, type = "Call Report") => ({
   account_id: accountId || "", activity_type: type,
-  activity_date: new Date().toISOString().split("T")[0], status: "Completed",
+  activity_date: new Date().toISOString().split("T")[0],
   summary: "", outcome: "", next_action: "", due_date: "",
   client_contact: "", attendees: "", location: "", purpose: "",
 });
@@ -15,11 +17,15 @@ export const blankActivity = (accountId, type = "Call Report") => ({
 export const activityPayload = (f) => {
   const out = { ...f, account_id: f.account_id ? Number(f.account_id) : null };
   ["due_date", "outcome", "next_action", "client_contact", "attendees", "location", "purpose"].forEach((k) => { if (!out[k]) out[k] = null; });
-  ["id", "activity_uid", "created_at", "updated_at"].forEach((k) => delete out[k]);
+  ["id", "activity_uid", "created_at", "updated_at", "status", "cancel_reason", "owner_name", "finalised_at",
+    "finalised_by_name", "corrections"].forEach((k) => delete out[k]);
   return out;
 };
 
-/** Client-side check matching the server's report rules (BRD §15). */
+/** "Save Draft" needs only the client; the rest can be finished later. */
+export const draftProblem = (f) => (f.account_id ? null : "Choose the client this report is for");
+
+/** "Save the Report": the server's rules for the final report (BRD §15). */
 export const activityProblem = (f) => {
   if (!f.account_id) return "Choose the client this report is for";
   if (!f.summary?.trim()) return "Enter the discussion points";
@@ -52,11 +58,6 @@ export default function ActivityForm({ form, setForm, accounts = [], lockClient 
           </Select>
         </Field>
         <Field label="Date" required><DateInput value={form.activity_date || ""} onChange={set("activity_date")} /></Field>
-        <Field label="Status">
-          <Select value={form.status || "Completed"} onChange={set("status")}>
-            {ACTIVITY_STATUSES.map((s) => <option key={s}>{s}</option>)}
-          </Select>
-        </Field>
       </div>
 
       <div className="rounded-lg border border-brand-100 bg-brand-50/30 px-3 pt-3 mb-3">

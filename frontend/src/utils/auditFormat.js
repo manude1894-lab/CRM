@@ -50,6 +50,8 @@ export const ACTION_LABELS = {
   login: "Logged in",
   login_failed: "Failed login",
   logout: "Signed out",
+  activity_final: "Visit / call report saved (final)",
+  activity_correction: "Correction note added to a report",
   password_change: "Password changed",
   password_reset_request: "Password reset requested",
   password_reset: "Password reset",

@@ -21,6 +21,7 @@ from sqlalchemy.orm import Session
 from app.audit import log_event
 from app.auth.permissions import has_permission
 from app.models import Account, Document, Instruction, Invoice, InvoiceLedgerStatus, User
+from app.models.invoice import ONBOARDING, SERVICE_REQUEST
 from app.schemas.invoice import InvoiceCreate, InvoiceRaise, InvoiceRequest, InvoiceUpdate
 from app.services import access_control, notification_service
 
@@ -110,9 +111,20 @@ def request_invoice(db: Session, data: InvoiceRequest, user: User) -> Invoice:
             raise HTTPException(status_code=400, detail="An invoice has already been requested for this service request")
     if data.currency not in CURRENCIES:
         raise HTTPException(status_code=400, detail=f"Currency must be one of {', '.join(CURRENCIES)}")
+    onboarding = data.onboarding and not data.instruction_id
+    if onboarding:
+        from app.services import onboarding_invoice_service
+        if acc.profile_status in onboarding_invoice_service.CLOSED:
+            raise HTTPException(status_code=409, detail=f"This client is {acc.profile_status}")
+        existing = onboarding_invoice_service.current(db, acc)
+        if existing is not None:
+            raise HTTPException(status_code=409, detail=f"{acc.company_name} already has an onboarding invoice "
+                                                        f"({'draft' if _unsent(existing) else existing.status}). "
+                                                        "Open it from the client's profile, Invoice for Onboarding Services.")
+        acc.onboarding_invoice_wanted = True
     inv = Invoice(account_id=acc.id, description=data.description, amount=data.amount, currency=data.currency,
                   notes=data.notes, status=DRAFT, requested_by_id=user.id,
-                  kind="Service Request" if data.instruction_id else None)
+                  kind=SERVICE_REQUEST if data.instruction_id else ONBOARDING if onboarding else None)
     db.add(inv)
     db.flush()
     if data.instruction_id:
