@@ -25,7 +25,7 @@ export default function ReportDialog({ report, accounts = [], lockClient = false
     try {
       const payload = { ...activityPayload(form), final };
       if (report.id) await activitiesApi.update(report.id, payload); else await activitiesApi.create(payload);
-      toast.success(final ? `${form.activity_type} saved` : "Draft saved. Finish it and Save the Report when ready");
+      toast.success(final ? `${form.activity_type} saved` : "Draft saved");
       onSaved();
     } catch (e) { toast.error(e.response?.data?.detail || "Save failed"); } finally { setBusy(null); }
   };
@@ -48,12 +48,11 @@ export default function ReportDialog({ report, accounts = [], lockClient = false
       <Modal title={title} onClose={onClose}>
         <ActivityCard activity={report} />
         {report.finalised_at && (
-          <p className="text-xs text-gray-500 mt-2">Saved as the final report {fmtDate(report.finalised_at)}{report.finalised_by_name ? ` by ${report.finalised_by_name}` : ""}. It is kept as written.</p>
+          <p className="text-xs text-gray-500 mt-2">Final · {fmtDate(report.finalised_at)}{report.finalised_by_name ? ` · ${report.finalised_by_name}` : ""}</p>
         )}
         {!readOnly && report.status === "Completed" && (
           <div className="mt-3 pt-3 border-t border-gray-100">
-            <Field label="Add a correction note"><Textarea rows={2} value={note} onChange={(e) => setNote(e.target.value)} maxLength={2000}
-              placeholder="What was wrong or missing; the report itself stays as written" /></Field>
+            <Field label="Correction"><Textarea rows={2} value={note} onChange={(e) => setNote(e.target.value)} maxLength={2000} /></Field>
           </div>
         )}
         <div className="flex justify-end gap-2 mt-3">

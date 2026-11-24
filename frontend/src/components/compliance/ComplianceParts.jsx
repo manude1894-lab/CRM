@@ -132,8 +132,6 @@ export function DecisionButtons({ actions, busy, onAction, labels = {}, submitSi
           <Field label={dialog === "reject" ? "What needs fixing? (at least 15 characters)" : "Comment (optional)"} required={dialog === "reject"}>
             <Textarea rows={3} value={text} onChange={(e) => setText(e.target.value)} maxLength={dialog === "reject" ? 2000 : 1000} />
           </Field>
-          {dialog === "approve" && <p className="text-xs text-gray-500 -mt-2 mb-3">The change takes effect as soon as you approve it.</p>}
-          {(dialog === "submit" || dialog === "resubmit") && <p className="text-xs text-gray-500 -mt-2 mb-3">It will be locked until Compliance decides.</p>}
           <div className="flex justify-end gap-3 mt-2">
             <button onClick={() => setDialog(null)} className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
             <button onClick={confirm} disabled={busy || rejectInvalid}

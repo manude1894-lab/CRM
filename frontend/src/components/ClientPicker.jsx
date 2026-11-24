@@ -22,8 +22,6 @@ export function matchClients(clients, query) {
   return [...starts, ...contains]; // names beginning with the text first
 }
 
-const SHOW = 60; // options drawn at once; typing narrows the rest
-
 export default function ClientPicker({ clients = [], value, onChange, allLabel, placeholder = "Search client name or Client ID…",
   disabled = false, className = "", ...rest }) {
   const label = useFieldLabel(rest);
@@ -36,7 +34,7 @@ export default function ClientPicker({ clients = [], value, onChange, allLabel, 
   const chosen = clients.find((c) => String(c.id) === String(value));
   const matches = useMemo(() => matchClients(clients, query), [clients, query]);
   // "All clients" is offered until something is typed; then Enter picks the best match, not "all".
-  const options = [...(allLabel && !query.trim() ? [{ id: "", all: true }] : []), ...matches.slice(0, SHOW)];
+  const options = [...(allLabel && !query.trim() ? [{ id: "", all: true }] : []), ...matches];
 
   useEffect(() => {
     const away = (e) => { if (box.current && !box.current.contains(e.target)) { setOpen(false); setQuery(""); } };
@@ -85,7 +83,6 @@ export default function ClientPicker({ clients = [], value, onChange, allLabel, 
               )}
             </li>
           ))}
-          {matches.length > SHOW && <li className="px-3 py-1.5 text-[11px] text-gray-500">{matches.length - SHOW} more: type to narrow the list</li>}
         </ul>
       )}
     </div>
