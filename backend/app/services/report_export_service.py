@@ -164,11 +164,14 @@ def to_xlsx(report: dict, user: User, filters: Optional[list] = None) -> bytes:
 _PDF_SUBSTITUTES = {"—": "-", "–": "-", "‘": "'", "’": "'", "“": '"', "”": '"', "…": "...", "•": "-"}
 
 
-def _pdf_text(v) -> str:
+def _pdf_text(v, lists: bool = True) -> str:
+    """Text the built-in PDF font can show. In report tables a "; " list goes one item per line; free text (a
+    visit / call report) keeps its own punctuation (lists=False)."""
     s = _shown(v)
     for a, b in _PDF_SUBSTITUTES.items():
         s = s.replace(a, b)
-    s = s.replace(LIST_SEPARATOR, "\n")
+    if lists:
+        s = s.replace(LIST_SEPARATOR, "\n")
     return s.encode("latin-1", "replace").decode("latin-1")
 
 
@@ -256,4 +259,108 @@ def to_pdf(report: dict, user: User, filters: Optional[list] = None) -> bytes:
         table.row([_pdf_text(c) for c in cols])
         for r in rows:
             table.row([_pdf_text(v) for v in r])
+    return bytes(pdf.output())
+
+
+# ── One Visit / Call Report as a document (Triam 23-11-2026) ────────────────────
+
+def activity_filename(act) -> str:
+    """triam-call-report-ACT-0036-<client>-<date of the meeting>.pdf: the type, its number, the client and the
+    date, so saved files sort and identify themselves."""
+    kind = re.sub(r"[^a-z]+", "-", act.activity_type.value.lower()).strip("-")
+    client = re.sub(r"[^A-Za-z0-9]+", "-", act.company_name or "").strip("-").lower()[:50] or "client"
+    return f"triam-{kind}-{act.activity_uid}-{client}-{act.activity_date:%Y%m%d}.pdf"
+
+
+def _dt(v) -> str:
+    if not v:
+        return ""
+    if isinstance(v, datetime):
+        return (v if v.tzinfo else v.replace(tzinfo=BUSINESS_TZ)).astimezone(BUSINESS_TZ).strftime("%d %m %Y %H:%M")
+    return v.strftime("%d %m %Y")
+
+
+def _plain(v) -> str:
+    return _pdf_text(v, lists=False)
+
+
+def activity_pdf(act, user: User) -> bytes:
+    """A final report, kept as written, with any correction notes after it."""
+    title = f"{act.activity_type.value} {act.activity_uid}"
+    pdf = _ReportPdf(title)
+    pdf.set_auto_page_break(auto=True, margin=15)
+    pdf.set_margins(16, 14, 16)
+    pdf.add_page(orientation="P")
+    pdf.set_font("Helvetica", "B", 9)
+    pdf.set_text_color(*BRAND_RGB)
+    pdf.cell(0, 5, APP, new_x="LMARGIN", new_y="NEXT")
+    pdf.set_text_color(0, 0, 0)
+    pdf.set_font("Helvetica", "B", 16)
+    pdf.cell(0, 9, _plain(title), new_x="LMARGIN", new_y="NEXT")
+    pdf.set_font("Helvetica", "", 9)
+    pdf.set_text_color(70, 70, 70)
+    state = "Cancelled" if act.status.value == "Cancelled" else "Final report"
+    pdf.cell(0, 5, _plain(f"{state} - {act.company_name}"), new_x="LMARGIN", new_y="NEXT")
+    pdf.set_text_color(0, 0, 0)
+    pdf.ln(3)
+
+    account = act.account
+    met = "Client contact met" if act.activity_type.value == "Visit Report" else "Client contact spoken to"
+    facts = [
+        ("Client", f"{act.company_name}" + (f" ({account.client_id})" if account is not None and account.client_id else "")),
+        ("Date", _dt(act.activity_date)),
+        (met, act.client_contact or ""),
+        ("Location", act.location or "") if act.activity_type.value == "Visit Report" else None,
+        ("Triam attendees", act.attendees or ""),
+        ("Purpose", act.purpose or ""),
+        ("Written by", act.owner.name if act.owner else ""),
+        ("Saved as final", f"{_dt(act.finalised_at)}" + (f" by {act.finalised_by.name}" if act.finalised_by else "")),
+    ]
+    if act.status.value == "Cancelled":
+        facts.append(("Cancelled", act.cancel_reason or ""))
+    pdf.set_draw_color(217, 222, 229)
+    label = FontFace(emphasis="BOLD", fill_color=(244, 246, 249))
+    with pdf.table(col_widths=(45, pdf.epw - 45), width=pdf.epw, first_row_as_headings=False, line_height=5.5,
+                   padding=1.4) as table:
+        for item in facts:
+            if item is None:
+                continue
+            row = table.row()
+            row.cell(_plain(item[0]), style=label)
+            row.cell(_plain(item[1]) or "-")
+
+    def section(heading, text):
+        if not (text or "").strip():
+            return
+        pdf.ln(4)
+        pdf.set_font("Helvetica", "B", 10)
+        pdf.set_text_color(*BRAND_RGB)
+        pdf.cell(0, 6, heading, new_x="LMARGIN", new_y="NEXT")
+        pdf.set_text_color(0, 0, 0)
+        pdf.set_font("Helvetica", "", 9.5)
+        pdf.multi_cell(0, 5, _plain(text), new_x="LMARGIN", new_y="NEXT")
+
+    section("Discussion points", act.summary)
+    section("Outcome", act.outcome)
+    nxt = (act.next_action or "") + (f" (by {_dt(act.due_date)})" if act.next_action and act.due_date else "")
+    section("Next action", nxt)
+
+    if act.corrections:
+        pdf.ln(4)
+        pdf.set_font("Helvetica", "B", 10)
+        pdf.set_text_color(154, 52, 18)
+        pdf.cell(0, 6, "Corrections added after the report was saved", new_x="LMARGIN", new_y="NEXT")
+        pdf.set_text_color(0, 0, 0)
+        for c in act.corrections:
+            pdf.set_font("Helvetica", "I", 8.5)
+            pdf.cell(0, 4.5, _plain(f"{c.author.name if c.author else '-'}, {_dt(c.created_at)}"), new_x="LMARGIN", new_y="NEXT")
+            pdf.set_font("Helvetica", "", 9.5)
+            pdf.multi_cell(0, 5, _plain(c.text), new_x="LMARGIN", new_y="NEXT")
+            pdf.ln(1)
+
+    pdf.ln(5)
+    pdf.set_font("Helvetica", "I", 7.5)
+    pdf.set_text_color(110, 110, 110)
+    pdf.multi_cell(0, 4, _plain(f"{_generated(user)}. The report is shown as saved; corrections, if any, are listed "
+                                   "after it and do not change it."), new_x="LMARGIN", new_y="NEXT")
     return bytes(pdf.output())

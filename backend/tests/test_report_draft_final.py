@@ -70,3 +70,24 @@ def test_route_lists_pages_and_corrects(client, db, make_user, make_account):
     page = client.get("/api/v1/activities", params={"status": "Final", "limit": 10}, headers=auth(rm)).json()
     assert page["total"] == 1
     assert client.get("/api/v1/activities", params={"limit": 5000}, headers=auth(rm)).status_code == 422
+
+
+def test_a_final_report_downloads_as_a_named_pdf(client, db, make_user, make_account):
+    """Triam 23-11-2026: triam-<type>-<number>-<client>-<date>.pdf; drafts are finished first."""
+    from tests.helpers import auth
+    rm = make_user("Rita RM")
+    acc = make_account(name="Acme Holdings Ltd", spoc=rm, profile_status="Active")
+    draft = svc.create_activity(db, report(acc), rm)
+    assert client.get(f"/api/v1/activities/{draft.id}/pdf", headers=auth(rm)).status_code == 400
+    final = svc.create_activity(db, report(acc, final=True), rm)
+    svc.add_correction(db, final.id, "Contact's surname is Haddad", rm)
+    r = client.get(f"/api/v1/activities/{final.id}/pdf", headers=auth(rm))
+    assert r.status_code == 200 and r.content.startswith(b"%PDF")
+    assert f'filename="triam-call-report-{final.activity_uid}-acme-holdings-ltd-20261123.pdf"' in r.headers["content-disposition"]
+
+
+def test_the_browser_may_read_the_file_name(client):
+    """Downloads were saved as "report.xlsx": the file name header was not exposed to the page across origins."""
+    r = client.options("/api/v1/reports/standard", headers={"Origin": "http://localhost:5173", "Access-Control-Request-Method": "GET"})
+    g = client.get("/health", headers={"Origin": "http://localhost:5173"})
+    assert "content-disposition" in g.headers.get("access-control-expose-headers", "").lower(), (r.status_code, dict(g.headers))

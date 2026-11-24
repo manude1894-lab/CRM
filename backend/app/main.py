@@ -48,7 +48,9 @@ app.add_middleware(
     allow_credentials=not settings.CORS_ALLOW_ALL,
     allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["X-Total-Count"],
+    # Content-Disposition carries the file name of a download (Triam 23-11-2026: files were saved as "report.xlsx"
+    # because the browser could not read the name the server gave).
+    expose_headers=["X-Total-Count", "Content-Disposition"],
 )
 
 

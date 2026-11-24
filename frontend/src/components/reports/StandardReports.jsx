@@ -5,6 +5,7 @@ import { Pager, SortTh, useListView } from "../listing";
 import { Button, DateInput, Field, Input, Select, Spinner } from "../ui";
 import { fmtDate } from "../../utils/constants";
 import { toast } from "../../store/toast";
+import { saveResponse } from "../../utils/download";
 import { useAuthStore } from "../../store/auth";
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -94,13 +95,7 @@ export default function StandardReports() {
   const download = async (format) => {
     setExporting(format);
     try {
-      const r = await reportsApi.exportFile(key, paramsFor(key), format);
-      const name = /filename="([^"]+)"/.exec(r.headers?.["content-disposition"] || "")?.[1] || `report.${format}`;
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(r.data);
-      a.download = name;
-      a.click();
-      setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+      saveResponse(await reportsApi.exportFile(key, paramsFor(key), format), `triam-${key}.${format}`);
     } catch (e) {
       let detail = "Could not download the report";
       try { detail = JSON.parse(await e.response.data.text()).detail || detail; } catch { /* not a JSON error */ }

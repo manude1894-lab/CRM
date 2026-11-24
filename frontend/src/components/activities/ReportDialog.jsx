@@ -3,6 +3,7 @@ import { activitiesApi } from "../../api/endpoints";
 import { Button, Field, Modal, Textarea } from "../ui";
 import { toast } from "../../store/toast";
 import { fmtDate } from "../../utils/constants";
+import { saveResponse } from "../../utils/download";
 import ActivityForm, { activityPayload, activityProblem, draftProblem, isEditable } from "./ActivityForm";
 import ActivityCard from "./ActivityCard";
 
@@ -35,6 +36,13 @@ export default function ReportDialog({ report, accounts = [], lockClient = false
     catch (e) { toast.error(e.response?.data?.detail || "Could not add the correction"); } finally { setBusy(null); }
   };
 
+  // Triam 23-11-2026: a final report as a PDF, named triam-<type>-<number>-<client>-<date>.pdf.
+  const download = async () => {
+    setBusy("pdf");
+    try { saveResponse(await activitiesApi.pdf(report.id), `${report.activity_uid}.pdf`); }
+    catch { toast.error("Could not download the report"); } finally { setBusy(null); }
+  };
+
   if (!editable) {
     return (
       <Modal title={title} onClose={onClose}>
@@ -50,6 +58,7 @@ export default function ReportDialog({ report, accounts = [], lockClient = false
         )}
         <div className="flex justify-end gap-2 mt-3">
           <Button onClick={onClose}>Close</Button>
+          {report.finalised_at && <Button onClick={download} disabled={!!busy}>{busy === "pdf" ? "Preparing…" : "Download PDF"}</Button>}
           {!readOnly && report.status === "Completed" && <Button variant="primary" onClick={addNote} disabled={!!busy}>{busy === "note" ? "Adding…" : "Add correction"}</Button>}
         </div>
       </Modal>
