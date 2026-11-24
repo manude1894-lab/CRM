@@ -49,7 +49,7 @@ const groupReports = (list) => {
  * Administrator allows (Triam UAT 19-11-2026). */
 /**
  * Triam 24-11-2026: a wide report scrolls sideways inside a box of fixed height, so its scrollbar is always in view
- * (not below the last row); the headings stay at the top; arrows and a fade show that more columns are there.
+ * (not below the last row); the headings stay at the top; a fade at the edge shows that more columns are there.
  */
 function useSideScroll(deps) {
   const ref = useRef(null);
@@ -74,8 +74,25 @@ function useSideScroll(deps) {
     if (ro) ro.observe(el);
     return () => { window.removeEventListener("resize", fit); if (ro) ro.disconnect(); };
   }, deps);
-  const by = (dir) => ref.current?.scrollBy({ left: dir * Math.max(240, (ref.current.clientWidth || 600) * 0.6), behavior: "smooth" });
-  return { ref, edges, measure, by, height };
+  return { ref, edges, measure, height };
+}
+
+/** The report list ends at the bottom of the window wherever it sits, and scrolls on its own (Triam 24-11-2026). */
+function useFitToWindow() {
+  const ref = useRef(null);
+  const [height, setHeight] = useState(null);
+  useEffect(() => {
+    const fit = () => {
+      const el = ref.current;
+      if (el) setHeight(Math.max(240, Math.round(window.innerHeight - el.getBoundingClientRect().top - 16)));
+    };
+    fit();
+    const main = document.getElementById("main-content");
+    window.addEventListener("resize", fit);
+    main?.addEventListener("scroll", fit, { passive: true });
+    return () => { window.removeEventListener("resize", fit); main?.removeEventListener("scroll", fit); };
+  }, []);
+  return { ref, height };
 }
 
 export default function StandardReports() {
@@ -135,13 +152,15 @@ export default function StandardReports() {
   };
   useEffect(() => { run(key); }, [key]);
   const side = useSideScroll([report, busy]);
+  const navFit = useFitToWindow();
   const view = useListView(report?.rows || [], { key: "reports", defaultSize: 50, valueOf: (r, j) => r[j], resetOn: [report] });
   useEffect(() => { view.setSort(null); }, [report?.title]);
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[250px_minmax(0,1fr)] gap-4 items-start">
       {/* Triam 22-11-2026 design refresh: the reports grouped down the side instead of a wall of pills. */}
-      <nav aria-label="Reports" className="bg-white border border-gray-200/70 rounded-xl shadow-[0_1px_2px_rgba(16,24,40,0.04)] p-2 lg:sticky lg:top-0">
+      <nav aria-label="Reports" ref={navFit.ref} style={navFit.height ? { "--nav-h": `${navFit.height}px` } : undefined}
+        className="report-scroll bg-white border border-gray-200/70 rounded-xl shadow-[0_1px_2px_rgba(16,24,40,0.04)] p-2 lg:sticky lg:top-0 lg:max-h-[var(--nav-h,calc(100vh-7.5rem))] lg:overflow-y-auto">
         {groupReports(list).map(([group, reports]) => (
           <div key={group} className="mb-1">
             <div className="px-2.5 pt-2.5 pb-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-500">{group}</div>
@@ -225,15 +244,6 @@ export default function StandardReports() {
             <div className="text-xs text-gray-500 mb-2">{report.title} · {report.rows.length} row{report.rows.length === 1 ? "" : "s"}</div>
             {report.rows.length === 0 ? <p className="text-sm text-gray-500 py-6 text-center">Nothing to report.</p> : (
               <>
-              {side.edges.more && (
-                <div className="flex items-center justify-end gap-2 mb-1.5 text-[11px] text-gray-500">
-                  <span>More columns: scroll sideways (or Shift + mouse wheel)</span>
-                  <button type="button" aria-label="Scroll left" onClick={() => side.by(-1)} disabled={!side.edges.left}
-                    className="w-7 h-7 rounded-md border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-40">&#9664;</button>
-                  <button type="button" aria-label="Scroll right" onClick={() => side.by(1)} disabled={!side.edges.right}
-                    className="w-7 h-7 rounded-md border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-40">&#9654;</button>
-                </div>
-              )}
               <div className="relative">
               {side.edges.right && <div aria-hidden="true" className="pointer-events-none absolute top-0 right-0 bottom-3 w-10 z-[4] bg-gradient-to-l from-white to-transparent" />}
               <div ref={side.ref} onScroll={side.measure} style={side.height ? { maxHeight: side.height } : undefined}
