@@ -3,6 +3,7 @@ import { instructionsApi, invoicesApi, accountsApi, documentsApi } from "../api/
 import { useMasters } from "../hooks/useMasters";
 import { Icon, Modal, Field, Input, Select, Textarea, Spinner, ErrorBanner, PageHeader, DateInput } from "../components/ui";
 import { Pager, SortTh, useListView } from "../components/listing";
+import ClientPicker from "../components/ClientPicker";
 import MoneyInput from "../components/MoneyInput";
 import { fmtDate, fmtMoney } from "../utils/constants";
 import { useRequestOptions, pickableStatuses, firstOpenStatus, requestLabel, clientEntities, takesRequests } from "../hooks/useRequestOptions";
@@ -222,11 +223,8 @@ export default function InstructionsPage() {
           className="border border-gray-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-brand-400">
           {Object.entries(INVOICING).map(([k, label]) => <option key={k} value={k}>{label}{k ? ` (${invoicingCounts[k] || 0})` : ""}</option>)}
         </select>
-        <select aria-label="Filter by client" value={clientFilter} onChange={(e) => setClientFilter(e.target.value)}
-          className="border border-gray-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-brand-400">
-          <option value="">All clients</option>
-          {accounts.map((a) => <option key={a.id} value={a.id}>{a.company_name}</option>)}
-        </select>
+        <div className="w-64"><ClientPicker aria-label="Filter by client" clients={accounts} allLabel="All clients" value={clientFilter}
+          onChange={setClientFilter} /></div>
       </div>
 
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-x-auto">
@@ -310,10 +308,9 @@ export default function InstructionsPage() {
                 </Select>
               </Field>
               <Field label="Client" required>
-                <Select value={form.account_id || ""} disabled={modal === "edit" || !form.triam_entity} onChange={(e) => set("account_id")(e.target.value)}>
-                  <option value="">{form.triam_entity ? (entityClients.length ? "— choose client —" : "— no clients approved by Compliance for this entity —") : "— choose the entity first —"}</option>
-                  {entityClients.map((a) => <option key={a.id} value={a.id}>{a.client_id ? `${a.client_id} – ` : ""}{a.company_name}</option>)}
-                </Select>
+                <ClientPicker clients={entityClients} value={form.account_id || ""} onChange={set("account_id")}
+                  disabled={modal === "edit" || !form.triam_entity || !entityClients.length}
+                  placeholder={form.triam_entity ? (entityClients.length ? "Search client name or Client ID…" : "No clients approved by Compliance for this entity") : "Choose the entity first"} />
               </Field>
               <Field label="Request Type" required>
                 <Select value={form.instruction_type || ""} disabled={!form.triam_entity}

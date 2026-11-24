@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { accountsApi, documentsApi, instructionsApi, invoicesApi } from "../api/endpoints";
 import { Button, EmptyState, ErrorBanner, Field, FilterBar, Icon, Input, Modal, PageHeader, SearchInput, Select, Spinner, Textarea, DateInput } from "../components/ui";
 import { Pager, SortTh, useListView } from "../components/listing";
+import ClientPicker from "../components/ClientPicker";
 import { fmtDate } from "../utils/constants";
 import { useAuthStore } from "../store/auth";
 import { toast } from "../store/toast";
@@ -195,11 +196,8 @@ function RequestModal({ draft, onClose, onDone }) {
   return (
     <Modal title={draft ? "Draft invoice request" : "Request an invoice"} onClose={onClose}>
       <Field label="Client" required>
-        <Select value={form.account_id} disabled={!!draft} onChange={(e) => setForm((f) => ({ ...f, account_id: e.target.value, instruction_id: "" }))}>
-          <option value="">— choose —</option>
-          {clients.map((c) => <option key={c.id} value={c.id}>{c.company_name}{c.client_id ? ` (${c.client_id})` : ""}</option>)}
-          {draft && !clients.some((c) => c.id === draft.account_id) && <option value={draft.account_id}>{draft.company_name}</option>}
-        </Select>
+        <ClientPicker disabled={!!draft} value={form.account_id} onChange={(v) => setForm((f) => ({ ...f, account_id: v, instruction_id: "" }))}
+          clients={draft && !clients.some((c) => c.id === draft.account_id) ? [...clients, { id: draft.account_id, company_name: draft.company_name }] : clients} />
       </Field>
       {/* Triam 23-11-2026: an onboarding invoice can be requested at any stage of onboarding, before approval; a
           service request invoice needs a service request, which opens once Compliance has approved the client. */}
