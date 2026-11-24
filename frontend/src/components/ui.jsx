@@ -217,7 +217,7 @@ export const Button = ({ variant = "secondary", size = "md", className = "", typ
 // shares it; Input, Select, Textarea and DateInput use it as aria-labelledby unless they are named otherwise. This
 // covers fields with two controls too (country code + number).
 const FieldLabelContext = React.createContext(null);
-const useFieldLabel = (props) => {
+export const useFieldLabel = (props) => {
   const labelId = React.useContext(FieldLabelContext);
   return props["aria-label"] || props["aria-labelledby"] || !labelId ? {} : { "aria-labelledby": labelId };
 };

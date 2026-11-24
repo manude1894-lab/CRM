@@ -8,6 +8,7 @@ import { reasonDialog } from "../store/confirm";
 import { ACTIVITY_TYPES, blankActivity } from "../components/activities/ActivityForm";
 import ActivityCard from "../components/activities/ActivityCard";
 import ReportDialog from "../components/activities/ReportDialog";
+import ClientPicker from "../components/ClientPicker";
 
 /**
  * Visit Reports and Call Reports across all the clients this user can see (BRD §15). Triam 23-11-2026: every past
@@ -71,14 +72,11 @@ export default function ActivitiesPage() {
       <PageHeader title="Call Reports / Contact Notes"
         subtitle={`${total} report${total === 1 ? "" : "s"}${filtering ? " match these filters" : ""}`}
         actions={!readOnly && (
-          <div className="flex gap-2">
-            {["Visit Report", "Call Report"].map((t) => (
-              <button key={t} onClick={() => setOpen(blankActivity(f.account_id, t))}
-                className="px-3 py-2 text-sm text-white rounded-lg font-medium flex items-center gap-1.5 bg-brand-600 hover:bg-brand-700">
-                <Icon name="plus" size={14} /> {t}
-              </button>
-            ))}
-          </div>
+          // Triam 24-11-2026: one button; Visit or Call is chosen in the form (Type).
+          <button onClick={() => setOpen(blankActivity(f.account_id, f.activity_type || "Visit Report"))}
+            className="px-3 py-2 text-sm text-white rounded-lg font-medium flex items-center gap-1.5 bg-brand-600 hover:bg-brand-700">
+            <Icon name="plus" size={14} /> New Report
+          </button>
         )} />
 
       <FilterBar>
@@ -86,10 +84,8 @@ export default function ActivitiesPage() {
         <div className="w-36"><Select aria-label="Filter by type" value={f.activity_type} onChange={set("activity_type")}>
           <option value="">All types</option>{ACTIVITY_TYPES.map((t) => <option key={t}>{t}</option>)}
         </Select></div>
-        <div className="w-56"><Select aria-label="Filter by client" value={f.account_id} onChange={set("account_id")}>
-          <option value="">All clients</option>
-          {accounts.map((a) => <option key={a.id} value={a.id}>{a.company_name}</option>)}
-        </Select></div>
+        <div className="w-64"><ClientPicker aria-label="Filter by client" clients={accounts} allLabel="All clients" value={f.account_id}
+          onChange={(v) => setF((p) => ({ ...p, account_id: v }))} /></div>
         <div className="w-44"><Select aria-label="Filter by writer" value={f.owner_id} onChange={set("owner_id")}>
           <option value="">Everyone</option>{writers.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
         </Select></div>

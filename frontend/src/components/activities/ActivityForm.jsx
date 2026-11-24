@@ -1,5 +1,6 @@
 import React from "react";
 import { Field, Input, Select, Textarea, DateInput } from "../ui";
+import ClientPicker from "../ClientPicker";
 
 export const ACTIVITY_TYPES = ["Visit Report", "Call Report"];
 // Triam 23-11-2026: a report is a Draft until "Save the Report" makes it final (status Completed).
@@ -46,10 +47,7 @@ export default function ActivityForm({ form, setForm, accounts = [], lockClient 
       <div className="grid grid-cols-2 gap-x-4">
         {!lockClient && (
           <Field label="Client" required>
-            <Select value={form.account_id || ""} onChange={set("account_id")}>
-              <option value="">— choose client —</option>
-              {accounts.map((a) => <option key={a.id} value={a.id}>{a.client_id ? `${a.client_id} – ` : ""}{a.company_name}</option>)}
-            </Select>
+            <ClientPicker clients={accounts} value={form.account_id || ""} onChange={(v) => setForm((p) => ({ ...p, account_id: v }))} />
           </Field>
         )}
         <Field label="Type" required>
