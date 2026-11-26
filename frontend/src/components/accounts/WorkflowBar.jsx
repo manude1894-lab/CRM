@@ -23,7 +23,9 @@ const STATUS_STYLE = {
 };
 
 // Actions that need a short reason typed by the user.
-const NEEDS_REASON = { deactivate: "Why is the client being made inactive?", mark_exit: "Why is the client exiting?" };
+const NEEDS_REASON = { deactivate: "Why is the client being made inactive?", mark_exit: "Comments", cancel_exit: "Comments" };
+// Triam UAT 25-11-2026 row 184: the CO's comments on marking and removing the exit marking, up to 250 characters.
+const EXIT_COMMENT_MAX = 250;
 // Triam UAT 18-11-2026: onboarding statuses the RM sets, with an optional note (Drop also takes a reason from the list).
 const OPTIONAL_NOTE = {
   pending_client: "What is the client to send or answer? (optional)",
@@ -31,8 +33,8 @@ const OPTIONAL_NOTE = {
   hold: "Why is the client on hold? (optional)",
   drop: "Details",
 };
-const RUNS_AT_ONCE = ["activate", "reactivate", "cancel_exit", "withdraw", "resume", "reopen"];
-const REASON_SHOWN = ["Pending with Client", "Pending with Regn Authority", "On Hold", "Dropped"];
+const RUNS_AT_ONCE = ["activate", "reactivate", "withdraw", "resume", "reopen"];
+const REASON_SHOWN = ["Pending with Client", "Pending with Regn Authority", "On Hold", "Dropped", "Marked for Exit"];
 const MAX_WORDS = 250;
 export const wordCount = (t) => (t || "").trim().split(/\s+/).filter(Boolean).length;
 
@@ -77,7 +79,7 @@ export default function WorkflowBar({ accountId, refreshKey, onChanged, submitSi
       else if (action === "approve") next = await workflowApi.approve(accountId, text, state.stage);
       else if (action === "reject") next = await workflowApi.reject(accountId, reasonCode, text, state.stage);
       else if (action === "withdraw") next = await workflowApi.withdraw(accountId);
-      else next = await workflowApi.status(accountId, action, text, action === "drop" ? reasonCode : null);
+      else next = await workflowApi.status(accountId, action, text, ["drop", "mark_exit"].includes(action) ? reasonCode : null);
       setState(next);
       setDialog(null); setText(""); setReasonCode(""); setKycDeclared(false);
       toast.success(next.stage ? `Client is now with ${next.stage === "Approver" ? "the Approver" : "Compliance"}` : `Client is now ${next.status}`);
@@ -103,7 +105,8 @@ export default function WorkflowBar({ accountId, refreshKey, onChanged, submitSi
   const words = wordCount(text);
   const commentBad = !!commentLabel && (!text.trim() || words > MAX_WORDS);
   const kycMissing = dialog?.action === "submit" && !kycDeclared;
-  const dropIncomplete = dialog?.action === "drop" && (!reasonCode || (reasonCode === "Other" && !text.trim()));
+  const dropIncomplete = (dialog?.action === "drop" && (!reasonCode || (reasonCode === "Other" && !text.trim())))
+    || (dialog?.action === "mark_exit" && !reasonCode);
 
   // Triam UAT 05-11-2026: a rejected client shows who rejected it, when and why.
   const rejection = state.status === "Rejected" ? state.history.find((h) => h.request_type === "client_profile" && h.status === "Rejected") : null;
@@ -115,6 +118,14 @@ export default function WorkflowBar({ accountId, refreshKey, onChanged, submitSi
               <Select value={reasonCode} onChange={(e) => setReasonCode(e.target.value)}>
                 <option value="">— choose —</option>
                 {reasons.items.map((r) => <option key={r.code} value={r.code}>{r.label}</option>)}
+              </Select>
+            </Field>
+          )}
+          {dialog.action === "mark_exit" && (
+            <Field label="Reason" required>
+              <Select value={reasonCode} onChange={(e) => setReasonCode(e.target.value)}>
+                <option value="">— choose —</option>
+                {(state.exit_reasons || []).map((r) => <option key={r} value={r}>{r}</option>)}
               </Select>
             </Field>
           )}
@@ -130,7 +141,8 @@ export default function WorkflowBar({ accountId, refreshKey, onChanged, submitSi
             : dialog.action === "drop" ? (reasonCode === "Other" ? "Details" : "Details (optional)")
             : commentLabel || NEEDS_REASON[dialog.action] || OPTIONAL_NOTE[dialog.action] || "Comment (optional)"}
             required={dialog.action === "reject" || !!NEEDS_REASON[dialog.action] || !!commentLabel || (dialog.action === "drop" && reasonCode === "Other")}>
-            <Textarea rows={commentLabel ? 5 : 3} value={text} onChange={(e) => setText(e.target.value)} maxLength={commentLabel ? 4000 : dialog.action === "reject" ? 2000 : 500} />
+            <Textarea rows={commentLabel ? 5 : 3} value={text} onChange={(e) => setText(e.target.value)} maxLength={commentLabel ? 4000 : dialog.action === "reject" ? 2000 : ["mark_exit", "cancel_exit"].includes(dialog.action) ? EXIT_COMMENT_MAX : 500} />
+            {["mark_exit", "cancel_exit"].includes(dialog.action) && <div className="text-[11px] text-right mt-0.5 text-gray-500">{text.length} / {EXIT_COMMENT_MAX}</div>}
             {commentLabel && <div className={`text-[11px] text-right mt-0.5 ${words > MAX_WORDS ? "text-red-600" : "text-gray-500"}`}>{words} / {MAX_WORDS} words</div>}
           </Field>
           {dialog.action === "submit" && (

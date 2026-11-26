@@ -27,6 +27,7 @@ def _state(db: Session, acc, user: User) -> WorkflowState:
         status_reason_code=acc.status_reason_code,
         status_reason=acc.status_reason,
         drop_reasons=list(wf.DROP_REASONS),
+        exit_reasons=list(wf.EXIT_REASONS),
         locked=acc.profile_status in (wf.AWAITING, wf.EXITED, wf.DROPPED),
         actions=[WorkflowAction(**{k: v for k, v in a.items() if not k.startswith("_")}) for a in wf.allowed_actions(db, acc, user)],
         history=[ApprovalRead.from_row(r) for r in wf.history(db, acc.id)],

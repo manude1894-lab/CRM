@@ -9,9 +9,9 @@ import { toast } from "../store/toast";
 import { confirmDialog, reasonDialog } from "../store/confirm";
 
 const CURRENCIES = ["AED", "USD", "EUR", "GBP", "INR", "SGD"];
-const STATUSES = ["Requested", "Draft", "Raised", "Paid", "Overdue"];
+const STATUSES = ["With Compliance", "Requested", "Draft", "Raised", "Paid", "Overdue"];
 const STATUS_STYLE = {
-  Requested: "bg-amber-100 text-amber-800", Draft: "bg-amber-50 text-amber-700", Raised: "bg-blue-50 text-blue-700",
+  "With Compliance": "bg-violet-50 text-violet-700", Requested: "bg-amber-100 text-amber-800", Draft: "bg-amber-50 text-amber-700", Raised: "bg-blue-50 text-blue-700",
   Paid: "bg-emerald-50 text-emerald-700", Overdue: "bg-red-50 text-red-700",
 };
 // A requester's draft request, not yet sent to Accounts (only the requester sees it).
@@ -34,6 +34,7 @@ export default function InvoicesPage() {
   const [requesting, setRequesting] = useState(false); // true for a new request, or the draft being edited
   const [raising, setRaising] = useState(null);
   const [files, setFiles] = useState(null); // invoice whose attachments are open
+  const [deciding, setDeciding] = useState(null); // an onboarding invoice request the CO decides on
 
   const load = () => invoicesApi.list({ limit: 500 }).then((r) => { setInvoices(r.items || []); setError(null); })
     .catch((e) => setError(e.response?.data?.detail || "Failed to load invoices"));
@@ -129,13 +130,16 @@ export default function InvoicesPage() {
                       {!readOnly && unsent(i) && (
                         <button onClick={() => setRequesting(i)} className="px-2 py-1 text-xs text-white rounded-lg bg-brand-600 hover:bg-brand-700">Edit / Submit</button>
                       )}
+                      {!readOnly && i.can_co_decide && (
+                        <button onClick={() => setDeciding(i)} className="px-2 py-1 text-xs text-white rounded-lg bg-brand-600 hover:bg-brand-700">Approve / Return</button>
+                      )}
                       {!readOnly && accountsTeam && ["Requested", "Draft"].includes(i.status) && !unsent(i) && (
                         <button onClick={() => setRaising(i)} className="px-2 py-1 text-xs text-white rounded-lg bg-brand-600 hover:bg-brand-700">Raise</button>
                       )}
                       {!readOnly && accountsTeam && ["Raised", "Overdue"].includes(i.status) && (
                         <button onClick={() => markPaid(i)} className="px-2 py-1 text-xs border border-emerald-300 text-emerald-700 rounded-lg hover:bg-emerald-50">Mark paid</button>
                       )}
-                      {!readOnly && !["Paid", "Cancelled"].includes(i.status) && (accountsTeam || ["Requested", "Draft"].includes(i.status)) && (
+                      {!readOnly && !["Paid", "Cancelled"].includes(i.status) && (accountsTeam || ["Requested", "Draft", "With Compliance"].includes(i.status)) && (
                         <button onClick={() => cancelInvoice(i)} title="Cancel invoice" className="p-1 rounded hover:bg-red-50 text-gray-500 hover:text-red-500"><Icon name="close" size={13} /></button>
                       )}
                     </div>
@@ -148,6 +152,7 @@ export default function InvoicesPage() {
       )}
       <Pager {...view.pager} label="Invoices" />
 
+      {deciding && <CoDecisionModal invoice={deciding} onClose={() => setDeciding(null)} onDone={() => { setDeciding(null); load(); }} />}
       {requesting && <RequestModal draft={requesting === true ? null : requesting} onClose={() => setRequesting(false)} onDone={() => { setRequesting(false); load(); }} />}
       {raising && <RaiseModal invoice={raising} onClose={() => setRaising(null)} onDone={() => { setRaising(null); load(); }} />}
       {files && <FilesModal invoice={files} accountsTeam={accountsTeam} onClose={() => { setFiles(null); load(); }} />}
@@ -187,8 +192,8 @@ function RequestModal({ draft, onClose, onDone }) {
       else inv = await invoicesApi.request({ ...fields, account_id: Number(form.account_id), submit: send,
         instruction_id: form.purpose === "request" && form.instruction_id ? Number(form.instruction_id) : null, onboarding: form.purpose === "onboarding" });
       for (const f of approvals) await invoicesApi.attach(inv.id, f, "Pricing Approval");
-      if (draft && send) await invoicesApi.submitRequest(draft.id);
-      toast.success(send ? "Invoice requested. Accounts has been notified." : "Saved as a draft. Accounts sees it once you submit it.");
+      if (draft && send) inv = await invoicesApi.submitRequest(draft.id);
+      toast.success(!send ? "Saved as a draft" : inv?.status === "With Compliance" ? "Sent to Compliance for approval" : "Invoice requested. Accounts has been notified.");
       onDone();
     } catch (e) { toast.error(e.response?.data?.detail || "Request failed"); } finally { setBusy(false); }
   };
@@ -305,6 +310,43 @@ function FilesModal({ invoice, accountsTeam, onClose }) {
         </div>
       ))}
       <div className="flex justify-end"><Button onClick={onClose}>Close</Button></div>
+    </Modal>
+  );
+}
+
+
+/** Triam UAT 25-11-2026 row 182: the CO approves an onboarding invoice request (it goes to Accounts) or returns it. */
+function CoDecisionModal({ invoice: i, onClose, onDone }) {
+  const [checked, setChecked] = useState(false);
+  const [comment, setComment] = useState("");
+  const [busy, setBusy] = useState(null);
+  const decide = async (approve) => {
+    if (approve && !checked) return toast.error("Confirm the checks first");
+    if (!approve && !comment.trim()) return toast.error("Say why the request is returned");
+    setBusy(approve ? "approve" : "return");
+    try {
+      await invoicesApi.coDecide(i.id, { approve, checks_confirmed: checked, comment: comment.trim() || null });
+      toast.success(approve ? "Approved. Accounts has been notified." : "Returned to the RM");
+      onDone();
+    } catch (e) { toast.error(e.response?.data?.detail || "Could not save the decision"); } finally { setBusy(null); }
+  };
+  return (
+    <Modal title="Onboarding invoice request" onClose={onClose}>
+      <div className="text-sm text-gray-700 mb-3">
+        <div className="font-medium text-gray-900">{i.company_name}</div>
+        <div className="text-xs text-gray-500">{i.client_id} · requested by {i.requested_by_name || "—"} · {fmtDate(i.requested_at)}</div>
+        <div className="mt-1">{money(i.currency, i.amount)}{i.notes ? ` · ${i.notes}` : ""}</div>
+      </div>
+      <label className="flex items-start gap-2 text-sm text-gray-700 mb-3">
+        <input type="checkbox" className="mt-1" checked={checked} onChange={(e) => setChecked(e.target.checked)} />
+        <span>ID verification and name screening of the entity / individuals are done, alerts (if any) are closed and there is no other open risk.</span>
+      </label>
+      <Field label="Comments"><Textarea rows={3} value={comment} onChange={(e) => setComment(e.target.value)} maxLength={500} /></Field>
+      <div className="flex justify-end gap-2">
+        <Button onClick={onClose} disabled={!!busy}>Cancel</Button>
+        <Button variant="danger" onClick={() => decide(false)} disabled={!!busy}>{busy === "return" ? "Returning…" : "Return to RM"}</Button>
+        <Button variant="primary" onClick={() => decide(true)} disabled={!!busy || !checked}>{busy === "approve" ? "Approving…" : "Approve"}</Button>
+      </div>
     </Modal>
   );
 }
