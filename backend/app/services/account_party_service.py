@@ -75,6 +75,12 @@ def _validate_party(account: Account, p: AccountParty) -> None:
     # Only a date being entered or changed: an old date already on record doesn't block other edits.
     if p.constitution != "Entity" and inspect(p).attrs.id_or_license_expiry.history.added:
         account_service.assert_passport_acceptable(p.id_or_license_expiry, f"The passport of {p.full_name}")
+    # Triam UAT 25-11-2026: the same visa rule as the client's own (a 1980 visa expiry had been entered).
+    if p.uae_visa_expiry and inspect(p).attrs.uae_visa_expiry.history.added:
+        from datetime import date, timedelta
+        if p.uae_visa_expiry < date.today() - timedelta(days=account_service.VISA_GRACE_DAYS):
+            raise HTTPException(status_code=400, detail=f"The UAE visa of {p.full_name} expired more than "
+                                                        f"{account_service.VISA_GRACE_DAYS} days ago. Ask for the renewed visa")
     _assert_party_dates(p)
     if minor_needs_guardian(p):
         missing = [label for label, value in (("Parent / Guardian Name", p.guardian_name),

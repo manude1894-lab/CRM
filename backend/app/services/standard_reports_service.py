@@ -109,12 +109,21 @@ def _dated_documents(db: Session, user: User) -> list[dict]:
             if d:
                 out.append({"acc": a, "holder": a.company_name, "document": label,
                             "number": getattr(a, number, None) if number else None, "expiry": d})
-        for p in a.parties:
-            for field, label, number in PARTY_DATES:
-                d = getattr(p, field, None)
-                if d:
-                    out.append({"acc": a, "holder": f"{p.full_name} ({p.party_role})", "document": label,
-                                "number": getattr(p, number, None) if number else None, "expiry": d})
+        # Triam UAT 25-11-2026: one person with several roles (e.g. Shareholder and Authorised Signatory) holds one
+        # passport and one visa: list each document once, with all the person's roles.
+        from app.services.account_service import group_people
+        for records in group_people(a.parties):
+            roles = ", ".join(dict.fromkeys(r.party_role for r in records))
+            seen = set()
+            for p in records:
+                for field, label, number in PARTY_DATES:
+                    d = getattr(p, field, None)
+                    num = getattr(p, number, None) if number else None
+                    key = (label, (num or "").strip().upper(), d)
+                    if d and key not in seen:
+                        seen.add(key)
+                        out.append({"acc": a, "holder": f"{records[0].full_name} ({roles})", "document": label,
+                                    "number": num, "expiry": d})
     return out
 
 

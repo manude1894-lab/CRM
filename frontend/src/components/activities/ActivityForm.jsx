@@ -78,7 +78,7 @@ export default function ActivityForm({ form, setForm, accounts = [], lockClient 
       <Field label="Outcome"><Textarea rows={2} value={form.outcome || ""} onChange={set("outcome")} /></Field>
       <div className="grid grid-cols-2 gap-x-4">
         <Field label="Next action"><Input value={form.next_action || ""} onChange={set("next_action")} /></Field>
-        <Field label="Next action due"><DateInput value={form.due_date || ""} onChange={set("due_date")} /></Field>
+        <Field label="Next action due"><DateInput min={new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Dubai" })} value={form.due_date || ""} onChange={set("due_date")} /></Field>
       </div>
     </div>
   );

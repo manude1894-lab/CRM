@@ -126,6 +126,7 @@ def create_activity(db: Session, data: ActivityCreate, user: User) -> Activity:
         raise HTTPException(status_code=403, detail="You don't have access to this client")
     if data.final:
         _check_report(data.activity_type, data.model_dump())
+    _check_due(data.due_date)
 
     owner_id = data.owner_id or user.id
     if _restricted(user):
@@ -147,6 +148,17 @@ def create_activity(db: Session, data: ActivityCreate, user: User) -> Activity:
     db.commit()
     db.refresh(act)
     return act
+
+
+def _uae_today() -> date:
+    from app.services.standard_reports_service import BUSINESS_TZ
+    return datetime.now(BUSINESS_TZ).date()
+
+
+def _check_due(due: Optional[date]) -> None:
+    """Triam UAT 25-11-2026 row 200: the next action is due today or later, never in the past."""
+    if due and due < _uae_today():
+        raise HTTPException(status_code=400, detail="Next action due cannot be in the past")
 
 
 def _finalise(db: Session, act: Activity, user: User) -> None:
@@ -171,6 +183,8 @@ def update_activity(db: Session, activity_id: int, data: ActivityUpdate, user: U
     if act.status == ActivityStatus.CANCELLED:
         raise HTTPException(status_code=409, detail="This report was cancelled")
     update_data = data.model_dump(exclude_unset=True, exclude={"final"})
+    if update_data.get("due_date") != act.due_date:
+        _check_due(update_data.get("due_date"))
     if _restricted(user):
         update_data.pop("owner_id", None)
     for field, value in update_data.items():

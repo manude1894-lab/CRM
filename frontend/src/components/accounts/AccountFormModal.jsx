@@ -658,7 +658,8 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
             <Field label="Full Name of the Person Met" required={req("br_person_met")}><Input value={form.br_person_met} onChange={set("br_person_met")} maxLength={255} /></Field>
             <Field label="Place of Meeting with the Customer" required={req("br_meeting_place")}><Input value={form.br_meeting_place} onChange={set("br_meeting_place")} maxLength={255} /></Field>
             <Field label="Date of Meeting with the Customer" required={req("br_meeting_date")}><DateInput value={form.br_meeting_date || ""} onChange={set("br_meeting_date")} max={today} /></Field>
-            <Field label="Time of Meeting with the Customer" required={req("br_meeting_time")}><Input type="time" value={form.br_meeting_time} onChange={set("br_meeting_time")} /></Field>
+            <Field label="Time of Meeting with the Customer" required={req("br_meeting_time")}><Input type="time" value={form.br_meeting_time} onChange={set("br_meeting_time")}
+              max={form.br_meeting_date === today ? new Date().toTimeString().slice(0, 5) : undefined} /></Field>
           </div>
           <Field label="Mode of Meeting" required={req("br_meeting_mode")}>
             <div className="flex gap-5 text-sm text-gray-700 py-1">
