@@ -47,6 +47,9 @@ PARKED = (ON_HOLD, DROPPED)
 ONBOARDING = (*WITH_RM, AWAITING, *PARKED)
 
 DROP_REASONS = ("Client not responding", "Client withdrew", "Rejected and not pursued", "Created in error", "Other")
+# Triam UAT 25-11-2026 row 184: the CO marks a client for exit for one of these reasons, with a comment.
+EXIT_REASONS = ("Due to AML reasons", "Due to commercial considerations")
+EXIT_COMMENT_MAX = 250
 
 MIN_REJECT_TEXT = 15
 MAX_COMMENT_WORDS = 250
@@ -199,16 +202,16 @@ def allowed_actions(db: Session, acc: Account, user: User) -> list[dict]:
         add("activate", "Activate", True)
     elif status == ACTIVE:
         add("deactivate", "Mark Inactive", approver, "Needs an approver (CO / MLRO)")
-        add("mark_exit", "Mark for Exit", True)
+        add("mark_exit", "Mark for Exit", approver, "Only Compliance (CO / MLRO) marks a client for exit")
     elif status == INACTIVE:
         add("reactivate", "Reactivate", approver, "Needs an approver (CO / MLRO)")
-        add("mark_exit", "Mark for Exit", True)
+        add("mark_exit", "Mark for Exit", approver, "Only Compliance (CO / MLRO) marks a client for exit")
     elif status == MARKED_EXIT:
         last = _last_status_actor(db, acc)
         marked_by_me = last is not None and access_control.same_person(db.get(User, last), user)
         add("confirm_exit", "Confirm Exit", approver and not marked_by_me,
             "Another approver must confirm the exit you marked" if approver else "Needs an approver (CO / MLRO)")
-        add("cancel_exit", "Cancel Exit", True)
+        add("cancel_exit", "Remove Exit Marking", approver, "Only Compliance (CO / MLRO) removes the exit marking")
     return out
 
 
@@ -385,7 +388,7 @@ _STATUS_ACTIONS = {
     "resume": WIP, "reopen": WIP,
 }
 # The onboarding statuses keep their reason on the client, for the list and the reports.
-_KEEPS_REASON = ("pending_client", "pending_authority", "hold", "drop")
+_KEEPS_REASON = ("pending_client", "pending_authority", "hold", "drop", "mark_exit")
 
 
 def change_status(db: Session, acc: Account, user: User, action: str, reason: Optional[str] = None,
@@ -394,9 +397,17 @@ def change_status(db: Session, acc: Account, user: User, action: str, reason: Op
         raise HTTPException(status_code=400, detail=f"Unknown action '{action}'")
     _require(db, acc, user, action)
     reason = (reason or "").strip() or None
-    if action in ("mark_exit", "deactivate") and not reason:
+    if action == "deactivate" and not reason:
         raise HTTPException(status_code=400, detail="Give a reason")
-    if action == "drop":
+    if action in ("mark_exit", "cancel_exit"):
+        if not reason:
+            raise HTTPException(status_code=400, detail="Add the comments (up to 250 characters)")
+        if len(reason) > EXIT_COMMENT_MAX:
+            raise HTTPException(status_code=400, detail=f"Comments can be at most {EXIT_COMMENT_MAX} characters")
+    if action == "mark_exit":
+        if reason_code not in EXIT_REASONS:
+            raise HTTPException(status_code=400, detail=f"Choose why the client is marked for exit: {', '.join(EXIT_REASONS)}")
+    elif action == "drop":
         if reason_code not in DROP_REASONS:
             raise HTTPException(status_code=400, detail=f"Choose why the client is dropped: {', '.join(DROP_REASONS)}")
         if reason_code == "Other" and not reason:

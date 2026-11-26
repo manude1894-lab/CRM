@@ -43,7 +43,7 @@ def test_full_lifecycle(db, people):
     assert acc.profile_status == "Active"
     wf.change_status(db, acc, checker, "deactivate", "Client paused services")
     wf.change_status(db, acc, checker, "reactivate")
-    wf.change_status(db, acc, maker, "mark_exit", "Client moving to another provider")
+    wf.change_status(db, acc, people["checker2"], "mark_exit", "Client moving to another provider", "Due to commercial considerations")
     assert acc.profile_status == "Marked for Exit"
     wf.change_status(db, acc, checker, "confirm_exit")
     assert acc.profile_status == "Exited"
@@ -173,13 +173,28 @@ def test_status_actions_need_permission_and_reasons(db, people):
     with pytest.raises(HTTPException) as e:
         wf.change_status(db, acc, maker, "deactivate", "pause")  # needs an approver
     assert e.value.status_code == 403
+    # Triam UAT 25-11-2026 row 184: only Compliance marks for exit, with a reason from the list and comments.
+    with pytest.raises(HTTPException) as e:
+        wf.change_status(db, acc, maker, "mark_exit", "Client leaving", "Due to AML reasons")
+    assert e.value.status_code == 403
+    with pytest.raises(HTTPException) as e:
+        wf.change_status(db, acc, checker, "mark_exit", "Client leaving")  # no reason chosen
+    assert "Due to AML reasons" in e.value.detail
     with pytest.raises(HTTPException):
-        wf.change_status(db, acc, maker, "mark_exit")  # reason required
-    wf.change_status(db, acc, checker, "mark_exit", "Client leaving")
+        wf.change_status(db, acc, checker, "mark_exit", "", "Due to AML reasons")  # comments required
+    with pytest.raises(HTTPException):
+        wf.change_status(db, acc, checker, "mark_exit", "x" * 251, "Due to AML reasons")  # at most 250 characters
+    wf.change_status(db, acc, checker, "mark_exit", "Client leaving", "Due to AML reasons")
+    assert (acc.status_reason_code, acc.status_reason) == ("Due to AML reasons", "Client leaving")
     with pytest.raises(HTTPException) as e:
         wf.change_status(db, acc, checker, "confirm_exit")  # same person who marked it
     assert "Another approver" in e.value.detail
-    wf.change_status(db, acc, maker, "cancel_exit")
+    with pytest.raises(HTTPException) as e:  # only Compliance removes the marking
+        wf.change_status(db, acc, maker, "cancel_exit", "Business wants to keep the client")
+    assert e.value.status_code == 403
+    with pytest.raises(HTTPException):
+        wf.change_status(db, acc, checker, "cancel_exit")  # comments required
+    wf.change_status(db, acc, checker, "cancel_exit", "Agreed with business to keep the client")
     assert acc.profile_status == "Active"
 
 
@@ -187,7 +202,7 @@ def test_exited_client_is_read_only(db, people):
     maker, checker = people["maker"], people["checker"]
     acc = complete_client(db, maker)
     flow.submit(db, acc, maker); flow.approve_all(db, acc, checker, people["approver"]); wf.change_status(db, acc, maker, "activate")
-    wf.change_status(db, acc, maker, "mark_exit", "Leaving"); wf.change_status(db, acc, checker, "confirm_exit")
+    wf.change_status(db, acc, people["checker2"], "mark_exit", "Leaving", "Due to AML reasons"); wf.change_status(db, acc, checker, "confirm_exit")
     with pytest.raises(HTTPException) as e:
         account_service.update_account(db, acc.id, AccountUpdate(nature_of_business="x"), checker)
     assert e.value.status_code == 409

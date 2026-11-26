@@ -26,6 +26,7 @@ from app.schemas.invoice import InvoiceCreate, InvoiceRaise, InvoiceRequest, Inv
 from app.services import access_control, notification_service
 
 REQUESTED, DRAFT, RAISED, PAID = "Requested", "Draft", "Raised", "Paid"
+WITH_CO = InvoiceLedgerStatus.WITH_COMPLIANCE.value
 OPEN = (REQUESTED, DRAFT)
 PRICING_APPROVAL, INVOICE_FILE = "Pricing Approval", "Invoice"
 CURRENCIES = ("AED", "USD", "EUR", "GBP", "INR", "SGD")
@@ -138,7 +139,32 @@ def request_invoice(db: Session, data: InvoiceRequest, user: User) -> Invoice:
     return _send_to_accounts(db, inv, acc, user)
 
 
+def needs_co(inv: Invoice, acc: Account) -> bool:
+    """Triam UAT 25-11-2026 row 182: an onboarding invoice requested while the client is still being onboarded
+    goes to the CO first, who checks ID verification, name screening, alerts and open risks."""
+    from app.services import client_workflow_service as wf
+    return inv.kind == ONBOARDING and acc.profile_status in wf.ONBOARDING
+
+
+def _compliance_team(db: Session) -> list[User]:
+    from app.services import client_workflow_service as wf
+    return [u for u in db.query(User).filter(User.is_active == True).all() if wf.gives_compliance_approval(u)]  # noqa: E712
+
+
 def _send_to_accounts(db: Session, inv: Invoice, acc: Account, user: User) -> Invoice:
+    if needs_co(inv, acc):
+        inv.status, inv.requested_at = WITH_CO, datetime.now(timezone.utc)
+        inv.co_decision = inv.co_decided_at = inv.co_decided_by_id = inv.co_comment = None
+        log_event(db, "invoice_to_compliance", f"Onboarding invoice request for {acc.company_name} sent to Compliance: "
+                  f"{inv.currency} {inv.amount}", user_id=user.id, subject_type="Invoice", subject_id=inv.id, account_id=acc.id)
+        db.commit()
+        db.refresh(inv)
+        for u in _compliance_team(db):
+            if u.id != user.id:
+                notification_service.notify_user(
+                    db, u.id, f"Onboarding invoice request from {user.name} for {acc.company_name} ({inv.currency} {inv.amount}) "
+                              "awaits your approval.", "invoice_co_approval")
+        return inv
     inv.status, inv.requested_at = REQUESTED, datetime.now(timezone.utc)
     log_event(db, "invoice_request", f"Invoice requested for {acc.company_name}: {inv.description}, {inv.currency} {inv.amount}",
               user_id=user.id, subject_type="Invoice", subject_id=inv.id, account_id=acc.id)
@@ -149,6 +175,58 @@ def _send_to_accounts(db: Session, inv: Invoice, acc: Account, user: User) -> In
             notification_service.notify_user(
                 db, u.id, f"Invoice instruction from {user.name}: {acc.company_name}, {inv.description} ({inv.currency} {inv.amount}).",
                 "invoice_requested")
+    return inv
+
+
+def may_co_decide(db: Session, inv: Invoice, user: User) -> Optional[str]:
+    """Why this user can't decide on the request, or None. The CO, not the requester or the client's own RM."""
+    from app.services import client_workflow_service as wf
+    if inv.status != WITH_CO:
+        return "This invoice request isn't waiting for Compliance"
+    if not wf.gives_compliance_approval(user):
+        return "Only Compliance (CO / MLRO) decides on onboarding invoice requests"
+    requester = db.get(User, inv.requested_by_id) if inv.requested_by_id else None
+    acc = db.get(Account, inv.account_id)
+    if access_control.same_person(requester, user) or access_control.is_clients_rm(db, acc, user):
+        return "You can't approve an invoice request for your own client"
+    return None
+
+
+def co_decide(db: Session, invoice_id: int, data, user: User) -> Invoice:
+    """The CO approves the request (it goes to Accounts) or returns it to the RM with a reason."""
+    inv = get_invoice(db, invoice_id, user)
+    why = may_co_decide(db, inv, user)
+    if why:
+        raise HTTPException(status_code=403 if "Only" in why or "own client" in why else 400, detail=why)
+    comment = (data.comment or "").strip() or None
+    acc = db.get(Account, inv.account_id)
+    inv.co_decided_by_id, inv.co_decided_at, inv.co_comment = user.id, datetime.now(timezone.utc), comment
+    if data.approve:
+        if not data.checks_confirmed:
+            raise HTTPException(status_code=400, detail="Confirm the ID verification, name screening, alerts and open risks first")
+        inv.co_decision, inv.status = "Approved", REQUESTED
+        log_event(db, "invoice_co_approve", f"Onboarding invoice request for {acc.company_name} approved by Compliance",
+                  user_id=user.id, subject_type="Invoice", subject_id=inv.id, account_id=acc.id)
+        db.commit()
+        db.refresh(inv)
+        for u in _accounts_team(db):
+            if u.id != user.id:
+                notification_service.notify_user(db, u.id, f"Invoice instruction for {acc.company_name}: {inv.description} "
+                                                           f"({inv.currency} {inv.amount}), approved by Compliance.", "invoice_requested")
+        if inv.requested_by_id:
+            notification_service.notify_user(db, inv.requested_by_id, f"Compliance approved the onboarding invoice request for "
+                                                                      f"{acc.company_name}; it is with Accounts.", "invoice_co_decision")
+        return inv
+    if not comment:
+        raise HTTPException(status_code=400, detail="Say why the request is returned")
+    inv.co_decision, inv.status, inv.requested_at = "Returned", DRAFT, None  # back to the RM's draft
+    log_event(db, "invoice_co_return", f"Onboarding invoice request for {acc.company_name} returned by Compliance: {comment}",
+              user_id=user.id, subject_type="Invoice", subject_id=inv.id, account_id=acc.id)
+    db.commit()
+    db.refresh(inv)
+    if inv.requested_by_id:
+        notification_service.notify_user(db, inv.requested_by_id, f"Compliance returned the onboarding invoice request for "
+                                                                  f"{acc.company_name}: {comment}", "invoice_co_decision")
     return inv
 
 
@@ -265,7 +343,7 @@ def cancel_invoice(db: Session, invoice_id: int, reason: str, user: User) -> Non
     """Invoices are never deleted. The requester may cancel their own open request; Accounts may cancel
     any invoice that is not paid. The invoice and its attachments stay on record."""
     inv = get_invoice(db, invoice_id, user)
-    if not (_can_manage(user) or (inv.status in OPEN and inv.requested_by_id == user.id)):
+    if not (_can_manage(user) or (inv.status in (*OPEN, WITH_CO) and inv.requested_by_id == user.id)):
         raise HTTPException(status_code=403, detail="Only Accounts can cancel this invoice")
     if inv.status in (PAID, InvoiceLedgerStatus.CANCELLED.value):
         raise HTTPException(status_code=400, detail=f"A {inv.status.lower()} invoice can't be cancelled")

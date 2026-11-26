@@ -81,6 +81,11 @@ class InvoiceRead(InvoiceBase):
     introducer_involved: Optional[bool] = None
     introducer_amount: Optional[Decimal] = None
     introducer_currency: Optional[str] = None
+    co_decision: Optional[str] = None
+    co_decided_at: Optional[datetime] = None
+    co_decided_by_name: Optional[str] = None
+    co_comment: Optional[str] = None
+    can_co_decide: bool = False  # set for the user reading it
     created_at: datetime
     updated_at: datetime
 
@@ -91,6 +96,7 @@ def invoice_read(inv, db=None) -> "InvoiceRead":
     out = InvoiceRead.model_validate(inv)
     out.requested_by_name = inv.requested_by.name if inv.requested_by else None
     out.raised_by_name = inv.raised_by.name if inv.raised_by else None
+    out.co_decided_by_name = inv.co_decided_by.name if inv.co_decided_by else None
     acc = inv.account
     if acc is not None:
         out.company_name, out.client_id = acc.company_name, acc.client_id or acc.temp_id
@@ -98,6 +104,14 @@ def invoice_read(inv, db=None) -> "InvoiceRead":
         from app.models import Document
         out.attachment_count = db.query(Document).filter(Document.invoice_id == inv.id, Document.removed_at.is_(None)).count()
     return out
+
+
+class InvoiceCoDecision(BaseModel):
+    """The CO's decision on an onboarding invoice request (Triam UAT 25-11-2026 row 182)."""
+    approve: bool
+    # Approving: the CO confirms ID verification and name screening are done, alerts are closed and no risk is open.
+    checks_confirmed: bool = False
+    comment: Optional[str] = Field(None, max_length=500)  # required when returning it to the RM
 
 
 class OnboardingInvoiceSave(BaseModel):

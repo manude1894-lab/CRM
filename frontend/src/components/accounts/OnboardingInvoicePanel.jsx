@@ -61,7 +61,7 @@ export default function OnboardingInvoicePanel({ accountId }) {
         introducer_amount: num(form.introducer_amount), comments: form.comments.trim() || null, submit,
       });
       apply(next);
-      toast.success(submit ? "Sent to the Accounts Department" : "Saved");
+      toast.success(!submit ? "Saved" : next?.invoice?.status === "With Compliance" ? "Sent to Compliance for approval" : "Sent to the Accounts Department");
     } catch (e) { toast.error(e.response?.data?.detail || "Could not save"); } finally { setBusy(false); }
   };
 
@@ -102,17 +102,22 @@ export default function OnboardingInvoicePanel({ accountId }) {
           {form.wanted === true && (
             <button type="button" onClick={() => save(true)} disabled={busy}
               className="px-3 py-1.5 text-xs rounded-lg border border-brand-600 bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-50">
-              Submit to Accounts Dept
+              Submit
             </button>
           )}
           {form.wanted === true && state.why_not && <span className="text-[11px] text-gray-500">{state.why_not}</span>}
         </div>
       )}
 
+      {inv && state.editable && inv.co_decision === "Returned" && (
+        <div className="mt-3 rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-xs text-red-700">
+          Returned by Compliance{inv.co_decided_by_name ? ` (${inv.co_decided_by_name})` : ""} · {fmtDate(inv.co_decided_at)}: {inv.co_comment}
+        </div>
+      )}
       {inv && !state.editable && (
         <div className="mt-3 rounded-lg border border-gray-100 bg-gray-50 px-3 py-2 text-xs text-gray-700">
           <div className="font-semibold text-gray-800 mb-1">
-            {raised ? "Accounts Department response" : `With the Accounts Department · ${inv.status}`}
+            {raised ? "Accounts Department response" : inv.status === "With Compliance" ? "With Compliance" : `With the Accounts Department · ${inv.status}`}
             {inv.requested_at && <span className="font-normal text-gray-500"> · sent {fmtDate(inv.requested_at)}{inv.requested_by_name ? ` by ${inv.requested_by_name}` : ""}</span>}
           </div>
           {raised ? (
@@ -124,8 +129,13 @@ export default function OnboardingInvoicePanel({ accountId }) {
                 </button>
               ))}
             </>
+          ) : inv.status === "With Compliance" ? (
+            <div>Awaiting Compliance approval. Requested {money(inv.currency, inv.amount)}.</div>
           ) : (
             <div>Awaiting the invoice from Accounts. Requested {money(inv.currency, inv.amount)}.</div>
+          )}
+          {inv.co_decision === "Approved" && (
+            <div className="mt-1 text-gray-500">Approved by Compliance{inv.co_decided_by_name ? ` (${inv.co_decided_by_name})` : ""} · {fmtDate(inv.co_decided_at)}</div>
           )}
         </div>
       )}

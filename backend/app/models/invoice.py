@@ -16,6 +16,8 @@ ONBOARDING, SERVICE_REQUEST = "Onboarding", "Service Request"  # Invoice.kind
 
 
 class InvoiceLedgerStatus(str, enum.Enum):
+    # Triam UAT 25-11-2026 row 182: an onboarding invoice for a client not yet approved waits for the CO first.
+    WITH_COMPLIANCE = "With Compliance"
     REQUESTED = "Requested"  # BRD §16: RM / Sales instruction to Accounts
     DRAFT = "Draft"
     RAISED = "Raised"
@@ -55,10 +57,16 @@ class Invoice(Base):
     introducer_currency = Column(String(3), nullable=True)
 
     cancel_reason = Column(String(500), nullable=True)  # set when cancelled — records are never deleted
+    # Triam UAT 25-11-2026 row 182: the CO's decision on an onboarding invoice request before approval.
+    co_decided_by_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    co_decided_at = Column(DateTime(timezone=True), nullable=True)
+    co_decision = Column(String(20), nullable=True)  # Approved / Returned
+    co_comment = Column(String(500), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     account = relationship("Account")
     requested_by = relationship("User", foreign_keys=[requested_by_id])
     raised_by = relationship("User", foreign_keys=[raised_by_id])
+    co_decided_by = relationship("User", foreign_keys=[co_decided_by_id])
     instructions = relationship("Instruction", back_populates="invoice")

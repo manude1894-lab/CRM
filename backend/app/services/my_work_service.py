@@ -32,6 +32,11 @@ def my_work(db: Session, user: User) -> list[dict]:
         if wf.gives_compliance_approval(user):
             add("compliance_new", "New clients waiting for Compliance", len(new_clients), "approvals", "Complete the CDD section, then approve or reject")
         add("compliance_changes", "Client amendments waiting for Compliance", len(others), "approvals")
+        if wf.gives_compliance_approval(user):  # Triam UAT 25-11-2026 row 182
+            from app.services import invoice_service
+            waiting = [i for i in db.query(Invoice).filter(Invoice.status == invoice_service.WITH_CO).all()
+                       if invoice_service.may_co_decide(db, i, user) is None]
+            add("invoice_co", "Onboarding invoice requests to approve", len(waiting), "invoices")
     if has_permission(user, "client.final_approve"):
         final = [r for r in pending if r.request_type == "client_profile" and wf.stage_of(r) == wf.STAGE_APPROVER
                  and not access_control.same_person(r.maker, user)]
