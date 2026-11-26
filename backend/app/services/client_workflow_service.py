@@ -320,9 +320,11 @@ def approve(db: Session, acc: Account, user: User, comment: Optional[str] = None
     req.status, req.checker_id, req.decided_at = ApprovalStatus.APPROVED.value, user.id, _now()
     req.reason_text = comment
     _issue_client_id(db, acc)
-    _set_status(acc, APPROVED, user)
+    # Triam UAT 25-11-2026 row 180: once the Final approval is given and the Client ID issued, the client is Active
+    # at once (no separate Activate step). Clients already "Approved" before this keep their Activate button.
+    _set_status(acc, ACTIVE, user)
     acc.approved_at = req.decided_at
-    log_event(db, "approve", f"Client {_label(acc)} approved", subject_type="Account", subject_id=acc.id,
+    log_event(db, "approve", f"Client {_label(acc)} approved and active", subject_type="Account", subject_id=acc.id,
               account_id=acc.id, changes={"request_id": req.id, "comment": comment})
     db.commit()
     notification_service.resolve(db, acc.id, "client_submitted", "approval_waiting")

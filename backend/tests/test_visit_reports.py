@@ -6,9 +6,13 @@ from app.services import activity_service, standard_reports_service as rpt
 
 
 def _report(db, acc, rm, days_ago, kind="Call Report", final=True):
-    return activity_service.create_activity(db, ActivityCreate(
-        account_id=acc.id, activity_date=date.today() - timedelta(days=days_ago), activity_type=kind, summary="Renewal",
+    """A report made today, then dated `days_ago` back (older ones stand for history entered before row 188)."""
+    act = activity_service.create_activity(db, ActivityCreate(
+        account_id=acc.id, activity_date=date.today(), activity_type=kind, summary="Renewal",
         client_contact="Omar", location="JLT", final=final), rm)
+    act.activity_date = date.today() - timedelta(days=days_ago)
+    db.commit()
+    return act
 
 
 def test_recorded_lists_final_reports_in_the_period(db, make_user, make_account):

@@ -115,8 +115,8 @@ def refresh(data: RefreshTokenRequest, db: Session = Depends(get_db)):
 def logout(request: Request, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     """Review 22-11-2026: signing out ends the login's sessions on the server too, so a copied token stops working at
     once instead of when it expires. (It also signs this login out in its other browser tabs.)"""
-    from datetime import datetime, timezone
-    user.signed_out_at = datetime.now(timezone.utc)
+    from app.auth.security import ordered_now
+    user.signed_out_at = ordered_now()
     set_actor(db, user.id, client_ip(request))
     log_event(db, "logout", f"{user.name} signed out", subject_type="User", subject_id=user.id)
     db.commit()

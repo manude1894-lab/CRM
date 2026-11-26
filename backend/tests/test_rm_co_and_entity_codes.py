@@ -58,7 +58,7 @@ def test_the_rm_cannot_give_the_final_approval_under_another_login(db, people, m
     a = _action(db, acc, approver_login, "approve")
     assert a["allowed"] is False and "client's RM" in a["reason"]
     wf.approve(db, acc, people["approver"], "Approved")  # another Approver may
-    assert acc.profile_status == "Approved"
+    assert acc.profile_status == "Active"  # UAT 25-11-2026 row 180
 
 
 def test_an_unrelated_co_still_approves(db, people, make_user, make_role):

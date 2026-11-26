@@ -31,7 +31,7 @@ def test_client_id_waits_for_the_final_approval(db, people):
 
     wf.approve(db, acc, people["approver"], "Final approval given")
     db.refresh(acc)
-    assert acc.profile_status == "Approved" and acc.client_id == "TCPL/00001"
+    assert acc.profile_status == "Active" and acc.client_id == "TCPL/00001"  # UAT 25-11-2026 row 180
     assert acc.approval_stage is None
 
 

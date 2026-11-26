@@ -64,3 +64,14 @@ def test_documents_report_lists_a_persons_document_once(db, make_user, make_acco
     db.commit()
     rows = [r for r in rpt.documents_expiring(db, admin, 30)["rows"] if r[6] == "UAE Visa"]
     assert len(rows) == 1 and rows[0][5] == "Widaan (Shareholder, Authorised Signatory)"
+
+
+def test_row_188_report_not_dated_more_than_a_week_back(db, make_user, make_account):
+    rm = make_user("Rita RM")
+    acc = make_account(spoc=rm, profile_status="Active")
+    with pytest.raises(HTTPException) as e:
+        activity_service.create_activity(db, _report(acc, activity_date=date.today() - timedelta(days=10)), rm)
+    assert "7 days back" in e.value.detail
+    act = activity_service.create_activity(db, _report(acc, activity_date=date.today() - timedelta(days=6)), rm)
+    with pytest.raises(HTTPException):
+        activity_service.update_activity(db, act.id, ActivityUpdate(activity_date=date.today() - timedelta(days=30)), rm)

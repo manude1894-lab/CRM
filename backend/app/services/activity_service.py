@@ -7,7 +7,7 @@ Triam 23-11-2026 (S T Krishna): the report has three buttons, Cancel, Save Draft
 changed by its writer (or their supervisor); the saved report is final and stays as written, so past reports can be
 reviewed at any time. A correction to a final report is a note added beside it, with who and when.
 """
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 
 from sqlalchemy.orm import Session, selectinload
 from sqlalchemy import or_, select
@@ -127,6 +127,7 @@ def create_activity(db: Session, data: ActivityCreate, user: User) -> Activity:
     if data.final:
         _check_report(data.activity_type, data.model_dump())
     _check_due(data.due_date)
+    _check_report_date(data.activity_date)
 
     owner_id = data.owner_id or user.id
     if _restricted(user):
@@ -153,6 +154,15 @@ def create_activity(db: Session, data: ActivityCreate, user: User) -> Activity:
 def _uae_today() -> date:
     from app.services.standard_reports_service import BUSINESS_TZ
     return datetime.now(BUSINESS_TZ).date()
+
+
+BACKDATE_DAYS = 7
+
+
+def _check_report_date(d: Optional[date]) -> None:
+    """Triam UAT 25-11-2026 row 188: a call or visit is reported within a week; not dated more than 7 days back."""
+    if d and d < _uae_today() - timedelta(days=BACKDATE_DAYS):
+        raise HTTPException(status_code=400, detail=f"The report date cannot be more than {BACKDATE_DAYS} days back")
 
 
 def _check_due(due: Optional[date]) -> None:
@@ -185,6 +195,8 @@ def update_activity(db: Session, activity_id: int, data: ActivityUpdate, user: U
     update_data = data.model_dump(exclude_unset=True, exclude={"final"})
     if update_data.get("due_date") != act.due_date:
         _check_due(update_data.get("due_date"))
+    if "activity_date" in update_data and update_data["activity_date"] != act.activity_date:
+        _check_report_date(update_data["activity_date"])
     if _restricted(user):
         update_data.pop("owner_id", None)
     for field, value in update_data.items():
