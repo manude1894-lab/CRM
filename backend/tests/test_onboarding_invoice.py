@@ -29,25 +29,67 @@ def setup(db, people, make_user, make_role):
     return {**people, "accountant": accountant, "acc": acc}
 
 
-def test_saved_as_a_draft_then_sent_to_accounts_before_approval(db, setup):
-    """Triam 23-11-2026 (S T Krishna): unlike a service request, the onboarding invoice goes to Accounts while the
-    client is still being onboarded, before any approval."""
+def _co_approve(db, inv_id, co):
+    from app.schemas.invoice import InvoiceCoDecision
+    return invoice_service.co_decide(db, inv_id, InvoiceCoDecision(approve=True, checks_confirmed=True), co)
+
+
+def test_before_approval_it_goes_to_compliance_then_accounts(db, setup):
+    """Triam 23-11-2026: the RM raises it before the client is approved. UAT 25-11-2026 row 182: it goes to the CO
+    first; once the CO approves it, it is with Accounts."""
     s = setup
-    rm, acc = s["maker"], s["acc"]
+    rm, acc, co = s["maker"], s["acc"], s["checker"]
     assert acc.profile_status in wf.WITH_RM  # not submitted, not approved
     st = onb.save(db, acc.id, OnboardingInvoiceSave(**YES), rm)
-    assert st.wanted is True and st.editable and st.invoice.status == "Draft" and st.invoice.kind == "Onboarding"
-    assert (st.invoice.amount, st.invoice.govt_authority_amount, st.invoice.introducer_currency) == (Decimal("15000"), Decimal("4000"), "USD")
-    assert st.can_submit and st.why_not is None
-    assert onb.state(db, acc.id, s["accountant"]).invoice is None  # the RM's draft isn't Accounts' yet
-
+    assert st.invoice.status == "Draft" and st.can_submit
     st = onb.save(db, acc.id, OnboardingInvoiceSave(**YES, submit=True), rm)
-    assert st.invoice.status == "Requested" and not st.editable
+    assert st.invoice.status == "With Compliance" and not st.editable
+    assert db.query(Notification).filter(Notification.user_id == co.id, Notification.notification_type == "invoice_co_approval").count() == 1
+    assert db.query(Notification).filter(Notification.user_id == s["accountant"].id).count() == 0  # not yet with Accounts
+
+    inv = _co_approve(db, st.invoice.id, co)
+    assert inv.status == "Requested" and inv.co_decision == "Approved" and inv.co_decided_by_id == co.id
     assert db.query(Notification).filter(Notification.user_id == s["accountant"].id,
                                          Notification.notification_type == "invoice_requested").count() == 1
     with pytest.raises(HTTPException) as e:  # it is with Accounts now
         onb.save(db, acc.id, OnboardingInvoiceSave(**YES), rm)
     assert e.value.status_code == 409
+
+
+def test_the_co_returns_it_with_a_reason_and_the_rm_resubmits(db, setup):
+    from app.schemas.invoice import InvoiceCoDecision
+    s = setup
+    rm, acc, co = s["maker"], s["acc"], s["checker"]
+    st = onb.save(db, acc.id, OnboardingInvoiceSave(**YES, submit=True), rm)
+    with pytest.raises(HTTPException):  # a reason is needed
+        invoice_service.co_decide(db, st.invoice.id, InvoiceCoDecision(approve=False), co)
+    inv = invoice_service.co_decide(db, st.invoice.id, InvoiceCoDecision(approve=False, comment="Screening alert still open"), co)
+    assert inv.status == "Draft" and inv.co_decision == "Returned" and inv.co_comment == "Screening alert still open"
+    assert onb.state(db, acc.id, rm).editable  # the RM's draft again
+    assert onb.save(db, acc.id, OnboardingInvoiceSave(**YES, submit=True), rm).invoice.status == "With Compliance"
+
+
+def test_only_a_co_who_is_not_the_requester_or_the_rm_decides(db, setup, make_role, make_user):
+    from app.schemas.invoice import InvoiceCoDecision
+    s = setup
+    rm, acc = s["maker"], s["acc"]
+    st = onb.save(db, acc.id, OnboardingInvoiceSave(**YES, submit=True), rm)
+    for who in (rm, s["accountant"], s["approver"]):
+        with pytest.raises(HTTPException) as e:
+            invoice_service.co_decide(db, st.invoice.id, InvoiceCoDecision(approve=True, checks_confirmed=True), who)
+        assert e.value.status_code == 403
+    with pytest.raises(HTTPException) as e:  # the checks must be confirmed
+        invoice_service.co_decide(db, st.invoice.id, InvoiceCoDecision(approve=True), s["checker"])
+    assert "Confirm" in e.value.detail
+
+
+def test_after_approval_it_goes_straight_to_accounts(db, setup):
+    s = setup
+    rm, acc = s["maker"], s["acc"]
+    flow.submit(db, acc, rm)
+    flow.approve_all(db, acc, s["checker"], s["approver"])
+    db.refresh(acc)
+    assert onb.save(db, acc.id, OnboardingInvoiceSave(**YES, submit=True), rm).invoice.status == "Requested"
 
 
 def test_also_while_awaiting_approval_but_not_once_dropped(db, setup):
@@ -56,7 +98,7 @@ def test_also_while_awaiting_approval_but_not_once_dropped(db, setup):
     flow.submit(db, acc, rm)
     db.refresh(acc)
     assert acc.profile_status == wf.AWAITING
-    assert onb.save(db, acc.id, OnboardingInvoiceSave(**YES, submit=True), rm).invoice.status == "Requested"
+    assert onb.save(db, acc.id, OnboardingInvoiceSave(**YES, submit=True), rm).invoice.status == "With Compliance"
     acc.profile_status = wf.DROPPED
     db.commit()
     assert not onb.state(db, acc.id, rm).editable
@@ -68,7 +110,7 @@ def test_the_invoices_page_request_is_the_same_onboarding_invoice(db, setup):
     rm, acc = s["maker"], s["acc"]
     inv = invoice_service.request_invoice(db, InvoiceRequest(account_id=acc.id, description="Onboarding services",
                                                              amount=Decimal("9000"), onboarding=True), rm)
-    assert inv.kind == "Onboarding" and inv.status == "Requested"
+    assert inv.kind == "Onboarding" and inv.status == "With Compliance"
     db.refresh(acc)
     assert acc.onboarding_invoice_wanted is True and onb.state(db, acc.id, rm).invoice.id == inv.id
     with pytest.raises(HTTPException) as e:  # one onboarding invoice per client

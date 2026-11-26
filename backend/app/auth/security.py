@@ -1,4 +1,5 @@
 """Authentication primitives: password hashing + JWT encode/decode."""
+import threading
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -27,7 +28,7 @@ def _create_token(
     token_type: str,
     secret_key: str,
 ) -> str:
-    now = datetime.now(timezone.utc)
+    now = ordered_now()
     expire = now + expires_delta
     payload: dict[str, Any] = {
         "sub": subject,
@@ -38,6 +39,21 @@ def _create_token(
         "type": token_type,
     }
     return jwt.encode(payload, secret_key, algorithm=settings.JWT_ALGORITHM)
+
+
+_last_ms = 0
+_clock_lock = threading.Lock()
+
+
+def ordered_now() -> datetime:
+    """The current time, never the same millisecond twice in this server process. Token issue times and sign-out
+    times use it, so "issued before the sign-out" is always clear even where the system clock is coarse (on Windows
+    it can tick every 15 ms): signing in, out and in again within one tick still kills the old token only."""
+    global _last_ms
+    with _clock_lock:
+        ms = max(int(datetime.now(timezone.utc).timestamp() * 1000), _last_ms + 1)
+        _last_ms = ms
+    return datetime.fromtimestamp(ms / 1000, tz=timezone.utc)
 
 
 def create_access_token(user_id: int, role: str) -> str:

@@ -98,7 +98,6 @@ def _approved_with_old_entity_share(db, real_user):
     db.refresh(acc)
     flow.submit(db, acc, rm)
     flow.approve_all(db, acc, mlro, approver)
-    wf.change_status(db, acc, rm, "activate")
     a = db.query(AccountParty).filter(AccountParty.account_id == acc.id, AccountParty.full_name == "A").one()
     a.effective_ownership_percent = Decimal("50")
     db.add(AccountParty(account_id=acc.id, party_role="Shareholder", full_name="C Ltd", constitution=ENTITY, effective_ownership_percent=Decimal("50")))

@@ -94,6 +94,7 @@ class WorkflowState(BaseModel):
     status_reason_code: Optional[str] = None
     status_reason: Optional[str] = None
     drop_reasons: list[str] = []
+    exit_reasons: list[str] = []
     locked: bool
     actions: list[WorkflowAction]
     history: list[ApprovalRead]

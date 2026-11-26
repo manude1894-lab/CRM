@@ -5,7 +5,7 @@ strings; the screen shows them as DD MM YYYY.
 
 Custom reports and favourites (§20b) follow once Triam gives the details.
 """
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Optional
 from zoneinfo import ZoneInfo
 
@@ -109,12 +109,21 @@ def _dated_documents(db: Session, user: User) -> list[dict]:
             if d:
                 out.append({"acc": a, "holder": a.company_name, "document": label,
                             "number": getattr(a, number, None) if number else None, "expiry": d})
-        for p in a.parties:
-            for field, label, number in PARTY_DATES:
-                d = getattr(p, field, None)
-                if d:
-                    out.append({"acc": a, "holder": f"{p.full_name} ({p.party_role})", "document": label,
-                                "number": getattr(p, number, None) if number else None, "expiry": d})
+        # Triam UAT 25-11-2026: one person with several roles (e.g. Shareholder and Authorised Signatory) holds one
+        # passport and one visa: list each document once, with all the person's roles.
+        from app.services.account_service import group_people
+        for records in group_people(a.parties):
+            roles = ", ".join(dict.fromkeys(r.party_role for r in records))
+            seen = set()
+            for p in records:
+                for field, label, number in PARTY_DATES:
+                    d = getattr(p, field, None)
+                    num = getattr(p, number, None) if number else None
+                    key = (label, (num or "").strip().upper(), d)
+                    if d and key not in seen:
+                        seen.add(key)
+                        out.append({"acc": a, "holder": f"{records[0].full_name} ({roles})", "document": label,
+                                    "number": num, "expiry": d})
     return out
 
 
@@ -425,10 +434,13 @@ def onboarding_in_progress(db: Session, user: User, date_from: Optional[date] = 
 class Filters:
     """The filters Triam asked for on the new reports: Triam Anchor Entity, Department, Client Tag, Anchor RM."""
     def __init__(self, entity: Optional[str] = None, department_id: Optional[int] = None, tag: Optional[str] = None,
-                 rm_id: Optional[int] = None):
+                 rm_id: Optional[int] = None, account_id: Optional[int] = None):
         self.entity, self.department_id, self.tag, self.rm_id = entity or None, department_id or None, tag or None, rm_id or None
+        self.account_id = account_id or None  # Triam UAT 25-11-2026: one client (the call / visit reports)
 
     def passes(self, db: Session, a: Account) -> bool:
+        if self.account_id and a.id != self.account_id:
+            return False
         if self.entity and a.anchor_entity != self.entity:
             return False
         if self.rm_id and a.spoc_id != self.rm_id:
@@ -448,6 +460,58 @@ def _authority(a: Account) -> str:
 
 def _blank(v) -> str:
     return "—" if v in (None, "") else str(v)
+
+
+# ── Calls and visits (Triam UAT 25-11-2026 rows 190 and 194) ──────────────────────
+
+def _period(date_from, date_to) -> str:
+    """A report's period in words, dates as DD MM YYYY like the rest of the CRM."""
+    shown = [d.strftime("%d %m %Y") for d in (date_from, date_to) if d]
+    return " to ".join(shown) or "all time"
+
+
+VISIT_COLUMNS = ["Date of Report", "Call / Visit", "Client ID", "Client Name", "Client Tag", "RM Name"]
+NOT_DONE_DAYS = 90  # the period looked at when no dates are given
+
+
+def _final_reports(db: Session, user: User, accounts: dict) -> list:
+    from app.models import Activity, ActivityStatus
+    return (db.query(Activity).filter(Activity.account_id.in_(list(accounts) or [-1]), Activity.status == ActivityStatus.COMPLETED)
+            .order_by(Activity.activity_date.desc(), Activity.id.desc()).all())
+
+
+def visits_recorded(db: Session, user: User, date_from=None, date_to=None, f: "Filters" = None) -> dict:
+    """Row 190: the calls and visits recorded (saved as final) in the period; latest first."""
+    f, names = f or Filters(), _Names(db)
+    accounts = {a.id: a for a in _accounts(db, user) if f.passes(db, a)}
+    rows = [[_iso(r.activity_date), "Visit" if r.activity_type.value == "Visit Report" else "Call", _client_ref(accounts[r.account_id]),
+             accounts[r.account_id].company_name, names.tags(accounts[r.account_id]), names(r.owner_id)]
+            for r in _final_reports(db, user, accounts) if _within(r.activity_date, date_from, date_to)]
+    return {"title": f"Calls / visits recorded ({_period(date_from, date_to)})", "columns": VISIT_COLUMNS, "rows": rows}
+
+
+def visits_not_done(db: Session, user: User, date_from=None, date_to=None, f: "Filters" = None) -> dict:
+    """Row 194: clients Triam services with no call or visit recorded in the period (the last 90 days when no dates
+    are given), with their last call / visit, if any; the longest without one first."""
+    f, names, today = f or Filters(), _Names(db), _today()
+    date_from = date_from or (today - timedelta(days=NOT_DONE_DAYS) if not date_to else None)
+    date_to = date_to or today
+    accounts = {a.id: a for a in _accounts(db, user) if a.profile_status in SERVICED and f.passes(db, a)}
+    last, seen_in_period = {}, set()
+    for r in _final_reports(db, user, accounts):
+        last.setdefault(r.account_id, r)
+        if _within(r.activity_date, date_from, date_to):
+            seen_in_period.add(r.account_id)
+    rows = []
+    for a in sorted(accounts.values(), key=lambda a: (last[a.id].activity_date if a.id in last else date.min, a.company_name.lower())):
+        if a.id in seen_in_period:
+            continue
+        r = last.get(a.id)
+        rows.append([_iso(r.activity_date) if r else None,
+                     ("Visit" if r.activity_type.value == "Visit Report" else "Call") if r else "None yet",
+                     _client_ref(a), a.company_name, names.tags(a), names(a.spoc_id)])
+    return {"title": f"Clients with no call / visit ({_period(date_from, date_to)})",
+            "columns": ["Last Report", "Last Call / Visit", "Client ID", "Client Name", "Client Tag", "RM Name"], "rows": rows}
 
 
 def amendments_report(db: Session, user: User, date_from=None, date_to=None, f: "Filters" = None) -> dict:
@@ -589,6 +653,8 @@ REPORTS = {
     "invoices-pending": "Raising invoices pending",
     "service-requests-ageing": "Service requests status and ageing",
     "data-quality": "Client data to correct",
+    "visits-recorded": "Calls / visits recorded (date range)",
+    "visits-not-done": "Clients with no call / visit (date range)",
 }
 
 
@@ -630,12 +696,16 @@ def available(user: User) -> dict:
 def run(db: Session, user: User, key: str, days: Optional[int] = None, date_from: Optional[date] = None,
         date_to: Optional[date] = None, status: Optional[str] = None, department_id: Optional[int] = None,
         entity: Optional[str] = None, tag: Optional[str] = None, rm_id: Optional[int] = None,
-        request_type: Optional[str] = None, sr_type: Optional[str] = None) -> dict:
+        request_type: Optional[str] = None, sr_type: Optional[str] = None, account_id: Optional[int] = None) -> dict:
     if days is not None and not 0 <= days <= 3650:
         raise HTTPException(status_code=400, detail="Days must be between 0 and 3650")
     if key in REPORTS and not may_run(user, key):
         raise HTTPException(status_code=403, detail="This report isn't available to your role")
-    f = Filters(entity, department_id, tag, rm_id)
+    f = Filters(entity, department_id, tag, rm_id, account_id)
+    if key == "visits-recorded":
+        return visits_recorded(db, user, date_from, date_to, f)
+    if key == "visits-not-done":
+        return visits_not_done(db, user, date_from, date_to, f)
     if key == "amendments":
         return amendments_report(db, user, date_from, date_to, f)
     if key == "invoices-onboarding":

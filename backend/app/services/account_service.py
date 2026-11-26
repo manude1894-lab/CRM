@@ -334,6 +334,15 @@ def _assert_date_sanity(data, acc: Optional[Account] = None) -> None:
         fail("Incorporation Date cannot be in the future")
     if changed("screening_date") and sent["screening_date"] > today:
         fail("Screening Date cannot be in the future")
+    # Triam UAT 25-11-2026 row 202: the Biz Rationale meeting has happened: not a future date, nor a later time today.
+    if changed("br_meeting_date") or changed("br_meeting_time"):
+        from app.services.standard_reports_service import BUSINESS_TZ
+        now = datetime.now(BUSINESS_TZ)
+        met_on, met_at = val("br_meeting_date"), val("br_meeting_time")
+        if met_on and met_on > now.date():
+            fail("Date of Meeting cannot be in the future")
+        if met_on == now.date() and met_at and str(met_at)[:5] > now.strftime("%H:%M"):
+            fail("Time of Meeting cannot be later than now for a meeting today")
     start, expiry, incorporated = val("license_start_date"), val("license_expiry_date"), val("incorporation_date")
     if changed("license_start_date") and start > today:
         fail("License Start Date cannot be in the future")

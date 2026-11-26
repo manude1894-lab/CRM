@@ -12,7 +12,7 @@ from app.services import activity_service, instruction_service, notification_ser
 
 
 def visit(**kw):
-    base = dict(activity_date=date(2026, 10, 5), activity_type="Visit Report", final=True,
+    base = dict(activity_date=date.today(), activity_type="Visit Report", final=True,
                 summary="Discussed renewal of the trade licence", client_contact="Omar Haddad", location="Client office, JLT")
     base.update(kw)
     return ActivityCreate(**base)

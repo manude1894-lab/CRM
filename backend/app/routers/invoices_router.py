@@ -8,7 +8,7 @@ from app.auth.dependencies import get_current_user
 from app.database import get_db
 from app.models import User
 from app.schemas import DocumentRead
-from app.schemas.invoice import (InvoiceCreate, InvoicePaid, InvoiceRaise, InvoiceRead, InvoiceRequest, InvoiceUpdate, invoice_read,
+from app.schemas.invoice import (InvoiceCoDecision, InvoiceCreate, InvoicePaid, InvoiceRaise, InvoiceRead, InvoiceRequest, InvoiceUpdate, invoice_read,
                                  OnboardingInvoiceSave, OnboardingInvoiceState)
 from app.schemas.common import CancelRequest
 from app.services import invoice_service, onboarding_invoice_service
@@ -29,7 +29,12 @@ def list_invoices(
     items, total = invoice_service.list_invoices(db, user, skip, limit, status, search, account_id)
     if response is not None:
         response.headers["X-Total-Count"] = str(total)
-    return {"items": [invoice_read(i, db) for i in items], "total": total}
+    out = []
+    for i in items:
+        r = invoice_read(i, db)
+        r.can_co_decide = i.status == invoice_service.WITH_CO and invoice_service.may_co_decide(db, i, user) is None
+        out.append(r)
+    return {"items": out, "total": total}
 
 
 @router.get("/{invoice_id}", response_model=InvoiceRead)
@@ -100,3 +105,9 @@ def get_onboarding_invoice(account_id: int, db: Session = Depends(get_db), user:
 def save_onboarding_invoice(account_id: int, data: OnboardingInvoiceSave, db: Session = Depends(get_db),
                             user: User = Depends(get_current_user)):
     return onboarding_invoice_service.save(db, account_id, data, user)
+
+
+@router.post("/{invoice_id}/compliance", response_model=InvoiceRead,
+             summary="CO: approve an onboarding invoice request (to Accounts) or return it to the RM")
+def co_decide(invoice_id: int, data: InvoiceCoDecision, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    return invoice_read(invoice_service.co_decide(db, invoice_id, data, user), db)

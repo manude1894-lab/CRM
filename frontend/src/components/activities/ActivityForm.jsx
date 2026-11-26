@@ -23,6 +23,9 @@ export const activityPayload = (f) => {
   return out;
 };
 
+// Triam UAT 25-11-2026 row 188: a report is dated at most 7 days back (UAE date).
+const weekAgo = () => { const d = new Date(new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Dubai" })); d.setDate(d.getDate() - 7); return d.toISOString().slice(0, 10); };
+
 /** "Save Draft" needs only the client; the rest can be finished later. */
 export const draftProblem = (f) => (f.account_id ? null : "Choose the client this report is for");
 
@@ -55,7 +58,7 @@ export default function ActivityForm({ form, setForm, accounts = [], lockClient 
             {ACTIVITY_TYPES.map((t) => <option key={t}>{t}</option>)}
           </Select>
         </Field>
-        <Field label="Date" required><DateInput value={form.activity_date || ""} onChange={set("activity_date")} /></Field>
+        <Field label="Date" required><DateInput min={weekAgo()} value={form.activity_date || ""} onChange={set("activity_date")} /></Field>
       </div>
 
       <div className="rounded-lg border border-brand-100 bg-brand-50/30 px-3 pt-3 mb-3">
@@ -78,7 +81,7 @@ export default function ActivityForm({ form, setForm, accounts = [], lockClient 
       <Field label="Outcome"><Textarea rows={2} value={form.outcome || ""} onChange={set("outcome")} /></Field>
       <div className="grid grid-cols-2 gap-x-4">
         <Field label="Next action"><Input value={form.next_action || ""} onChange={set("next_action")} /></Field>
-        <Field label="Next action due"><DateInput value={form.due_date || ""} onChange={set("due_date")} /></Field>
+        <Field label="Next action due"><DateInput min={new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Dubai" })} value={form.due_date || ""} onChange={set("due_date")} /></Field>
       </div>
     </div>
   );

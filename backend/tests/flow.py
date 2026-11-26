@@ -84,5 +84,5 @@ def approved_client(db, people):
     acc = complete_client(db, people["maker"])
     submit(db, acc, people["maker"])
     approve_all(db, acc, people["checker"], people["approver"])
-    wf.change_status(db, acc, people["maker"], "activate")
+    # Triam UAT 25-11-2026 row 180: the Final approval makes the client Active at once.
     return acc

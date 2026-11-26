@@ -32,9 +32,10 @@ def standard_reports(user: User = Depends(get_current_user)):
 def run_standard_report(key: str, days: Optional[int] = None, date_from: Optional[date] = None, date_to: Optional[date] = None,
                         status: Optional[str] = None, department_id: Optional[int] = None, entity: Optional[str] = None,
                         tag: Optional[str] = None, rm_id: Optional[int] = None, request_type: Optional[str] = None,
-                        sr_type: Optional[str] = None, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+                        sr_type: Optional[str] = None, account_id: Optional[int] = None,
+                        db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     return standard_reports_service.run(db, user, key, days, date_from, date_to, status, department_id, entity, tag, rm_id,
-                                        request_type, sr_type)
+                                        request_type, sr_type, account_id)
 
 
 def _filters_used(db: Session, **f) -> list:
@@ -63,6 +64,10 @@ def _filters_used(db: Session, **f) -> list:
         out.append(("Request type", f["request_type"]))
     if f["sr_type"]:
         out.append(("Service request type", f["sr_type"]))
+    if f.get("account_id"):
+        from app.models import Account
+        acc = db.get(Account, f["account_id"])
+        out.append(("Client", acc.company_name if acc else str(f["account_id"])))
     return out
 
 
@@ -70,18 +75,18 @@ def _filters_used(db: Session, **f) -> list:
 def export_standard_report(key: str, format: str = "xlsx", days: Optional[int] = None, date_from: Optional[date] = None,
                            date_to: Optional[date] = None, status: Optional[str] = None, department_id: Optional[int] = None,
                            entity: Optional[str] = None, tag: Optional[str] = None, rm_id: Optional[int] = None,
-                           request_type: Optional[str] = None, sr_type: Optional[str] = None,
+                           request_type: Optional[str] = None, sr_type: Optional[str] = None, account_id: Optional[int] = None,
                            db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     if not has_permission(user, REPORT_EXPORT):
         raise HTTPException(status_code=403, detail="Downloading reports isn't enabled for you. Ask the Administrator.")
     if format not in FORMATS:
         raise HTTPException(status_code=400, detail="Format must be xlsx or pdf")
     report = standard_reports_service.run(db, user, key, days, date_from, date_to, status, department_id, entity, tag, rm_id,
-                                          request_type, sr_type)
+                                          request_type, sr_type, account_id)
     media_type, build = FORMATS[format]
     content = build(report, user, _filters_used(db, days=days, date_from=date_from, date_to=date_to, status=status,
                                                 department_id=department_id, entity=entity, tag=tag, rm_id=rm_id,
-                                                request_type=request_type, sr_type=sr_type))
+                                                request_type=request_type, sr_type=sr_type, account_id=account_id))
     log_event(db, "report_export", f"{report['title']} downloaded as {'Excel' if format == 'xlsx' else 'PDF'} "
               f"({len(report['rows'])} rows)", user_id=user.id, subject_type="Report",
               changes={"report": key, "format": format, "rows": len(report["rows"])})

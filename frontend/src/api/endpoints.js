@@ -116,6 +116,7 @@ export const invoicesApi = {
   // Triam UAT 19-11-2026: the client form's Invoice for Onboarding Services.
   onboarding: (accountId) => api.get(`/invoices/onboarding/${accountId}`).then((r) => r.data),
   saveOnboarding: (accountId, data) => api.put(`/invoices/onboarding/${accountId}`, data).then((r) => r.data),
+  coDecide: (id, data) => api.post(`/invoices/${id}/compliance`, data).then((r) => r.data),
   attach: (id, file, kind) => {
     const fd = new FormData();
     fd.append("file", file);

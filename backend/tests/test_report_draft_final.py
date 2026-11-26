@@ -10,7 +10,7 @@ from app.services import activity_service as svc
 
 
 def report(acc, **kw):
-    base = dict(account_id=acc.id, activity_date=date(2026, 11, 23), activity_type="Call Report",
+    base = dict(account_id=acc.id, activity_date=date.today(), activity_type="Call Report",
                 summary="Renewal discussed", client_contact="Omar")
     base.update(kw)
     return ActivityCreate(**base)
@@ -51,8 +51,11 @@ def test_only_the_writer_or_supervisor_changes_a_report(db, make_user, make_acco
 def test_history_filters_by_status_and_dates(db, make_user, make_account):
     rm = make_user("Rita RM")
     acc = make_account(spoc=rm, profile_status="Active")
-    svc.create_activity(db, report(acc, activity_date=date(2025, 1, 10), final=True), rm)
-    svc.create_activity(db, report(acc, activity_date=date(2026, 6, 1)), rm)
+    # Reports from the past (before the one-week rule of UAT 25-11-2026 row 188) are put in directly.
+    old = svc.create_activity(db, report(acc, final=True), rm)
+    newer = svc.create_activity(db, report(acc), rm)
+    old.activity_date, newer.activity_date = date(2025, 1, 10), date(2026, 6, 1)
+    db.commit()
     finals, total = svc.list_activities(db, rm, status="Final")
     assert total == 1 and finals[0].activity_date == date(2025, 1, 10)  # an old report is still there
     in_2026, _ = svc.list_activities(db, rm, date_from=date(2026, 1, 1))
@@ -83,7 +86,7 @@ def test_a_final_report_downloads_as_a_named_pdf(client, db, make_user, make_acc
     svc.add_correction(db, final.id, "Contact's surname is Haddad", rm)
     r = client.get(f"/api/v1/activities/{final.id}/pdf", headers=auth(rm))
     assert r.status_code == 200 and r.content.startswith(b"%PDF")
-    assert f'filename="triam-call-report-{final.activity_uid}-acme-holdings-ltd-20261123.pdf"' in r.headers["content-disposition"]
+    assert f'filename="triam-call-report-{final.activity_uid}-acme-holdings-ltd-{date.today():%Y%m%d}.pdf"' in r.headers["content-disposition"]
 
 
 def test_the_browser_may_read_the_file_name(client):

@@ -6,7 +6,7 @@ import CountriesPanel from "../components/admin/CountriesPanel";
 import RolesPanel from "../components/admin/RolesPanel";
 import AuditLogPanel from "../components/admin/AuditLogPanel";
 import { useAuthStore } from "../store/auth";
-import { Icon, Modal, Field, Input, Select, Spinner, ErrorBanner, PageHeader, ShowDeactivated } from "../components/ui";
+import { Icon, Modal, Field, Input, Select, Spinner, ErrorBanner, PageHeader, ShowDeactivated, FilterBar, SearchInput } from "../components/ui";
 import { USER_TYPE_LABEL, initialsOf, personLabel } from "../utils/constants";
 import { toast } from "../store/toast";
 import { confirmDialog } from "../store/confirm";
@@ -30,6 +30,9 @@ export default function AdminPage() {
   const [departments, setDepartments] = useState([]);
   const [roles, setRoles] = useState([]);
   const [tab, setTab] = useState("users");
+  const [userSearch, setUserSearch] = useState("");
+  const [userDept, setUserDept] = useState("");
+  const [userRole, setUserRole] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [modal, setModal] = useState(null);
@@ -57,7 +60,15 @@ export default function AdminPage() {
   const roleName = (id) => roles.find((r) => r.id === id)?.name;
   const userById = (id) => users.find((u) => u.id === id);
   // A person has one login per role (Triam 29-10-2026): add-on logins are listed under their main login.
-  const ordered = [...users].sort((a, b) => ((a.person_id || a.id) - (b.person_id || b.id)) || ((a.person_id ? 1 : 0) - (b.person_id ? 1 : 0)) || (a.id - b.id));
+  // Triam UAT 25-11-2026 row 198: people in alphabetical order, with a search and filters above the list.
+  const byName = (a, b) => (a.name || "").localeCompare(b.name || "", undefined, { sensitivity: "base" }) || a.id - b.id;
+  const ordered = users.filter((u) => !u.person_id).sort(byName)
+    .flatMap((m) => [m, ...users.filter((u) => u.person_id === m.id).sort(byName)])
+    .concat(users.filter((u) => u.person_id && !users.some((m) => m.id === u.person_id)));
+  const q = userSearch.trim().toLowerCase();
+  const shown = ordered.filter((u) => (!q || [u.name, u.email, u.title].some((v) => (v || "").toLowerCase().includes(q)))
+    && (!userDept || String(u.department_id || "") === userDept)
+    && (!userRole || (userRole === "admin" ? u.role === "admin" : String(u.business_role_id || "") === userRole)));
   const addonsOf = (id) => users.filter((u) => u.person_id === id);
 
   const addDepartment = async () => {
@@ -178,6 +189,18 @@ export default function AdminPage() {
       {tab === "health" && <SystemHealthPanel />}
 
       {tab === "users" && (<>
+      <FilterBar>
+        <SearchInput value={userSearch} onChange={setUserSearch} placeholder="Search name or email…" />
+        <div className="w-52"><Select aria-label="Filter by department" value={userDept} onChange={(e) => setUserDept(e.target.value)}>
+          <option value="">All departments</option>
+          {departments.filter((d) => d.is_active).map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+        </Select></div>
+        <div className="w-52"><Select aria-label="Filter by role" value={userRole} onChange={(e) => setUserRole(e.target.value)}>
+          <option value="">All roles</option>
+          <option value="admin">Administrator</option>
+          {roles.filter((r) => r.is_active).map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+        </Select></div>
+      </FilterBar>
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
@@ -191,7 +214,8 @@ export default function AdminPage() {
             </tr>
           </thead>
           <tbody>
-            {ordered.map((u) => (
+            {shown.length === 0 && <tr><td colSpan={6} className="py-8 text-center text-sm text-gray-500">No users match.</td></tr>}
+            {shown.map((u) => (
               <tr key={u.id} className={`border-b border-gray-50 hover:bg-gray-50 ${!u.is_active && !showInactive ? "hidden" : ""}`}>
                 <td className="py-3 px-4">
                   <div className={`flex items-center gap-3 ${u.person_id ? "pl-6" : ""}`}>

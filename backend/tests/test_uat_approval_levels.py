@@ -57,7 +57,7 @@ def test_a_final_approver_can_not_give_the_compliance_approval(db, desk, make_us
     wf.approve(db, acc, desk["mlro"], "CDD checked")
     assert _can(db, acc, admin)["allowed"] is True  # the Final level is still theirs
     wf.approve(db, acc, admin, "Final")
-    assert acc.profile_status == "Approved"
+    assert acc.profile_status == "Active"  # UAT 25-11-2026 row 180
 
 
 def test_whoever_gave_the_compliance_approval_can_not_give_the_final_one(db, desk):
