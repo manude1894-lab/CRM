@@ -121,7 +121,7 @@ CLIENT = {
     "profile_status": ("Set by the workflow", ", ".join(wf.CLIENT_STATUSES) if hasattr(wf, "CLIENT_STATUSES") else "See the workflow", ""),
     "status_reason_code": ("With Drop / Mark for Exit", "Drop reasons; exit reasons", ""),
     "status_reason": ("With Mark for Exit", "", "Comments, up to 250 characters for an exit"),
-    "client_id": ("Set by the CRM", "", "Issued at the Final approval: <entity>/<number>; never changes"),
+    "client_id": ("Set by the CRM", "", "Issued at the Final approval (which also makes the client Active): <entity>/<number>; never changes"),
     "onboarding_invoice_wanted": ("No", "Yes / No", ""),
 }
 
@@ -163,7 +163,7 @@ PROSPECT = {
 ACTIVITY = {
     "account_id": (ALWAYS, "Clients the user may see", ""),
     "activity_type": (ALWAYS, "Visit Report / Call Report", ""),
-    "activity_date": (ALWAYS, "", ""),
+    "activity_date": (ALWAYS, "", "Not more than 7 days back when entered"),
     "client_contact": ("Save the Report", "", "At most 150 characters"),
     "location": ("Save the Report, Visit Reports", "", "At most 200 characters"),
     "attendees": ("No", "", ""),
