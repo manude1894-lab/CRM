@@ -42,8 +42,25 @@ export function useSectionIndex(title, ref, open, failed) {
   }, [register, title, failed]);
 }
 
-export default function SectionIndex({ missing = [], topRef }) {
+export default function SectionIndex({ missing = [], topRef, jumpToFirst = false }) {
   const ctx = useContext(SectionIndexContext);
+  // Triam UAT 25-11-2026 row 186: reopening a client being prepared, go to the first missing mandatory field.
+  const jumped = useRef(false);
+  useEffect(() => {
+    if (!jumpToFirst || jumped.current || !missing.length || !ctx?.sections.length) return;
+    jumped.current = true;
+    const titles = ["Client info", ...ctx.sections.map((s) => s.title)];
+    const first = sectionFor(missing[0].section, titles);
+    const section = ctx.sections.find((s) => s.title === first);
+    if (section) section.open();
+    setTimeout(() => {
+      const root = topRef?.current?.closest("[class*='overflow']") || document;
+      const field = (section?.el || root).querySelector("[data-invalid='true']") || root.querySelector("[data-invalid='true']");
+      const target = field || section?.el || topRef?.current;
+      target?.scrollIntoView({ behavior: "smooth", block: "center" });
+      field?.querySelector("input, select, textarea, button")?.focus({ preventScroll: true });
+    }, 250);
+  }, [jumpToFirst, missing, ctx?.sections.length]);
   // Stick to the very top of whatever scrolls the form (the pop-up, or the page with its padding).
   const navRef = useRef(null);
   const [top, setTop] = useState(0);

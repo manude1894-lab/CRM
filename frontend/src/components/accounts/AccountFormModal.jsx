@@ -70,8 +70,8 @@ const Section = ({ title, children, hasData, onSave, status, error, dirty, readO
 };
 
 // BRD §5 "Mandatory Yes/No": blank until answered, so an unanswered question is not taken as "No".
-const YesNo = ({ label, value, onChange, required }) => (
-  <Field label={label} required={required}>
+const YesNo = ({ label, value, onChange, required, invalid }) => (
+  <Field label={label} required={required} invalid={invalid}>
     <Select value={value === true ? "yes" : value === false ? "no" : ""} onChange={(e) => onChange(e.target.value === "yes" ? true : e.target.value === "no" ? false : null)}>
       <option value="">— select —</option>
       <option value="yes">Yes</option>
@@ -80,18 +80,19 @@ const YesNo = ({ label, value, onChange, required }) => (
   </Field>
 );
 
-const AddressFields = ({ value, onChange, countries, required }) => {
+const AddressFields = ({ value, onChange, countries, required, invalid = false }) => {
   const v = value || BLANK_ADDRESS;
   const set = (k) => (e) => onChange({ ...v, [k]: e.target.value });
+  const bad = (k) => invalid && !(v[k] || "").trim(); // the required parts still empty
   return (
     <div className="grid grid-cols-2 gap-3">
-      <Field label="Address Line 1" required={required}><Input value={v.line1 || ""} onChange={set("line1")} /></Field>
+      <Field label="Address Line 1" required={required} invalid={bad("line1")}><Input value={v.line1 || ""} onChange={set("line1")} /></Field>
       <Field label="Address Line 2"><Input value={v.line2 || ""} onChange={set("line2")} /></Field>
       <Field label="Landmark"><Input value={v.landmark || ""} onChange={set("landmark")} /></Field>
-      <Field label="City" required={required}><Input value={v.city || ""} onChange={set("city")} /></Field>
+      <Field label="City" required={required} invalid={bad("city")}><Input value={v.city || ""} onChange={set("city")} /></Field>
       <Field label="ZIP Code"><Input value={v.zip || ""} onChange={set("zip")} /></Field>
       <Field label="P.O. Box No."><Input value={v.po_box || ""} onChange={set("po_box")} /></Field>
-      <Field label="Country" required={required}><CountrySelect value={v.country || ""} onChange={set("country")} countries={countries} /></Field>
+      <Field label="Country" required={required} invalid={bad("country")}><CountrySelect value={v.country || ""} onChange={set("country")} countries={countries} /></Field>
     </div>
   );
 };
@@ -130,6 +131,12 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
   const showVat = !offshore || !!form.trn_vat_number;
   const showCorpTax = !offshore || form.corp_tax_registered === true || !!form.corp_tax_registration_number;
   const locked = readOnlyUser || ["Awaiting Approval", "Exited", "Dropped"].includes(form.profile_status) || amendLocked;
+  const [missingFields, setMissingFields] = useState([]); // for the section index
+  // Triam UAT 25-11-2026 row 186: a mandatory field the completeness check lists, and still empty on the form.
+  const missingSet = new Set(locked || approvedClient ? [] : missingFields.map((m) => m.field));
+  const blank = (v) => v === null || v === undefined || v === "" || (Array.isArray(v) && v.length === 0)
+    || (typeof v === "object" && !Array.isArray(v) && !Object.values(v).some(Boolean));
+  const miss = (field) => missingSet.has(field) && blank(form[field]);
   // BRD §7/§11: only Compliance completes the CDD section — before submission, while the
   // client is with Compliance, or in an amendment of an approved client.
   const canCdd = useAuthStore((st) => st.can("client.cdd_edit"));
@@ -217,7 +224,7 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
   const setCategory = (e) => setForm({ ...form, client_category: e.target.value,
     ...(e.target.value === "Existing" ? {} : { is_one_time_service: null }) });
   const oneTimeQuestion = (
-    <YesNo label="Is this a one-time service?" required={req("is_one_time_service")} value={form.is_one_time_service} onChange={setValue("is_one_time_service")} />
+    <YesNo label="Is this a one-time service?" required={req("is_one_time_service")} invalid={miss("is_one_time_service")} value={form.is_one_time_service} onChange={setValue("is_one_time_service")} />
   );
   const tags = useMasters("tag", TAG_OPTIONS);
   const regulators = useMasters("regulator", REGULATOR_OPTIONS);
@@ -314,14 +321,13 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
   };
 
   const topRef = useRef(null);
-  const [missingFields, setMissingFields] = useState([]); // for the section index
   const sectionProps = (key) => ({ onSave: locked ? undefined : () => saveSection(key), readOnly: locked, status: sectionStatus[key], error: sectionError[key], dirty: sectionDirty(key) });
   const today = new Date().toISOString().slice(0, 10);
 
   return (
     <Modal title={mode === "edit" ? "Edit Client" : "New Client"} onClose={cancel}>
       <SectionIndexProvider>
-      <SectionIndex missing={locked || approvedClient ? [] : missingFields} topRef={topRef} />
+      <SectionIndex missing={locked || approvedClient ? [] : missingFields} topRef={topRef} jumpToFirst={!!form._id && !locked && !approvedClient} />
       <div ref={topRef} className="space-y-3 scroll-mt-14">
         {form._id && !hideWorkflow && (
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 px-3 py-2 rounded-lg bg-gray-50 border border-gray-100 text-xs text-gray-600">
@@ -339,7 +345,7 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
         {/* Triam 20-11-2026 (S T Krishna): the onboarding form begins with the Triam entities, then the RMs. The
             entities decide the services offered below, the Client ID prefix and the offshore rules. */}
         <div className="grid grid-cols-2 gap-3">
-          <Field label="Anchor Triam Entity" required={req("anchor_entity")}>
+          <Field label="Anchor Triam Entity" required={req("anchor_entity")} invalid={miss("anchor_entity")}>
             <Select value={form.anchor_entity || ""} onChange={(e) => setForm({ ...form, anchor_entity: e.target.value, non_anchor_entities: (form.non_anchor_entities || []).filter((x) => x !== e.target.value) })}>
               <option value="">— select —</option>
               {entityOptions(form.anchor_entity).map((t) => <option key={t} value={t}>{entities.labelOf(t)}</option>)}
@@ -350,7 +356,7 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
           </Field>
         </div>
         <div className="grid grid-cols-2 gap-3">
-          <Field label="Anchor RM (SPOC)" required={req("spoc_id")}>
+          <Field label="Anchor RM (SPOC)" required={req("spoc_id")} invalid={miss("spoc_id")}>
             <Select value={form.spoc_id || ""} onChange={(e) => setForm({ ...form, spoc_id: e.target.value, non_anchor_rm_ids: (form.non_anchor_rm_ids || []).filter((id) => id !== +e.target.value) })}>
               <option value="">— None —</option>
               {rms.map((u) => <option key={u.id} value={u.id}>{personLabel(u, rms)}</option>)}
@@ -371,7 +377,7 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
             <option>Individual</option>
           </Select>
         </Field>
-        <Field label={isIndividual ? "Full Name (as per passport)" : "Company Name"} required={req("company_name")}>
+        <Field label={isIndividual ? "Full Name (as per passport)" : "Company Name"} required={req("company_name")} invalid={miss("company_name")}>
           <Input value={form.company_name} onChange={setCompanyName} maxLength={isIndividual ? 255 : 50} placeholder={isIndividual ? "e.g. John Smith" : "e.g. Al Futtaim Group"} />
         </Field>
         <NameLookup
@@ -387,26 +393,26 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
         {!isIndividual && (
           <>
             <div className="grid grid-cols-2 gap-3">
-              <Field label="New Client Category" required={req("client_category")}>
+              <Field label="New Client Category" required={req("client_category")} invalid={miss("client_category")}>
                 <Select value={form.client_category || ""} onChange={setCategory}>
                   <option value="">— select —</option>
                   <option value="Under Formation">Under Formation</option>
                   <option value="Existing">Existing</option>
                 </Select>
               </Field>
-              <Field label="Country of Incorporation / Registration" required={req("country")}>
+              <Field label="Country of Incorporation / Registration" required={req("country")} invalid={miss("country")}>
                 <CountrySelect value={form.country} onChange={set("country")} countries={countries} />
               </Field>
             </div>
             {form.client_category === "Existing" && <div className="grid grid-cols-2 gap-3">{oneTimeQuestion}</div>}
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Contact Mobile" required={req("contact_mobile_number")}>
+              <Field label="Contact Mobile" required={req("contact_mobile_number")} invalid={miss("contact_mobile_number")}>
                 <MobileNumberInput code={form.contact_mobile_country_code} number={form.contact_mobile_number} options={dialOptions}
                   onCode={setValue("contact_mobile_country_code")} onNumber={setValue("contact_mobile_number")} placeholder="e.g. 43334444" />
               </Field>
-              <Field label="Contact Email" required={req("contact_email")}><Input type="email" value={form.contact_email || ""} onChange={set("contact_email")} placeholder="e.g. info@company.com" /></Field>
+              <Field label="Contact Email" required={req("contact_email")} invalid={miss("contact_email")}><Input type="email" value={form.contact_email || ""} onChange={set("contact_email")} placeholder="e.g. info@company.com" /></Field>
             </div>
-            <Field label="Nature of Services sought" required={req("nature_of_services_sought")}>
+            <Field label="Nature of Services sought" required={req("nature_of_services_sought")} invalid={miss("nature_of_services_sought")}>
               <MultiSelect options={serviceOptions(true)} value={form.nature_of_services_sought} onChange={setValue("nature_of_services_sought")} />
               {!oneTime && notOffered.length > 0 && (
                 <p className="text-[11px] text-red-600 mt-1">
@@ -421,13 +427,13 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
         </Field>
         {!isIndividual && (
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Incorporation Certificate No." required={req("registration_number")}>
+            <Field label="Incorporation Certificate No." required={req("registration_number")} invalid={miss("registration_number")}>
               <Input value={form.registration_number} onChange={set("registration_number")} placeholder="e.g. 123456" maxLength={30} />
             </Field>
-            <Field label="License Number" required={req("license_number")}>
+            <Field label="License Number" required={req("license_number")} invalid={miss("license_number")}>
               <Input value={form.license_number} onChange={set("license_number")} placeholder="e.g. DIFC-LIC-9012" maxLength={30} />
             </Field>
-            <Field label="Incorporation Date" required={req("incorporation_date")}>
+            <Field label="Incorporation Date" required={req("incorporation_date")} invalid={miss("incorporation_date")}>
               <DateInput max={today} value={form.incorporation_date || ""} onChange={set("incorporation_date")} />
             </Field>
           </div>
@@ -455,7 +461,7 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
             <Section title="Licensing & Regulatory" hasData={!!(form.licensing_authority || form.license_activities || form.license_start_date || form.license_expiry_date || form.is_regulated != null || form.license_category)}
               {...sectionProps("licensing")}>
               <div className="grid grid-cols-2 gap-3">
-                <Field label="Registering Authority" required={req("licensing_authority")}>
+                <Field label="Registering Authority" required={req("licensing_authority")} invalid={miss("licensing_authority")}>
                   {authorities.items.length ? (
                     <Select value={form.licensing_authority || ""} onChange={set("licensing_authority")}>
                       <option value="">— select —</option>
@@ -466,12 +472,12 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
                   )}
                 </Field>
                 {form.licensing_authority === "Other" && (
-                  <Field label="Registering Authority (Other)" required={req("licensing_authority_other")}>
+                  <Field label="Registering Authority (Other)" required={req("licensing_authority_other")} invalid={miss("licensing_authority_other")}>
                     <Input value={form.licensing_authority_other || ""} onChange={set("licensing_authority_other")} maxLength={100} />
                   </Field>
                 )}
-                <Field label="License Start Date" required={req("license_start_date")}><DateInput min={form.incorporation_date || undefined} max={today} value={form.license_start_date || ""} onChange={set("license_start_date")} /></Field>
-                <Field label="License Expiry Date" required={req("license_expiry_date")}><DateInput min={later(today, form.license_start_date && addDays(form.license_start_date, 1))} value={form.license_expiry_date || ""} onChange={set("license_expiry_date")} /></Field>
+                <Field label="License Start Date" required={req("license_start_date")} invalid={miss("license_start_date")}><DateInput min={form.incorporation_date || undefined} max={today} value={form.license_start_date || ""} onChange={set("license_start_date")} /></Field>
+                <Field label="License Expiry Date" required={req("license_expiry_date")} invalid={miss("license_expiry_date")}><DateInput min={later(today, form.license_start_date && addDays(form.license_start_date, 1))} value={form.license_expiry_date || ""} onChange={set("license_expiry_date")} /></Field>
               </div>
               <Field label="Detailed Nature of Business carried out currently">
                 <Textarea rows={2} value={form.nature_of_business} onChange={set("nature_of_business")} maxLength={1000} />
@@ -481,27 +487,27 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
                 <Field label="LEI Expiry Date"><DateInput min={today} value={form.lei_expiry_date || ""} onChange={set("lei_expiry_date")} /></Field>
               </div>
               <div className="mb-3">
-                <Field label="Licensed Activities" required={req("license_activities")}>
+                <Field label="Licensed Activities" required={req("license_activities")} invalid={miss("license_activities")}>
                   <Textarea rows={3} value={form.license_activities} onChange={set("license_activities")} maxLength={250} />
                   <p className="text-[11px] text-gray-500 text-right">{(form.license_activities || "").length}/250</p>
                 </Field>
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <YesNo label="Is entity regulated" required={req("is_regulated")} value={form.is_regulated} onChange={setValue("is_regulated")} />
+                <YesNo label="Is entity regulated" required={req("is_regulated")} invalid={miss("is_regulated")} value={form.is_regulated} onChange={setValue("is_regulated")} />
               </div>
               {form.is_regulated && (
                 <div className="grid grid-cols-2 gap-3">
-                  <Field label="Regulator" required={req("regulator_name")}>
+                  <Field label="Regulator" required={req("regulator_name")} invalid={miss("regulator_name")}>
                     <Select value={form.regulator_name || ""} onChange={set("regulator_name")}>
                       <option value="">— select —</option>
                       {selectableCodes(regulators.items, form.regulator_name).map((o) => <option key={o} value={o}>{regulators.labelOf(o)}</option>)}
                     </Select>
                   </Field>
                   {form.regulator_name === "Other" && (
-                    <Field label="Other Regulator" required={req("regulator_other")}><Input value={form.regulator_other} onChange={set("regulator_other")} /></Field>
+                    <Field label="Other Regulator" required={req("regulator_other")} invalid={miss("regulator_other")}><Input value={form.regulator_other} onChange={set("regulator_other")} /></Field>
                   )}
-                  <Field label="License Category" required={req("license_category")}><Input value={form.license_category} onChange={set("license_category")} maxLength={25} /></Field>
-                  <Field label="Current regulatory license expiry" required={req("regulatory_license_expiry_date")}><DateInput min={today} value={form.regulatory_license_expiry_date || ""} onChange={set("regulatory_license_expiry_date")} /></Field>
+                  <Field label="License Category" required={req("license_category")} invalid={miss("license_category")}><Input value={form.license_category} onChange={set("license_category")} maxLength={25} /></Field>
+                  <Field label="Current regulatory license expiry" required={req("regulatory_license_expiry_date")} invalid={miss("regulatory_license_expiry_date")}><DateInput min={today} value={form.regulatory_license_expiry_date || ""} onChange={set("regulatory_license_expiry_date")} /></Field>
                 </div>
               )}
             </Section>
@@ -515,7 +521,7 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
 
             <Section title="Registered Address" hasData={Object.values(form.registered_address || {}).some(Boolean)}
               {...sectionProps("registeredAddress")}>
-              <AddressFields required={req("registered_address")} value={form.registered_address} onChange={setRegisteredAddress} countries={countries} />
+              <AddressFields required={req("registered_address")} invalid={missingSet.has("registered_address")} value={form.registered_address} onChange={setRegisteredAddress} countries={countries} />
             </Section>
 
             <Section title="Operating Address" hasData={Object.values(form.operating_address || {}).some(Boolean)}
@@ -524,7 +530,7 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
                 <input type="checkbox" checked={sameAsRegistered} onChange={toggleSameAsRegistered} /> Same as Registered Address
               </label>
               <fieldset disabled={sameAsRegistered} className="min-w-0">
-                <AddressFields required={req("operating_address")} value={form.operating_address} onChange={setOperatingAddress} countries={countries} />
+                <AddressFields required={req("operating_address")} invalid={missingSet.has("operating_address")} value={form.operating_address} onChange={setOperatingAddress} countries={countries} />
               </fieldset>
             </Section>
 
@@ -538,7 +544,7 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
                   {/* Triam 13-11-2026: the VAT Certificate is uploaded here, beside the number. */}
                   <VatCertificateField accountId={form._id} disabled={locked} onChange={() => setRefreshKey((k) => k + 1)} />
                 </Field>}
-                <Field label={`Financial Year End${form.financial_year_end ? ` (${fmtFYE(form.financial_year_end)})` : ""}`} required={req("financial_year_end")}>
+                <Field label={`Financial Year End${form.financial_year_end ? ` (${fmtFYE(form.financial_year_end)})` : ""}`} required={req("financial_year_end")} invalid={miss("financial_year_end")}>
                   <div className="flex gap-2">
                     <Select value={parseFYE(form.financial_year_end).day} onChange={(e) => setForm({ ...form, financial_year_end: toFYE(parseFYE(form.financial_year_end).month || "12", e.target.value) })}>
                       <option value="">Day</option>
@@ -552,7 +558,7 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
                 </Field>
               </div>
               {showCorpTax && <div className="grid grid-cols-2 gap-3">
-                <YesNo label="Corporate Tax Registered" required={req("corp_tax_registered")} value={form.corp_tax_registered} onChange={setValue("corp_tax_registered")} />
+                <YesNo label="Corporate Tax Registered" required={req("corp_tax_registered")} invalid={miss("corp_tax_registered")} value={form.corp_tax_registered} onChange={setValue("corp_tax_registered")} />
               </div>}
               {showCorpTax && form.corp_tax_registered && (
                 <Field label="Corp Tax Registration No. / TAN"><Input value={form.corp_tax_registration_number} onChange={(e) => setForm({ ...form, corp_tax_registration_number: taxNumber(e.target.value, form.country) })} maxLength={20} placeholder={taxNumberHint(form.country)} /></Field>
@@ -565,23 +571,23 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
           <Section title="Individual Details" hasData={!!(form.date_of_birth || form.country_of_birth || form.nationality || form.individual_mobile_number || form.individual_email || form.country_of_residence || form.is_pep || (form.nature_of_services_sought || []).length > 0)}
             {...sectionProps("individual")}>
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Date of Birth" required={req("date_of_birth")}><DateInput min={earliestBirth()} max={latestAdultBirth()} value={form.date_of_birth || ""} onChange={set("date_of_birth")} /><p className="text-[11px] text-gray-500 mt-1">The client must be 18 or over.</p></Field>
-              <Field label="Country of Birth" required={req("country_of_birth")}><CountrySelect value={form.country_of_birth} onChange={set("country_of_birth")} countries={countries} /></Field>
-              <Field label="Nationality" required={req("nationality")}><CountrySelect value={form.nationality} onChange={set("nationality")} countries={countries} /></Field>
-              <Field label="Passport Number" required={req("passport_number")}>
+              <Field label="Date of Birth" required={req("date_of_birth")} invalid={miss("date_of_birth")}><DateInput min={earliestBirth()} max={latestAdultBirth()} value={form.date_of_birth || ""} onChange={set("date_of_birth")} /><p className="text-[11px] text-gray-500 mt-1">The client must be 18 or over.</p></Field>
+              <Field label="Country of Birth" required={req("country_of_birth")} invalid={miss("country_of_birth")}><CountrySelect value={form.country_of_birth} onChange={set("country_of_birth")} countries={countries} /></Field>
+              <Field label="Nationality" required={req("nationality")} invalid={miss("nationality")}><CountrySelect value={form.nationality} onChange={set("nationality")} countries={countries} /></Field>
+              <Field label="Passport Number" required={req("passport_number")} invalid={miss("passport_number")}>
                 <Input value={form.passport_number || ""} onChange={(e) => setForm({ ...form, passport_number: cleanPassport(e.target.value) })} />
                 {passportProblem(form.passport_number) && <p className="text-[11px] text-red-600 mt-1">{passportProblem(form.passport_number)}</p>}
               </Field>
-              <Field label="Passport Expiry Date" required={req("passport_expiry_date")}><DateInput min={form.date_of_birth ? addDays(form.date_of_birth, 1) : undefined} value={form.passport_expiry_date || ""} onChange={set("passport_expiry_date")} /><PassportNote value={form.passport_expiry_date} /></Field>
-              <Field label="Contact Email" required={req("individual_email")}><Input type="email" value={form.individual_email} onChange={set("individual_email")} /></Field>
-              <Field label="Country of Residence" required={req("country_of_residence")}><CountrySelect value={form.country_of_residence} onChange={(e) => setForm({ ...form, country_of_residence: e.target.value, ...isdFor(e.target.value, "individual_mobile_country_code") })} countries={countries} /></Field>
+              <Field label="Passport Expiry Date" required={req("passport_expiry_date")} invalid={miss("passport_expiry_date")}><DateInput min={form.date_of_birth ? addDays(form.date_of_birth, 1) : undefined} value={form.passport_expiry_date || ""} onChange={set("passport_expiry_date")} /><PassportNote value={form.passport_expiry_date} /></Field>
+              <Field label="Contact Email" required={req("individual_email")} invalid={miss("individual_email")}><Input type="email" value={form.individual_email} onChange={set("individual_email")} /></Field>
+              <Field label="Country of Residence" required={req("country_of_residence")} invalid={miss("country_of_residence")}><CountrySelect value={form.country_of_residence} onChange={(e) => setForm({ ...form, country_of_residence: e.target.value, ...isdFor(e.target.value, "individual_mobile_country_code") })} countries={countries} /></Field>
             </div>
-            <Field label="Contact Mobile" required={req("individual_mobile_number")}>
+            <Field label="Contact Mobile" required={req("individual_mobile_number")} invalid={miss("individual_mobile_number")}>
               <MobileNumberInput code={form.individual_mobile_country_code} number={form.individual_mobile_number} options={dialOptions}
                 onCode={setValue("individual_mobile_country_code")} onNumber={setValue("individual_mobile_number")} />
             </Field>
             <div className="grid grid-cols-2 gap-3">{oneTimeQuestion}</div>
-            <Field label="Nature of Services Sought" required={req("nature_of_services_sought")}>
+            <Field label="Nature of Services Sought" required={req("nature_of_services_sought")} invalid={miss("nature_of_services_sought")}>
               <MultiSelect options={serviceOptions(false)} value={form.nature_of_services_sought} onChange={setValue("nature_of_services_sought")} />
             </Field>
             <Field label="Detailed Nature of Profession / Business">
@@ -589,7 +595,7 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
             </Field>
 
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mt-3 mb-1.5">Residential Address</p>
-            <AddressFields required={req("residential_address")} value={form.residential_address} onChange={setValue("residential_address")} countries={countries} />
+            <AddressFields required={req("residential_address")} invalid={missingSet.has("residential_address")} value={form.residential_address} onChange={setValue("residential_address")} countries={countries} />
 
             {isUAE(form.country_of_residence) && (
               <div className="grid grid-cols-2 gap-3 mt-3">
@@ -611,10 +617,10 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
 
         <Section title="Introducer" hasData={form.has_introducer != null} {...sectionProps("introducer")}>
           <div className="grid grid-cols-2 gap-3">
-            <YesNo label="Introduced by a third party" required={req("has_introducer")} value={form.has_introducer} onChange={setValue("has_introducer")} />
+            <YesNo label="Introduced by a third party" required={req("has_introducer")} invalid={miss("has_introducer")} value={form.has_introducer} onChange={setValue("has_introducer")} />
           </div>
           {form.has_introducer && (
-            <Field label="Introducer Name" required={req("introducer_name")}><Input value={form.introducer_name} onChange={set("introducer_name")} /></Field>
+            <Field label="Introducer Name" required={req("introducer_name")} invalid={miss("introducer_name")}><Input value={form.introducer_name} onChange={set("introducer_name")} /></Field>
           )}
         </Section>
 
@@ -655,12 +661,12 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
 
         <Section title="Biz Rationale Report" hasData={!!(form.br_person_met || form.br_rationale)} {...sectionProps("bizRationale")}>
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Full Name of the Person Met" required={req("br_person_met")}><Input value={form.br_person_met} onChange={set("br_person_met")} maxLength={255} /></Field>
-            <Field label="Place of Meeting with the Customer" required={req("br_meeting_place")}><Input value={form.br_meeting_place} onChange={set("br_meeting_place")} maxLength={255} /></Field>
-            <Field label="Date of Meeting with the Customer" required={req("br_meeting_date")}><DateInput value={form.br_meeting_date || ""} onChange={set("br_meeting_date")} max={today} /></Field>
-            <Field label="Time of Meeting with the Customer" required={req("br_meeting_time")}><Input type="time" value={form.br_meeting_time} onChange={set("br_meeting_time")} /></Field>
+            <Field label="Full Name of the Person Met" required={req("br_person_met")} invalid={miss("br_person_met")}><Input value={form.br_person_met} onChange={set("br_person_met")} maxLength={255} /></Field>
+            <Field label="Place of Meeting with the Customer" required={req("br_meeting_place")} invalid={miss("br_meeting_place")}><Input value={form.br_meeting_place} onChange={set("br_meeting_place")} maxLength={255} /></Field>
+            <Field label="Date of Meeting with the Customer" required={req("br_meeting_date")} invalid={miss("br_meeting_date")}><DateInput value={form.br_meeting_date || ""} onChange={set("br_meeting_date")} max={today} /></Field>
+            <Field label="Time of Meeting with the Customer" required={req("br_meeting_time")} invalid={miss("br_meeting_time")}><Input type="time" value={form.br_meeting_time} onChange={set("br_meeting_time")} /></Field>
           </div>
-          <Field label="Mode of Meeting" required={req("br_meeting_mode")}>
+          <Field label="Mode of Meeting" required={req("br_meeting_mode")} invalid={miss("br_meeting_mode")}>
             <div className="flex gap-5 text-sm text-gray-700 py-1">
               {["Face to Face", "Video Call"].map((m) => (
                 <label key={m} className="flex items-center gap-1.5">
@@ -669,7 +675,7 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
               ))}
             </div>
           </Field>
-          <Field label="Business Rationale for the Relationship" required={req("br_rationale")}>
+          <Field label="Business Rationale for the Relationship" required={req("br_rationale")} invalid={miss("br_rationale")}>
             <p className="text-[11px] text-gray-500 mb-1">The purpose of establishing the relationship, the services to be obtained at the start of the relationship and the likely introduction of new services in the next 2 years.</p>
             <Textarea rows={5} value={form.br_rationale} onChange={set("br_rationale")} maxLength={4000} />
           </Field>
@@ -678,9 +684,9 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
         <Section title="Engagement" hasData={form.engagement_letter_signed != null || !!form.engagement_letter_valid_until}
           {...sectionProps("profileStatus")}>
           <div className="grid grid-cols-2 gap-3">
-            <YesNo label="Engagement Letter Signed" required={req("engagement_letter_signed")} value={form.engagement_letter_signed} onChange={setValue("engagement_letter_signed")} />
+            <YesNo label="Engagement Letter Signed" required={req("engagement_letter_signed")} invalid={miss("engagement_letter_signed")} value={form.engagement_letter_signed} onChange={setValue("engagement_letter_signed")} />
             {form.engagement_letter_signed && (
-              <Field label="Engagement Letter Valid Until" required={req("engagement_letter_valid_until")}><DateInput min={today} value={form.engagement_letter_valid_until || ""} onChange={set("engagement_letter_valid_until")} /></Field>
+              <Field label="Engagement Letter Valid Until" required={req("engagement_letter_valid_until")} invalid={miss("engagement_letter_valid_until")}><DateInput min={today} value={form.engagement_letter_valid_until || ""} onChange={set("engagement_letter_valid_until")} /></Field>
             )}
           </div>
         </Section>

@@ -217,19 +217,27 @@ export const Button = ({ variant = "secondary", size = "md", className = "", typ
 // shares it; Input, Select, Textarea and DateInput use it as aria-labelledby unless they are named otherwise. This
 // covers fields with two controls too (country code + number).
 const FieldLabelContext = React.createContext(null);
+const FieldInvalidContext = React.createContext(false);
 export const useFieldLabel = (props) => {
   const labelId = React.useContext(FieldLabelContext);
-  return props["aria-label"] || props["aria-labelledby"] || !labelId ? {} : { "aria-labelledby": labelId };
+  const invalid = React.useContext(FieldInvalidContext);
+  return { ...(props["aria-label"] || props["aria-labelledby"] || !labelId ? {} : { "aria-labelledby": labelId }),
+    ...(invalid ? { "aria-invalid": true } : {}) };
 };
 
-export const Field = ({ label, children, required }) => {
+// `invalid`: a mandatory field still empty (Triam UAT 25-11-2026 row 186): outlined in red until it is filled.
+export const Field = ({ label, children, required, invalid = false }) => {
   const labelId = React.useId();
   return (
-    <div className="mb-4">
-      <label id={labelId} className="block text-xs font-medium text-gray-600 mb-1">
+    <div className="mb-4" data-invalid={invalid ? "true" : undefined}>
+      <label id={labelId} className={`block text-xs font-medium mb-1 ${invalid ? "text-red-700" : "text-gray-600"}`}>
         {label}{required && <span className="text-red-600 ml-0.5" aria-hidden="true">*</span>}
       </label>
-      <FieldLabelContext.Provider value={labelId}>{children}</FieldLabelContext.Provider>
+      <FieldLabelContext.Provider value={labelId}>
+        <FieldInvalidContext.Provider value={invalid}>
+          {invalid ? <div className="rounded-lg ring-2 ring-red-400">{children}</div> : children}
+        </FieldInvalidContext.Provider>
+      </FieldLabelContext.Provider>
     </div>
   );
 };
