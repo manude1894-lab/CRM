@@ -64,6 +64,10 @@ api.interceptors.response.use(
       return api(original);
     } catch (err) {
       processQueue(err, null);
+      // The sign-in page then says the session expired (only when there was a session to renew).
+      if (useAuthStore.getState().refreshToken) {
+        try { sessionStorage.setItem("triam-session-expired", "1"); } catch { /* storage unavailable */ }
+      }
       useAuthStore.getState().logout();
       return Promise.reject(err);
     } finally {
