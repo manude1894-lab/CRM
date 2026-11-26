@@ -680,17 +680,21 @@ RESTRICTED = {
 }
 
 
-def may_run(user: User, key: str) -> bool:
+def may_run(user: User, key: str, db: Optional[Session] = None, setting=None) -> bool:
     """Administrators and Inquiry & Reports (read only, BRD §13: sees everything, changes nothing) may run every
-    report (Triam 24-11-2026); the restricted ones are otherwise for their desks."""
-    from app.auth.permissions import has_permission
-    from app.models import UserRole
-    rule = RESTRICTED.get(key)
-    return rule is None or user.role == UserRole.ADMIN or has_permission(user, "read_only") or rule(user)
+    report (Triam 24-11-2026); the restricted ones are otherwise for their desks. Triam 26-11-2026: the
+    Administrator may hide a report or choose the roles that run it (report_settings_service)."""
+    from app.services import report_settings_service as rs
+    if setting is None and db is not None:
+        setting = rs.settings(db).get(key)
+    return rs.allowed(user, key, setting, RESTRICTED.get(key))
 
 
-def available(user: User) -> dict:
-    return {k: t for k, t in REPORTS.items() if may_run(user, k)}
+def available(user: User, db: Optional[Session] = None) -> dict:
+    """The reports this user may run, by key, with their names (the Administrator's name if given)."""
+    from app.services import report_settings_service as rs
+    st = rs.settings(db) if db is not None else {}
+    return {k: rs.display_name(k, t, st.get(k)) for k, t in REPORTS.items() if may_run(user, k, setting=st.get(k))}
 
 
 def run(db: Session, user: User, key: str, days: Optional[int] = None, date_from: Optional[date] = None,
@@ -699,8 +703,23 @@ def run(db: Session, user: User, key: str, days: Optional[int] = None, date_from
         request_type: Optional[str] = None, sr_type: Optional[str] = None, account_id: Optional[int] = None) -> dict:
     if days is not None and not 0 <= days <= 3650:
         raise HTTPException(status_code=400, detail="Days must be between 0 and 3650")
-    if key in REPORTS and not may_run(user, key):
+    if key in REPORTS and not may_run(user, key, db):
         raise HTTPException(status_code=403, detail="This report isn't available to your role")
+    from app.services import report_settings_service as rs
+    setting = rs.settings(db).get(key)
+    if days is None and setting is not None and setting.default_days is not None:
+        days = setting.default_days
+    report = _run(db, user, key, days, date_from, date_to, status, department_id, entity, tag, rm_id, request_type, sr_type, account_id)
+    # Triam 26-11-2026: the report ID leads the title, on screen and in the Excel / PDF file and its name.
+    code = rs.CODES.get(key)
+    if code:
+        report["code"] = code
+        report["title"] = f"{code} {report['title']}"
+    return report
+
+
+def _run(db: Session, user: User, key: str, days, date_from, date_to, status, department_id, entity, tag, rm_id,
+         request_type, sr_type, account_id) -> dict:
     f = Filters(entity, department_id, tag, rm_id, account_id)
     if key == "visits-recorded":
         return visits_recorded(db, user, date_from, date_to, f)

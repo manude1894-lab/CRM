@@ -56,6 +56,7 @@ export const ACTION_LABELS = {
   invoice_to_compliance: "Onboarding invoice request sent to Compliance",
   invoice_co_approve: "Onboarding invoice request approved by Compliance",
   invoice_co_return: "Onboarding invoice request returned by Compliance",
+  report_setting: "Report settings changed",
   password_change: "Password changed",
   password_reset_request: "Password reset requested",
   password_reset: "Password reset",

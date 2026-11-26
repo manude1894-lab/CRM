@@ -3,12 +3,13 @@ Administrator allows (Triam UAT 19-11-2026)."""
 from datetime import date
 from typing import Optional
 
+from pydantic import BaseModel, Field
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
 from app.audit import log_event
-from app.auth.dependencies import get_current_user
+from app.auth.dependencies import get_current_user, require_admin
 from app.auth.permissions import REPORT_EXPORT, has_permission
 from app.database import get_db
 from app.models import User
@@ -22,10 +23,43 @@ FORMATS = {
 }
 
 
-@router.get("/standard", summary="Standard reports available")
-def standard_reports(user: User = Depends(get_current_user)):
-    # Triam UAT 19-11-2026: the amendments, invoice and service request reports only for the roles named.
-    return [{"key": k, "title": t} for k, t in standard_reports_service.available(user).items()]
+@router.get("/standard", summary="Standard reports available, with their IDs and the user's favourites")
+def standard_reports(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    # Triam UAT 19-11-2026: some reports only for the roles named; 26-11-2026: IDs, favourites, Administrator settings.
+    from app.services import report_settings_service as rs
+    favs, st = rs.favourites(db, user), rs.settings(db)
+    return [{"key": k, "code": rs.CODES.get(k, ""), "title": t, "favourite": k in favs,
+             "default_days": (st[k].default_days if k in st and st[k].default_days is not None else rs.TAKES_DAYS.get(k))}
+            for k, t in standard_reports_service.available(user, db).items()]
+
+
+class FavouriteIn(BaseModel):
+    on: bool
+
+
+@router.put("/standard/{key}/favourite", status_code=204, summary="Star or unstar a report (my reports)")
+def favourite(key: str, data: FavouriteIn, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    from app.services import report_settings_service as rs
+    rs.set_favourite(db, user, key, data.on)
+
+
+class ReportSettingIn(BaseModel):
+    name: Optional[str] = Field(None, max_length=150)
+    hidden: bool = False
+    role_ids: Optional[list[int]] = None  # null: the standard access
+    default_days: Optional[int] = None
+
+
+@router.get("/settings", summary="Report settings - Administrator")
+def report_settings(db: Session = Depends(get_db), user: User = Depends(require_admin)):
+    from app.services import report_settings_service as rs
+    return rs.admin_list(db, standard_reports_service.REPORTS)
+
+
+@router.put("/settings/{key}", summary="Rename, hide, choose roles or default days for a report - Administrator")
+def save_report_setting(key: str, data: ReportSettingIn, db: Session = Depends(get_db), user: User = Depends(require_admin)):
+    from app.services import report_settings_service as rs
+    return rs.save(db, key, data, user, standard_reports_service.REPORTS)
 
 
 @router.get("/standard/{key}", summary="Run a standard report")
