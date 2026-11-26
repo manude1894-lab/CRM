@@ -3,7 +3,7 @@ import { accountsApi, departmentsApi, reportsApi, usersApi } from "../../api/end
 import ClientPicker from "../ClientPicker";
 import { useMasters } from "../../hooks/useMasters";
 import { Pager, SortTh, useListView } from "../listing";
-import { Button, DateInput, Field, Input, Select, Spinner } from "../ui";
+import { Button, DateInput, Field, Icon, Input, PageHeader, SearchInput, Select, Spinner } from "../ui";
 import { fmtDate } from "../../utils/constants";
 import { toast } from "../../store/toast";
 import { saveResponse } from "../../utils/download";
@@ -82,29 +82,13 @@ function useSideScroll(deps) {
   return { ref, edges, measure, height };
 }
 
-/** The report list ends at the bottom of the window wherever it sits, and scrolls on its own (Triam 24-11-2026). */
-function useFitToWindow() {
-  const ref = useRef(null);
-  const [height, setHeight] = useState(null);
-  useEffect(() => {
-    const fit = () => {
-      const el = ref.current;
-      if (el) setHeight(Math.max(240, Math.round(window.innerHeight - el.getBoundingClientRect().top - 16)));
-    };
-    fit();
-    const main = document.getElementById("main-content");
-    window.addEventListener("resize", fit);
-    main?.addEventListener("scroll", fit, { passive: true });
-    return () => { window.removeEventListener("resize", fit); main?.removeEventListener("scroll", fit); };
-  }, []);
-  return { ref, height };
-}
-
 export default function StandardReports() {
   const canExport = useAuthStore((s) => s.can("report.export"));
   const [exporting, setExporting] = useState(null);
   const [list, setList] = useState([]);
-  const [key, setKey] = useState("onboarding-in-progress");
+  // Triam 26-11-2026: like other CRMs, a reports home (the list) and a full-width view of one report.
+  const [key, setKey] = useState(null);
+  const [find, setFind] = useState("");
   const [params, setParams] = useState({ days: 30, date_from: "", date_to: "", status: "", department_id: "",
     entity: "", tag: "", rm_id: "", request_type: "", sr_type: "", account_id: "" });
   const [clients, setClients] = useState([]);
@@ -158,37 +142,57 @@ export default function StandardReports() {
       toast.error(detail);
     } finally { setExporting(null); }
   };
-  useEffect(() => { run(key); }, [key]);
+  useEffect(() => { if (key) run(key); else setReport(null); }, [key]);
   const side = useSideScroll([report, busy]);
-  const navFit = useFitToWindow();
   const view = useListView(report?.rows || [], { key: "reports", defaultSize: 50, valueOf: (r, j) => r[j], resetOn: [report] });
   useEffect(() => { view.setSort(null); }, [report?.title]);
 
-  return (
-    <div className="grid grid-cols-1 lg:grid-cols-[250px_minmax(0,1fr)] gap-4 items-start">
-      {/* Triam 22-11-2026 design refresh: the reports grouped down the side instead of a wall of pills. */}
-      <nav aria-label="Reports" ref={navFit.ref} style={navFit.height ? { "--nav-h": `${navFit.height}px` } : undefined}
-        className="report-scroll bg-white border border-gray-200/70 rounded-xl shadow-[0_1px_2px_rgba(16,24,40,0.04)] p-2 lg:sticky lg:top-0 lg:max-h-[var(--nav-h,calc(100vh-7.5rem))] lg:overflow-y-auto">
-        {groupReports(list).map(([group, reports]) => (
-          <div key={group} className="mb-1">
-            <div className="px-2.5 pt-2.5 pb-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-500">{group}</div>
-            {reports.map((r) => (
-              <button key={r.key} onClick={() => setKey(r.key)} aria-current={key === r.key ? "page" : undefined}
-                className={`relative w-full text-left px-2.5 py-1.5 rounded-lg text-[13px] leading-snug ${key === r.key
-                  ? "bg-brand-50 text-brand-700 font-semibold" : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"}`}>
-                {key === r.key && <span className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r bg-gold" />}
-                {r.title}
-              </button>
-            ))}
-          </div>
-        ))}
-      </nav>
-      <div className="bg-white border border-gray-200/70 rounded-xl shadow-[0_1px_2px_rgba(16,24,40,0.04)] min-w-0">
-      <div className="px-4 pt-4 pb-1 border-b border-gray-100">
-        <h2 className="text-base font-semibold text-gray-900">{list.find((r) => r.key === key)?.title || "Report"}</h2>
+  // The reports home: every report in its group, with a search.
+  if (!key) {
+    const q = find.trim().toLowerCase();
+    const groups = groupReports(list).map(([g, rs]) => [g, rs.filter((r) => !q || r.title.toLowerCase().includes(q))])
+      .filter(([, rs]) => rs.length);
+    return (
+      <div className="space-y-5">
+        <PageHeader title="Reports" subtitle={`${list.length} reports`} />
+        <div className="max-w-md"><SearchInput value={find} onChange={setFind} placeholder="Search reports…" /></div>
+        {groups.length === 0 && <p className="text-sm text-gray-500">No report matches.</p>}
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 items-start">
+          {groups.map(([group, reports]) => (
+            <section key={group} className="bg-white border border-gray-200/70 rounded-xl shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+              <h2 className="px-4 pt-3.5 pb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-gray-500">{group}</h2>
+              <ul className="pb-2">
+                {reports.map((r) => (
+                  <li key={r.key}>
+                    <button type="button" onClick={() => setKey(r.key)}
+                      className="group w-full flex items-center justify-between gap-3 px-4 py-2 text-left text-sm text-gray-800 hover:bg-brand-50/60 hover:text-brand-700">
+                      <span>{r.title}</span>
+                      <Icon name="chevronRight" size={15} className="flex-shrink-0 text-gray-300 group-hover:text-brand-500" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ))}
+        </div>
       </div>
+    );
+  }
+
+  const title = list.find((r) => r.key === key)?.title || "Report";
+  const period = report?.title.match(/\(([^)]*)\)$/)?.[1]; // e.g. "all time" or "01 11 2026 to 26 11 2026"
+  return (
+    <div className="space-y-4">
+      <PageHeader title={title} back={{ label: "Reports", onClick: () => setKey(null) }}
+        actions={canExport && (
+          <>
+            <Button onClick={() => download("xlsx")} disabled={!report || !!exporting}><Icon name="download" size={14} /> {exporting === "xlsx" ? "Preparing…" : "Excel"}</Button>
+            <Button onClick={() => download("pdf")} disabled={!report || !!exporting}><Icon name="download" size={14} /> {exporting === "pdf" ? "Preparing…" : "PDF"}</Button>
+          </>
+        )} />
+      <div className="bg-white border border-gray-200/70 rounded-xl shadow-[0_1px_2px_rgba(16,24,40,0.04)] min-w-0">
       <div className="px-4 py-3">
-        <div className="flex flex-wrap items-end gap-3 mb-3">
+        <div className="flex flex-wrap items-end gap-x-3 -mx-4 -mt-3 mb-3 px-4 pt-3 border-b border-gray-100 bg-gray-50/60 rounded-t-xl empty:hidden">
           {TAKES_DAYS[key] && (
             <div className="w-52"><Field label={TAKES_DAYS[key]}><Input type="number" min="0" max="3650" value={params.days}
               onChange={(e) => setParams((p) => ({ ...p, days: e.target.value }))} /></Field></div>
@@ -244,16 +248,10 @@ export default function StandardReports() {
             </Select></Field></div>
           )}
           {(TAKES_DAYS[key] || TAKES_DATES.includes(key) || BY_DEPARTMENT.includes(key)) && <div className="mb-4"><Button onClick={() => run()}>Run</Button></div>}
-          {canExport && (
-            <div className="mb-4 ml-auto flex gap-2">
-              <Button onClick={() => download("xlsx")} disabled={!report || !!exporting}>{exporting === "xlsx" ? "Preparing…" : "Excel"}</Button>
-              <Button onClick={() => download("pdf")} disabled={!report || !!exporting}>{exporting === "pdf" ? "Preparing…" : "PDF"}</Button>
-            </div>
-          )}
         </div>
         {busy || !report ? <Spinner /> : (
           <>
-            <div className="text-xs text-gray-500 mb-2">{report.title} · {report.rows.length} row{report.rows.length === 1 ? "" : "s"}</div>
+            <div className="text-xs text-gray-500 mb-2">{report.rows.length} row{report.rows.length === 1 ? "" : "s"}{period ? ` · ${period}` : ""}</div>
             {report.rows.length === 0 ? <p className="text-sm text-gray-500 py-6 text-center">Nothing to report.</p> : (
               <>
               <div className="relative">

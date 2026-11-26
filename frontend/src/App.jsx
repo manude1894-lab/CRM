@@ -113,7 +113,8 @@ export default function App() {
 
   // Letters only: "Ritu (MLRO)" → "RM", not "R(".
   const avatar = (user?.name || "").replace(/[^A-Za-z\s]/g, " ").split(/\s+/).filter(Boolean).map((w) => w[0]).slice(0, 2).join("").toUpperCase() || "?";
-  const go = (key) => { setJumpTo(null); setPage(key); if (isPhone) setSidebarOpen(false); };
+  // Clicking the page you are on opens it afresh (e.g. Reports goes back to the reports home), as in most apps.
+  const go = (key) => { setJumpTo(key === page ? { nonce: Date.now() } : null); setPage(key); if (isPhone) setSidebarOpen(false); };
 
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden">
