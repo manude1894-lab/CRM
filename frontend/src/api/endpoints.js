@@ -212,6 +212,10 @@ export const reportsApi = {
   standardList: () => api.get("/reports/standard").then((r) => r.data),
   standard: (key, params = {}) => api.get(`/reports/standard/${key}`, { params }).then((r) => r.data),
   onboardingStatuses: () => api.get("/reports/onboarding-statuses").then((r) => r.data),
+  // Triam 26-11-2026: my reports (favourites) and the Administrator's report settings.
+  favourite: (key, on) => api.put(`/reports/standard/${key}/favourite`, { on }),
+  settings: () => api.get("/reports/settings").then((r) => r.data),
+  saveSetting: (key, data) => api.put(`/reports/settings/${key}`, data).then((r) => r.data),
   // Triam UAT 19-11-2026: Excel / PDF, for the users the Administrator allows.
   exportFile: (key, params, format) => api.get(`/reports/standard/${key}/export`, { params: { ...params, format }, responseType: "blob" }),
 };

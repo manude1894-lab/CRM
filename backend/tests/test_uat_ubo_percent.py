@@ -9,7 +9,6 @@ from app.models import AccountParty
 from app.schemas.account import AccountUpdate
 from app.schemas.account_party import AccountPartyCreate, AccountPartyUpdate
 from app.services import account_party_service as parties, account_service, amendment_service as amend
-from app.services import client_workflow_service as wf
 from tests import flow
 
 UAE = "United Arab Emirates"

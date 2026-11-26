@@ -82,6 +82,19 @@ function useSideScroll(deps) {
   return { ref, edges, measure, height };
 }
 
+// A star to add a report to "My reports" (as in Zoho, Salesforce, HubSpot).
+function Star({ on, onToggle, title }) {
+  return (
+    <button type="button" onClick={onToggle} aria-pressed={on} aria-label={on ? `Remove ${title} from my reports` : `Add ${title} to my reports`}
+      title={on ? "Remove from my reports" : "Add to my reports"}
+      className={`p-1.5 rounded-md hover:bg-gold/10 ${on ? "text-gold" : "text-gray-300 hover:text-gold"}`}>
+      <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" fill={on ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.8">
+        <path d="M12 3.5l2.6 5.3 5.9.9-4.25 4.1 1 5.8L12 16.9l-5.25 2.7 1-5.8L3.5 9.7l5.9-.9z" strokeLinejoin="round" />
+      </svg>
+    </button>
+  );
+}
+
 export default function StandardReports() {
   const canExport = useAuthStore((s) => s.can("report.export"));
   const [exporting, setExporting] = useState(null);
@@ -143,6 +156,12 @@ export default function StandardReports() {
     } finally { setExporting(null); }
   };
   useEffect(() => { if (key) run(key); else setReport(null); }, [key]);
+  const open = (r) => { setParams((p) => ({ ...p, days: r.default_days ?? 30 })); setKey(r.key); };
+  const toggleFavourite = async (r) => {
+    setList((l) => l.map((x) => (x.key === r.key ? { ...x, favourite: !x.favourite } : x)));
+    try { await reportsApi.favourite(r.key, !r.favourite); }
+    catch { setList((l) => l.map((x) => (x.key === r.key ? { ...x, favourite: r.favourite } : x))); toast.error("Could not update my reports"); }
+  };
   const side = useSideScroll([report, busy]);
   const view = useListView(report?.rows || [], { key: "reports", defaultSize: 50, valueOf: (r, j) => r[j], resetOn: [report] });
   useEffect(() => { view.setSort(null); }, [report?.title]);
@@ -150,25 +169,28 @@ export default function StandardReports() {
   // The reports home: every report in its group, with a search.
   if (!key) {
     const q = find.trim().toLowerCase();
-    const groups = groupReports(list).map(([g, rs]) => [g, rs.filter((r) => !q || r.title.toLowerCase().includes(q))])
-      .filter(([, rs]) => rs.length);
+    const match = (r) => !q || r.title.toLowerCase().includes(q) || (r.code || "").toLowerCase().includes(q);
+    const mine = list.filter((r) => r.favourite && match(r));
+    const groups = [...(mine.length ? [["My reports", mine]] : []),
+      ...groupReports(list).map(([g, rs]) => [g, rs.filter(match)])].filter(([, rs]) => rs.length);
     return (
       <div className="space-y-5">
         <PageHeader title="Reports" subtitle={`${list.length} reports`} />
-        <div className="max-w-md"><SearchInput value={find} onChange={setFind} placeholder="Search reports…" /></div>
+        <div className="max-w-md"><SearchInput value={find} onChange={setFind} placeholder="Search by name or ID (e.g. KYC-01)…" /></div>
         {groups.length === 0 && <p className="text-sm text-gray-500">No report matches.</p>}
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 items-start">
           {groups.map(([group, reports]) => (
-            <section key={group} className="bg-white border border-gray-200/70 rounded-xl shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+            <section key={group} className={`bg-white border rounded-xl shadow-[0_1px_2px_rgba(16,24,40,0.04)] ${group === "My reports" ? "border-gold/40" : "border-gray-200/70"}`}>
               <h2 className="px-4 pt-3.5 pb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-gray-500">{group}</h2>
               <ul className="pb-2">
                 {reports.map((r) => (
-                  <li key={r.key}>
-                    <button type="button" onClick={() => setKey(r.key)}
-                      className="group w-full flex items-center justify-between gap-3 px-4 py-2 text-left text-sm text-gray-800 hover:bg-brand-50/60 hover:text-brand-700">
+                  <li key={r.key} className="group flex items-center pr-2 hover:bg-brand-50/60">
+                    <button type="button" onClick={() => open(r)}
+                      className="flex-1 min-w-0 flex items-center gap-3 pl-4 py-2 text-left text-sm text-gray-800 group-hover:text-brand-700">
+                      <span className="w-14 flex-shrink-0 font-mono text-[11px] text-gray-500">{r.code}</span>
                       <span>{r.title}</span>
-                      <Icon name="chevronRight" size={15} className="flex-shrink-0 text-gray-300 group-hover:text-brand-500" />
                     </button>
+                    <Star on={!!r.favourite} onToggle={() => toggleFavourite(r)} title={r.title} />
                   </li>
                 ))}
               </ul>
@@ -179,15 +201,19 @@ export default function StandardReports() {
     );
   }
 
-  const title = list.find((r) => r.key === key)?.title || "Report";
+  const current = list.find((r) => r.key === key);
+  const title = current ? `${current.code} · ${current.title}` : "Report";
   const period = report?.title.match(/\(([^)]*)\)$/)?.[1]; // e.g. "all time" or "01 11 2026 to 26 11 2026"
   return (
     <div className="space-y-4">
       <PageHeader title={title} back={{ label: "Reports", onClick: () => setKey(null) }}
-        actions={canExport && (
+        actions={(
           <>
+            {current && <Star on={!!current.favourite} onToggle={() => toggleFavourite(current)} title={current.title} />}
+            {canExport && <>
             <Button onClick={() => download("xlsx")} disabled={!report || !!exporting}><Icon name="download" size={14} /> {exporting === "xlsx" ? "Preparing…" : "Excel"}</Button>
             <Button onClick={() => download("pdf")} disabled={!report || !!exporting}><Icon name="download" size={14} /> {exporting === "pdf" ? "Preparing…" : "PDF"}</Button>
+            </>}
           </>
         )} />
       <div className="bg-white border border-gray-200/70 rounded-xl shadow-[0_1px_2px_rgba(16,24,40,0.04)] min-w-0">

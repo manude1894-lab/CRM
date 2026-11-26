@@ -4,6 +4,7 @@ import { usersApi, departmentsApi, rolesApi } from "../api/endpoints";
 import MasterDataPanel from "../components/admin/MasterDataPanel";
 import CountriesPanel from "../components/admin/CountriesPanel";
 import RolesPanel from "../components/admin/RolesPanel";
+import ReportSettingsPanel from "../components/admin/ReportSettingsPanel";
 import AuditLogPanel from "../components/admin/AuditLogPanel";
 import { useAuthStore } from "../store/auth";
 import { Icon, Modal, Field, Input, Select, Spinner, ErrorBanner, PageHeader, ShowDeactivated, FilterBar, SearchInput } from "../components/ui";
@@ -16,6 +17,7 @@ const TABS = [
   { key: "masters", label: "Master Data" },
   { key: "countries", label: "Countries" },
   { key: "roles", label: "Roles" },
+  { key: "reports", label: "Reports" },
   { key: "audit", label: "Audit Log" },
   { key: "health", label: "System Health" },
 ];
@@ -185,6 +187,7 @@ export default function AdminPage() {
       {tab === "masters" && <MasterDataPanel />}
       {tab === "countries" && <CountriesPanel />}
       {tab === "roles" && <RolesPanel departments={departments} users={users} onChanged={load} />}
+      {tab === "reports" && <ReportSettingsPanel roles={roles} />}
       {tab === "audit" && <AuditLogPanel users={users} />}
       {tab === "health" && <SystemHealthPanel />}
 

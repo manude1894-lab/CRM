@@ -2,6 +2,7 @@
 from app.models.user import User, UserRole
 from app.models.department import Department
 from app.models.role import Role, PERMISSIONS
+from app.models.report_setting import ReportFavourite, ReportSetting
 from app.models.master import MasterItem, MASTER_LIST_TYPES
 from app.models.audit import AuditLog
 from app.models.client_id import ClientIdSequence
@@ -19,7 +20,7 @@ from app.models.prospect import Prospect, ProspectStatus
 __all__ = [
     "User", "UserRole",
     "Department",
-    "Role", "PERMISSIONS",
+    "Role", "PERMISSIONS", "ReportFavourite", "ReportSetting",
     "MasterItem", "MASTER_LIST_TYPES",
     "AuditLog",
     "ClientIdSequence",

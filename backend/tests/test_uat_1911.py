@@ -48,7 +48,7 @@ def test_excel_download_holds_the_report_and_is_logged(db, make_user, make_accou
     assert "attachment" in r.headers["content-disposition"] and ".xlsx" in r.headers["content-disposition"]
     ws = load_workbook(io.BytesIO(r.content)).active
     # Triam 23-11-2026: a heading block (Triam CRM, title, filters, generated, confidential) above the table.
-    assert ws["A1"].value == "Triam CRM" and ws["A2"].value == "AML reviews due in the next 30 days"
+    assert ws["A1"].value == "Triam CRM" and ws["A2"].value == "KYC-02 AML reviews due in the next 30 days"
     assert ws["A3"].value == "Filters: Days: 30"
     head = next(r for r in range(1, 12) if ws.cell(row=r, column=1).value == "Anchor Triam Entity")
     header = [c.value for c in ws[head]]
