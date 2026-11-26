@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
-import { departmentsApi, reportsApi, usersApi } from "../../api/endpoints";
+import { accountsApi, departmentsApi, reportsApi, usersApi } from "../../api/endpoints";
+import ClientPicker from "../ClientPicker";
 import { useMasters } from "../../hooks/useMasters";
 import { Pager, SortTh, useListView } from "../listing";
 import { Button, DateInput, Field, Input, Select, Spinner } from "../ui";
@@ -27,15 +28,19 @@ const TAKES_DAYS = { "documents-expiring": "Within (days)", "aml-reviews-due": "
   "under-formation": "Pending at least (days, 0 = all)" };
 // Triam UAT 19-11-2026: the amendments, invoice and service request reports filter by Triam Anchor Entity,
 // Department, Client Tag, Anchor RM and date range (plus request type / service request type).
-const CLIENT_FILTERS = ["amendments", "invoices-onboarding", "invoices-service-requests", "invoices-pending", "service-requests-ageing"];
+const CLIENT_FILTERS = ["amendments", "invoices-onboarding", "invoices-service-requests", "invoices-pending", "service-requests-ageing",
+  "visits-recorded", "visits-not-done"];
+// Triam UAT 25-11-2026: the call / visit reports also filter by client, and not by department.
+const BY_CLIENT = ["visits-recorded", "visits-not-done"];
 const TAKES_DATES = ["prospects-assigned", "onboarding-approved", "onboarding-in-progress", ...CLIENT_FILTERS];
-const BY_DEPARTMENT = ["onboarding-approved", "onboarding-in-progress", ...CLIENT_FILTERS];
+const BY_DEPARTMENT = ["onboarding-approved", "onboarding-in-progress", ...CLIENT_FILTERS.filter((k) => !BY_CLIENT.includes(k))];
 const REQUEST_TYPES = ["Onboarding", "Service Request"];
 // The side list's groups, in this order; a report not listed here goes under "Other".
 const GROUPS = [
   ["Onboarding", ["onboarding-approved", "onboarding-in-progress", "under-formation", "rejected-with-rm"]],
   ["Compliance & KYC", ["clients-risk", "aml-reviews-due", "aml-reviews-expired", "amendments", "data-quality"]],
   ["Documents", ["documents-expiring", "documents-expired"]],
+  ["Calls & visits", ["visits-recorded", "visits-not-done"]],
   ["Prospects", ["prospects-assigned", "prospects-unassigned"]],
   ["Finance & service requests", ["invoices-onboarding", "invoices-service-requests", "invoices-pending", "service-requests-ageing"]],
 ];
@@ -101,7 +106,8 @@ export default function StandardReports() {
   const [list, setList] = useState([]);
   const [key, setKey] = useState("onboarding-in-progress");
   const [params, setParams] = useState({ days: 30, date_from: "", date_to: "", status: "", department_id: "",
-    entity: "", tag: "", rm_id: "", request_type: "", sr_type: "" });
+    entity: "", tag: "", rm_id: "", request_type: "", sr_type: "", account_id: "" });
+  const [clients, setClients] = useState([]);
   const [statuses, setStatuses] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [rms, setRms] = useState([]);
@@ -114,6 +120,7 @@ export default function StandardReports() {
 
   useEffect(() => {
     reportsApi.standardList().then(setList).catch(() => setList([]));
+    accountsApi.list({ limit: 1000 }).then((r) => setClients(r.items || [])).catch(() => setClients([]));
     reportsApi.onboardingStatuses().then(setStatuses).catch(() => setStatuses([]));
     departmentsApi.list().then((d) => setDepartments(d.filter((x) => x.is_active !== false))).catch(() => setDepartments([]));
     usersApi.list().then((u) => setRms(u.filter((x) => x.is_active && x.handles_clients && x.role !== "admin" && !x.person_id)
@@ -127,6 +134,7 @@ export default function StandardReports() {
     if (BY_DEPARTMENT.includes(k) && params.department_id) p.department_id = params.department_id;
     if (CLIENT_FILTERS.includes(k)) {
       for (const f of ["entity", "tag", "rm_id"]) if (params[f]) p[f] = params[f];
+      if (BY_CLIENT.includes(k) && params.account_id) p.account_id = params.account_id;
       if (k === "invoices-pending" && params.request_type) p.request_type = params.request_type;
       if (k === "service-requests-ageing" && params.sr_type) p.sr_type = params.sr_type;
     }
@@ -202,6 +210,10 @@ export default function StandardReports() {
               <option value="">All I can see</option>
               {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
             </Select></Field></div>
+          )}
+          {BY_CLIENT.includes(key) && (
+            <div className="w-64"><Field label="Client"><ClientPicker clients={clients} allLabel="All clients" value={params.account_id}
+              onChange={(v) => setParams((p) => ({ ...p, account_id: v }))} /></Field></div>
           )}
           {CLIENT_FILTERS.includes(key) && (
             <>
