@@ -323,6 +323,14 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
   const topRef = useRef(null);
   const sectionProps = (key) => ({ onSave: locked ? undefined : () => saveSection(key), readOnly: locked, status: sectionStatus[key], error: sectionError[key], dirty: sectionDirty(key) });
   const today = new Date().toISOString().slice(0, 10);
+  // The Biz Rationale meeting has happened (UAT 25-11-2026 row 202): checked on UAE time, as the server does, and
+  // shown as soon as a later time is typed (UAT 26-11-2026), not only on Save.
+  const uaeNow = new Date();
+  const uaeToday = uaeNow.toLocaleDateString("en-CA", { timeZone: "Asia/Dubai" });
+  const uaeTime = uaeNow.toLocaleTimeString("en-GB", { timeZone: "Asia/Dubai", hour: "2-digit", minute: "2-digit", hour12: false });
+  const meetingDateError = form.br_meeting_date && form.br_meeting_date > uaeToday ? "Date of Meeting cannot be in the future" : null;
+  const meetingTimeError = form.br_meeting_date === uaeToday && form.br_meeting_time && form.br_meeting_time.slice(0, 5) > uaeTime
+    ? `Time of Meeting cannot be later than now (${uaeTime} UAE time) for a meeting today` : null;
 
   return (
     <Modal title={mode === "edit" ? "Edit Client" : "New Client"} onClose={cancel}>
@@ -663,9 +671,9 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
           <div className="grid grid-cols-2 gap-3">
             <Field label="Full Name of the Person Met" required={req("br_person_met")} invalid={miss("br_person_met")}><Input value={form.br_person_met} onChange={set("br_person_met")} maxLength={255} /></Field>
             <Field label="Place of Meeting with the Customer" required={req("br_meeting_place")} invalid={miss("br_meeting_place")}><Input value={form.br_meeting_place} onChange={set("br_meeting_place")} maxLength={255} /></Field>
-            <Field label="Date of Meeting with the Customer" required={req("br_meeting_date")} invalid={miss("br_meeting_date")}><DateInput value={form.br_meeting_date || ""} onChange={set("br_meeting_date")} max={today} /></Field>
-            <Field label="Time of Meeting with the Customer" required={req("br_meeting_time")} invalid={miss("br_meeting_time")}><Input type="time" value={form.br_meeting_time} onChange={set("br_meeting_time")}
-              max={form.br_meeting_date === today ? new Date().toTimeString().slice(0, 5) : undefined} /></Field>
+            <Field label="Date of Meeting with the Customer" required={req("br_meeting_date")} invalid={miss("br_meeting_date")} error={meetingDateError}><DateInput value={form.br_meeting_date || ""} onChange={set("br_meeting_date")} max={uaeToday} /></Field>
+            <Field label="Time of Meeting with the Customer" required={req("br_meeting_time")} invalid={miss("br_meeting_time")} error={meetingTimeError}><Input type="time" value={form.br_meeting_time} onChange={set("br_meeting_time")}
+              max={form.br_meeting_date === uaeToday ? uaeTime : undefined} /></Field>
           </div>
           <Field label="Mode of Meeting" required={req("br_meeting_mode")} invalid={miss("br_meeting_mode")}>
             <div className="flex gap-5 text-sm text-gray-700 py-1">
