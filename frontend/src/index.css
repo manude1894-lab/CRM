@@ -39,3 +39,7 @@ html, body, #root {
   /* Tick boxes and radio buttons in Triam navy instead of the browser blue. */
   input[type="checkbox"], input[type="radio"] { accent-color: #1a3a5c; }
 }
+/* Sign-in page (26-11-2026): messages fade in gently; nothing moves for people who ask for less motion. */
+@keyframes login-fade { from { opacity: 0; transform: translateY(-3px); } to { opacity: 1; transform: none; } }
+.login-fade { animation: login-fade 180ms ease-out; }
+@media (prefers-reduced-motion: reduce) { .login-fade { animation: none; } }
