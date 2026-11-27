@@ -405,7 +405,7 @@ function PartyForm({ form, setForm, countries, onCancel, onSave, copyFrom = [] }
       {isUAEResident && (
         <div className="grid grid-cols-2 gap-3">
           <Field label="UAE Visa No."><Input value={form.uae_visa_number || ""} onChange={set(setForm, "uae_visa_number")} /></Field>
-          <Field label="UAE Visa Expiry"><DateInput value={form.uae_visa_expiry || ""} onChange={set(setForm, "uae_visa_expiry")} /></Field>
+          <Field label="UAE Visa Expiry"><DateInput min={addDays(isoToday(), -30)} value={form.uae_visa_expiry || ""} onChange={set(setForm, "uae_visa_expiry")} /></Field>
         </div>
       )}
 
