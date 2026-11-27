@@ -75,3 +75,16 @@ def test_row_188_report_not_dated_more_than_a_week_back(db, make_user, make_acco
     act = activity_service.create_activity(db, _report(acc, activity_date=date.today() - timedelta(days=6)), rm)
     with pytest.raises(HTTPException):
         activity_service.update_activity(db, act.id, ActivityUpdate(activity_date=date.today() - timedelta(days=30)), rm)
+
+
+def test_report_not_dated_in_the_future(db, make_user, make_account):
+    """Triam UAT 27-11-2026: a report is of a call or visit that has happened (UAE date)."""
+    rm = make_user("Rita RM")
+    acc = make_account(spoc=rm, profile_status="Active")
+    today = activity_service._uae_today()
+    with pytest.raises(HTTPException) as e:
+        activity_service.create_activity(db, _report(acc, activity_date=today + timedelta(days=1)), rm)
+    assert "future" in e.value.detail
+    act = activity_service.create_activity(db, _report(acc, activity_date=today), rm)
+    with pytest.raises(HTTPException):
+        activity_service.update_activity(db, act.id, ActivityUpdate(activity_date=today + timedelta(days=3)), rm)
