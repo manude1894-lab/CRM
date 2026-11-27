@@ -16,7 +16,9 @@ export default function ReportDialog({ report, accounts = [], lockClient = false
   const [busy, setBusy] = useState(null);
   const [note, setNote] = useState("");
   const editable = !readOnly && isEditable(report);
-  const title = report.id ? `${report.activity_type} ${report.activity_uid}` : `New ${report.activity_type}`;
+  // The title follows the Type chosen on the form (Triam UAT 27-11-2026).
+  const type = (editable ? form.activity_type : report.activity_type) || report.activity_type;
+  const title = report.id ? `${type} ${report.activity_uid}` : `New ${type}`;
 
   const save = async (final) => {
     const problem = final ? activityProblem(form) : draftProblem(form);

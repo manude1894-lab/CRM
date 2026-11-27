@@ -160,9 +160,12 @@ BACKDATE_DAYS = 7
 
 
 def _check_report_date(d: Optional[date]) -> None:
-    """Triam UAT 25-11-2026 row 188: a call or visit is reported within a week; not dated more than 7 days back."""
+    """Triam UAT 25-11-2026 row 188: a call or visit is reported within a week; not dated more than 7 days back.
+    Triam UAT 27-11-2026: the report is of a call or visit that has happened, so not a future date either."""
     if d and d < _uae_today() - timedelta(days=BACKDATE_DAYS):
         raise HTTPException(status_code=400, detail=f"The report date cannot be more than {BACKDATE_DAYS} days back")
+    if d and d > _uae_today():
+        raise HTTPException(status_code=400, detail="The report date cannot be in the future")
 
 
 def _check_due(due: Optional[date]) -> None:

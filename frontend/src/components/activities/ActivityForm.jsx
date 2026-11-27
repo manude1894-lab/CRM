@@ -7,9 +7,12 @@ export const ACTIVITY_TYPES = ["Visit Report", "Call Report"];
 export const isFinal = (a) => a?.status === "Completed";
 export const isEditable = (a) => !a?.id || ["Draft", "Planned", "Overdue"].includes(a.status);
 
+// Today in the UAE, as the server counts it.
+export const uaeToday = () => new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Dubai" });
+
 export const blankActivity = (accountId, type = "Call Report") => ({
   account_id: accountId || "", activity_type: type,
-  activity_date: new Date().toISOString().split("T")[0],
+  activity_date: uaeToday(),
   summary: "", outcome: "", next_action: "", due_date: "",
   client_contact: "", attendees: "", location: "", purpose: "",
 });
@@ -24,7 +27,7 @@ export const activityPayload = (f) => {
 };
 
 // Triam UAT 25-11-2026 row 188: a report is dated at most 7 days back (UAE date).
-const weekAgo = () => { const d = new Date(new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Dubai" })); d.setDate(d.getDate() - 7); return d.toISOString().slice(0, 10); };
+const weekAgo = () => { const d = new Date(uaeToday()); d.setDate(d.getDate() - 7); return d.toISOString().slice(0, 10); };
 
 /** "Save Draft" needs only the client; the rest can be finished later. */
 export const draftProblem = (f) => (f.account_id ? null : "Choose the client this report is for");
@@ -58,7 +61,7 @@ export default function ActivityForm({ form, setForm, accounts = [], lockClient 
             {ACTIVITY_TYPES.map((t) => <option key={t}>{t}</option>)}
           </Select>
         </Field>
-        <Field label="Date" required><DateInput min={weekAgo()} value={form.activity_date || ""} onChange={set("activity_date")} /></Field>
+        <Field label="Date" required><DateInput min={weekAgo()} max={uaeToday()} value={form.activity_date || ""} onChange={set("activity_date")} /></Field>
       </div>
 
       <div className="rounded-lg border border-brand-100 bg-brand-50/30 px-3 pt-3 mb-3">
