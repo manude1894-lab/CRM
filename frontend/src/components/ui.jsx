@@ -226,8 +226,10 @@ export const useFieldLabel = (props) => {
 };
 
 // `invalid`: a mandatory field still empty (Triam UAT 25-11-2026 row 186): outlined in red until it is filled.
-export const Field = ({ label, children, required, invalid = false }) => {
+// `error`: a message under the field for a value that can't be saved (outlined in red too).
+export const Field = ({ label, children, required, invalid: missing = false, error }) => {
   const labelId = React.useId();
+  const invalid = missing || !!error;
   return (
     <div className="mb-4" data-invalid={invalid ? "true" : undefined}>
       <label id={labelId} className={`block text-xs font-medium mb-1 ${invalid ? "text-red-700" : "text-gray-600"}`}>
@@ -238,6 +240,7 @@ export const Field = ({ label, children, required, invalid = false }) => {
           {invalid ? <div className="rounded-lg ring-2 ring-red-400">{children}</div> : children}
         </FieldInvalidContext.Provider>
       </FieldLabelContext.Provider>
+      {error && <p role="alert" className="mt-1 text-xs text-red-700">{error}</p>}
     </div>
   );
 };
