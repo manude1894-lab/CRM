@@ -1,0 +1,18 @@
+{
+  "_comment": "Triam 28-11-2026: digits of a phone number without the country code, per country code [min, max]. Mobiles and landlines. Any other code: default. Keep in step with frontend/src/utils/phoneLengths.json (a test checks).",
+  "default": [8, 12],
+  "+971": [8, 9],
+  "+91": [10, 10],
+  "+1": [10, 10],
+  "+44": [9, 10],
+  "+92": [9, 10],
+  "+63": [9, 10],
+  "+20": [9, 10],
+  "+966": [8, 9],
+  "+974": [8, 8],
+  "+973": [8, 8],
+  "+965": [8, 8],
+  "+968": [8, 8],
+  "+65": [8, 8],
+  "+852": [8, 8]
+}

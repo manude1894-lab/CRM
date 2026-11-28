@@ -58,7 +58,7 @@ def test_a_persons_document_does_not_stand_in_for_the_client(db, real_user):
 def _person(db, acc, rm, name, role="Director", **extra):
     return account_party_service.create_party(db, acc.id, AccountPartyCreate(
         party_role=role, full_name=name, residential_address={"line1": "1 Main Street", "city": "Dubai"}, country_of_incorp_or_birth="India", country_of_residence="India", nationality="India",
-        mobile_country_code="+91", mobile_number="501234567", email="p@example.com", **{**flow.PASSPORT, **extra}), rm)
+        mobile_country_code="+91", mobile_number="9876543210", email="p@example.com", **{**flow.PASSPORT, **extra}), rm)
 
 
 def test_each_person_needs_their_own_document(db, real_user):
