@@ -1,4 +1,4 @@
-"""Builds the Triam CRM data dictionary (Excel) from the code: every field the users enter, with its screen label,
+"""Builds the Triam CRM data dictionary (Excel): every field the users enter, with its screen label,
 stored name, data type and length, when it is mandatory, the allowed values and the checks applied.
 
 Triam UAT 25-11-2026 row 204: "Provide meta data of the UAT CRM, with field names, data characteristics,
@@ -6,6 +6,7 @@ constraints etc." Run from the repository root after a change to the fields:
 
     backend/.venv/Scripts/python.exe scripts/data_dictionary.py docs/Triam_CRM_Data_Dictionary.xlsx
 """
+import json
 import re
 import sys
 from datetime import date
@@ -50,6 +51,7 @@ NOT_FORMING = "At Submit, unless Under Formation"
 INDIVIDUAL = "At Submit, Individual clients"
 COMPANY = "At Submit, company clients"
 FUTURE_NO = "Not in the future"
+PHONE = "Digits only; length as per the country code (see the Phone Number Lengths sheet)"
 
 CLIENT = {
     # field: (mandatory, allowed values, checks)
@@ -63,8 +65,9 @@ CLIENT = {
     "client_category": (COMPANY, "Under Formation / Existing", ""),
     "country": (COMPANY, "Country list", ""),
     "contact_mobile_country_code": (COMPANY, "Dialling codes", ""),
-    "contact_mobile_number": (COMPANY, "", "Digits only; UAE (+971) 9 digits (mobile) or 8 (landline); India, USA / Canada 10; UK, Pakistan, Philippines, Egypt 9 to 10; Saudi Arabia 8 to 9; Qatar, Bahrain, Kuwait, Oman, Singapore, Hong Kong 8; any other country 8 to 12"),
+    "contact_mobile_number": (COMPANY, "", PHONE),
     "contact_email": (COMPANY, "", "A valid email address"),
+    "single_point_of_contact": ("No", "", "Name of the contact person at the client"),
     "is_one_time_service": (COMPANY + ", when the services asked need it", "Yes / No", ""),
     "nature_of_services_sought": (AT_SUBMIT, "Master list: services (those offered by the chosen entities)", "At least one"),
     "registration_number": (NOT_FORMING, "", "At most 30 characters"),
@@ -73,6 +76,7 @@ CLIENT = {
     "licensing_authority": (COMPANY, "Master list: registering authorities, or Other", ""),
     "licensing_authority_other": ("When Registering Authority is Other", "", ""),
     "license_activities": (NOT_FORMING, "", ""),
+    "nature_of_business": ("No", "", "Up to 1000 characters"),
     "license_start_date": (NOT_FORMING, "", "Not in the future; not before the Incorporation Date (checked again at Submit)"),
     "license_expiry_date": (NOT_FORMING, "", "Not before today when entered; after the Licence Start Date; an expired licence blocks Submit"),
     "is_regulated": (COMPANY, "Yes / No", ""),
@@ -98,7 +102,7 @@ CLIENT = {
     "country_of_residence": (INDIVIDUAL, "Country list", ""),
     "residential_address": (INDIVIDUAL, "", "Line 1, City and Country required"),
     "individual_mobile_country_code": (INDIVIDUAL, "Dialling codes", ""),
-    "individual_mobile_number": (INDIVIDUAL, "", "Digits only; UAE (+971) 9 digits (mobile) or 8 (landline); India, USA / Canada 10; UK, Pakistan, Philippines, Egypt 9 to 10; Saudi Arabia 8 to 9; Qatar, Bahrain, Kuwait, Oman, Singapore, Hong Kong 8; any other country 8 to 12"),
+    "individual_mobile_number": (INDIVIDUAL, "", PHONE),
     "individual_email": (INDIVIDUAL, "", "A valid email address"),
     "uae_visa_number": ("No", "", ""),
     "uae_visa_expiry": ("No", "", "Not expired more than 30 days ago when entered"),
@@ -137,7 +141,7 @@ PARTY = {
     "country_of_residence": (ALWAYS, "Country list", ""),
     "residential_address": (AT_SUBMIT, "", "Line 1 and City required"),
     "mobile_country_code": ("With a mobile number", "Dialling codes", ""),
-    "mobile_number": ("No", "", "Digits only; UAE (+971) 9 digits (mobile) or 8 (landline); India, USA / Canada 10; UK, Pakistan, Philippines, Egypt 9 to 10; Saudi Arabia 8 to 9; Qatar, Bahrain, Kuwait, Oman, Singapore, Hong Kong 8; any other country 8 to 12"),
+    "mobile_number": ("No", "", PHONE),
     "email": ("No", "", "A valid email address"),
     "uae_visa_number": ("No", "", ""),
     "uae_visa_expiry": ("No", "", "Not expired more than 30 days ago when entered"),
@@ -157,7 +161,9 @@ PROSPECT = {
     "source": ("No", "Master list: prospect sources, or Other", ""),
     "owner_id": ("No", "Relationship managers", "Set when the prospect is assigned"),
     "status": (ALWAYS, "New / Won / Dropped", ""),
-    "notes": ("No", "", ""),
+    "lost_reason": ("When the prospect is dropped", "", ""),
+    "notes": (ALWAYS, "", "Details of the services asked for"),
+    "assignor_comments": ("No", "", "Up to 250 words; entered when assigning the prospect to an RM"),
 }
 
 ACTIVITY = {
@@ -183,7 +189,17 @@ INSTRUCTION = {
     "status": (ALWAYS, "Master list: statuses (per entity)", ""),
     "date_received": ("No", "", FUTURE_NO),
     "date_completed": ("No", "", ""),
-    "charge_amount": ("No", "", "Amount and currency"),
+    "charge_amount": ("At Submit", "", "More than 0; excluding VAT"),
+    "charge_currency": ("With the charge", "AED, USD, EUR, GBP, INR, SGD", ""),
+    "amount_paid": ("No", "", ""),
+    "amount_paid_currency": ("With the amount paid", "AED, USD, EUR, GBP, INR, SGD", ""),
+    "payment_received_date": ("No", "", ""),
+    "govt_authority_amount": ("No", "", ""),
+    "govt_authority_currency": ("With the amount", "AED, USD, EUR, GBP, INR, SGD", ""),
+    "service_provider_involved": ("No", "Yes / No", ""),
+    "service_provider_name": ("When a service provider is involved", "", "Up to 150 characters"),
+    "service_provider_amount": ("No", "", ""),
+    "service_provider_currency": ("With the amount", "AED, USD, EUR, GBP, INR, SGD", ""),
     "comments": ("No", "", ""),
 }
 
@@ -200,8 +216,10 @@ INVOICE = {
     "paid_date": ("When marked paid", "", ""),
     "notes": ("No", "", ""),
     "govt_authority_amount": ("No", "", "Onboarding invoices"),
+    "govt_authority_currency": ("With the amount", "AED, USD, EUR, GBP, INR, SGD", ""),
     "introducer_involved": ("Onboarding invoices, to send", "Yes / No", ""),
     "introducer_amount": ("When an introducer is involved", "", ""),
+    "introducer_currency": ("With the amount", "AED, USD, EUR, GBP, INR, SGD", ""),
     "co_comment": ("When Compliance returns it", "", "Up to 500 characters"),
 }
 
@@ -240,22 +258,31 @@ LABELS = {
         "onboarding_invoice_wanted": "Do you want an invoice raised for onboarding services?",
     },
     "People": {
+        "party_role": "Role", "residential_address": "Address", "mobile_country_code": "Mobile (country code)",
         "constitution": "Individual / Entity", "full_name": "Full Name", "dob_or_incorp_date": "Date of Birth / Incorporation",
         "id_or_license_expiry": "Passport / Licence Expiry", "passport_number": "Passport Number", "nationality": "Nationality",
         "country_of_incorp_or_birth": "Country of Birth / Incorporation", "country_of_residence": "Country of Residence",
         "mobile_number": "Mobile", "uae_visa_expiry": "UAE Visa Expiry", "is_pep": "PEP", "notes": "Notes",
     },
     "Prospects": {"contact_name": "Contact Name", "contact_email": "Contact Email", "contact_phone": "Contact Phone",
-                  "source": "Source", "status": "Status"},
+                  "source": "Source", "status": "Status", "owner_id": "Assigned RM", "lost_reason": "Reason for dropping",
+                  "assignor_comments": "Assignor's comments", "notes": "Services the prospect is looking for"},
     "Visit & Call Reports": {"client_contact": "Client contact met / spoken to", "location": "Location", "purpose": "Purpose",
                              "outcome": "Outcome", "next_action": "Next action", "status": "Draft / Final"},
     "Service Requests": {"triam_entity": "Triam Entity", "date_received": "Date Received", "date_completed": "Date Completed",
-                         "charge_amount": "Charge", "comments": "Comments"},
+                         "status": "Status", "charge_amount": "Charge to the client (excluding VAT)",
+                         "charge_currency": "Charge - currency", "amount_paid": "Amount paid by the client",
+                         "amount_paid_currency": "Amount paid - currency", "payment_received_date": "Date amount received by Triam",
+                         "govt_authority_amount": "Amount payable to Reg. / Govt Authority",
+                         "govt_authority_currency": "Amount payable to Reg. / Govt Authority - currency",
+                         "service_provider_amount": "Amount payable to the service provider",
+                         "service_provider_currency": "Amount payable to the service provider - currency", "comments": "Comments"},
     "Invoices": {"kind": "Invoice for", "description": "Description", "amount": "Amount", "currency": "Currency", "status": "Status",
                  "raised_date": "Invoice Date", "due_date": "Due Date", "paid_date": "Paid Date",
                  "govt_authority_amount": "Amount payable to the Regn / Govt Authority",
                  "introducer_involved": "Introducer / referrer involved?", "introducer_amount": "Amount payable to the introducer",
-                 "co_comment": "Compliance comments"},
+                 "co_comment": "Compliance comments", "govt_authority_currency": "Amount payable to the Regn / Govt Authority - currency",
+                 "introducer_currency": "Amount payable to the introducer - currency"},
     "Users": {"email": "Email", "business_role_id": "Business Role", "department_id": "Department", "title": "Title",
               "can_export_reports": "Can download reports"},
 }
@@ -299,7 +326,7 @@ def data_type(col) -> tuple[str, str]:
     if isinstance(t, DateTime):
         return "Date and time", ""
     if isinstance(t, Date):
-        return "Date (DD MM YYYY)", ""
+        return "Date (DD-MM-YYYY)", ""
     if isinstance(t, Numeric):
         return "Number", f"{t.precision} digits, {t.scale} decimals" if t.precision else ""
     if isinstance(t, Integer):
@@ -316,74 +343,260 @@ def data_type(col) -> tuple[str, str]:
     return t.__class__.__name__, ""
 
 
+# Client fields are listed under the sections of the onboarding form; a section starts at its first field.
+CLIENT_SECTIONS = {
+    "anchor_entity": "Basic details", "registration_number": "Incorporation and licence",
+    "is_regulated": "Regulatory details", "lei_number": "LEI", "registered_address": "Addresses",
+    "trn_vat_number": "Tax details", "has_introducer": "Introducer", "date_of_birth": "Individual clients",
+    "is_pep": "PEP, tags and name screening", "br_person_met": "Business rationale",
+    "engagement_letter_signed": "Engagement letter", "risk_rating": "CDD / AML (filled by Compliance)",
+    "profile_status": "Status and Client ID", "onboarding_invoice_wanted": "Onboarding invoice",
+}
+
+# Fields the CRM fills in itself: a plain name and what it holds.
+SYSTEM = {
+    "id": ("Internal ID", "Running number given by the system"),
+    "created_at": ("Created on", "Date and time the record was created"),
+    "updated_at": ("Last updated on", "Date and time of the last change"),
+    "owner_id": ("Created by", "User who created the record"),
+    "account_uid": ("Client reference", "Internal reference of the client record"),
+    "prospect_uid": ("Prospect reference", "Internal reference of the prospect"),
+    "activity_uid": ("Report reference", "Internal reference of the report"),
+    "duplicate_override_reason": ("Duplicate name allowed - reason", "Recorded when a client is saved despite a similar name"),
+    "status_updated_at": ("Status changed on", "Date and time of the last status change"),
+    "status_updated_by_id": ("Status changed by", "User who made the last status change"),
+    "approved_at": ("Approved on", "Date and time of the Final approval"),
+    "aml_classification": ("AML classification", "Older field, not shown on the screens"),
+    "prospect_id": ("From prospect", "The prospect this client was converted from"),
+    "account_id": ("Client", "The client this record belongs to"),
+    "removed_at": ("Removed on", "Date and time the person was removed"),
+    "removed_by_id": ("Removed by", "User who removed the person"),
+    "removed_reason": ("Reason for removal", "Entered when removing the person"),
+    "proposal_sent_date": ("Proposal sent on", "Shown on the prospect"),
+    "proposal_amount": ("Proposal amount", "Older field, not shown on the screens"),
+    "expected_close_date": ("Expected close date", "Older field, not shown on the screens"),
+    "next_follow_up_date": ("Next follow-up date", "Older field, not shown on the screens"),
+    "converted_account_id": ("Converted to client", "The client created from this prospect"),
+    "assigned_by_id": ("Assigned by", "User who assigned the prospect to the RM"),
+    "assigned_at": ("Assigned on", "Date and time of the assignment"),
+    "company_name": ("Client name", "Copied from the client when the report is saved"),
+    "cancel_reason": ("Reason for cancelling", "Entered when cancelling"),
+    "finalised_at": ("Finalised on", "Date and time the report was made final"),
+    "finalised_by_id": ("Finalised by", "User who made the report final"),
+    "invoice_id": ("Invoice", "The invoice raised for this request"),
+    "submitted_at": ("Submitted on", "Date and time the request was submitted"),
+    "submitted_by_id": ("Submitted by", "User who submitted the request"),
+    "requested_by_id": ("Requested by", "User who asked for the invoice"),
+    "requested_at": ("Requested on", "Date and time the invoice was asked for"),
+    "raised_by_id": ("Raised by", "Accounts user who raised the invoice"),
+    "co_decided_by_id": ("Compliance decision by", "Compliance user who approved or returned it"),
+    "co_decided_at": ("Compliance decision on", "Date and time of the Compliance decision"),
+    "co_decision": ("Compliance decision", "Approved / Returned"),
+    "hashed_password": ("Password", "Stored encrypted; never shown"),
+    "is_super_admin": ("Super administrator", "Set by the system administrator only"),
+    "failed_login_count": ("Failed sign-in attempts", "5 in a row lock the user for 15 minutes"),
+    "locked_until": ("Locked until", "Set after 5 failed sign-in attempts"),
+    "password_changed_at": ("Password changed on", "Date and time of the last password change"),
+    "signed_out_at": ("Signed out on", "Date and time of the last sign-out"),
+    "last_login_at": ("Last sign-in", "Date and time of the last sign-in"),
+    "previous_login_at": ("Previous sign-in", "Shown to the user at sign-in"),
+    "person_id": ("Linked person", "Links the logins of one person"),
+}
+
+COUNTRY_NAMES = {
+    "+971": "United Arab Emirates", "+91": "India", "+1": "USA / Canada", "+44": "United Kingdom", "+92": "Pakistan",
+    "+63": "Philippines", "+20": "Egypt", "+966": "Saudi Arabia", "+974": "Qatar", "+973": "Bahrain", "+965": "Kuwait",
+    "+968": "Oman", "+65": "Singapore", "+852": "Hong Kong",
+}
+
+SHEET_TITLES = {
+    "Clients": "Client details (New Client Onboarding and Client Data Maintenance)",
+    "People": "Shareholders, directors, signatories and other persons on a client",
+    "Prospects": "Prospects",
+    "Visit & Call Reports": "Visit reports and call reports",
+    "Service Requests": "Service requests",
+    "Invoices": "Invoices (onboarding and service requests)",
+    "Users": "Users (Admin)",
+}
+
+
 def humanize(name: str) -> str:
     return name.replace("_ids", "").replace("_id", "").replace("_", " ").capitalize()
 
 
+FONT = "Calibri"
+_thin = Side(style="thin", color="BFC5CD")
+BORDER = Border(top=_thin, bottom=_thin, left=_thin, right=_thin)
+HEAD_FILL = PatternFill("solid", fgColor=BRAND)
+SECTION_FILL = PatternFill("solid", fgColor="DCE6F0")
+GREY_FILL = PatternFill("solid", fgColor="F2F2F2")
+WRAP = Alignment(vertical="top", wrap_text=True)
+CENTER = Alignment(vertical="top", horizontal="center")
+
+
+def _cell(ws, row, col, value, bold=False, size=10, color="000000", fill=None, align=WRAP, border=True, italic=False):
+    c = ws.cell(row=row, column=col, value=value)
+    c.font = Font(name=FONT, bold=bold, size=size, color=color, italic=italic)
+    c.alignment = align
+    if fill:
+        c.fill = fill
+    if border:
+        c.border = BORDER
+    return c
+
+
+def _band(ws, row, text, ncols):
+    for j in range(1, ncols + 1):
+        _cell(ws, row, j, text if j == 1 else None, bold=True, fill=SECTION_FILL)
+    ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=ncols)
+
+
+def _cover(ws, counts):
+    ws.title = "Cover"
+    ws.sheet_view.showGridLines = False
+    ws.column_dimensions["A"].width = 3
+    ws.column_dimensions["B"].width = 32
+    ws.column_dimensions["C"].width = 80
+    _cell(ws, 2, 2, "Triam CRM", bold=True, size=18, color=BRAND, border=False)
+    _cell(ws, 3, 2, "Data Dictionary", bold=True, size=14, border=False)
+    r = 5
+    for k, v in (("Client", "Triam"), ("Document", "Data dictionary of the Triam CRM (UAT)"), ("Version", "1.0"),
+                 ("Date", f"{date.today():%d-%m-%Y}"), ("Prepared by", "Manu")):
+        _cell(ws, r, 2, k, bold=True, fill=GREY_FILL)
+        _cell(ws, r, 3, v)
+        r += 1
+
+    r += 1
+    _cell(ws, r, 2, "Purpose", bold=True, size=12, color=BRAND, border=False)
+    r += 1
+    ws.merge_cells(start_row=r, start_column=2, end_row=r, end_column=3)
+    _cell(ws, r, 2, "This document lists the fields on each screen of the CRM: the field name as shown on screen, the "
+                    "name it is stored under, its data type and length, whether it is mandatory, the values allowed and "
+                    "the validations applied. Please go through it and share your comments or suggestions, if any.",
+          border=False)
+    ws.row_dimensions[r].height = 45
+
+    r += 2
+    _cell(ws, r, 2, "Contents", bold=True, size=12, color=BRAND, border=False)
+    r += 1
+    _cell(ws, r, 2, "Sheet", bold=True, color="FFFFFF", fill=HEAD_FILL)
+    _cell(ws, r, 3, "What it covers", bold=True, color="FFFFFF", fill=HEAD_FILL)
+    for title, *_ in SHEETS:
+        r += 1
+        entered, system = counts[title]
+        _cell(ws, r, 2, title)
+        _cell(ws, r, 3, f"{SHEET_TITLES[title]} - {entered} fields, plus {system} maintained by the system")
+    r += 1
+    _cell(ws, r, 2, "Phone Number Lengths")
+    _cell(ws, r, 3, "Number of digits allowed in a phone number, by country code")
+
+    r += 2
+    _cell(ws, r, 2, "How to read the sheets", bold=True, size=12, color=BRAND, border=False)
+    notes = (
+        ("Mandatory: Always", "The record cannot be saved without it."),
+        ("Mandatory: At Submit", "The client can be saved as a draft without it, but cannot be submitted for approval until it is filled."),
+        ("Mandatory: At Compliance approval", "Filled by Compliance (CO / MLRO) before giving the Compliance approval."),
+        ("Master list", "Values maintained by the Administrator under Admin > Master Data."),
+        ("Maintained by the system", "Fields the CRM fills in on its own (references, and the dates and users of changes). "
+                                     "Listed at the end of each sheet."),
+        ("Phone, tax and passport numbers", "Kept as text and not as numbers, so that a leading 0 and the country code are "
+                                            "not lost. The screens still accept only digits (or letters and digits), as given "
+                                            "in the Validations column."),
+        ("Dates", "Shown and entered as DD-MM-YYYY."),
+    )
+    r += 1
+    for k, v in notes:
+        _cell(ws, r, 2, k, bold=True, fill=GREY_FILL)
+        _cell(ws, r, 3, v)
+        r += 1
+    ws.page_setup.fitToWidth = 1
+    ws.page_setup.fitToHeight = 0
+    ws.sheet_properties.pageSetUpPr.fitToPage = True
+
+
+def _phone_sheet(wb):
+    lengths = json.loads((ROOT / "backend" / "app" / "data" / "phone_lengths.json").read_text(encoding="utf-8"))
+    ws = wb.create_sheet("Phone Number Lengths")
+    ws.sheet_view.showGridLines = False
+    for col, w in zip("ABCD", (8, 12, 28, 30)):
+        ws.column_dimensions[col].width = w
+    _cell(ws, 1, 1, "Phone number lengths by country", bold=True, size=13, color=BRAND, border=False, align=Alignment())
+    _cell(ws, 2, 1, "Number of digits after the country code. Applies to every mobile / contact number field.",
+          italic=True, color="595959", border=False, align=Alignment())
+    for j, h in enumerate(("S.No.", "Code", "Country", "Digits allowed"), start=1):
+        _cell(ws, 4, j, h, bold=True, color="FFFFFF", fill=HEAD_FILL)
+    rows = [(code, COUNTRY_NAMES.get(code, ""), "9 (mobile) or 8 (landline)" if code == "+971" else
+             (f"{lo}" if lo == hi else f"{lo} to {hi}"))
+            for code, (lo, hi) in ((k, v) for k, v in lengths.items() if k.startswith("+"))]
+    lo, hi = lengths["default"]
+    rows.append(("Others", "Any other country", f"{lo} to {hi}"))
+    for n, (code, country, digits) in enumerate(rows, start=1):
+        for j, v in enumerate((n, code, country, digits), start=1):
+            _cell(ws, 4 + n, j, v, align=CENTER if j < 3 else WRAP)
+
+
 def build(path: Path) -> None:
     wb = Workbook()
-    intro = wb.active
-    intro.title = "About"
-    lines = [
-        ("Triam CRM - Data dictionary", Font(bold=True, size=14)),
-        (f"Generated from the CRM code on {date.today():%d %m %Y}", Font(italic=True, color="666666")),
-        ("", None),
-        ("One sheet per record type. For each field: the label on screen, the name stored in the database, the data type and", None),
-        ("length, when it is mandatory, the allowed values and the checks the CRM applies.", None),
-        ("", None),
-        ("Mandatory: \"Always\" means it cannot be saved without it; \"At Submit\" means the client can be saved as a draft,", None),
-        ("but cannot be submitted for approval until it is filled; \"At Compliance approval\" is filled by Compliance.", None),
-        ("Master list: values the Administrator maintains under Admin > Master Data.", None),
-        ("Fields set by the CRM itself (IDs, dates of changes, who did what) are listed at the end of each sheet in grey.", None),
-        ("", None),
-        ("Phone numbers, tax numbers and similar are kept as text on purpose: a number field would drop a leading 0 and the +", None),
-        ("of the code, and they are never added up. The CRM still accepts digits only where the Checks column says so.", None),
-    ]
-    for i, (text, font) in enumerate(lines, start=1):
-        c = intro.cell(row=i, column=1, value=text)
-        if font:
-            c.font = font
-    intro.column_dimensions["A"].width = 120
-
-    thin = Side(style="thin", color="D9DEE5")
-    border = Border(top=thin, bottom=thin, left=thin, right=thin)
-    head = ["Screen label", "Field name", "Data type", "Length / precision", "Mandatory", "Allowed values", "Checks / rules", "Kind"]
-    widths = [34, 30, 22, 18, 34, 44, 60, 12]
+    cover = wb.active
+    head = ("S.No.", "Field name (on screen)", "Database field", "Data type", "Max length", "Mandatory",
+            "Allowed values / source", "Validations / remarks")
+    widths = (7, 34, 28, 22, 18, 30, 40, 58)
+    counts = {}
     for title, model, rules, forms in SHEETS:
         ws = wb.create_sheet(title)
         labels = labels_from(*forms)
-        ws.append(head)
-        for j, c in enumerate(ws[1], start=1):
-            c.font = Font(bold=True, color="FFFFFF")
-            c.fill = PatternFill("solid", fgColor=BRAND)
-            c.alignment = Alignment(vertical="center", wrap_text=True)
-            c.border = border
-            ws.column_dimensions[get_column_letter(j)].width = widths[j - 1]
+        for j, w in enumerate(widths, start=1):
+            ws.column_dimensions[get_column_letter(j)].width = w
+        _cell(ws, 1, 1, SHEET_TITLES[title], bold=True, size=13, color=BRAND, border=False, align=Alignment(vertical="center"))
+        ws.row_dimensions[1].height = 22
+        for j, h in enumerate(head, start=1):
+            _cell(ws, 3, j, h, bold=True, color="FFFFFF", fill=HEAD_FILL, align=Alignment(vertical="center", wrap_text=True))
+        ws.row_dimensions[3].height = 30
+
         cols = list(model.__table__.columns)
-        entered = [c for c in cols if c.name in rules]
-        system = [c for c in cols if c.name not in rules]
         order = list(rules)
-        entered.sort(key=lambda c: order.index(c.name))
-        for kind, group in (("Entered", entered), ("System", system)):
-            for col in group:
-                dtype, length = data_type(col)
-                mand, allowed, checks = rules.get(col.name, ("Set by the CRM", "", ""))
-                label = LABELS.get(title, {}).get(col.name) or labels.get(col.name) or humanize(col.name)
-                if kind == "System" and col.name in ("id",):
-                    label = "Internal ID"
-                ws.append([label, col.name, dtype, length, mand, allowed, checks, kind])
-                for c in ws[ws.max_row]:
-                    c.alignment = Alignment(vertical="top", wrap_text=True)
-                    c.border = border
-                    if kind == "System":
-                        c.font = Font(color="808080")
-        ws.freeze_panes = "B2"
-        ws.auto_filter.ref = f"A1:H{ws.max_row}"
+        entered = sorted([c for c in cols if c.name in rules], key=lambda c: order.index(c.name))
+        system = [c for c in cols if c.name not in rules]
+        counts[title] = (len(entered), len(system))
+
+        r, n = 4, 0
+        _band(ws, r, "A. Fields entered by the users", len(head))
+        for col in entered:
+            if title == "Clients" and col.name in CLIENT_SECTIONS:
+                r += 1
+                for j in range(1, len(head) + 1):
+                    _cell(ws, r, j, None)
+                _cell(ws, r, 2, CLIENT_SECTIONS[col.name], bold=True, italic=True, color=BRAND)
+            n += 1
+            r += 1
+            dtype, length = data_type(col)
+            mand, allowed, checks = rules[col.name]
+            label = LABELS.get(title, {}).get(col.name) or labels.get(col.name) or humanize(col.name)
+            for j, v in enumerate((n, label, col.name, dtype, length, mand, allowed, checks), start=1):
+                _cell(ws, r, j, v or None, align=CENTER if j == 1 else WRAP)
+        r += 1
+        _band(ws, r, "B. Fields maintained by the system", len(head))
+        for col in system:
+            n += 1
+            r += 1
+            dtype, length = data_type(col)
+            label, remark = SYSTEM.get(col.name, (humanize(col.name), ""))
+            for j, v in enumerate((n, label, col.name, dtype, length, "System", "", remark), start=1):
+                _cell(ws, r, j, v or None, color="595959", align=CENTER if j == 1 else WRAP)
+        ws.freeze_panes = "C4"
         ws.page_setup.orientation = "landscape"
+        ws.page_setup.paperSize = ws.PAPERSIZE_A4
         ws.page_setup.fitToWidth = 1
         ws.page_setup.fitToHeight = 0
         ws.sheet_properties.pageSetUpPr.fitToPage = True
-        ws.print_title_rows = "1:1"
+        ws.print_title_rows = "3:3"
+        ws.oddFooter.left.text = "Triam CRM - Data Dictionary"
+        ws.oddFooter.right.text = "Page &P of &N"
+    _cover(cover, counts)
+    _phone_sheet(wb)
+    wb.properties.creator = "Manu"
+    wb.properties.lastModifiedBy = "Manu"
+    wb.properties.title = "Triam CRM - Data Dictionary"
     path.parent.mkdir(parents=True, exist_ok=True)
     wb.save(path)
     print("written", path)
