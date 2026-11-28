@@ -181,7 +181,7 @@ INSTRUCTION = {
     "instruction_type": (ALWAYS, "Master list: service request types (per entity)", ""),
     "other_description": ("When the type is Other", "", "Up to 50 characters"),
     "status": (ALWAYS, "Master list: statuses (per entity)", ""),
-    "date_received": ("No", "", ""),
+    "date_received": ("No", "", FUTURE_NO),
     "date_completed": ("No", "", ""),
     "charge_amount": ("No", "", "Amount and currency"),
     "comments": ("No", "", ""),
@@ -276,8 +276,8 @@ SHEETS = [
 # Excel, and a phone number is never added up. The CRM still accepts digits only (see the Checks column).
 DIGITS = "Digits only (kept as text)"
 SHOWN_TYPE = {
-    "contact_mobile_number": (DIGITS, "8 to 12 digits"), "individual_mobile_number": (DIGITS, "8 to 12 digits"),
-    "mobile_number": (DIGITS, "8 to 12 digits"),
+    "contact_mobile_number": (DIGITS, "8 to 12 digits, by country"), "individual_mobile_number": (DIGITS, "8 to 12 digits, by country"),
+    "mobile_number": (DIGITS, "8 to 12 digits, by country"),
     "contact_mobile_country_code": ("Dialling code, e.g. +971", "Up to 6 characters"),
     "individual_mobile_country_code": ("Dialling code, e.g. +971", "Up to 6 characters"),
     "mobile_country_code": ("Dialling code, e.g. +971", "Up to 6 characters"),
