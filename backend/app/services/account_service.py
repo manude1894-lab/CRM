@@ -281,6 +281,7 @@ ADULT_AGE = 18
 MAX_AGE = 120
 VISA_GRACE_DAYS = 30
 MEETING_BACK_DAYS = 30  # Biz Rationale meeting date (Triam UAT 26-11-2026)
+SCREENING_BACK_DAYS = 30  # Screening Date (Triam UAT 25-11-2026 row 202)
 
 
 def age_on(dob: date, today: Optional[date] = None) -> int:
@@ -335,6 +336,9 @@ def _assert_date_sanity(data, acc: Optional[Account] = None) -> None:
         fail("Incorporation Date cannot be in the future")
     if changed("screening_date") and sent["screening_date"] > today:
         fail("Screening Date cannot be in the future")
+    # Triam UAT 25-11-2026 row 202: the screening is recent - at most 30 days old when entered.
+    if changed("screening_date") and sent["screening_date"] < today - timedelta(days=SCREENING_BACK_DAYS):
+        fail(f"Screening Date cannot be more than {SCREENING_BACK_DAYS} days old")
     # Triam UAT 27-11-2026: CDD is completed on or before today (UAE date); the next AML review is counted from it.
     if changed("cdd_completion_date"):
         from app.services.standard_reports_service import BUSINESS_TZ

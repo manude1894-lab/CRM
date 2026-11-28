@@ -304,10 +304,13 @@ def test_compliance_cannot_give_final_approval_without_the_approver_role(db, peo
     assert e.value.status_code == 403 and "Approver" in e.value.detail
 
 
-def test_a_client_approved_before_row_180_can_still_be_activated(db, people):
-    """Clients left in "Approved" before the Final approval made them Active keep their Activate button."""
+def test_an_approved_client_has_no_activate_button_and_the_actions_of_an_active_one(db, people):
+    """Triam UAT 28-11-2026: the Activate button on Approved clients was redundant."""
     acc = complete_client(db, people["maker"])
     acc.profile_status = "Approved"
     db.commit()
-    wf.change_status(db, acc, people["maker"], "activate")
-    assert acc.profile_status == "Active"
+    actions = {a["action"]: a["allowed"] for a in wf.allowed_actions(db, acc, people["checker2"])}
+    assert "activate" not in actions
+    assert actions.get("deactivate") and actions.get("mark_exit")
+    with pytest.raises(HTTPException):
+        wf.change_status(db, acc, people["maker"], "activate")

@@ -246,13 +246,33 @@ export const Field = ({ label, children, required, invalid: missing = false, err
   );
 };
 
-export const Input = ({ className = "", ...props }) => (
-  <input
-    {...useFieldLabel(props)}
-    {...props}
-    className={`w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-400 focus:ring-1 focus:ring-brand-100 ${className}`}
-  />
-);
+// Triam UAT 28-11-2026: an email that isn't in the name@domain.com form is flagged as soon as the user leaves the
+// field (and the message updates while they correct it), rather than only when saving.
+export const EMAIL_RE = /^[^@\s]+@[^@\s.]+(\.[^@\s.]+)*\.[A-Za-z]{2,}$/;
+export const emailProblem = (value) =>
+  String(value ?? "").trim() && !EMAIL_RE.test(String(value).trim()) ? "Enter a valid email address, e.g. name@company.com" : null;
+
+export const Input = ({ className = "", ...props }) => {
+  const labelProps = useFieldLabel(props);
+  const [left, setLeft] = React.useState(false);
+  const problem = props.type === "email" && left ? emailProblem(props.value) : null;
+  const input = (
+    <input
+      {...labelProps}
+      {...props}
+      aria-invalid={problem ? true : props["aria-invalid"]}
+      onBlur={(e) => { setLeft(true); props.onBlur?.(e); }}
+      className={`w-full border ${problem ? "border-red-400" : "border-gray-200"} rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-400 focus:ring-1 focus:ring-brand-100 ${className}`}
+    />
+  );
+  if (props.type !== "email") return input;
+  return (
+    <>
+      {input}
+      {problem && <p role="alert" className="mt-1 text-xs text-red-700">{problem}</p>}
+    </>
+  );
+};
 
 export const Select = ({ children, className = "", ...props }) => (
   <select

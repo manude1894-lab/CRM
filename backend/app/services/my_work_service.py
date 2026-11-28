@@ -31,7 +31,7 @@ def my_work(db: Session, user: User) -> list[dict]:
         others = [r for r in pending if r.request_type != "client_profile" and not access_control.same_person(r.maker, user)]
         if wf.gives_compliance_approval(user):
             add("compliance_new", "New clients waiting for Compliance", len(new_clients), "approvals", "Complete the CDD section, then approve or reject")
-        add("compliance_changes", "Client amendments waiting for Compliance", len(others), "approvals")
+        add("compliance_changes", "Client amendments waiting for Compliance Approval", len(others), "approvals")
         if wf.gives_compliance_approval(user):  # Triam UAT 25-11-2026 row 182
             from app.services import invoice_service
             waiting = [i for i in db.query(Invoice).filter(Invoice.status == invoice_service.WITH_CO).all()
@@ -44,8 +44,7 @@ def my_work(db: Session, user: User) -> list[dict]:
     if has_permission(user, "invoice.manage"):
         add("invoice_requests", "Invoice instructions to raise", db.query(Invoice).filter(Invoice.status.in_(("Requested", "Draft")), or_(Invoice.requested_by_id.is_(None), Invoice.requested_at.isnot(None))).count(), "invoices")
         add("invoice_unpaid", "Raised invoices not yet paid", db.query(Invoice).filter(Invoice.status.in_(("Raised", "Overdue"))).count(), "invoices")
-    if access_control.is_prospect_coordinator(user):
-        add("prospects_unassigned", "Prospects waiting to be assigned", db.query(Prospect).filter(Prospect.owner_id.is_(None), Prospect.status != "Dropped").count(), "prospects")
+    # Triam UAT 28-11-2026: no "prospects to assign" item - the Unassigned prospects tile shows them.
 
     # Everyone who prepares clients (RM / RO / FO / Sales)
     mine = _visible_accounts(db, user).filter((Account.spoc_id == user.id) | (Account.owner_id == user.id))

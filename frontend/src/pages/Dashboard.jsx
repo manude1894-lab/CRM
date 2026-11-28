@@ -209,8 +209,8 @@ export default function Dashboard({ onNavigate = () => {} } = {}) {
     compliance: <StatCard label="Awaiting Compliance" value={data.approvals_pending.compliance} attention hint="Review and decide" icon="shield" tone="gold" onClick={go("approvals")} />,
     toRaise: <StatCard label="Invoices to raise" value={kpis.invoices_to_raise} attention hint="Requested by RMs" icon="invoices" tone="gold" onClick={go("invoices")} />,
     overdue: <StatCard label="Overdue invoices" value={kpis.invoices_overdue} attention hint="Chase payment" icon="warn" tone="gold" onClick={go("invoices")} />,
-    prospectsOpen: <StatCard label="Open prospects" value={kpis.prospects_open} icon="kanban" tone="navy" onClick={go("prospects")} />,
-    unassigned: <StatCard label={coordinator ? "Prospects to assign" : "Unassigned prospects"} value={kpis.prospects_unassigned} attention hint={coordinator ? "Assign an RM" : "Available to take"} icon="warn" tone="gold" onClick={go("prospects")} />,
+    // Triam UAT 28-11-2026: one prospects tile, "Unassigned prospects" (was "Open prospects" and "Prospects to assign").
+    unassigned: <StatCard label="Unassigned prospects" value={kpis.prospects_unassigned} attention hint={coordinator ? "Assign an RM" : "Available to take"} icon="kanban" tone="gold" onClick={go("prospects")} />,
     preparing: <StatCard label="Clients being prepared" value={kpis.clients_in_progress} icon="accounts" tone="navy" onClick={go("accounts")} />,
     awaiting: <StatCard label="Awaiting approval" value={kpis.clients_awaiting_approval} attention hint="With Compliance / Approver" icon="shield" tone="gold" onClick={go("approvals")} />,
     active: <StatCard label="Approved & active clients" value={kpis.clients_active} icon="check" tone="green" onClick={go("maintenance")} />,
@@ -295,7 +295,7 @@ export default function Dashboard({ onNavigate = () => {} } = {}) {
               <ul className="divide-y divide-gray-50">
                 {dueShown.map((d) => (
                   <li key={d.key}>
-                    <button onClick={() => goClient(d.id)} className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 text-left">
+                    <button onClick={() => (d.kind === "next_action" ? onNavigate({ page: "activities" }) : goClient(d.id))} className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 text-left">
                       <span className="flex-1 min-w-0">
                         <span className="block text-sm font-medium text-gray-800 truncate">{d.company}</span>
                         <span className="block text-xs text-gray-500">{d.what} · {fmtDate(d.date)}</span>

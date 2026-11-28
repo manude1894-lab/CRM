@@ -9,6 +9,7 @@
   - Prospects sent to an RM with no client created after PROSPECT_FOLLOW_UP_DAYS → the RM and the assignor
   - Submissions waiting with Compliance / the Approver more than APPROVAL_WAITING_DAYS → the checkers
   - Under Formation clients 30 days after creation, with the details still missing → the Anchor RM and Compliance (once)
+  - Next action of a call / visit report due tomorrow or today → the RM who wrote the report (Triam UAT 28-11-2026)
 
 Each job opens its own DB session since it runs outside the FastAPI request lifecycle. Reminders
 are deduped per (client, reminder) so the sweep doesn't repeat one that is still unread.
@@ -18,7 +19,7 @@ from datetime import date, datetime, timedelta, timezone
 
 from app.auth.permissions import has_permission
 from app.database import SessionLocal
-from app.models import Account, AccountParty, ApprovalRequest, ApprovalStatus, Invoice, Notification, Prospect, User
+from app.models import Account, AccountParty, Activity, ApprovalRequest, ApprovalStatus, Invoice, Notification, Prospect, User
 from app.services import access_control, notification_service
 from app.services.account_service import group_people
 from app.utils.dates import dmy
@@ -220,10 +221,41 @@ def check_under_formation():
         db.close()
 
 
+def next_action_text(act: Activity, with_client: bool = True) -> str:
+    """'Call Report of 20-11-2026, Client X: send the revised proposal'."""
+    kind = getattr(act.activity_type, "value", act.activity_type)
+    action = (act.next_action or "").strip()
+    short = action if len(action) <= 80 else action[:77] + "..."
+    client = f", {act.company_name}" if with_client else ""
+    return f"{kind} of {dmy(act.activity_date)}{client}" + (f": {short}" if short else "")
+
+
+def check_next_actions_due():
+    """Triam UAT 28-11-2026: the RM is reminded of the next action of their call / visit report the day before it is
+    due and on the day, once each."""
+    db = SessionLocal()
+    try:
+        today = date.today()
+        for act in db.query(Activity).filter(Activity.due_date.isnot(None), Activity.owner_id.isnot(None),
+                                             Activity.due_date.in_((today, today + timedelta(days=1)))).all():
+            if getattr(act.status, "value", act.status) == "Cancelled":
+                continue
+            w = (act.due_date - today).days
+            key = f"next_action_{act.id}_{w}d"
+            if db.query(Notification.id).filter(Notification.user_id == act.owner_id,
+                                                Notification.notification_type == key).first():
+                continue
+            when = "is due today" if w == 0 else "is due tomorrow"
+            notification_service.notify_user(db, act.owner_id, f"Next action {when} ({dmy(act.due_date)}) - {next_action_text(act)}.",
+                                             key, link="/activities", account_id=act.account_id)
+    finally:
+        db.close()
+
+
 def run_daily_sweep():
     """Entry point registered with APScheduler — runs all checks in sequence."""
     for job in (check_aml_reviews_due, check_licences_expiring, check_documents_expiring, check_invoices_overdue,
-                check_prospects_waiting, check_approvals_waiting, check_under_formation):
+                check_prospects_waiting, check_approvals_waiting, check_under_formation, check_next_actions_due):
         try:
             job()
         except Exception:
