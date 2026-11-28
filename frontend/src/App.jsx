@@ -138,10 +138,15 @@ export default function App() {
             which turns into the expand toggle on hover. Ctrl+B also toggles; on a phone the menu
             closes by swipe or backdrop. */}
         <div className={`group relative flex items-center h-20 border-b border-white/10 ${sidebarOpen ? "px-5 justify-between" : "justify-center px-2"}`}>
+          {/* Triam 28-11-2026: the logo as on the sign-in page (black and gold on a white card), everywhere. */}
           {sidebarOpen ? (
-            <img src="/triam-wordmark-light.png" alt="TRIAM" className="h-11 w-auto" />
+            <span className="inline-flex items-center rounded-xl bg-white px-3 py-1.5 shadow-md shadow-black/20">
+              <img src="/triam-wordmark.png" alt="TRIAM" className="h-10 w-auto" />
+            </span>
           ) : (
-            <img src="/triam-trident.png" alt="TRIAM" className={`h-10 w-auto ${isPhone ? "" : "transition-opacity group-hover:opacity-0"}`} />
+            <span className={`inline-flex items-center rounded-lg bg-white p-1.5 shadow-md shadow-black/20 ${isPhone ? "" : "transition-opacity group-hover:opacity-0"}`}>
+              <img src="/triam-trident.png" alt="TRIAM" className="h-8 w-auto" />
+            </span>
           )}
           {!isPhone && (
             <button onClick={() => setSidebarOpen((o) => !o)} title={`${sidebarOpen ? "Collapse" : "Expand"} menu (Ctrl+B)`}

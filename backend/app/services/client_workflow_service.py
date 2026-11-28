@@ -198,9 +198,9 @@ def allowed_actions(db: Session, acc: Account, user: User) -> list[dict]:
                 add("approve", "Compliance Approval", checker, why)
             add("reject", "Reject", checker, why)
             add("withdraw", "Withdraw submission", is_maker or approver, "Only the submitter or Compliance can withdraw")
-    elif status == APPROVED:
-        add("activate", "Activate", True)
-    elif status == ACTIVE:
+    elif status in (APPROVED, ACTIVE):
+        # Triam UAT 28-11-2026: no Activate button - an Approved client (imported, or approved before the Final
+        # approval made clients Active) is serviced as it is, with the same actions as an Active one.
         add("deactivate", "Mark Inactive", approver, "Needs an approver (CO / MLRO)")
         add("mark_exit", "Mark for Exit", approver, "Only Compliance (CO / MLRO) marks a client for exit")
     elif status == INACTIVE:

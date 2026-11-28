@@ -4,9 +4,17 @@ from datetime import date, timedelta
 
 from sqlalchemy.orm import Session
 
-from app.models import Account, ApprovalRequest, ApprovalStatus, Instruction, InstructionStatus, User, UserRole
+from app.models import Account, Activity, ApprovalRequest, ApprovalStatus, Instruction, InstructionStatus, User, UserRole
 from app.services import access_control, client_workflow_service as wf
 from app.services import instruction_service, invoice_service, prospect_service
+from app.auth.permissions import has_permission
+
+
+def _is_rm(u: User) -> bool:
+    """Triam UAT 28-11-2026: Portfolio by RM lists only RMs - a login that holds a client portfolio, not the
+    Sales Manager's view-only login, Compliance, the Approver or an administrator."""
+    return (u.role != UserRole.ADMIN and u.handles_clients
+            and not any(has_permission(u, p) for p in ("read_only", "client.approve", "client.final_approve")))
 
 # BRD §9 status lifecycle, in order, with the Rejected status of BRD §8, §19, §20 beside WIP.
 # Triam UAT 18-11-2026: the onboarding statuses the RM sets sit beside WIP; Dropped closes the list.
@@ -46,6 +54,23 @@ def _due_soon(accounts, today: date) -> list[dict]:
                 rows.append({"key": f"{a.id}-{field}", "account_id": a.id, "company_name": a.company_name, "what": what,
                              "date": d, "days": (d - today).days})
     return sorted(rows, key=lambda r: r["days"])
+
+
+NEXT_ACTION_OVERDUE_DAYS = 30
+
+
+def _next_actions_due(db: Session, user: User, today: date) -> list[dict]:
+    """Triam UAT 28-11-2026: the next actions of the user's own call / visit reports, due within 60 days or overdue
+    by up to 30 days (older ones would never leave the list)."""
+    from app.services.scheduler_jobs import next_action_text
+    acts = db.query(Activity).filter(
+        Activity.owner_id == user.id, Activity.due_date.isnot(None),
+        Activity.due_date >= today - timedelta(days=NEXT_ACTION_OVERDUE_DAYS),
+        Activity.due_date <= today + timedelta(days=DUE_SOON_DAYS)).all()
+    return [{"key": f"activity-{a.id}", "account_id": a.account_id, "company_name": a.company_name, "kind": "next_action",
+             "what": "Next action - " + next_action_text(a, with_client=False),
+             "date": a.due_date, "days": (a.due_date - today).days}
+            for a in acts if getattr(a.status, "value", a.status) != "Cancelled"]
 
 
 def build_dashboard(db: Session, user: User) -> dict:
@@ -99,9 +124,9 @@ def build_dashboard(db: Session, user: User) -> dict:
     for u in db.query(User).filter(User.is_active == True).order_by(User.name).all():  # noqa: E712
         if team is not None and u.id not in team:
             continue
+        if not _is_rm(u):
+            continue
         mine = [a for a in accounts if a.spoc_id == u.id]
-        if not mine and (not u.handles_clients or u.role == UserRole.ADMIN):
-            continue  # central desks (Compliance, Approver, Accounts, ...) and administrators hold no portfolio
         portfolio.append({
             "user_id": u.id, "name": u.name, "business_role_name": u.business_role_name, "total": len(mine),
             "in_progress": sum(1 for a in mine if a.profile_status in (*wf.WITH_RM, wf.AWAITING, wf.ON_HOLD)),
@@ -129,6 +154,6 @@ def build_dashboard(db: Session, user: User) -> dict:
         "pending_approvals": pending_rows,
         "rejected_clients": rejected,
         "aml_reviews_due": aml_due,
-        "due_soon": _due_soon(accounts, today),
+        "due_soon": sorted(_due_soon(accounts, today) + _next_actions_due(db, user, today), key=lambda r: r["days"]),
         "portfolio_by_rm": portfolio,
     }

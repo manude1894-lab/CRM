@@ -22,10 +22,10 @@ ROLES = {
         tiles=["Invoices to raise", "Overdue invoices", "Unpaid invoices"]),
     "priya@asktriam.com": dict(
         menu=["Prospects"], not_menu=["New Client Onboarding", "Compliance Approval", "Admin"],
-        tiles=["Prospects to assign", "Open prospects"]),
+        tiles=["Unassigned prospects", "Clients being prepared"]),
     "inquiry@asktriam.com": dict(
         menu=["Compliance Approval", "Invoices"], not_menu=["Admin"],
-        tiles=["Open prospects", "Unpaid invoices", "AML reviews due"]),
+        tiles=["Unassigned prospects", "Unpaid invoices", "AML reviews due"]),
 }
 
 

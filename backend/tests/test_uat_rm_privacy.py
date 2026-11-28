@@ -69,12 +69,13 @@ def test_who_coordinates_and_who_sees_all(real_user, role, coordinator, sees_all
     assert sees_all_prospects(u) is sees_all
 
 
-def test_only_a_coordinator_gets_the_assignment_work_item(db, team):
+def test_prospects_to_assign_are_not_a_work_item(db, team):
+    """Triam UAT 28-11-2026: removed from the dashboard; the Unassigned prospects tile shows them."""
     prospect_service.create_prospect(db, ProspectCreate(company_name="Pool Ltd"), team["priya"])
 
     def keys(u):
         return {w["key"] for w in my_work_service.my_work(db, u)}
-    assert "prospects_unassigned" in keys(team["priya"]) and "prospects_unassigned" not in keys(team["kalyan"])
+    assert "prospects_unassigned" not in keys(team["priya"]) | keys(team["kalyan"])
 
 
 def test_prospect_api_applies_the_same_rule(db, team, client):

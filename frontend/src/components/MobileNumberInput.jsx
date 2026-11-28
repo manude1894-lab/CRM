@@ -1,5 +1,5 @@
 import React, { useEffect, useId, useRef, useState } from "react";
-import { digitsOnly } from "../utils/mobile";
+import { digitsOnly, lengthProblem } from "../utils/mobile";
 import { matchesDial } from "../utils/dialCodes";
 
 /** Country code then number (Triam UAT 12-11-2026): the number takes digits only, and a number without a code is
@@ -57,15 +57,21 @@ function DialCodePicker({ code, options, onCode, disabled, invalid }) {
 
 export default function MobileNumberInput({ code, number, onCode, onNumber, options, placeholder = "e.g. 501234567", disabled = false }) {
   const missingCode = !!String(number || "").trim() && !code;
+  // Triam UAT 28-11-2026: a number of the wrong length for its country is flagged once the user leaves the field.
+  const [left, setLeft] = useState(false);
+  const length = left && code && String(number || "").trim() ? lengthProblem(code, number) : null;
+  const wrongLength = length ? `Check the number: ${length}.` : null;
   return (
     <div>
       <div className="flex gap-2">
         <DialCodePicker code={code} options={options} onCode={onCode} disabled={disabled} invalid={missingCode} />
         <input aria-label="Mobile number" type="text" inputMode="numeric" autoComplete="tel-national" maxLength={12} disabled={disabled}
           value={number || ""} placeholder={placeholder} onChange={(e) => onNumber(digitsOnly(e.target.value))}
-          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-400 focus:ring-1 focus:ring-brand-100 disabled:bg-gray-50" />
+          onBlur={() => setLeft(true)} aria-invalid={wrongLength ? true : undefined}
+          className={`w-full border ${wrongLength ? "border-red-400" : "border-gray-200"} rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-400 focus:ring-1 focus:ring-brand-100 disabled:bg-gray-50`} />
       </div>
       {missingCode && <p className="text-[11px] text-red-500 mt-1">Select the country code.</p>}
+      {wrongLength && <p role="alert" className="text-xs text-red-700 mt-1">{wrongLength}</p>}
     </div>
   );
 }

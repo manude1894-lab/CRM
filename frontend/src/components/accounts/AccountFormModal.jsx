@@ -341,6 +341,10 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
   const meetingDateError = !form.br_meeting_date ? null
     : form.br_meeting_date > myToday ? "Date of Meeting cannot be in the future"
       : form.br_meeting_date !== initialForm.br_meeting_date && form.br_meeting_date < meetingEarliest ? "Date of Meeting cannot be more than 30 days back" : null;
+  // Triam UAT 25-11-2026 row 202: the screening date is at most 30 days old when entered.
+  const screeningEarliest = addDays(today, -30);
+  const screeningDateError = form.screening_date && form.screening_date !== initialForm.screening_date
+    && form.screening_date < screeningEarliest ? "Screening Date cannot be more than 30 days old" : null;
   const meetingTimeError = form.br_meeting_date === myToday && form.br_meeting_time && form.br_meeting_time.slice(0, 5) > myTime
     ? `Time of Meeting cannot be later than now (${myTime}) for a meeting today` : null;
 
@@ -675,7 +679,7 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
         {/* Triam UAT 05-11-2026: for Individual and Entity clients; the report is filed under Documents. */}
         <Section title="Name Screening" hasData={!!form.screening_date} {...sectionProps("screening")}>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <Field label="Screening Date"><DateInput max={today} value={form.screening_date || ""} onChange={set("screening_date")} /></Field>
+            <Field label="Screening Date" error={screeningDateError}><DateInput min={form.screening_date && form.screening_date < screeningEarliest ? undefined : screeningEarliest} max={today} value={form.screening_date || ""} onChange={set("screening_date")} /></Field>
           </div>
           <div className="text-xs font-medium text-gray-600 mb-1.5">Screening Report</div>
           {form._id && screeningCategories.length > 0 ? (
