@@ -232,7 +232,8 @@ export const Field = ({ label, children, required, invalid: missing = false, err
   const invalid = missing || !!error;
   return (
     <div className="mb-4" data-invalid={invalid ? "true" : undefined}>
-      <label id={labelId} className={`block text-xs font-medium mb-1 ${invalid ? "text-red-700" : "text-gray-600"}`}>
+      {/* Triam 28-11-2026: field names larger and bold. */}
+      <label id={labelId} className={`block text-sm font-semibold mb-1 ${invalid ? "text-red-700" : "text-gray-800"}`}>
         {label}{required && <span className="text-red-600 ml-0.5" aria-hidden="true">*</span>}
       </label>
       <FieldLabelContext.Provider value={labelId}>
