@@ -118,7 +118,7 @@ export default function ClientServicingModal({ account, onClose, startWith = nul
                   onChange={(e) => setSr((p) => ({ ...p, other_description: e.target.value }))} />
               </Field>
             )}
-            <Field label="Date Received"><DateInput value={sr.date_received} onChange={(e) => setSr((p) => ({ ...p, date_received: e.target.value }))} /></Field>
+            <Field label="Date Received"><DateInput max={new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Dubai" })} value={sr.date_received} onChange={(e) => setSr((p) => ({ ...p, date_received: e.target.value }))} /></Field>
             <Field label="Charge to the client (excluding VAT)">
               <MoneyInput label="Charge to the client" currency={sr.charge_currency} amount={sr.charge_amount}
                 onCurrency={(v) => setSr((p) => ({ ...p, charge_currency: v }))} onAmount={(v) => setSr((p) => ({ ...p, charge_amount: v }))} />

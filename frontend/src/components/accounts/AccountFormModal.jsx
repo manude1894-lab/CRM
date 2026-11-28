@@ -745,7 +745,7 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
                 {RISK_OPTIONS.map((r) => <option key={r}>{r}</option>)}
               </Select>
             </Field>
-            <Field label="CDD Completion Date"><DateInput value={form.cdd_completion_date || ""} onChange={set("cdd_completion_date")} /></Field>
+            <Field label="CDD Completion Date"><DateInput max={uaeToday} value={form.cdd_completion_date || ""} onChange={set("cdd_completion_date")} /></Field>
             <Field label="KYC Verification performed by">
               <Select value={form.kyc_verified_by || ""} onChange={set("kyc_verified_by")}>
                 <option value="">— select RM —</option>

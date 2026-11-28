@@ -241,7 +241,15 @@ def submit_instruction(db: Session, instruction_id: int, user: User) -> Instruct
     return inst
 
 
+def _check_date_received(d) -> None:
+    """Triam UAT 27-11-2026: a request is received on or before today (UAE date), not in the future."""
+    from app.services.standard_reports_service import BUSINESS_TZ
+    if d and d > datetime.now(BUSINESS_TZ).date():
+        raise HTTPException(status_code=400, detail="Date Received cannot be in the future")
+
+
 def create_instruction(db: Session, data: InstructionCreate, user: User) -> Instruction:
+    _check_date_received(data.date_received)
     acc = _client_for(db, data.account_id, user)
     _assert_client_serviceable(acc)
     master_service.assert_valid(db, "service_request_type", data.instruction_type, "Request type")
@@ -258,6 +266,8 @@ def create_instruction(db: Session, data: InstructionCreate, user: User) -> Inst
 def update_instruction(db: Session, instruction_id: int, data: InstructionUpdate, user: User) -> Instruction:
     inst = get_instruction(db, instruction_id, user)
     payload = data.model_dump(exclude_unset=True)
+    if payload.get("date_received") and payload["date_received"] != inst.date_received:
+        _check_date_received(payload["date_received"])
     if payload.get("status") == InstructionStatus.CANCELLED.value or inst.status == InstructionStatus.CANCELLED.value:
         raise HTTPException(status_code=400, detail="Use Cancel (with a reason) to drop a request; a dropped request can't be changed")
     if "instruction_type" in payload and payload["instruction_type"] != inst.instruction_type:
