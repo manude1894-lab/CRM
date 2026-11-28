@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { amendmentApi, workflowApi } from "../api/endpoints";
+import ClientDocumentsFolder from "../components/accounts/ClientDocumentsFolder";
 import { Modal, Spinner, ErrorBanner, PageHeader } from "../components/ui";
 import { Pager, SortTh, useListView } from "../components/listing";
 import { useMasters } from "../hooks/useMasters";
@@ -181,6 +182,12 @@ function ReviewModal({ row, onClose, onDecided, onNavigate }) {
         {!state ? <Spinner /> : (
           <>
             {diff && <ChangeList diff={diff} />}
+            {isCurrent && (state.documents || []).length > 0 && (
+              <div>
+                <div className="text-xs font-semibold text-gray-700 mb-1.5">Supporting documents</div>
+                <ClientDocumentsFolder accountId={row.account_id} amendmentId={row.id} viewOnly />
+              </div>
+            )}
             {row.status !== "Pending" && (
               <p className="text-xs text-gray-500">{row.status} by {row.checker_name || "—"} {formatTimestamp(row.decided_at)}{row.reason_text ? ` — ${row.reason_text}` : ""}</p>
             )}

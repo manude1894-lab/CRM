@@ -47,6 +47,15 @@ export function dialCodeOptions(countries, fallback = []) {
   }
   if (byCode.size === 0) return fallback;
   return [...byCode.entries()]
-    .map(([code, names]) => ({ code, label: `${code} (${names.length > 2 ? `${names.slice(0, 2).join(", ")} …` : names.join(", ")})` }))
+    .map(([code, names]) => ({ code, names, label: `${code} (${names.length > 2 ? `${names.slice(0, 2).join(", ")} …` : names.join(", ")})` }))
     .sort((a, b) => (a.code === "+971" ? -1 : b.code === "+971" ? 1 : a.label.localeCompare(b.label, undefined, { numeric: true })));
+}
+
+// Triam UAT 27-11-2026: the code list is searched by country name or by ISD code ("971", "+44", "india").
+export function matchesDial(option, query) {
+  const q = (query || "").trim().toLowerCase();
+  if (!q) return true;
+  const digits = q.replace(/[^\d]/g, "");
+  if (digits && /^[+\d\s()-]+$/.test(q)) return option.code.replace(/[^\d]/g, "").startsWith(digits);
+  return [option.label, ...(option.names || [])].some((n) => n.toLowerCase().includes(q));
 }

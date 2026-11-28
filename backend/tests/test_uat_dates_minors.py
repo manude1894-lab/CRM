@@ -55,7 +55,9 @@ def test_licence_dates(db, people):
 def test_other_expiry_dates(db, people):
     rm = people["maker"]
     acc = flow.complete_client(db, rm)
-    rejects(db, acc, rm, "Engagement Letter Valid Until cannot be before today", engagement_letter_valid_until=TODAY - timedelta(days=1))
+    # Triam UAT 27-11-2026: a past Engagement Letter date is accepted, for existing and new clients.
+    account_service.update_account(db, acc.id, AccountUpdate(engagement_letter_signed=True,
+                                                             engagement_letter_valid_until=TODAY - timedelta(days=400)), rm)
     rejects(db, acc, rm, "LEI Expiry Date cannot be before today", lei_expiry_date=TODAY - timedelta(days=1))
     rejects(db, acc, rm, "Current regulatory license expiry cannot be before today", regulatory_license_expiry_date=TODAY - timedelta(days=1))
 

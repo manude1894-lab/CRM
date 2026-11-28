@@ -16,6 +16,7 @@ class DocumentRead(BaseModel):
     notes: Optional[str] = None
     link_url: Optional[str] = None
     party_id: Optional[int] = None
+    approval_request_id: Optional[int] = None
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
@@ -44,6 +45,7 @@ class LinkDocumentCreate(BaseModel):
     title: Optional[str] = Field(None, max_length=255)
     notes: Optional[str] = Field(None, max_length=500)
     party_id: Optional[int] = None
+    approval_request_id: Optional[int] = None  # supports this draft amendment
 
 
 class ClientFolder(BaseModel):

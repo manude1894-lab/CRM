@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { DIAL_CODES, dialCodeForCountry, dialCodeOptions } from "./dialCodes";
+import { DIAL_CODES, dialCodeForCountry, dialCodeOptions, matchesDial } from "./dialCodes";
 
 const COUNTRIES = [
   { name: "United Arab Emirates (the)", code: "AE" }, { name: "India", code: "IN" }, { name: "British Virgin Islands", code: "VG" },
@@ -19,8 +19,8 @@ describe("dial codes", () => {
   });
   it("lists UAE first and one option per code", () => {
     const options = dialCodeOptions(COUNTRIES);
-    expect(options[0]).toEqual({ code: "+971", label: "+971 (United Arab Emirates)" });
-    expect(options.filter((o) => o.code === "+1")).toEqual([{ code: "+1", label: "+1 (United States of America, Canada)" }]);
+    expect(options[0]).toMatchObject({ code: "+971", label: "+971 (United Arab Emirates)" });
+    expect(options.filter((o) => o.code === "+1")).toMatchObject([{ code: "+1", label: "+1 (United States of America, Canada)" }]);
   });
   it("uses the ISD code Admin keeps on the Country master (Triam UAT 11-11-2026)", () => {
     const edited = COUNTRIES.map((c) => (c.code === "IN" ? { ...c, dial_code: "+9199" } : c));
@@ -34,5 +34,21 @@ describe("dial codes", () => {
   });
   it("every code is a plus and digits", () => {
     expect(Object.values(DIAL_CODES).every((c) => /^\+\d{1,4}$/.test(c))).toBe(true);
+  });
+});
+
+describe("matchesDial (Triam UAT 27-11-2026)", () => {
+  const uk = { code: "+44", names: ["United Kingdom", "Guernsey", "Jersey"], label: "+44 (United Kingdom, Guernsey …)" };
+  const uae = { code: "+971", names: ["United Arab Emirates"], label: "+971 (United Arab Emirates)" };
+  it("finds a code by country name, also one not in the label", () => {
+    expect(matchesDial(uk, "jersey")).toBe(true);
+    expect(matchesDial(uae, "emirates")).toBe(true);
+    expect(matchesDial(uae, "india")).toBe(false);
+  });
+  it("finds a code by its digits, with or without the plus", () => {
+    expect(matchesDial(uae, "971")).toBe(true);
+    expect(matchesDial(uae, "+97")).toBe(true);
+    expect(matchesDial(uk, "971")).toBe(false);
+    expect(matchesDial(uk, "")).toBe(true);
   });
 });

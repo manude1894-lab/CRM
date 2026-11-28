@@ -280,6 +280,7 @@ def assert_passport_acceptable(expiry: Optional[date], whose: str = "The passpor
 ADULT_AGE = 18
 MAX_AGE = 120
 VISA_GRACE_DAYS = 30
+MEETING_BACK_DAYS = 30  # Biz Rationale meeting date (Triam UAT 26-11-2026)
 
 
 def age_on(dob: date, today: Optional[date] = None) -> int:
@@ -335,12 +336,15 @@ def _assert_date_sanity(data, acc: Optional[Account] = None) -> None:
     if changed("screening_date") and sent["screening_date"] > today:
         fail("Screening Date cannot be in the future")
     # Triam UAT 25-11-2026 row 202: the Biz Rationale meeting has happened: not a future date, nor a later time today.
+    # Triam UAT 26-11-2026: "now" by the clock of whoever enters it (UAE or India), and at most 30 days back.
     if changed("br_meeting_date") or changed("br_meeting_time"):
-        from app.services.standard_reports_service import BUSINESS_TZ
-        now = datetime.now(BUSINESS_TZ)
+        from app.request_context import user_now
+        now = user_now()
         met_on, met_at = val("br_meeting_date"), val("br_meeting_time")
         if met_on and met_on > now.date():
             fail("Date of Meeting cannot be in the future")
+        if changed("br_meeting_date") and met_on < now.date() - timedelta(days=MEETING_BACK_DAYS):
+            fail(f"Date of Meeting cannot be more than {MEETING_BACK_DAYS} days back")
         if met_on == now.date() and met_at and str(met_at)[:5] > now.strftime("%H:%M"):
             fail("Time of Meeting cannot be later than now for a meeting today")
     start, expiry, incorporated = val("license_start_date"), val("license_expiry_date"), val("incorporation_date")
@@ -353,8 +357,7 @@ def _assert_date_sanity(data, acc: Optional[Account] = None) -> None:
     if (changed("license_start_date") or changed("license_expiry_date")) and start and expiry and expiry <= start:
         fail("License Expiry Date must be after the License Start Date")
     for field, label in (("regulatory_license_expiry_date", "Current regulatory license expiry"),
-                         ("lei_expiry_date", "LEI Expiry Date"),
-                         ("engagement_letter_valid_until", "Engagement Letter Valid Until")):
+                         ("lei_expiry_date", "LEI Expiry Date")):
         if changed(field) and sent[field] < today:
             fail(f"{label} cannot be before today")
     if changed("uae_visa_expiry") and sent["uae_visa_expiry"] < today - timedelta(days=VISA_GRACE_DAYS):

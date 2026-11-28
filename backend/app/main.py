@@ -57,7 +57,13 @@ app.add_middleware(
 # ─── Security headers ─────────────────────────────────────────────────
 @app.middleware("http")
 async def security_headers(request, call_next):
-    response = await call_next(request)
+    # The user's own time zone for "not later than now" checks (app/request_context.py).
+    from app.request_context import client_timezone
+    token = client_timezone.set(request.headers.get("x-timezone"))
+    try:
+        response = await call_next(request)
+    finally:
+        client_timezone.reset(token)
     response.headers.setdefault("X-Content-Type-Options", "nosniff")
     response.headers.setdefault("X-Frame-Options", "DENY")
     response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")

@@ -17,6 +17,8 @@ export const api = axios.create({
 api.interceptors.request.use((config) => {
   const token = useAuthStore.getState().accessToken;
   if (token) config.headers.Authorization = `Bearer ${token}`;
+  // The user's own time zone (UAE, India...): "not later than now" checks use the clock of whoever enters the data.
+  try { config.headers["X-Timezone"] = Intl.DateTimeFormat().resolvedOptions().timeZone; } catch { /* older browser */ }
   return config;
 });
 

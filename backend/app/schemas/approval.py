@@ -108,3 +108,4 @@ class AmendmentState(BaseModel):
     diff: Optional[dict] = None
     preview: Optional[dict] = None  # staged client + parties (maker only)
     actions: list[str]
+    documents: list[dict] = []  # supporting documents filed with the amendment (Triam UAT 27-11-2026)

@@ -88,6 +88,7 @@ def _amendment(db: Session, acc, user: User) -> AmendmentState:
         amendable=v["amendable"], diff=v["diff"], preview=v["preview"], actions=v["actions"],
         request=ApprovalRead.from_row(v["request"]) if v["request"] else None,
         previous=ApprovalRead.from_row(v["previous"]) if v["previous"] else None,
+        documents=v.get("documents", []),
     )
 
 
