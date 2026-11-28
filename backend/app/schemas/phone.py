@@ -2,8 +2,9 @@
 
 - Digits only, always with a country code.
 - Length, counted without the country code: a UAE number (+971) is 9 digits (mobile, 50 123 4567) or 8 (landline,
-  4 333 4444); any other country 8 to 12 digits. Triam asked for 9 to 12; 8 is kept because GCC mobiles (Bahrain,
-  Qatar, Kuwait, Oman) and UAE landlines are 8 digits. A leading trunk 0 (050 ...) is dropped.
+  4 333 4444). Triam 28-11-2026: other countries have their own length (India, USA / Canada 10; Saudi Arabia 8 to 9;
+  Qatar, Bahrain, Kuwait, Oman, Singapore, Hong Kong 8 ...: app/data/phone_lengths.json); any other country 8 to 12.
+  A leading trunk 0 (050 ...) is dropped.
 
 Applied when a record is created or changed, never when it is read back, so a number saved before the
 rule existed still displays and can be corrected. Same rules on the form: frontend/src/utils/mobile.js.
@@ -16,7 +17,9 @@ from typing import ClassVar, Optional
 from pydantic import BaseModel, field_validator, model_validator
 
 UAE_CODE = "+971"
-MIN_DIGITS, MAX_DIGITS = 8, 12
+_DATA = Path(__file__).resolve().parents[1] / "data"
+LENGTHS = {k: tuple(v) for k, v in json.loads((_DATA / "phone_lengths.json").read_text(encoding="utf-8")).items() if not k.startswith("_")}
+MIN_DIGITS, MAX_DIGITS = LENGTHS["default"]
 _DIAL_CODES = sorted(set(json.loads((Path(__file__).resolve().parents[1] / "data" / "dial_codes.json").read_text(encoding="utf-8")).values()),
                      key=len, reverse=True)
 
@@ -25,7 +28,11 @@ def length_problem(code: Optional[str], number: str) -> Optional[str]:
     """Why a national number (no country code) has the wrong length for its country code, or None."""
     if code == UAE_CODE:
         return None if len(number) in (8, 9) else "a UAE number has 9 digits (mobile, e.g. 501234567) or 8 (landline)"
-    return None if MIN_DIGITS <= len(number) <= MAX_DIGITS else f"mobile number must have {MIN_DIGITS} to {MAX_DIGITS} digits"
+    low, high = LENGTHS.get(code or "", LENGTHS["default"])
+    if low <= len(number) <= high:
+        return None
+    digits = f"{low} digits" if low == high else f"{low} to {high} digits"
+    return f"a {code} number has {digits}" if code in LENGTHS else f"mobile number must have {digits}"
 
 
 def mobile_number(v):

@@ -18,10 +18,15 @@ describe("mobile numbers", () => {
     expect(mobileProblem("+971", "5012345")).toMatch(/UAE number has 9 digits/);
     expect(mobileProblem("+971", "5012345678")).toMatch(/UAE number has 9 digits/);
   });
-  it("other countries: 8 to 12 digits", () => {
+  it("each country its own length; any other 8 to 12 (Triam 28-11-2026)", () => {
     expect(mobileProblem("+973", "36123456")).toBeNull(); // Bahrain mobile, 8 digits
+    expect(mobileProblem("+973", "361234567")).toMatch(/\+973 number has 8 digits/);
     expect(mobileProblem("+91", "9876543210")).toBeNull();
-    expect(mobileProblem("+44", "1234567")).toMatch(/8 to 12 digits/);
+    expect(mobileProblem("+91", "987654321")).toMatch(/\+91 number has 10 digits/);
+    expect(mobileProblem("+966", "501234567")).toBeNull();
+    expect(mobileProblem("+44", "1234567")).toMatch(/9 to 10 digits/);
+    expect(mobileProblem("+49", "1234567")).toMatch(/8 to 12 digits/);
+    expect(mobileProblem("+49", "15123456789")).toBeNull();
   });
   it("splits and joins a prospect's phone", () => {
     expect(splitPhone("+971501234567", ["+97", "+971", "+1"])).toEqual({ code: "+971", number: "501234567" });

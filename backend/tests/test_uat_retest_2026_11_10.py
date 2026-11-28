@@ -21,7 +21,7 @@ def test_folder_says_which_parties_are_entities(db, real_user):
     account_party_service.create_party(db, acc.id, AccountPartyCreate(
         party_role="Shareholder", full_name="C Ltd", constitution="Entity", country_of_residence="India",
         residential_address={"line1": "1 Main Street", "city": "Mumbai"},
-        mobile_country_code="+91", mobile_number="501234567", email="c@example.com"), rm)
+        mobile_country_code="+91", mobile_number="9876543210", email="c@example.com"), rm)
     folder = document_service.client_folder(db, acc.id, rm)
     assert {p["name"]: p["constitution"] for p in folder["parties"]} == {
         "Jane Owner (Shareholder)": "Individual", "C Ltd (Shareholder)": "Entity"}
