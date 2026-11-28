@@ -318,7 +318,7 @@ function PartyForm({ form, setForm, countries, onCancel, onSave, copyFrom = [] }
         : form.party_role === "Joint Holder" ? "Full Name (as per passport)" : "Full Name (as per ID document)"} required>
         <Input value={form.full_name || ""} onChange={set(setForm, "full_name")} />
       </Field>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <Field label={isEntity ? "Incorporation Date" : "Date of Birth"}>
           <DateInput min={isEntity ? undefined : earliestBirth()} max={isEntity || minorAllowed ? isoToday() : latestAdultBirth()}
             value={form.dob_or_incorp_date || ""} onChange={set(setForm, "dob_or_incorp_date")} />
@@ -345,7 +345,7 @@ function PartyForm({ form, setForm, countries, onCancel, onSave, copyFrom = [] }
       {minor && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 mb-3">
           <p className="text-xs text-amber-800 mb-2">{form.full_name || "This person"} is under 18. A minor is onboarded through a parent or legal guardian: give their details, and file a birth certificate or guardianship document in this person's documents.</p>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Field label="Parent / Guardian Name" required><Input value={form.guardian_name || ""} onChange={set(setForm, "guardian_name")} /></Field>
             <Field label="Relationship to the minor" required>
               <Select value={form.guardian_relationship || ""} onChange={set(setForm, "guardian_relationship")}>
@@ -391,7 +391,7 @@ function PartyForm({ form, setForm, countries, onCancel, onSave, copyFrom = [] }
       {(
         <>
           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mt-3 mb-1">{isEntity ? "Registered Address" : "Residential Address"}</p>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Field label="Address Line 1" required><Input value={form.residential_address?.line1 || ""} onChange={setAddr(setForm, "line1")} /></Field>
             <Field label="Address Line 2"><Input value={form.residential_address?.line2 || ""} onChange={setAddr(setForm, "line2")} /></Field>
             <Field label="Landmark"><Input value={form.residential_address?.landmark || ""} onChange={setAddr(setForm, "landmark")} /></Field>
@@ -403,7 +403,7 @@ function PartyForm({ form, setForm, countries, onCancel, onSave, copyFrom = [] }
       )}
 
       {isUAEResident && (
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Field label="UAE Visa No."><Input value={form.uae_visa_number || ""} onChange={set(setForm, "uae_visa_number")} /></Field>
           <Field label="UAE Visa Expiry"><DateInput value={form.uae_visa_expiry || ""} onChange={set(setForm, "uae_visa_expiry")} /></Field>
         </div>

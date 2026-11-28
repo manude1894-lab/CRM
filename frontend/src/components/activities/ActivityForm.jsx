@@ -50,7 +50,7 @@ export default function ActivityForm({ form, setForm, accounts = [], lockClient 
 
   return (
     <div>
-      <div className="grid grid-cols-2 gap-x-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
         {!lockClient && (
           <Field label="Client" required>
             <ClientPicker clients={accounts} value={form.account_id || ""} onChange={(v) => setForm((p) => ({ ...p, account_id: v }))} />
@@ -66,7 +66,7 @@ export default function ActivityForm({ form, setForm, accounts = [], lockClient 
 
       <div className="rounded-lg border border-brand-100 bg-brand-50/30 px-3 pt-3 mb-3">
         <div className="text-[11px] font-semibold text-brand-700 uppercase tracking-wide mb-2">{form.activity_type}</div>
-        <div className="grid grid-cols-2 gap-x-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
           <Field label={form.activity_type === "Visit Report" ? "Client contact met" : "Client contact spoken to"} required>
             <Input value={form.client_contact || ""} onChange={set("client_contact")} maxLength={150} placeholder="Name and designation" />
           </Field>
@@ -82,7 +82,7 @@ export default function ActivityForm({ form, setForm, accounts = [], lockClient 
         <Textarea rows={3} value={form.summary || ""} onChange={set("summary")} />
       </Field>
       <Field label="Outcome"><Textarea rows={2} value={form.outcome || ""} onChange={set("outcome")} /></Field>
-      <div className="grid grid-cols-2 gap-x-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
         <Field label="Next action"><Input value={form.next_action || ""} onChange={set("next_action")} /></Field>
         <Field label="Next action due"><DateInput min={new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Dubai" })} value={form.due_date || ""} onChange={set("due_date")} /></Field>
       </div>

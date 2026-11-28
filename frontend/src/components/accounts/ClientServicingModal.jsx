@@ -99,7 +99,7 @@ export default function ClientServicingModal({ account, onClose, startWith = nul
 
       {tab === "requests" && (sr ? (
         <div>
-          <div className="grid grid-cols-2 gap-x-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
             <Field label="Triam entity" required>
               <Select value={sr.triam_entity} onChange={(e) => setSr((p) => ({ ...p, triam_entity: e.target.value, instruction_type: "", other_description: "" }))}>
                 {entities.length === 0 && <option value="">— none set on the client —</option>}

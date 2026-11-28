@@ -60,9 +60,14 @@ export default function App() {
   // On a phone the menu starts closed and opens over the page; on a computer it is open beside the page.
   const isPhone = typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches;
   // On a computer the sidebar folds to an icon rail and remembers the choice (per browser).
+  // Triam 28-11-2026: on a tablet (under 1024 px) it starts folded, so the page keeps its width.
+  const isTablet = !isPhone && typeof window !== "undefined" && window.matchMedia("(max-width: 1023px)").matches;
   const [sidebarOpen, setSidebarOpenState] = useState(() => {
     if (isPhone) return false;
-    try { return localStorage.getItem("triam-sidebar") !== "collapsed"; } catch { return true; }
+    try {
+      const saved = localStorage.getItem("triam-sidebar");
+      return isTablet ? saved === "open" : saved !== "collapsed";
+    } catch { return !isTablet; }
   });
   const setSidebarOpen = (next) => setSidebarOpenState((prev) => {
     const value = typeof next === "function" ? next(prev) : next;
