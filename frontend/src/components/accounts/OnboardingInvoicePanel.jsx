@@ -69,12 +69,12 @@ export default function OnboardingInvoicePanel({ accountId }) {
   const off = !state.editable || busy;
   return (
     <div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <YesNoSelect label="Do you want an invoice raised for onboarding services?" value={form.wanted} onChange={set("wanted")} disabled={off} />
       </div>
       {form.wanted === true && (
         <>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Field label="Amount payable by the client" required>
               <MoneyInput label="Amount payable by the client" currency={form.client_currency} amount={form.client_amount} disabled={off}
                 onCurrency={set("client_currency")} onAmount={set("client_amount")} />

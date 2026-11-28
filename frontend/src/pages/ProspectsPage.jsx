@@ -236,10 +236,10 @@ export default function ProspectsPage({ onNavigate } = {}) {
           <fieldset disabled={readOnly} className="min-w-0">
           <Field label="Prospect's Name" required><Input value={form.company_name || ""} onChange={(e) => setForm((p) => ({ ...p, company_name: e.target.value }))} /></Field>
           <DuplicateWarning name={form.company_name} excludeId={form.id} checkFn={prospectsApi.checkDuplicate} active={!form.id} />
-          <div className="grid grid-cols-2 gap-x-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
             <Field label="Contact Name"><Input value={form.contact_name || ""} onChange={(e) => setForm((p) => ({ ...p, contact_name: e.target.value }))} /></Field>
             <Field label="Contact Email"><Input type="email" placeholder="name@domain.com" value={form.contact_email || ""} onChange={(e) => setForm((p) => ({ ...p, contact_email: e.target.value }))} /></Field>
-            <div className="col-span-2">
+            <div className="sm:col-span-2">
               <Field label="Contact Phone">
                 <MobileNumberInput code={form._phone_code} number={form._phone_number} options={dialOptions}
                   onCode={(v) => setForm((p) => ({ ...p, _phone_code: v }))} onNumber={(v) => setForm((p) => ({ ...p, _phone_number: v }))} />

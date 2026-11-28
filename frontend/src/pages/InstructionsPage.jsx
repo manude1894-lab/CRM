@@ -299,7 +299,7 @@ export default function InstructionsPage() {
         <Modal title={modal === "new" ? "New Service Request" : requestLocked ? "Service Request" : "Edit Service Request"} onClose={() => setModal(null)}>
           {/* The Accountant reads the RM's part and fills only their own section. */}
           <fieldset disabled={requestLocked || accountantView || busy} className="min-w-0">
-            <div className="grid grid-cols-2 gap-x-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
               <Field label="Triam entity" required>
                 <Select value={form.triam_entity || ""} disabled={modal === "edit"} onChange={(e) => chooseEntity(e.target.value)}>
                   <option value="">— choose —</option>
@@ -376,7 +376,7 @@ export default function InstructionsPage() {
                 </div>
               </Field>
               {form.service_provider_involved && (
-                <div className="grid grid-cols-2 gap-x-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
                   <Field label="Name of the service provider" required>
                     <Input maxLength={150} value={form.service_provider_name || ""} onChange={(e) => set("service_provider_name")(e.target.value)} />
                   </Field>
@@ -463,7 +463,7 @@ function AccountantSection({ invoice, canManage, onDone }) {
         <p className="text-xs text-gray-600">With the Accountant since {fmtDate(invoice.requested_at) || "—"}: {fmtMoney(invoice.currency, invoice.amount)} to invoice.</p>
       ) : (
         <fieldset disabled={!open || !canManage || busy} className="min-w-0">
-          <div className="grid grid-cols-2 gap-x-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
             <Field label="Invoice No." required><Input maxLength={50} value={form.invoice_number} onChange={(e) => set("invoice_number")(e.target.value)} /></Field>
             <Field label="Date of Invoice" required><DateInput value={form.invoice_date} onChange={(e) => set("invoice_date")(e.target.value)} /></Field>
             <Field label="Invoice Amount" required>

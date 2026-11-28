@@ -43,7 +43,9 @@ const approvedSince = (key) => {
   return key === "year" ? new Date(now.getFullYear(), 0, 1) : new Date(now.getTime() - Number(key) * 86400000);
 };
 
-const readView = () => { try { return localStorage.getItem(VIEW_KEY) || "table"; } catch { return "table"; } };
+// Triam 28-11-2026: on a phone the list opens as cards (the table needs sideways scrolling there).
+const defaultView = () => (typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches ? "cards" : "table");
+const readView = () => { try { return localStorage.getItem(VIEW_KEY) || defaultView(); } catch { return defaultView(); } };
 
 export default function AccountsPage({ scope = "onboarding", initialAccountId, initialOpenForm, initialProspectId, initialStatus, onNavigate } = {}) {
   const cfg = SCOPES[scope];

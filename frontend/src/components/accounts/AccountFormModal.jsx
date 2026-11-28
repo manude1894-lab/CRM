@@ -85,7 +85,7 @@ const AddressFields = ({ value, onChange, countries, required, invalid = false }
   const set = (k) => (e) => onChange({ ...v, [k]: e.target.value });
   const bad = (k) => invalid && !(v[k] || "").trim(); // the required parts still empty
   return (
-    <div className="grid grid-cols-2 gap-3">
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
       <Field label="Address Line 1" required={required} invalid={bad("line1")}><Input value={v.line1 || ""} onChange={set("line1")} /></Field>
       <Field label="Address Line 2"><Input value={v.line2 || ""} onChange={set("line2")} /></Field>
       <Field label="Landmark"><Input value={v.landmark || ""} onChange={set("landmark")} /></Field>
@@ -364,7 +364,7 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
         <fieldset disabled={locked} className="min-w-0">
         {/* Triam 20-11-2026 (S T Krishna): the onboarding form begins with the Triam entities, then the RMs. The
             entities decide the services offered below, the Client ID prefix and the offshore rules. */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Field label="Anchor Triam Entity" required={req("anchor_entity")} invalid={miss("anchor_entity")}>
             <Select value={form.anchor_entity || ""} onChange={(e) => setForm({ ...form, anchor_entity: e.target.value, non_anchor_entities: (form.non_anchor_entities || []).filter((x) => x !== e.target.value) })}>
               <option value="">— select —</option>
@@ -375,7 +375,7 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
             <MultiSelect options={entityOptions(form.non_anchor_entities).filter((t) => t !== form.anchor_entity)} value={form.non_anchor_entities} onChange={setValue("non_anchor_entities")} />
           </Field>
         </div>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Field label="Anchor RM (SPOC)" required={req("spoc_id")} invalid={miss("spoc_id")}>
             <Select value={form.spoc_id || ""} onChange={(e) => setForm({ ...form, spoc_id: e.target.value, non_anchor_rm_ids: (form.non_anchor_rm_ids || []).filter((id) => id !== +e.target.value) })}>
               <option value="">— None —</option>
@@ -412,7 +412,7 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
         />
         {!isIndividual && (
           <>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Field label="New Client Category" required={req("client_category")} invalid={miss("client_category")}>
                 <Select value={form.client_category || ""} onChange={setCategory}>
                   <option value="">— select —</option>
@@ -424,8 +424,8 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
                 <CountrySelect value={form.country} onChange={set("country")} countries={countries} />
               </Field>
             </div>
-            {form.client_category === "Existing" && <div className="grid grid-cols-2 gap-3">{oneTimeQuestion}</div>}
-            <div className="grid grid-cols-2 gap-3">
+            {form.client_category === "Existing" && <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">{oneTimeQuestion}</div>}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Field label="Contact Mobile" required={req("contact_mobile_number")} invalid={miss("contact_mobile_number")}>
                 <MobileNumberInput code={form.contact_mobile_country_code} number={form.contact_mobile_number} options={dialOptions}
                   onCode={setValue("contact_mobile_country_code")} onNumber={setValue("contact_mobile_number")} placeholder="e.g. 43334444" />
@@ -446,7 +446,7 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
           <Input value={form.single_point_of_contact} onChange={set("single_point_of_contact")} placeholder="e.g. Jane Doe" />
         </Field>
         {!isIndividual && (
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Field label="Incorporation Certificate No." required={req("registration_number")} invalid={miss("registration_number")}>
               <Input value={form.registration_number} onChange={set("registration_number")} placeholder="e.g. 123456" maxLength={30} />
             </Field>
@@ -480,7 +480,7 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
           <>
             <Section title="Licensing & Regulatory" hasData={!!(form.licensing_authority || form.license_activities || form.license_start_date || form.license_expiry_date || form.is_regulated != null || form.license_category)}
               {...sectionProps("licensing")}>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <Field label="Registering Authority" required={req("licensing_authority")} invalid={miss("licensing_authority")}>
                   {authorities.items.length ? (
                     <Select value={form.licensing_authority || ""} onChange={set("licensing_authority")}>
@@ -502,7 +502,7 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
               <Field label="Detailed Nature of Business carried out currently">
                 <Textarea rows={2} value={form.nature_of_business} onChange={set("nature_of_business")} maxLength={1000} />
               </Field>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <Field label="LEI, if registered"><Input value={form.lei_number} onChange={(e) => setForm({ ...form, lei_number: e.target.value.toUpperCase() })} maxLength={20} placeholder="20 letters / digits" /></Field>
                 <Field label="LEI Expiry Date"><DateInput min={today} value={form.lei_expiry_date || ""} onChange={set("lei_expiry_date")} /></Field>
               </div>
@@ -512,11 +512,11 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
                   <p className="text-[11px] text-gray-500 text-right">{(form.license_activities || "").length}/250</p>
                 </Field>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <YesNo label="Is entity regulated" required={req("is_regulated")} invalid={miss("is_regulated")} value={form.is_regulated} onChange={setValue("is_regulated")} />
               </div>
               {form.is_regulated && (
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <Field label="Regulator" required={req("regulator_name")} invalid={miss("regulator_name")}>
                     <Select value={form.regulator_name || ""} onChange={set("regulator_name")}>
                       <option value="">— select —</option>
@@ -558,7 +558,7 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
                 (unless a value was already saved); the Financial Year End stays, optional. */}
             <Section title={offshore ? "Financial Year" : "Tax"} hasData={!!(form.trn_vat_number || form.financial_year_end || form.corp_tax_registered)}
               {...sectionProps("tax")}>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {showVat && <Field label="TRN / VAT Registration No.">
                   <Input value={form.trn_vat_number} onChange={(e) => setForm({ ...form, trn_vat_number: taxNumber(e.target.value, form.country) })} maxLength={20} placeholder={taxNumberHint(form.country)} />
                   {/* Triam 13-11-2026: the VAT Certificate is uploaded here, beside the number. */}
@@ -577,7 +577,7 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
                   </div>
                 </Field>
               </div>
-              {showCorpTax && <div className="grid grid-cols-2 gap-3">
+              {showCorpTax && <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <YesNo label="Corporate Tax Registered" required={req("corp_tax_registered")} invalid={miss("corp_tax_registered")} value={form.corp_tax_registered} onChange={setValue("corp_tax_registered")} />
               </div>}
               {showCorpTax && form.corp_tax_registered && (
@@ -590,7 +590,7 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
         {isIndividual && (
           <Section title="Individual Details" hasData={!!(form.date_of_birth || form.country_of_birth || form.nationality || form.individual_mobile_number || form.individual_email || form.country_of_residence || form.is_pep || (form.nature_of_services_sought || []).length > 0)}
             {...sectionProps("individual")}>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Field label="Date of Birth" required={req("date_of_birth")} invalid={miss("date_of_birth")}><DateInput min={earliestBirth()} max={latestAdultBirth()} value={form.date_of_birth || ""} onChange={set("date_of_birth")} /><p className="text-[11px] text-gray-500 mt-1">The client must be 18 or over.</p></Field>
               <Field label="Country of Birth" required={req("country_of_birth")} invalid={miss("country_of_birth")}><CountrySelect value={form.country_of_birth} onChange={set("country_of_birth")} countries={countries} /></Field>
               <Field label="Nationality" required={req("nationality")} invalid={miss("nationality")}><CountrySelect value={form.nationality} onChange={set("nationality")} countries={countries} /></Field>
@@ -606,7 +606,7 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
               <MobileNumberInput code={form.individual_mobile_country_code} number={form.individual_mobile_number} options={dialOptions}
                 onCode={setValue("individual_mobile_country_code")} onNumber={setValue("individual_mobile_number")} />
             </Field>
-            <div className="grid grid-cols-2 gap-3">{oneTimeQuestion}</div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">{oneTimeQuestion}</div>
             <Field label="Nature of Services Sought" required={req("nature_of_services_sought")} invalid={miss("nature_of_services_sought")}>
               <MultiSelect options={serviceOptions(false)} value={form.nature_of_services_sought} onChange={setValue("nature_of_services_sought")} />
             </Field>
@@ -618,7 +618,7 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
             <AddressFields required={req("residential_address")} invalid={missingSet.has("residential_address")} value={form.residential_address} onChange={setValue("residential_address")} countries={countries} />
 
             {isUAE(form.country_of_residence) && (
-              <div className="grid grid-cols-2 gap-3 mt-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
                 <Field label="UAE Visa No."><Input value={form.uae_visa_number} onChange={set("uae_visa_number")} /></Field>
                 <Field label="UAE Visa Expiry"><DateInput min={addDays(today, -30)} value={form.uae_visa_expiry || ""} onChange={set("uae_visa_expiry")} /></Field>
               </div>
@@ -636,7 +636,7 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
         )}
 
         <Section title="Introducer" hasData={form.has_introducer != null} {...sectionProps("introducer")}>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <YesNo label="Introduced by a third party" required={req("has_introducer")} invalid={miss("has_introducer")} value={form.has_introducer} onChange={setValue("has_introducer")} />
           </div>
           {form.has_introducer && (
@@ -674,7 +674,7 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
         {/* Triam UAT 26-10-2026: mandatory for every new client, completed by the RM / Sales Manager. */}
         {/* Triam UAT 05-11-2026: for Individual and Entity clients; the report is filed under Documents. */}
         <Section title="Name Screening" hasData={!!form.screening_date} {...sectionProps("screening")}>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Field label="Screening Date"><DateInput max={today} value={form.screening_date || ""} onChange={set("screening_date")} /></Field>
           </div>
           <div className="text-xs font-medium text-gray-600 mb-1.5">Screening Report</div>
@@ -688,7 +688,7 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
         </Section>
 
         <Section title="Biz Rationale Report" hasData={!!(form.br_person_met || form.br_rationale)} {...sectionProps("bizRationale")}>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Field label="Full Name of the Person Met" required={req("br_person_met")} invalid={miss("br_person_met")}><Input value={form.br_person_met} onChange={set("br_person_met")} maxLength={255} /></Field>
             <Field label="Place of Meeting with the Customer" required={req("br_meeting_place")} invalid={miss("br_meeting_place")}><Input value={form.br_meeting_place} onChange={set("br_meeting_place")} maxLength={255} /></Field>
             <Field label="Date of Meeting with the Customer" required={req("br_meeting_date")} invalid={miss("br_meeting_date")} error={meetingDateError}><DateInput value={form.br_meeting_date || ""} onChange={set("br_meeting_date")} min={form.br_meeting_date && form.br_meeting_date < meetingEarliest ? undefined : meetingEarliest} max={myToday} /></Field>
@@ -712,7 +712,7 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
 
         <Section title="Engagement" hasData={form.engagement_letter_signed != null || !!form.engagement_letter_valid_until}
           {...sectionProps("profileStatus")}>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <YesNo label="Engagement Letter Signed" required={req("engagement_letter_signed")} invalid={miss("engagement_letter_signed")} value={form.engagement_letter_signed} onChange={setValue("engagement_letter_signed")} />
             {form.engagement_letter_signed && (
               <Field label="Engagement Letter Valid Until" required={req("engagement_letter_valid_until")} invalid={miss("engagement_letter_valid_until")}><DateInput value={form.engagement_letter_valid_until || ""} onChange={set("engagement_letter_valid_until")} /></Field>
@@ -738,7 +738,7 @@ export default function AccountFormModal({ initialForm, users, countries, onClos
               </ul>
             </div>
           )}
-          <fieldset disabled={!cddEditable} className="grid grid-cols-2 gap-3 disabled:opacity-70">
+          <fieldset disabled={!cddEditable} className="grid grid-cols-1 sm:grid-cols-2 gap-3 disabled:opacity-70">
             <Field label="CDD/AML Risk Level">
               <Select value={form.risk_rating || ""} onChange={set("risk_rating")}>
                 <option value="">— Not set —</option>
