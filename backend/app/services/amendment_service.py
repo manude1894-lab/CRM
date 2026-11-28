@@ -271,7 +271,7 @@ def start(db: Session, acc: Account, user: User) -> ApprovalRequest:
 def _draft_for_edit(db: Session, acc: Account, user: User) -> ApprovalRequest:
     req = open_request(db, acc.id)
     if req is None:
-        raise HTTPException(status_code=409, detail="This client is approved. Use 'Amend client' to start an amendment; changes go to Compliance for approval.")
+        raise HTTPException(status_code=409, detail="This client is approved. Use 'Amend client data' to start an amendment; changes go to Compliance for approval.")
     if req.status == ApprovalStatus.PENDING.value:
         raise HTTPException(status_code=409, detail="An amendment to this client is awaiting Compliance approval. It is locked until it is approved, rejected or withdrawn.")
     if req.maker_id != user.id:
@@ -378,6 +378,9 @@ def view(db: Session, acc: Account, user: User) -> dict:
                 out["actions"].append("withdraw")
     elif out["amendable"]:
         out["actions"] = ["start"]
+    if req is not None:
+        from app.services import document_service
+        out["documents"] = document_service.amendment_documents(db, acc, [req.id, req.previous_request_id], user)
     if has_permission(user, "read_only"):
         out["actions"] = []  # Inquiry & Reports: view only (BRD §13)
     return out
@@ -494,6 +497,10 @@ def withdraw(db: Session, acc: Account, user: User) -> ApprovalRequest:
 def discard(db: Session, acc: Account, user: User) -> ApprovalRequest:
     req = _draft_for_edit(db, acc, user)
     req.status, req.decided_at = ApprovalStatus.DISCARDED.value, _now()
+    # Its supporting documents leave the folder with it (kept on record, as any removed document).
+    from app.models import Document
+    for d in db.query(Document).filter(Document.approval_request_id == req.id, Document.removed_at.is_(None)).all():
+        d.removed_at, d.removed_by_id, d.removed_reason = _now(), user.id, "Amendment discarded"
     log_event(db, "amend_discard", f"Draft amendment to {_client_label(acc)} discarded", subject_type="Account",
               subject_id=acc.id, account_id=acc.id, changes={"request_id": req.id})
     db.commit()

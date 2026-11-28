@@ -1,6 +1,6 @@
 """Test helpers for the new-client approval flow (BRD §7–§10):
 RM submits → Compliance (MLRO) completes the CDD section and approves → Approver gives final approval."""
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 
 from app.models import Document
@@ -49,7 +49,7 @@ def complete_client(db, maker, with_document=True):
         registered_address={"line1": "Office 1201, Tower A", "city": "Dubai", "country": "United Arab Emirates"},
         operating_address={"line1": "Office 1201, Tower A", "city": "Dubai", "country": "United Arab Emirates"},
         is_regulated=False, corp_tax_registered=False, has_introducer=False, engagement_letter_signed=False,
-        br_person_met="Jane Owner", br_meeting_date=date(2026, 10, 1), br_meeting_time="10:30",
+        br_person_met="Jane Owner", br_meeting_date=date.today() - timedelta(days=5), br_meeting_time="10:30",
         br_meeting_place="Triam office, DIFC", br_meeting_mode="Face to Face",
         br_rationale="Fintech start-up needing accounting; company secretarial likely within two years.",
     ), maker)

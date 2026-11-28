@@ -110,11 +110,13 @@ def create_for_account(
     user: User,
     notes: str | None = None,
     party_id: int | None = None,
+    approval_request_id: int | None = None,
 ) -> Document:
     account = _account_for_read(db, account_id, user)
     category = _normalise_category(db, category)
     _assert_can_file(db, account, category, user)
     _assert_party(db, account, party_id)
+    _assert_my_draft_amendment(db, account, approval_request_id, user)
 
     filename = _safe_filename(upload.filename)
     if _ext(filename) not in _ALLOWED_EXT:
@@ -140,6 +142,7 @@ def create_for_account(
         uploaded_by_id=user.id,
         notes=(notes or None),
         party_id=party_id,
+        approval_request_id=approval_request_id,
     )
     db.add(doc)
     db.flush()
@@ -185,20 +188,34 @@ def _assert_party(db: Session, account, party_id) -> None:
         raise HTTPException(status_code=400, detail="That person is not one of this client's parties")
 
 
+def _assert_my_draft_amendment(db: Session, account, request_id, user: User) -> None:
+    """Triam UAT 27-11-2026: a supporting document is filed with the user's own draft amendment of this client."""
+    if request_id is None:
+        return
+    from app.models import ApprovalRequest, ApprovalStatus
+    req = db.get(ApprovalRequest, request_id)
+    if (req is None or req.account_id != account.id or req.request_type != "client_amendment"
+            or req.status != ApprovalStatus.DRAFT.value or req.maker_id != user.id):
+        raise HTTPException(status_code=400, detail="Supporting documents are added to your own amendment while it is in draft")
+
+
 def create_link_for_account(db: Session, account_id: int, category: str, url: str, title: str | None,
-                            user: User, notes: str | None = None, party_id: int | None = None) -> Document:
+                            user: User, notes: str | None = None, party_id: int | None = None,
+                            approval_request_id: int | None = None) -> Document:
     """BRD §14 — a document can be a URL instead of a file, e.g. the KYC verification
     video kept on SharePoint."""
     account = _account_for_read(db, account_id, user)
     category = _normalise_category(db, category)
     _assert_can_file(db, account, category, user)
     _assert_party(db, account, party_id)
+    _assert_my_draft_amendment(db, account, approval_request_id, user)
     url = (url or "").strip()
     if not url.lower().startswith("https://") or len(url) > 1000 or any(c.isspace() for c in url):
         raise HTTPException(status_code=400, detail="Enter a valid https:// link")
     name = (title or "").strip()[:255] or url.rsplit("/", 1)[-1][:255] or "Link"
     doc = Document(account_id=account_id, category=category, filename=name, content_type="text/uri-list",
-                   size_bytes=0, content=None, link_url=url, uploaded_by_id=user.id, notes=(notes or None), party_id=party_id)
+                   size_bytes=0, content=None, link_url=url, uploaded_by_id=user.id, notes=(notes or None), party_id=party_id,
+                   approval_request_id=approval_request_id)
     db.add(doc)
     db.flush()
     log_event(db, "document_upload", f"{_category_label(db, category)}: link '{name}' filed for {account.company_name}",
@@ -298,6 +315,12 @@ def client_document_removal(db: Session, doc: Document, account, user: User) -> 
     stage = _client_document_stage(db, account)
     if _compliance_review_open(db, doc, account, user):
         return True, stage, None
+    # Triam UAT 27-11-2026: a supporting document of a draft amendment can be taken out by its uploader until submitted.
+    if doc.approval_request_id and doc.uploaded_by_id == user.id:
+        from app.models import ApprovalRequest, ApprovalStatus
+        req = db.get(ApprovalRequest, doc.approval_request_id)
+        if req is not None and req.status == ApprovalStatus.DRAFT.value:
+            return True, stage, None
     if stage == LOCKED:
         return False, stage, "The client is approved, so its documents can no longer be removed. Upload a newer version instead."
     if account.profile_status == wf.AWAITING:
@@ -325,6 +348,22 @@ def _assert_client_document_removable(db: Session, doc: Document, user: User) ->
         raise HTTPException(status_code=409 if stage == LOCKED else 403, detail=reason)
 
 
+def amendment_documents(db: Session, account, request_ids: list[int], user: User) -> list[dict]:
+    """The supporting documents of an amendment (and of the request a draft continues)."""
+    from app.models import User as UserModel
+    ids = [i for i in request_ids if i]
+    if not ids:
+        return []
+    docs = (db.query(Document).filter(Document.account_id == account.id, Document.approval_request_id.in_(ids),
+                                      Document.removed_at.is_(None)).order_by(Document.id).all())
+    names = {u.id: u.name for u in db.query(UserModel.id, UserModel.name).filter(UserModel.id.in_({d.uploaded_by_id for d in docs})).all()}
+    return [{"id": d.id, "category": d.category, "category_label": _category_label(db, d.category), "filename": d.filename,
+             "link_url": d.link_url, "size_bytes": d.size_bytes, "content_type": d.content_type, "created_at": d.created_at,
+             "uploaded_by_name": names.get(d.uploaded_by_id), "approval_request_id": d.approval_request_id,
+             "can_download": can_download(d, account, user), "can_delete": client_document_removal(db, d, account, user)[0]}
+            for d in docs]
+
+
 def client_folder(db: Session, account_id: int, user: User) -> dict:
     """BRD §14 — the client's folder: everything filed against the Client ID."""
     from app.models import User as UserModel
@@ -336,7 +375,8 @@ def client_folder(db: Session, account_id: int, user: User) -> dict:
 
     def item(d: Document, **extra) -> dict:
         out = {c: getattr(d, c) for c in ("id", "account_id", "instruction_id", "category", "filename", "content_type",
-                                          "size_bytes", "uploaded_by_id", "notes", "created_at", "link_url", "party_id")}
+                                          "size_bytes", "uploaded_by_id", "notes", "created_at", "link_url", "party_id",
+                                          "approval_request_id")}
         out["uploaded_by_name"] = names.get(d.uploaded_by_id)
         out["party_name"] = labels.get(d.party_id) if d.party_id else None
         out["can_download"] = can_download(d, account, user)

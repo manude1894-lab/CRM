@@ -27,6 +27,8 @@ class Document(Base):
     instruction_id = Column(Integer, ForeignKey("instructions.id", ondelete="SET NULL"), nullable=True)
     invoice_id = Column(Integer, ForeignKey("invoices.id", ondelete="CASCADE"), nullable=True, index=True)  # pricing approval / invoice file
     party_id = Column(Integer, ForeignKey("account_parties.id", ondelete="SET NULL"), nullable=True, index=True)  # the UBO / director / signatory
+    # Triam UAT 27-11-2026: a document supporting an amendment of an approved client
+    approval_request_id = Column(Integer, ForeignKey("approval_requests.id", ondelete="SET NULL"), nullable=True, index=True)
 
     category = Column(String(60), default=DocumentCategory.OTHER.value, nullable=False)
     filename = Column(String(255), nullable=False)
