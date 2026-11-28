@@ -18,6 +18,11 @@ export default {
         },
         gold: "#E8B84B",
       },
+      // Triam 28-11-2026: text a little larger across the screens (12 -> 13 px, 14 -> 14.5 px).
+      fontSize: {
+        xs: ["0.8125rem", { lineHeight: "1.15rem" }],
+        sm: ["0.90625rem", { lineHeight: "1.35rem" }],
+      },
       fontFamily: {
         sans: ["Inter", "system-ui", "sans-serif"],
       },
