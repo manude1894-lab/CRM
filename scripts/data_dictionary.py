@@ -271,7 +271,28 @@ SHEETS = [
 ]
 
 
+# Triam 28-11-2026: fields that hold digits (or letters and digits) but are kept as text, said plainly. Phone numbers
+# are stored as text on purpose: a number field would drop a leading 0 and the + of the code, could show 9.71E+11 in
+# Excel, and a phone number is never added up. The CRM still accepts digits only (see the Checks column).
+DIGITS = "Digits only (kept as text)"
+SHOWN_TYPE = {
+    "contact_mobile_number": (DIGITS, "8 to 12 digits"), "individual_mobile_number": (DIGITS, "8 to 12 digits"),
+    "mobile_number": (DIGITS, "8 to 12 digits"),
+    "contact_mobile_country_code": ("Dialling code, e.g. +971", "Up to 6 characters"),
+    "individual_mobile_country_code": ("Dialling code, e.g. +971", "Up to 6 characters"),
+    "mobile_country_code": ("Dialling code, e.g. +971", "Up to 6 characters"),
+    "contact_phone": ("Dialling code and digits (kept as text)", "Up to 50 characters"),
+    "mobile": ("Dialling code and digits (kept as text)", "Up to 20 characters"),
+    "trn_vat_number": ("Letters and digits (kept as text)", "Up to 30; UAE 15 digits"),
+    "corp_tax_registration_number": ("Letters and digits (kept as text)", "Up to 30; UAE 15 digits"),
+    "lei_number": ("Letters and digits (kept as text)", "Up to 20 characters"),
+    "passport_number": ("Letters and digits (kept as text)", "Up to 20 characters"),
+}
+
+
 def data_type(col) -> tuple[str, str]:
+    if col.name in SHOWN_TYPE:
+        return SHOWN_TYPE[col.name]
     t = col.type
     if isinstance(t, Boolean):
         return "Yes / No", ""
@@ -314,6 +335,9 @@ def build(path: Path) -> None:
         ("but cannot be submitted for approval until it is filled; \"At Compliance approval\" is filled by Compliance.", None),
         ("Master list: values the Administrator maintains under Admin > Master Data.", None),
         ("Fields set by the CRM itself (IDs, dates of changes, who did what) are listed at the end of each sheet in grey.", None),
+        ("", None),
+        ("Phone numbers, tax numbers and similar are kept as text on purpose: a number field would drop a leading 0 and the +", None),
+        ("of the code, and they are never added up. The CRM still accepts digits only where the Checks column says so.", None),
     ]
     for i, (text, font) in enumerate(lines, start=1):
         c = intro.cell(row=i, column=1, value=text)
